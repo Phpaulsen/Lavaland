@@ -5457,11 +5457,19 @@ function bakSave(){
         setTimeout(function(){ URL.revokeObjectURL(u); },4000); bakDone(true);
       }catch(_){ bakDone(false); }
     };
-    let f=null;
-    try{ f=new File([blob],name,{type:'application/json'}); }catch(_){}
-    if(f&&navigator.canShare&&navigator.canShare({files:[f]})){
-      navigator.share({files:[f]}).then(function(){ bakDone(true); },function(e){ if(e&&e.name==='AbortError') return; dl(); });
-    } else dl();
+    const web=function(){
+      let f=null;
+      try{ f=new File([blob],name,{type:'application/json'}); }catch(_){}
+      if(f&&navigator.canShare&&navigator.canShare({files:[f]})){
+        navigator.share({files:[f]}).then(function(){ bakDone(true); },function(e){ if(e&&e.name==='AbortError') return; dl(); });
+      } else dl();
+    };
+    /* Im claude.ai-Artefakt darf die Seite selbst nichts herunterladen: dort fragt der Betrachter, ob die Datei gespeichert wird. */
+    const host=window.claude&&typeof window.claude.use==='function'?window.claude.use('downloads').catch(function(){ return null; }):Promise.resolve(null);
+    host.then(function(dw){
+      if(!dw){ web(); return; }
+      dw.save({filename:name,data:blob}).then(function(){ bakDone(true); },function(e){ if(e&&e.code==='declined') return; bakDone(false); });
+    });
   },function(){ bakDone(false); });
 }
 function bakPick(file){
