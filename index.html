@@ -2834,7 +2834,7 @@ function newRealm(){
   scanMobile();
 }
 function travel(to){
-  if(traveling) return;
+  if(traveling||to===realm||(to&&!RLM[to])) return;
   traveling=true; portalT=0;
   const from=realm, m=P.mode, en=energy, f=$('fade');
   f.hidden=false; void f.offsetWidth; f.classList.add('on'); sfx('whoosh');
@@ -6297,7 +6297,7 @@ function closeQuiz(){
   try{ if(window.speechSynthesis) window.speechSynthesis.cancel(); }catch(_){}
   const f=pending; pending=null;
   if(energy>0){ if(f) f(); }
-  else{ setTool(null,true); if(P.mode!=='walk') setMode('walk'); pulse('batt'); }
+  else{ setTool(null,true); if(P.mode!=='walk'){ const air=!P.on; setMode('walk'); if(air){ P.chute=true; P.vy=Math.min(P.vy,0); } } pulse('batt'); }
 }
 function drain(dt){
   if(P.mode!=='walk'||tool){
