@@ -11,7 +11,7 @@ const require = createRequire(import.meta.url);
 const { chromium, devices } = require('playwright');
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ANCHOR = "document.addEventListener('visibilitychange',function(){ if(document.hidden) saveGame(false); });";
-const TYPES = { '.html': 'text/html', '.json': 'application/json', '.js': 'text/javascript', '.png': 'image/png' };
+const TYPES = { '.html': 'text/html', '.json': 'application/json', '.js': 'text/javascript', '.png': 'image/png', '.woff2': 'font/woff2' };
 
 // Kleiner Server, der in die Seite einen Zugang zu den internen Variablen einbaut (nur für den Test).
 function serve() {
@@ -41,6 +41,11 @@ test('Start ohne Fehler, Welt erzeugt', async ({ ev }) => {
   const s = await ev('({ready, w:GX, x:P.x, mode:P.mode})');
   if (!s.ready) throw new Error('Spiel nicht bereit');
   if (s.w < 10000) throw new Error('Welt zu klein: ' + s.w);
+});
+
+test('Lernschrift kommt aus dem Repo', async ({ page }) => {
+  const ok = await page.evaluate(() => document.fonts.load('700 20px Andika').then(f => f.length > 0));
+  if (!ok) throw new Error('Andika nicht geladen');
 });
 
 test('Laufen bewegt den Helden', async ({ ev, page }) => {

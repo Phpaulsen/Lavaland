@@ -1,6 +1,6 @@
 /* Offline-Betrieb: Die Seite selbst kommt zuerst aus dem Netz (damit Updates ankommen), sonst aus dem Cache. Alles andere kommt aus dem Cache und wird bei Bedarf nachgeladen. */
-const CACHE='lavaland-v2';
-const CORE=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png','./apple-touch-icon.png'];
+const CACHE='lavaland-v3';
+const CORE=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png','./apple-touch-icon.png','./fonts/andika-400.woff2','./fonts/andika-700.woff2'];
 
 self.addEventListener('install',function(e){
   e.waitUntil(caches.open(CACHE).then(function(c){ return c.addAll(CORE); }).then(function(){ return self.skipWaiting(); }));
