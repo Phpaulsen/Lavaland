@@ -4611,6 +4611,7 @@ const ZN=[
 /* Material: Bild, Name, Mehrzahl, wo man es findet */
 const MAT={
   ms:['💠','Meisterstein','Meistersteine','Meistersteine bekommst du, wenn eine Aufgabe richtig gut sitzt: Wenn du sie an verschiedenen Tagen immer wieder richtig weißt. Auf der Rechentafel siehst du, welche schon fast so weit sind.'],
+  pk:['🪐','Planetenkern','Planetenkerne','Planetenkerne liegen ganz unten in den großen Planeten, unter der schwarzen Schicht: einer im Mond, einer im Eisplaneten und einer im Blubberplaneten. Dafür brauchst du den Bohrer Stufe 3.'],
   zr:['⚙️','Zahnrad','Zahnräder','Zahnräder bekommst du, wenn du eine Rätselmaschine löst. Über jeder schwebt ein Zahnrad.'],
   fe:['🔩','Eisen','Eisen','Eisen steckt tief unten im dunklen und im roten Gestein. Bohr dich mit der Tunnelbohrmaschine hinunter.'],
   mo:['🌙','Mondstein','Mondsteine','Mondsteine gibt es auf dem Mond. Er ist eine ganze Welt. Flieg mit der Rakete hin und lande auf ihm.'],
@@ -4621,7 +4622,7 @@ const MAT={
   ei:['❄️','Eiskern','Eiskerne','Eiskerne gibt es auf dem Eisplaneten, weit über den Felsbrocken. Er ist eine ganze Welt. Dafür brauchst du die Rakete Stufe 2.'],
   fp:['🔥','Feuerperle','Feuerperlen','Feuerperlen liegen im Lavameer ganz unten, manche mitten in der Lava. Dafür brauchst du den Bohrer Stufe 3.']
 };
-const MATK=['zr','ms','fe','mo','pi','st','kn','kr','ei','fp'], MATZ={fe:1,pi:3,kn:4,kr:5,fp:6};
+const MATK=['zr','ms','pk','fe','mo','pi','st','kn','kr','ei','fp'], MATZ={fe:1,pi:3,kn:4,kr:5,fp:6};
 /* Die drei Geräte und ihre Baupläne. Unten und oben wechseln sich ab: Für den nächsten Bohrer braucht man etwas aus dem Weltraum und umgekehrt. */
 const GEAR={
   dr:{e:'⛏️',n:'Bohrer',art:'den Bohrer',rc:[{fe:6,zr:1},{pi:4,st:4,zr:2,ms:2},{kr:4,ei:4,zr:3,ms:5}],
@@ -4835,6 +4836,8 @@ function planetDeep(R){
     if(R.lk[z]) for(let n=0;n<10;n++){ const x=xr(), rx=64+r()*70, y=yr(a+16,b-30), ry=26+r()*14; STR.push({k:'lake',x:x,y:y,rx:rx,ry:ry,m:R.lk[z],nw:1,c1:colOf(x+rx+26)}); }
   }
   vaultPlan(R.salt,0,PX0+400,RW-800,R.small!==undefined?1:2);
+  /* Jeder große Planet hat ganz unten einen Planetenkern. Eigene Zufallsreihe und als letztes Stück, damit sich an allem anderen nichts ändert. */
+  if(R.small===undefined){ const rc=rng(SEED*53+R.salt), x=X0+rc()*XW; mat('pk',x,TOP+CELL*(ZA[5]+40+rc()*(ZB[5]-ZA[5]-80))); }
   STR.sort(function(p,q){ return p.c1-q.c1; });
 }
 /* ---------- Wissenstüren: Tief unten liegen Schatzkammern mit fester Wand. Die Tür geht auf, wenn man drei Lernaufgaben richtig löst.
@@ -4904,6 +4907,7 @@ function matFound(m){
   sfx('coin'); addXp(6); qEvent('mat',1); dayAdd('mat');
   for(let i=0;i<10;i++) spawn(5,m.x,m.y,(Math.random()-.5)*180,-60-Math.random()*160,.7,2);
   banner(MAT[k][0]+' '+n,1500);
+  if(k==='pk'){ hero.mk.pk=1; gold+=100; lootDirty=true; confetti(m.x,m.y); jingle(); banner('🪐 '+n+' / 3',2600); say('',n>=3?'Alle drei Planetenkerne! Du hast jede große Welt bis ganz nach unten erforscht.':'Ein Planetenkern! Er leuchtet wie ein kleiner Stern. In jedem großen Planeten liegt einer.'); dayAdd('z','🪐'); campSoon(); labBadge(true); return; }
   if(!hero.mk[k]){ hero.mk[k]=1; say('',MAT[k][1]+'! Das kann Professor Zahnrad in der Werkstatt gebrauchen. Tippe oben auf den Schraubenschlüssel, dann siehst du, wofür.'); pulse('btn-lab'); }
   labBadge(true);
 }
