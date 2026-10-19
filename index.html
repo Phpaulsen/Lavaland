@@ -1,5 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<title>Lavaland</title>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Lavaland</title><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#7fd0e8"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Lavaland"><link rel="apple-touch-icon" href="apple-touch-icon.png"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap">
 <style>
@@ -540,7 +539,11 @@ button.wt{cursor:pointer}
       <button class="card pick" id="save" aria-label="Speichern"></button>
       <button class="card pick" id="sound" aria-label="Ton an oder aus" aria-pressed="true"></button>
       <button class="card pick" id="reset" aria-label="Neue Welt"></button>
+      <button class="card pick" id="fs" aria-label="Vollbild an oder aus" aria-pressed="false" hidden></button>
+      <button class="card pick" id="exp" aria-label="Spielstand als Datei sichern"></button>
+      <button class="card pick" id="imp" aria-label="Spielstand aus Datei laden"></button>
     </div>
+    <input type="file" id="imp-file" accept=".json,application/json" hidden>
   </div>
 </div>
 <div id="confirm" class="ov" hidden>
@@ -549,6 +552,15 @@ button.wt{cursor:pointer}
     <div class="yn">
       <button class="round big nope" id="no" aria-label="Nein, Welt behalten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg></button>
       <button class="round big" id="yes" aria-label="Ja, neue Welt" style="background:var(--good);color:#fff"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5" stroke="currentColor" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+  </div>
+</div>
+<div id="imp-ok" class="ov" hidden>
+  <div class="sheet" role="alertdialog" aria-label="Spielstand laden? Die Welt hier wird ersetzt.">
+    <div class="ask" id="imp-ask"></div>
+    <div class="yn">
+      <button class="round big nope" id="imp-no" aria-label="Nein, Welt behalten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg></button>
+      <button class="round big" id="imp-yes" aria-label="Ja, Spielstand laden" style="background:var(--good);color:#fff"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5" stroke="currentColor" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     </div>
   </div>
 </div>
@@ -667,6 +679,10 @@ IC.tbm='<rect x="1.5" y="6.5" width="13.5" height="11" rx="3" fill="#9aa7b4" '+S
 QI.hand='<path d="M14.5 3.5l6 6L10 20l-6.5 .5L4 14z" fill="#f2b632" '+S1+' stroke-width="1.6"/><path d="M3.5 20.5L4 14l6 6z" fill="#7a4a2c" '+S1+' stroke-width="1.4"/><path d="M12 6l6 6" '+S1+' stroke-width="1.6"/>';
 QI.gem='<path d="M6 4h12l4 6-10 11L2 10z" fill="#5fd4e6" '+S1+' stroke-width="1.6"/><path d="M2 10h20M9 4l-2 6 5 11 5-11-2-6" fill="none" '+S1+' stroke-width="1.2"/>';
 QI.save='<path d="M4 4h12.5L20 7.5V20H4z" fill="#4f9ad8" '+S1+' stroke-width="1.6"/><rect x="7.5" y="4" width="7.5" height="5" fill="#fff8e6" '+S1+' stroke-width="1.2"/><rect x="7" y="13" width="10" height="7" fill="#fff8e6" '+S1+' stroke-width="1.2"/>';
+QI.fs='<path d="M3 9V3h6M15 3h6v6M21 15v6h-6M9 21H3v-6" fill="none" '+S1+' stroke-width="2.6"/><rect x="7.5" y="7.5" width="9" height="9" rx="1.5" fill="#4f9ad8" '+S1+' stroke-width="1.5"/>';
+QI.fsx='<path d="M9 3v6H3M21 9h-6V3M15 21v-6h6M3 15h6v6" fill="none" '+S1+' stroke-width="2.6"/>';
+QI.exp='<path d="M3 13v8h18v-8" fill="#f2b632" '+S1+' stroke-width="1.6"/><path d="M12 15V3M7 7.5L12 3l5 4.5" fill="none" stroke="#2f8f4a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
+QI.imp='<path d="M3 13v8h18v-8" fill="#f2b632" '+S1+' stroke-width="1.6"/><path d="M12 3v12M7 10.5L12 15l5-4.5" fill="none" stroke="#2f6fd6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
 
 IC.tnt='<circle cx="10.5" cy="14.5" r="7.5" fill="#3a3438" '+S1+' stroke-width="1.6"/><path d="M15.5 9l3-3" '+S1+' stroke-width="2.4"/><path d="M18.5 6l.8-3M18.5 6l3-.6M18.5 6l2.4 1.800" stroke="#ff8a1f" stroke-width="1.8" stroke-linecap="round"/><path d="M7 12a4 4 0 0 1 3-2" stroke="#fff" stroke-width="1.6" stroke-linecap="round" fill="none"/>';
 AI.shop='<path d="M5 9h14l-1.5 11.5h-11z" fill="currentColor"/><path d="M9 9V7a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round"/>';
@@ -2323,7 +2339,7 @@ const FINDS=[
 ];
 let found={}, hidden=[], nearT=0, ready=false, saving=false, saveT=0, lootT=0;
 try{ const o=JSON.parse(localStorage.getItem('lavaland-finds')||'{}')||{}; found=o.ids||{}; gold=o.gold|0; gems=o.gems|0; }catch(_){ found={}; }
-function saveFinds(){ try{ localStorage.setItem('lavaland-finds',JSON.stringify({ids:found,gold:gold,gems:gems})); }catch(_){} }
+function saveFinds(){ if(frozen) return; try{ localStorage.setItem('lavaland-finds',JSON.stringify({ids:found,gold:gold,gems:gems})); }catch(_){} }
 function placeFind(zone,r){
   const anyX=function(){
     for(let k=0;k<40;k++){
@@ -2442,6 +2458,7 @@ function renderAlbum(){
 }
 
 /* ---------- Speichern: Die ganze Welt liegt als ein Eintrag in der Browser-Datenbank dieses Geräts. ---------- */
+let frozen=false; /* true, solange ein geladener Spielstand eingespielt wird: dann schreibt das Spiel nichts mehr. */
 function idbOpen(){
   return new Promise(function(res,rej){
     let rq;
@@ -2469,7 +2486,7 @@ function snapshot(){
     trees:trees.map(function(t){return t.state===1?2:t.state;}),hidden:hidden,energy:energy,props:props,seen:seen,eggGot:eggGot,lootGot:lootGot,orbGot:orbGot,matGot:matGot,pzGot:pzGot};
 }
 function saveGame(manual){
-  if(saving||!ready) return;
+  if(saving||!ready||frozen) return;
   saving=true; saveFinds(); saveHero();
   idbDo('readwrite',function(st){ return st.put(snapshot(),'world'); }).then(function(){
     saving=false; if(manual){ flash('save','ok'); tone([660,880]); speak('Gespeichert.'); banner(svg24(QI.save)+'<svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5" stroke="#2f8f4a" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',1400); setTimeout(function(){ $('menu').hidden=true; },500); }
@@ -2507,7 +2524,7 @@ try{
 }catch(_){}
 let heroDirty=false, digN=0, props=[], nearF=null, nearD=1e9;
 const bombs=[], pet={x:820,y:0};
-function saveHero(){ try{ localStorage.setItem('lavaland-hero',JSON.stringify(hero)); }catch(_){} }
+function saveHero(){ if(frozen) return; try{ localStorage.setItem('lavaland-hero',JSON.stringify(hero)); }catch(_){} }
 function xpNeed(l){ return 40+l*30; }
 function addXp(n){
   hero.xp+=n; heroDirty=true;
@@ -5251,8 +5268,9 @@ $('grid').innerHTML=
   '<button class="btn" id="btn-map" aria-label="Karte: zu einem entdeckten Land reisen">'+svg24(QI.map)+'</button>'+
   '<button class="btn" id="btn-lab" aria-label="Werkstatt: Bohrer, Rakete und Lampe bauen">'+svg24(QI.lab)+'<span class="badge" id="lab-n" hidden>!</span></button>'+
   '<button class="btn" id="btn-finds" aria-label="Funde ansehen">'+svg24(QI.gem)+'<span class="badge" id="found" hidden>0</span></button>'+
-  '<button class="btn" id="btn-menu" aria-label="Menü: Speichern, Ton, neue Welt">'+svg24(QI.gear)+'</button>';
-$('save').innerHTML=svg24(QI.save); $('reset').innerHTML=svg24(IC.reset);
+  '<button class="btn" id="btn-menu" aria-label="Menü: Speichern, Ton, neue Welt, Vollbild, Spielstand umziehen">'+svg24(QI.gear)+'</button>';
+$('save').innerHTML=svg24(QI.save); $('reset').innerHTML=svg24(IC.reset); $('exp').innerHTML=svg24(QI.exp); $('imp').innerHTML=svg24(QI.imp);
+$('imp-ask').innerHTML=svg24(QI.imp)+'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h14m-6-6l6 6-6 6" stroke="'+K+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>'+svg24(IC.blocks);
 $('ask').innerHTML=svg24(IC.blocks)+'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h14m-6-6l6 6-6 6" stroke="'+K+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>'+svg24(IC.reset);
 $('garage-cards').innerHTML=VEH.map(function(v){
   const cool=v[0]!=='walk';
@@ -5339,6 +5357,167 @@ $('sound').addEventListener('click',function(){
   try{ localStorage.setItem('lavaland-mute',muted?'1':'0'); if(muted&&window.speechSynthesis) window.speechSynthesis.cancel(); }catch(_){}
   syncSound(); sfx('pop');
 });
+/* ---------- Spielstand umziehen: Alles aus diesem Browser (Welt, Held, Funde, Einstellungen, Protokoll) als eine Datei. Der Speicher gehört zur Adresse, darum braucht der Umzug vom Artefakt auf eine eigene Seite oder in die Homescreen-App diesen Weg. ---------- */
+const BAK_DBS=['lavaland','lavaland-log'];
+let bakIn=null;
+function b64(u8){ let s=''; for(let i=0;i<u8.length;i+=0x8000) s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000)); return btoa(s); }
+function unb64(s){ const b=atob(s), u=new Uint8Array(b.length); for(let i=0;i<b.length;i++) u[i]=b.charCodeAt(i); return u; }
+function enc(v){
+  if(ArrayBuffer.isView(v)) return {$t:v.constructor.name,$b:b64(new Uint8Array(v.buffer,v.byteOffset,v.byteLength))};
+  if(v instanceof ArrayBuffer) return {$t:'ArrayBuffer',$b:b64(new Uint8Array(v))};
+  if(v instanceof Date) return {$t:'Date',$d:v.getTime()};
+  if(Array.isArray(v)) return v.map(enc);
+  if(v&&typeof v==='object'){ const o={}; for(const k in v) o[k]=enc(v[k]); return o; }
+  return v;
+}
+function dec(v){
+  if(Array.isArray(v)) return v.map(dec);
+  if(v&&typeof v==='object'){
+    if(typeof v.$t==='string'){
+      if(v.$t==='Date') return new Date(v.$d);
+      const u=unb64(v.$b);
+      if(v.$t==='ArrayBuffer') return u.buffer;
+      const T=window[v.$t]; if(typeof T==='function'&&/Array$/.test(v.$t)) return new T(u.buffer);
+    }
+    const o={}; for(const k in v) o[k]=dec(v[k]); return o;
+  }
+  return v;
+}
+/* Eine Datenbank, die es hier noch nicht gibt, wird beim Lesen nicht angelegt: das Anlegen wird abgebrochen. */
+function dbDump(name){
+  return new Promise(function(res){
+    let rq;
+    try{ rq=indexedDB.open(name); }catch(_){ res(null); return; }
+    rq.onupgradeneeded=function(){ try{ rq.transaction.abort(); }catch(_){} };
+    rq.onerror=function(e){ if(e&&e.preventDefault) e.preventDefault(); res(null); };
+    rq.onsuccess=function(){
+      const db=rq.result, names=Array.prototype.slice.call(db.objectStoreNames);
+      if(!names.length){ db.close(); res(null); return; }
+      const out={v:db.version,st:{}}, tx=db.transaction(names,'readonly');
+      names.forEach(function(n){
+        const os=tx.objectStore(n), e={kp:os.keyPath,ai:os.autoIncrement,k:[],r:[]};
+        out.st[n]=e;
+        os.getAllKeys().onsuccess=function(ev){ e.k=ev.target.result; };
+        os.getAll().onsuccess=function(ev){ e.r=ev.target.result; };
+      });
+      tx.oncomplete=function(){ db.close(); res(out); };
+      tx.onerror=tx.onabort=function(){ db.close(); res(null); };
+    };
+  });
+}
+function dbLoad(name,d){
+  const go=function(ver){
+    return new Promise(function(res,rej){
+      let rq;
+      try{ rq=ver?indexedDB.open(name,ver):indexedDB.open(name); }catch(e){ rej(e); return; }
+      rq.onupgradeneeded=function(){
+        const db=rq.result;
+        for(const n in d.st) if(!db.objectStoreNames.contains(n)){ const o={autoIncrement:!!d.st[n].ai}; if(d.st[n].kp!=null) o.keyPath=d.st[n].kp; db.createObjectStore(n,o); }
+      };
+      rq.onerror=function(e){ if(e&&e.preventDefault) e.preventDefault(); rej(rq.error); };
+      rq.onsuccess=function(){
+        const db=rq.result, names=Object.keys(d.st).filter(function(n){ return db.objectStoreNames.contains(n); });
+        if(!names.length){ db.close(); res(); return; }
+        const tx=db.transaction(names,'readwrite');
+        names.forEach(function(n){
+          const os=tx.objectStore(n), e=d.st[n];
+          os.clear();
+          for(let i=0;i<e.r.length;i++){ if(os.keyPath!=null) os.put(e.r[i]); else os.put(e.r[i],e.k[i]); }
+        });
+        tx.oncomplete=function(){ db.close(); res(); };
+        tx.onerror=tx.onabort=function(){ db.close(); rej(tx.error); };
+      };
+    });
+  };
+  /* Ist die Datenbank hier schon neuer als in der Datei, wird sie in ihrer jetzigen Fassung geöffnet. */
+  return go(d.v).catch(function(e){ if(e&&e.name==='VersionError') return go(0); throw e; });
+}
+function bakMake(){
+  const fresh=ready?idbDo('readwrite',function(st){ return st.put(snapshot(),'world'); }).catch(function(){}):Promise.resolve();
+  saveFinds(); saveHero();
+  return fresh.then(function(){ return Promise.all(BAK_DBS.map(dbDump)); }).then(function(rs){
+    const ls={}, db={};
+    try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.indexOf('lavaland')===0) ls[k]=localStorage.getItem(k); } }catch(_){}
+    BAK_DBS.forEach(function(n,i){ if(rs[i]) db[n]=enc(rs[i]); });
+    return {app:'lavaland',bak:1,at:new Date().toISOString(),ls:ls,db:db};
+  });
+}
+function bakDone(ok){
+  if(ok){ flash('exp','ok'); tone([660,880]); }
+  else { flash('exp','warn'); tone([170],'sawtooth'); }
+}
+function bakSave(){
+  bakMake().then(function(b){
+    const name='lavaland-'+b.at.slice(0,10)+'.json';
+    const blob=new Blob([JSON.stringify(b)],{type:'application/json'});
+    const dl=function(){
+      try{
+        const a=document.createElement('a'), u=URL.createObjectURL(blob);
+        a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function(){ URL.revokeObjectURL(u); },4000); bakDone(true);
+      }catch(_){ bakDone(false); }
+    };
+    let f=null;
+    try{ f=new File([blob],name,{type:'application/json'}); }catch(_){}
+    if(f&&navigator.canShare&&navigator.canShare({files:[f]})){
+      navigator.share({files:[f]}).then(function(){ bakDone(true); },function(e){ if(e&&e.name==='AbortError') return; dl(); });
+    } else dl();
+  },function(){ bakDone(false); });
+}
+function bakPick(file){
+  if(!file) return;
+  const rd=new FileReader();
+  rd.onload=function(){
+    let b=null;
+    try{ b=JSON.parse(rd.result); }catch(_){}
+    if(!b||b.app!=='lavaland'||!b.db||typeof b.db!=='object'){ flash('imp','warn'); tone([170],'sawtooth'); return; }
+    bakIn=b; $('menu').hidden=true; $('imp-ok').hidden=false; speak('Spielstand laden? Die Welt hier wird dann ersetzt.');
+  };
+  rd.onerror=function(){ flash('imp','warn'); tone([170],'sawtooth'); };
+  rd.readAsText(file);
+}
+function bakLoad(){
+  const b=bakIn; bakIn=null; if(!b) return;
+  frozen=true;
+  const dbs=Object.keys(b.db).filter(function(n){ return BAK_DBS.indexOf(n)>=0; });
+  Promise.all(dbs.map(function(n){ return dbLoad(n,dec(b.db[n])); })).then(function(){
+    try{
+      const old=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.indexOf('lavaland')===0) old.push(k); }
+      old.forEach(function(k){ localStorage.removeItem(k); });
+      for(const k in (b.ls||{})) if(k.indexOf('lavaland')===0) localStorage.setItem(k,String(b.ls[k]));
+    }catch(_){}
+    location.reload();
+  },function(){ frozen=false; tone([170],'sawtooth'); });
+}
+
+/* ---------- Vollbild im Browser-Tab (Android, Desktop). iPhone kennt das nicht, dort hilft nur „Zum Home-Bildschirm“. Als installierte App ist das Spiel schon im Vollbild, der Knopf bleibt dann weg. ---------- */
+const DE=document.documentElement;
+function fsOn(){ return !!(document.fullscreenElement||document.webkitFullscreenElement); }
+function fsSync(){ const on=fsOn(); $('fs').innerHTML=svg24(on?QI.fsx:QI.fs); $('fs').setAttribute('aria-pressed',String(on)); }
+function fsToggle(){
+  try{
+    if(fsOn()){ (document.exitFullscreen||document.webkitExitFullscreen).call(document); return; }
+    const p=(DE.requestFullscreen||DE.webkitRequestFullscreen).call(DE,{navigationUI:'hide'});
+    if(p&&p.catch) p.catch(function(){ flash('fs','warn'); });
+    $('menu').hidden=true;
+  }catch(_){ flash('fs','warn'); }
+}
+(function(){
+  let app=false;
+  try{ app=matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches||navigator.standalone===true; }catch(_){}
+  const can=!!((document.fullscreenEnabled||document.webkitFullscreenEnabled)&&(DE.requestFullscreen||DE.webkitRequestFullscreen));
+  $('fs').hidden=app||!can; fsSync();
+  document.addEventListener('fullscreenchange',fsSync); document.addEventListener('webkitfullscreenchange',fsSync);
+  /* Installiert bittet das Spiel darum, dass der Browser den Spielstand nicht von sich aus löscht. */
+  if(app&&navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(function(){});
+  if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){ try{ navigator.serviceWorker.register('sw.js').catch(function(){}); }catch(_){} }
+})();
+$('fs').addEventListener('click',fsToggle);
+$('exp').addEventListener('click',bakSave);
+$('imp').addEventListener('click',function(){ $('imp-file').value=''; $('imp-file').click(); });
+$('imp-file').addEventListener('change',function(){ bakPick($('imp-file').files[0]); });
+$('imp-no').addEventListener('click',function(){ bakIn=null; $('imp-ok').hidden=true; });
+$('imp-yes').addEventListener('click',function(){ $('imp-ok').hidden=true; bakLoad(); });
 /* Neue Welt fragt erst nach, weil dabei alles Gebaute verloren geht. */
 $('reset').addEventListener('click',function(){ $('menu').hidden=true; $('confirm').hidden=false; speak('Neue Welt? Alles Gebaute geht dann verloren.'); });
 $('no').addEventListener('click',function(){ $('confirm').hidden=true; });
