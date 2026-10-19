@@ -934,6 +934,13 @@ RLM.ice={e:'❄️',n:'den Eisplaneten',w:43200,salt:202,lands:[15,16],exit:-260
   zc:[null,null,null,['🦭','sit',1,'ORK ORK!','',24],['🦣','walk',1,'TÖRÖÖÖ!','bront',40],['🐧','sit',1,'BRRR!','',22],['🐲','sit',1,'FAUCH!','',26]],
   lk:[0,0,0,ICE,WATER,ICE,LAVA],
   hello:'Du bist auf dem Eisplaneten gelandet! Er ist riesig, mit Gletschern, einem zugefrorenen Meer und Höhlen voller Eis. Hier liegen die Eiskerne. Wenn du heim willst, flieg mit der Rakete ganz hoch hinauf.'};
+RLM.jun={e:'🫧',n:'den Blubberplaneten',w:36000,salt:303,lands:[17,18],exit:-2600,orb:function(){ return SPACE.jun||{x:6100,y:-19200,r:330}; },
+  pal:{deep:[96,70,120],hot:[150,70,100],z:[[[60,130,70],[120,220,110],[16,44,20]],[[150,90,60],[230,170,110],[50,26,16]],[[190,110,170],[255,190,235],[60,24,54]],[[140,40,60],[230,90,90],[44,10,16]]]},
+  zn:[['🟣','das Blubbergestein'],['🔥','das Glutgestein'],['🟢','die Schleimhöhlen'],['🍄','die Riesenpilzgrotten'],['🫧','die Seifenblasenhallen'],['🌋','den Glutkern']],
+  mat:[['fe',8,1],['pi',10,3],['kn',6,4],['kr',5,5]],
+  zc:[null,null,null,['🐌','walk',1,'SCHLEIM!','slow',22],['🐛','sit',1,'GLÜH!','sparkle',18],['👾','sit',1,'BLUBB?','sparkle',22],['🐲','sit',1,'FAUCH!','',26]],
+  lk:[0,0,0,WATER,WATER,WATER,LAVA],
+  hello:'Du bist auf dem Blubberplaneten gelandet! Hier wachsen lila Wälder und Riesenpilze, und im Sumpf blubbert grüner Glibber. Blubb wohnt hier. Wenn du heim willst, flieg mit der Rakete ganz hoch hinauf.'};
 let realm='', RW=WORLD_W, RX0=0, RC0=0, RC1=GX;
 function rlm(){ return realm?RLM[realm]:null; }
 function setRealm(id){
@@ -995,7 +1002,14 @@ const BT=[
     fauna:[['🐻‍❄️','walk',1,'BRUMM!','scare',30],['🦅','fly',2,'KRAAH!'],['🐺','walk',1,'AUUUU!']],picks:[['❄️','star',2],['🐟','food',2]]},
   {id:'icesea',e:'🐧',n:'das Eismeer',n2:'noch ein Eismeer',to:'ans Eismeer',w:[3400,1600],sky:[[110,170,230],[235,246,255]],hill:[[190,220,245],[160,200,235]],cg:[240,248,255],ce:[200,222,240],cr:[120,150,190],night:0,
     flat:110,fs:260,flora:['fir','crystal'],clr:240,
-    fauna:[['🐧','walk',4,'QUAK QUAK!'],['🦭','sit',2,'ORK ORK!'],['🐋','sit',1,'PFFFFT!','',34]],picks:[['🐟','food',3],['⭐','star',1]]}
+    fauna:[['🐧','walk',4,'QUAK QUAK!'],['🦭','sit',2,'ORK ORK!'],['🐋','sit',1,'PFFFFT!','',34]],picks:[['🐟','food',3],['⭐','star',1]]},
+  /* Länder auf dem Blubberplaneten: ein lila Wald mit Riesenpilzen und ein Sumpf voller grünem Glibber. */
+  {id:'blubwood',e:'🫧',n:'den Blubberwald',n2:'noch einen Blubberwald',to:'in den Blubberwald',w:[3400,1600],sky:[[120,70,170],[255,180,220]],hill:[[150,90,190],[120,70,160]],cg:[170,90,220],ce:[96,62,116],cr:[74,62,104],night:0,
+    fs:100,flora:['shroom','jungle','fern','shroom'],clr:160,
+    fauna:[['🐸','hop',3,'BLUBB!'],['🦋','fly',3,'FLATTER!'],['🐙','walk',1,'GLIBBER!']],picks:[['🍇','tiny',2],['🍄','big',2]]},
+  {id:'goo',e:'🟢',n:'den Glibbersumpf',n2:'noch einen Glibbersumpf',to:'zum Glibbersumpf',w:[3000,1400],sky:[[100,80,160],[230,200,240]],hill:[[110,150,110],[80,120,90]],cg:[120,200,90],ce:[80,90,70],cr:[70,80,90],night:.15,
+    wat:['rgba(120,220,90,.78)','rgba(170,240,130,.84)'],flat:110,fs:140,flora:['fern','shroom'],clr:240,
+    fauna:[['👽','sit',1,'BLUBB? BLUBB!','gift',26],['🪼','fly',2,'SCHWABBEL!'],['🐌','walk',2,'SCHLEIM!','slow']],picks:[['🫧','float',3],['⭐','star',1]]}
 ];
 const FH={fir:[62,40],cactus:[34,26],palm:[72,30],jungle:[110,60],giant:[250,0],lolly:[46,30],cane:[40,14],shroom:[12,12],dead:[60,40],grave:[20,6],fern:[30,18],crystal:[30,44],flower:[14,10],bush:[16,10],tree:[62,40]};
 
@@ -1019,6 +1033,8 @@ function hBio(b,x,raw){
     case 13: h=34+roll*.35+craters(b,x,1); break;
     case 15: { const f=sm(Math.min(u,1-u)*3.5); h=20-f*(a*190*Math.abs(Math.sin(x*.0037+p))+60*Math.abs(Math.sin(x*.012+p*2)))+roll*.3; break; }
     case 16: h=PADH+78*sm(Math.min(u,1-u)*5)+roll*.12; break;
+    case 17: h=roll*.9-26*Math.abs(Math.sin(x*.0051+p)); break;
+    case 18: h=PADH+66*sm(Math.min(u,1-u)*5)+roll*.15; break;
     case 14: { const f=sm(Math.min(u,1-u)*3); h=24-f*(170+70*Math.sin(x*.0029+p))+roll*.7+craters(b,x,.7); break; }
     default: h=roll*.7;
   }
@@ -1196,7 +1212,7 @@ function populate(b){
   const T=BT[b.t], r=rng(b.s*7+b.i), w=b.x1-b.x0, tier=Math.min(3,b.n), t0=trees.length;
   DECO.push({k:'gate',x:b.x0+240,b:b});
   if(T.flora) for(let x=b.x0+70;x<b.x1-70;x+=T.fs*(.55+r()*.9)){
-    if(Math.abs(x-b.x0-240)<50||Math.abs(x-b.qx)<(T.clr||150)||Math.abs(x-b.px)<(T.clp||0)||liqM[Math.floor(x/CELL)]===ICE) continue;
+    if(Math.abs(x-b.x0-240)<50||Math.abs(x-b.qx)<(T.clr||150)||Math.abs(x-b.px)<(T.clp||0)||liqM[Math.floor(x/CELL)]) continue;
     addTree(x,T.flora[Math.floor(r()*T.flora.length)],r);
   }
   for(const f of T.fauna||[]) for(let n=0;n<f[2];n++){
@@ -1236,6 +1252,7 @@ function shapeWorld(){
     else if(t===6&&dp<320){ noCave[cx]=2; if(dp<92){ liqM[cx]=LAVA; liqY[cx]=Math.floor((b.ly-TOP)/CELL); } }
     else if((t===1||t===3)&&dp<240){ noCave[cx]=1; if(dp<100){ liqM[cx]=WATER; liqY[cx]=Math.floor((b.ly-TOP)/CELL); } }
     else if(t===10||dq<240) noCave[cx]=1;
+    if(t===18&&x>b.x0+260&&x<b.x1-260&&dq>=240){ noCave[cx]=2; liqM[cx]=WATER; liqY[cx]=Math.floor((PADH+8-TOP)/CELL); }
     if(t===16&&x>b.x0+260&&x<b.x1-260&&dq>=240){ noCave[cx]=2; liqM[cx]=ICE; liqY[cx]=Math.floor((PADH+8-TOP)/CELL); }
   }
   trees.length=0; clouds.length=0; CRE=[]; PICKS=[]; PADS=[]; DECO=[]; EGGS=[]; LOOT=[]; STR=[]; DROPS=[]; ORBS.length=0;
@@ -4539,14 +4556,13 @@ function deepWorld(){
   const top=function(o,dx){ return o.y-Math.sqrt(o.r*o.r-dx*dx); };
   /* Eiskerne liegen jetzt auf dem Eisplaneten selbst. Die alten Plätze behalten ihre Nummern, liegen aber nirgends mehr. */
   for(let n=0;n<12;n++){ r(); MATS.push({id:mi++,k:'ei',x:-1e5,y:-1e5,off:1}); }
-  MACH.push({id:'s0',t:nt(),x:stn.x,y:top(stn,0),zb:1},{id:'s1',t:nt(),x:ice.x+382,y:top(ice,382),zb:2,gone:1},{id:'s2',t:nt(),x:jun.x-30,y:top(jun,-30),zb:2},{id:'s3',t:nt(),x:gate.x+170,y:top(gate,170),zb:3});
+  MACH.push({id:'s0',t:nt(),x:stn.x,y:top(stn,0),zb:1},{id:'s1',t:nt(),x:ice.x+382,y:top(ice,382),zb:2,gone:1},{id:'s2',t:nt(),x:jun.x-30,y:top(jun,-30),zb:2,gone:1},{id:'s3',t:nt(),x:gate.x+170,y:top(gate,170),zb:3});
   /* Auf dem Eisplaneten selbst stehen jetzt eigene Rätselmaschinen. */
   MACH=MACH.filter(function(m){ return !m.gone; });
   for(let k=0;k<5;k++) r();
-  addCre(hb,['👽','sit',1,'BLUBB?','gift',26],r,jun.x+80,top(jun,80));
+  for(let k=0;k<5;k++) r();
   addCre(hb,['👽','sit',1,'WILLKOMMEN!','sparkle',26],r,gate.x-150,top(gate,-150));
   addCre(hb,['👾','sit',1,'PIEP PIEP!','sparkle',24],r,gate.x-210,top(gate,-210));
-  LOOT.push({id:9001,x:jun.x-120,y:top(jun,-120)-10,g:80,bur:false});
   SPACE={stn:stn,ice:ice,jun:jun,gate:gate};
   deepFar(hb);
   STR.sort(function(p,q){ return p.c1-q.c1; });
