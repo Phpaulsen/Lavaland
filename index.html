@@ -789,6 +789,7 @@ QI.bolt='<path d="M13.5 2L4 14h6l-1.5 8L19 10h-6z" fill="#ffd23f" '+S1+' stroke-
 QI.coin='<circle cx="12" cy="12" r="8.5" fill="#f0c432" '+S1+' stroke-width="1.8"/><circle cx="12" cy="12" r="4" fill="none" '+S1+' stroke-width="1.4"/>';
 QI.gear='<path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1" '+S1+' stroke-width="3"/><circle cx="12" cy="12" r="6.5" fill="#9aa7b4" '+S1+' stroke-width="1.6"/><circle cx="12" cy="12" r="2.6" fill="#fff8e6" '+S1+' stroke-width="1.4"/>';
 QI.sound='<path d="M3 9h4l5-4v14l-5-4H3z" fill="'+K+'"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" '+S1+' stroke-width="2.2" fill="none"/>';
+QI.talk='<path d="M4 5h16v10H10l-5 4v-4H4z" fill="'+K+'"/><circle cx="9" cy="10" r="1.3" fill="#fff"/><circle cx="12.5" cy="10" r="1.3" fill="#fff"/><circle cx="16" cy="10" r="1.3" fill="#fff"/>';
 QI.mute='<path d="M3 9h4l5-4v14l-5-4H3z" fill="'+K+'"/><path d="M16 9l5 6M21 9l-5 6" stroke="#e63946" stroke-width="2.6" stroke-linecap="round"/>';
 IC.bag='<path d="M5 9h14l-1.5 11.5h-11z" fill="#e63946" '+S1+' stroke-width="1.6"/><path d="M9 9V7a3 3 0 0 1 6 0v2" fill="none" '+S1+' stroke-width="2.2"/>';
 
@@ -2386,7 +2387,7 @@ function audio(){
   if(AC&&AC.state==='suspended'){ try{AC.resume();}catch(_){} }
 }
 function jingle(){
-  if(!AC||muted) return;
+  if(!AC||muted||fxOff) return;
   try{
     const t=AC.currentTime;
     [523,659,784,1047].forEach(function(f,i){
@@ -2407,10 +2408,11 @@ function speak(text){
     return u;
   }catch(_){}
 }
-let muted=false, noiseBuf=null, coinT=0, coinN=0, digSfxT=0, flameSfx=0;
-try{ muted=localStorage.getItem('lavaland-mute')==='1'; }catch(_){}
+let muted=false, fxOff=false, noiseBuf=null, coinT=0, coinN=0, digSfxT=0, flameSfx=0;
+/* Drei Stufen: alles an, nur Sprache (ohne Piepen und Klänge), alles aus. Sprache braucht das Kind, Effekte nerven manchmal die Großen. */
+try{ const mv=localStorage.getItem('lavaland-mute'); muted=mv==='1'; fxOff=mv==='s'; }catch(_){}
 function blip(f0,f1,dur,type,vol){
-  if(!AC||muted) return;
+  if(!AC||muted||fxOff) return;
   try{
     const t=AC.currentTime, o=AC.createOscillator(), g=AC.createGain();
     o.type=type||'sine'; o.frequency.setValueAtTime(f0,t); if(f1!==f0) o.frequency.exponentialRampToValueAtTime(f1,t+dur);
@@ -2419,7 +2421,7 @@ function blip(f0,f1,dur,type,vol){
   }catch(_){}
 }
 function noise(dur,freq,vol){
-  if(!AC||muted) return;
+  if(!AC||muted||fxOff) return;
   try{
     if(!noiseBuf){ noiseBuf=AC.createBuffer(1,Math.floor(AC.sampleRate*.6),AC.sampleRate); const d=noiseBuf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1; }
     const t=AC.currentTime, src=AC.createBufferSource(), f=AC.createBiquadFilter(), g=AC.createGain();
@@ -3183,7 +3185,7 @@ function questPoint(){
 }
 const OVS=Array.prototype.slice.call(document.querySelectorAll('.ov,#panel,#quiz,#pz'));
 function uiOpen(){ for(const o of OVS) if(!o.hidden) return true; return false; }
-function syncSound(){ $('sound').innerHTML=svg24(muted?QI.mute:QI.sound); $('sound').setAttribute('aria-pressed',String(!muted)); }
+function syncSound(){ $('sound').innerHTML=svg24(muted?QI.mute:fxOff?QI.talk:QI.sound); $('sound').setAttribute('aria-pressed',String(!muted)); $('sound').setAttribute('aria-label',muted?'Ton ist aus':fxOff?'Nur Sprache':'Ton ist an'); }
 
 /* ---------- Winter: Ski, Lift, Schneebälle, Schneemänner, Pinguine, Feuerwerk, Drachenflug und die Geschichte vom Hick im Berg ---------- */
 const FLX=5892, HAREX=6885, YETX=7052, IGX=7128, LIFT0=5790, LIFT1=6935, PENX=5952, RIMY=Math.min(ground(VOLC-92),ground(VOLC+92));
@@ -3859,7 +3861,7 @@ const ORBN=['Du bist auf dem Käsemond gelandet! Hier wohnen die Mäuse.','Ein P
 });
 const NIGHT_T=[10,14,44], NIGHT_B=[40,40,96], MD={st:[84,191,230],sb:[212,244,238],h1:'#9bd8c4',h2:'#74c493',nl:0,w1:'rgba(48,140,224,.74)',w2:'rgba(132,204,246,.8)'};
 const EGGSVG='<svg viewBox="0 0 24 24" aria-hidden="true">'+QI.egg+'</svg>';
-let ufo=null, ufoNext=20, skyRb=0, tkN=0, tkT=0, nightOn=false, nightA=0, discoT=0, beatT=0, keySeq='', dTaps=[], idleT=0, zT=0, skyBonk=0, bolt=null, mapPg=0, throws=[], trexT=0, slipWas=false;
+let skySay=0, ufo=null, ufoNext=20, skyRb=0, tkN=0, tkT=0, nightOn=false, nightA=0, discoT=0, beatT=0, keySeq='', dTaps=[], idleT=0, zT=0, skyBonk=0, bolt=null, mapPg=0, throws=[], trexT=0, slipWas=false;
 
 function fxSpeed(){ return (FX.slip>0?2.5:1)*(FX.hot>0?1.7:1)*(FX.sugar>0?1.8:1)*(FX.star>0?1.4:1)*(FX.rainbow>0?1.6:1)*(FX.big>0?1.2:1)*(FX.tiny>0?.8:1); }
 function kidScale(){
@@ -4202,7 +4204,7 @@ function worldTick(dt){
   }
   if(bolt){ bolt.t-=dt; if(bolt.t<=0) bolt=null; }
   ufoTick(dt);
-  if(P.y<=skyLim()+2&&time>skyBonk){ skyBonk=time+9; shout(P.x,P.y+40,'STOPP!'); sfx('splat'); say('',hero.rk<3?'Höher schafft es die Rakete noch nicht. Professor Zahnrad kann sie in der Werkstatt stärker bauen.':'Hier ist der Weltraum wirklich zu Ende.'); if(hero.rk<3) pulse('btn-lab'); }
+  if(P.y<=skyLim()+2&&time>skyBonk){ skyBonk=time+9; shout(P.x,P.y+40,'STOPP!'); sfx('splat'); if(time>skySay){ skySay=time+90; say('',hero.rk<3?'Höher schafft es die Rakete noch nicht. Professor Zahnrad kann sie in der Werkstatt stärker bauen.':'Hier ist der Weltraum wirklich zu Ende.'); if(hero.rk<3) pulse('btn-lab'); } }
   /* Wer lange stillsteht, schläft ein. */
   if(P.mode==='walk'&&P.on&&!keys.l&&!keys.r&&!keys.u&&!keys.a&&Math.abs(P.vx)<4){
     idleT+=dt;
@@ -4598,7 +4600,7 @@ const GEAR={
     done:['Die Lampe leuchtet jetzt weiter.','Die Lampe leuchtet jetzt noch weiter.','Die Sonnenlampe ist fertig! Jetzt ist es unter der Erde überall hell.']}
 };
 const GEARK=['dr','rk','lp'];
-let MATS=[], MACH=[], ZDEC=[], SPACE={}, matGot={}, pzGot={}, guide=null, klT=0, klS=0, labHi=false, dkA=0, mhT=0, liftBusy=false;
+let MATS=[], MACH=[], ZDEC=[], SPACE={}, matGot={}, pzGot={}, guide=null, klT=0, klS=0, klN=0, labHi=false, dkA=0, mhT=0, liftBusy=false;
 const dkc=document.createElement('canvas'), dkx=dkc.getContext('2d');
 
 function skyLim(){ return SKYL[hero.rk|0]; }
@@ -4619,8 +4621,8 @@ function shellOk(i){
     for(let k=0;k<5;k++) spawn(5,wx,wy,(Math.random()-.5)*200,-60-Math.random()*140,.5,2);
     shout(wx,wy-22,'KLONK!','#ffd23f'); sfx('tick'); shake=Math.max(shake,.1);
   }
-  if(time>klS){
-    klS=time+16;
+  if(time>klS||klN!==need){
+    klS=time+90; klN=need;
     say('','Klonk! Diese Schicht ist zu hart. Dafür brauchst du den Bohrer Stufe '+need+'. Schau in der Werkstatt nach, was dafür fehlt.');
     pulse('btn-lab');
   }
@@ -6080,9 +6082,10 @@ $('story-cards').addEventListener('click',function(e){
 });
 tap($('quest'),function(){ if(quest&&!quest.done){ const d=QDEF[quest.type]; speak(d.say(quest)); pulse(d.hint(quest)); } });
 $('sound').addEventListener('click',function(){
-  muted=!muted;
-  try{ localStorage.setItem('lavaland-mute',muted?'1':'0'); if(muted&&window.speechSynthesis) window.speechSynthesis.cancel(); }catch(_){}
+  if(muted){ muted=false; fxOff=false; } else if(fxOff){ muted=true; fxOff=false; } else fxOff=true;
+  try{ localStorage.setItem('lavaland-mute',muted?'1':fxOff?'s':'0'); if(muted&&window.speechSynthesis) window.speechSynthesis.cancel(); }catch(_){}
   syncSound(); sfx('pop');
+  if(fxOff) speak('Nur Sprache.');
 });
 /* ---------- Spielstand umziehen: Alles aus diesem Browser (Welt, Held, Funde, Einstellungen, Protokoll) als eine Datei. Der Speicher gehört zur Adresse, darum braucht der Umzug vom Artefakt auf eine eigene Seite oder in die Homescreen-App diesen Weg. ---------- */
 const BAK_DBS=['lavaland','lavaland-log'];
@@ -6311,7 +6314,7 @@ function drain(dt){
   renderBatt();
 }
 function tone(list,type){
-  if(!AC||muted) return;
+  if(!AC||muted||fxOff) return;
   try{
     const t=AC.currentTime;
     list.forEach(function(f,i){
@@ -7623,7 +7626,8 @@ function start(){
   const go=function(){
     ready=true; LOG.start(); updateStars(); renderAlbum(); syncUI(); syncSound(); battShown=-1; renderBatt();
     stEnter(); syncOwn(); renderStory();
-    if(!hero.st.on) setTimeout(function(){ if(!hero.st.on&&!uiOpen()&&!paused){ say('','Psst! Über Nacht ist etwas Seltsames passiert. Tippe auf das Buch!'); pulse('btn-story'); } },2800);
+    let psst=0; try{ psst=+localStorage.getItem('lavaland-psst')||0; }catch(_){}
+    if(!hero.st.on){ if(psst<3) setTimeout(function(){ if(!hero.st.on&&!uiOpen()&&!paused){ try{ localStorage.setItem('lavaland-psst',String(psst+1)); }catch(_){} say('','Psst! Über Nacht ist etwas Seltsames passiert. Tippe auf das Buch!'); pulse('btn-story'); } },2800); else pulse('btn-story'); }
     else if(!hero.big) setTimeout(function(){ if(!uiOpen()&&!paused){ hero.big=true; if(nextLand()){ hero.quest={type:'land',goal:1,p:0}; showQuest(false); } saveHero(); say('','Neu! Hinter dem Schneeberg liegen jetzt viele fremde Länder. Fahr hinten am Berg hinunter und entdecke sie!'); pulse('btn-map'); } },2800);
     if(hero.quest&&hero.quest.type==='core'&&hero.dr<3) hero.quest=null;
     if(hero.st.on&&hero.big&&!hero.deep) setTimeout(function(){ if(!uiOpen()&&!paused) deepIntro(); },2800);
