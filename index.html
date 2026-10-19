@@ -4491,7 +4491,7 @@ const MAT={
 const MATK=['zr','ms','fe','mo','pi','st','kn','kr','ei','fp'], MATZ={fe:1,pi:3,kn:4,kr:5,fp:6};
 /* Die drei Geräte und ihre Baupläne. Unten und oben wechseln sich ab: Für den nächsten Bohrer braucht man etwas aus dem Weltraum und umgekehrt. */
 const GEAR={
-  dr:{e:'⛏️',n:'Bohrer',art:'den Bohrer',rc:[{fe:6,zr:1},{pi:4,st:4,zr:2},{kr:4,ei:4,zr:3}],
+  dr:{e:'⛏️',n:'Bohrer',art:'den Bohrer',rc:[{fe:6,zr:1},{pi:4,st:4,zr:2,ms:2},{kr:4,ei:4,zr:3,ms:5}],
     what:['Er kommt dann durch die rostrote Schicht. Darunter liegen die Pilzgrotten.','Er kommt dann durch die lila Schicht. Darunter liegen die Kristalltiefen.','Er kommt dann durch die schwarze Schicht. Darunter liegt das Lavameer.'],
     done:['Der Eisenbohrer ist fertig! Jetzt kommst du durch die rostrote Schicht unter dem heißen Gestein.','Der Sternenbohrer ist fertig! Jetzt kommst du durch die lila Schicht unter den Urzeit-Höhlen.','Der Kristallbohrer ist fertig! Jetzt kommst du durch die schwarze Schicht bis zum Lavameer.']},
   rk:{e:'🚀',n:'Rakete',art:'die Rakete',rc:[{fe:4,mo:3,zr:1},{kn:4,st:3,zr:2},{fp:4,ei:3,zr:3}],
@@ -4958,6 +4958,7 @@ function labBuild(g){
 }
 $('lab').addEventListener('click',function(e){
   let b=e.target.closest('[data-mat]');
+  if(b&&b.dataset.mat==='ms'){ speak(MAT.ms[1]+'. Du hast '+(hero.mat.ms|0)+'. '+MAT.ms[3]); return; }
   if(b){ const k=b.dataset.mat; guide={k:k,t:time+300}; speak(MAT[k][1]+'. Du hast '+(hero.mat[k]|0)+'. '+MAT[k][3]+' Der orange Pfeil zeigt dir den Weg.'); return; }
   b=e.target.closest('[data-tl]');
   if(b){ const g=b.dataset.tl, G=GEAR[g], t=hero[g]|0; speak(t>=3?G.n+' ist ganz fertig.':G.n+', Stufe '+(t+1)+'. '+G.what[t]+(canBuild(g)?' Du hast alles dafür. Tippe auf den Hammer.':' Dafür fehlen noch '+missing(g)+'.')); return; }
@@ -6304,6 +6305,7 @@ function masterGive(k){
   if(!FS.mg) FS.mg={};
   if(FS.mg[k]) return false;
   FS.mg[k]=1; hero.mat.ms=(hero.mat.ms|0)+1; hero.mk.ms=1; heroDirty=true; saveHero();
+  labBadge(true);
   return true;
 }
 function fName(k){
