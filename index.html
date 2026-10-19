@@ -1300,19 +1300,49 @@ function grow(toX){
   genF=c1;
   while(stI<STR.length&&STR[stI].c1<genF){ build(STR[stI]); stI++; }
 }
-/* Gespeichert wird nur der Teil der Welt, der schon erzeugt ist. */
-function packCells(){
-  const f=genF, g=new Uint8Array(f*GY);
-  for(let cy=0;cy<GY;cy++) g.set(grid.subarray(cy*GX,cy*GX+f),cy*f);
-  return g;
+/* Gespeichert wird nur der Teil der Welt, der schon erzeugt ist. Spalte für Spalte als Läufe: Zellart und wie oft sie untereinander kommt.
+   Eine Welt aus langen Erd- und Felsschichten wird so etwa zwanzigmal kleiner und ist schneller geschrieben. */
+function packRuns(f){
+  let out=new Uint8Array(1<<20), n=0;
+  for(let cx=0;cx<f;cx++){
+    let i=cx, cy=0;
+    while(cy<GY){
+      const m=grid[i]; let r=1; i+=GX; cy++;
+      while(cy<GY&&grid[i]===m){ r++; i+=GX; cy++; }
+      if(n+8>out.length){ const o=new Uint8Array(out.length*2); o.set(out); out=o; }
+      out[n++]=m;
+      while(r>=128){ out[n++]=(r&127)|128; r>>>=7; }
+      out[n++]=r;
+    }
+  }
+  return out.slice(0,n);
 }
+/* Schreibt die Läufe zurück ins Gitter. Passt die Länge nicht genau, ist der Spielstand kaputt: dann false. */
+function unpackRuns(b,f){
+  let k=0;
+  for(let cx=0;cx<f;cx++){
+    let cy=0, i=cx;
+    while(cy<GY){
+      if(k>=b.length) return false;
+      const m=b[k++]; let r=0, sh=0, c;
+      do{ if(k>=b.length) return false; c=b[k++]; r|=(c&127)<<sh; sh+=7; }while(c&128);
+      if(r<1||cy+r>GY) return false;
+      for(let e=cy+r;cy<e;cy++,i+=GX) grid[i]=m;
+    }
+  }
+  return k===b.length;
+}
+function runsOk(sv){ return sv.v===5&&sv.gy===GY&&sv.f>0&&sv.f<=GX&&sv.runs instanceof Uint8Array; }
 function loadCells(sv){
   const old=sv.v<4, f0=sv.v>=3?sv.f:HOME_GX;
   let f=Math.min(f0,GX);
   if(old&&sv.v===3) f=Math.min(f,Math.floor((BIO[BIO.length-1].x0-300)/CELL));
   grid.fill(0);
-  const rows=old?KEEPR:GY;
-  for(let cy=0;cy<rows;cy++) grid.set(sv.grid.subarray(cy*f0,cy*f0+f),cy*GX);
+  if(sv.v>=5){ if(!unpackRuns(sv.runs,f)) throw new Error('runs'); }
+  else{
+    const rows=old?KEEPR:GY;
+    for(let cy=0;cy<rows;cy++) grid.set(sv.grid.subarray(cy*f0,cy*f0+f),cy*GX);
+  }
   genF=sv.v>=3?f:HOME_GX-1;
   if(old) for(let cx=0;cx<genF;cx++) genCol(cx,KEEPR);
   stI=0;
@@ -2517,18 +2547,20 @@ function idbDo(mode,fn){
     });
   });
 }
+/* Der Spielstand liegt unter 'world2'. Unter 'world' bleibt der letzte Stand im alten Format liegen, falls eine ältere Spielversion ihn noch braucht. */
+const SAVEKEY='world2';
 function snapshot(){
-  const g=packCells();
+  const g=packRuns(genF);
   const pk={};
   for(const k in parked) pk[k]=parked[k]?Object.assign({},parked[k]):null;
   if(P.mode!=='walk'&&P.mode!=='coaster'&&P.mode!=='ski'&&P.mode!=='dragon') pk[P.mode]=park();
-  return {v:4,gy:GY,f:genF,snow:1,seed:SEED,grid:g,tracks:tracks.map(function(T){return {raw:T.raw,user:T.user,rb:!!T.rb};}),px:P.x,py:P.y,parked:pk,
+  return {v:5,gy:GY,f:genF,snow:1,seed:SEED,runs:g,tracks:tracks.map(function(T){return {raw:T.raw,user:T.user,rb:!!T.rb};}),px:P.x,py:P.y,parked:pk,
     trees:trees.map(function(t){return t.state===1?2:t.state;}),hidden:hidden,energy:energy,props:props,seen:seen,eggGot:eggGot,lootGot:lootGot,orbGot:orbGot,matGot:matGot,pzGot:pzGot};
 }
 function saveGame(manual){
   if(saving||!ready||frozen) return;
   saving=true; saveFinds(); saveHero();
-  idbDo('readwrite',function(st){ return st.put(snapshot(),'world'); }).then(function(){
+  idbDo('readwrite',function(st){ return st.put(snapshot(),SAVEKEY); }).then(function(){
     saving=false; if(manual){ flash('save','ok'); tone([660,880]); speak('Gespeichert.'); banner(svg24(QI.save)+'<svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5" stroke="#2f8f4a" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',1400); setTimeout(function(){ $('menu').hidden=true; },500); }
   },function(){
     saving=false; if(manual){ flash('save','warn'); tone([170],'sawtooth'); }
@@ -5498,7 +5530,7 @@ function dbLoad(name,d){
   return go(d.v).catch(function(e){ if(e&&e.name==='VersionError') return go(0); throw e; });
 }
 function bakMake(){
-  const fresh=ready?idbDo('readwrite',function(st){ return st.put(snapshot(),'world'); }).catch(function(){}):Promise.resolve();
+  const fresh=ready?idbDo('readwrite',function(st){ return st.put(snapshot(),SAVEKEY); }).catch(function(){}):Promise.resolve();
   saveFinds(); saveHero();
   return fresh.then(function(){ return Promise.all(BAK_DBS.map(dbDump)); }).then(function(rs){
     const ls={}, db={};
@@ -6793,11 +6825,17 @@ function start(){
     if(energy<=0) pulse('batt');
     requestAnimationFrame(function(t){ last=t; requestAnimationFrame(frame); });
   };
-  idbDo('readonly',function(st){ return st.get('world'); }).then(function(sv){
-    let ok=false;
+  const tryLoad=function(sv){
     /* Ein Spielstand aus der alten, kleinen Welt bleibt zur Sicherheit unter eigenem Namen liegen. */
     if(sv&&sv.v<4) idbDo('readwrite',function(st){ return st.put(sv,sv.v===2?'world-alt':'world-v3'); }).catch(function(){});
-    if(sv&&sv.grid&&((sv.v===4&&sv.gy===GY&&sv.grid.length===sv.f*GY)||(sv.v===3&&sv.grid.length===sv.f*GY0)||(sv.v===2&&sv.grid.length===HOME_GX*GY0))){ try{ restore(sv); ok=true; }catch(_){ ok=false; } }
+    if(sv&&(runsOk(sv)||(sv.grid&&((sv.v===4&&sv.gy===GY&&sv.grid.length===sv.f*GY)||(sv.v===3&&sv.grid.length===sv.f*GY0)||(sv.v===2&&sv.grid.length===HOME_GX*GY0))))){ try{ restore(sv); return true; }catch(_){} }
+    return false;
+  };
+  /* Erst der neue Spielstand, dann der alte. Erst wenn beides fehlt oder kaputt ist, gibt es eine neue Welt. */
+  idbDo('readonly',function(st){ return st.get(SAVEKEY); }).then(function(sv){
+    if(tryLoad(sv)) return true;
+    return idbDo('readonly',function(st){ return st.get('world'); }).then(tryLoad);
+  }).then(function(ok){
     if(!ok) resetWorld(newSeed());
     go();
   },function(){ resetWorld(newSeed()); go(); });
