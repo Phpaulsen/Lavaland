@@ -2863,16 +2863,45 @@ function idbDo(mode,fn){
 }
 /* Der Spielstand liegt unter 'world2'. Unter 'world' bleibt der letzte Stand im alten Format liegen, falls eine ältere Spielversion ihn noch braucht. */
 const SAVEKEY='world2';
-function snapshot(){
-  const g=packRuns(genF);
+function snapshot(pre,pf){
+  const F=pf==null?genF:pf, g=pre||packRuns(F);
   const pk={};
   for(const k in parked) pk[k]=parked[k]?Object.assign({},parked[k]):null;
   if(P.mode!=='walk'&&P.mode!=='coaster'&&P.mode!=='ski'&&P.mode!=='dragon') pk[P.mode]=park();
-  return {v:5,w:2,vt:1,rl:realm,gy:GY,f:genF,snow:1,seed:SEED,runs:g,tracks:tracks.map(function(T){return {raw:T.raw,user:T.user,rb:!!T.rb};}),px:P.x,py:P.y,parked:pk,
+  return {v:5,w:2,vt:1,rl:realm,gy:GY,f:F,snow:1,seed:SEED,runs:g,tracks:tracks.map(function(T){return {raw:T.raw,user:T.user,rb:!!T.rb};}),px:P.x,py:P.y,parked:pk,
     trees:trees.map(function(t){return t.state===1?2:t.state;}),hidden:hidden,energy:energy,props:props,seen:seen,eggGot:eggGot,lootGot:lootGot,orbGot:orbGot,matGot:matGot,pzGot:pzGot};
 }
 function realmKey(id){ return id?'planet-'+id:SAVEKEY; }
+/* Autospeichern in Häppchen: Das Packen der Welt dauert auf einem schwachen Handy bis zu einer halben Sekunde und ruckelt dann sichtbar. Darum packt das Autospeichern pro Bild nur so viele Spalten, wie in 4 ms passen. Jede Spalte ist für sich vollständig, der Stand bleibt also immer lesbar. Ändert sich während des Packens eine schon gepackte Spalte, kommt das beim nächsten Speichern mit. Beim Verlassen, Reisen und Antippen wird weiter sofort am Stück gespeichert. */
+let packJob=null;
+function packStart(){ if(saving||!ready||frozen||traveling||packJob) return; packJob={cx:0,f:genF,rl:realm,out:new Uint8Array(1<<20),n:0}; }
+function packStep(){
+  const J=packJob;
+  if(!J) return;
+  if(J.rl!==realm||traveling||frozen||!ready){ packJob=null; return; }
+  const t0=performance.now(), G=grid, W=GX, end0=GY*W;
+  let out=J.out, n=J.n, cx=J.cx;
+  while(cx<J.f){
+    let i=cx; const end=cx+end0;
+    while(i<end){
+      const m=G[i], st=i; i+=W;
+      while(i<end&&G[i]===m) i+=W;
+      let r=(i-st)/W;
+      if(n+8>out.length){ const o=new Uint8Array(out.length*2); o.set(out); out=o; }
+      out[n++]=m; while(r>=128){ out[n++]=(r&127)|128; r>>>=7; } out[n++]=r;
+    }
+    cx++;
+    if((cx&15)===0&&performance.now()-t0>4) break;
+  }
+  J.out=out; J.n=n; J.cx=cx;
+  if(cx<J.f) return;
+  packJob=null;
+  if(saving) return;
+  saving=true; saveFinds(); saveHero();
+  idbDo('readwrite',function(st){ return st.put(snapshot(out.slice(0,n),J.f),realmKey(J.rl)); }).then(function(){ saving=false; },function(){ saving=false; });
+}
 function saveGame(manual){
+  packJob=null;
   if(saving||!ready||frozen||traveling) return;
   saving=true; saveFinds(); saveHero();
   idbDo('readwrite',function(st){ return st.put(snapshot(),realmKey(realm)); }).then(function(){
@@ -2884,7 +2913,8 @@ function saveGame(manual){
 function autosave(dt){
   saveT+=dt; lootT+=dt;
   if(lootT>.5&&(lootDirty||heroDirty)){ lootT=0; if(lootDirty) saveFinds(); if(heroDirty) saveHero(); lootDirty=false; heroDirty=false; hudLoot(); }
-  if(saveT>40){ saveT=0; saveGame(false); }
+  if(saveT>40){ saveT=0; packStart(); }
+  packStep();
 }
 function restore(sv){
   SEED=sv.seed; shapeWorld(); loadCells(sv); life.fill(0); stamp.fill(0);
