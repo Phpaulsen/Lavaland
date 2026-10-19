@@ -7663,7 +7663,7 @@ function parRender(o){
   });
   h+='</table><p>Fehler und Tipps je gelöstem Rätsel. „0 % ↓“ oben heißt: schlechter als reines Raten. Fehler sind zwischen Maschinen nicht vergleichbar (Spiegel und Rohre zählen einzelne Fehlklicks). Vergleiche eine Maschine mit sich selbst über die Zeit.</p>';
   h+=parErr();
-  h+='<h3>Daten</h3><p>Alles liegt nur in diesem Browser. Rohdaten werden nach 90 Tagen gelöscht, die Tageszeiten bleiben.</p><div class="par-act"><button id="par-exp">Protokoll exportieren</button><button id="par-del">'+(parDel?'Wirklich löschen?':'Protokoll löschen')+'</button></div>';
+  h+='<h3>Daten</h3><p>Alles liegt nur in diesem Browser. Rohdaten werden nach 90 Tagen gelöscht, die Tageszeiten bleiben.</p><details class="par-news"><summary>Datenschutz</summary><ul><li>Das Spiel sendet nichts: kein Konto, keine Werbung, keine Statistik, keine Anfragen an fremde Server. Spielstand und Protokoll verlassen das Gerät nur, wenn Sie selbst sichern oder exportieren.</li><li>Beim Laden der Seite sieht GitHub (Betreiber von GitHub Pages) wie bei jeder Webseite die IP-Adresse. Die installierte App lädt danach aus dem Speicher.</li><li>Vorlesen: Stimmen mit ☁ (unter „Vorlesen“) sind Online-Stimmen des Browser-Herstellers. Mit ihnen geht der vorgelesene Text (Aufgaben, Ansagen, nie Namen) an dessen Server. Lokale Stimmen arbeiten nur auf dem Gerät.</li></ul></details><div class="par-act"><button id="par-exp">Protokoll exportieren</button><button id="par-del">'+(parDel?'Wirklich löschen?':'Protokoll löschen')+'</button></div>';
   $('par-body').innerHTML=h;
 }
 function parSchool(){
@@ -7680,13 +7680,13 @@ function parSchool(){
   return h;
 }
 /* Was ist neu: kurze Liste für Eltern. Beim ersten Öffnen nach einem Update steht sie offen oben, danach zugeklappt. */
-const NEWS={v:2,t:'Planeten und Lernkern',items:[
+const NEWS={v:3,t:'Planeten und Lernkern',items:[
   'Mond, Eisplanet, Blubberplanet und vier kleine Planeten sind eigene Welten mit Unterwelt. Ganz unten liegt je ein Planetenkern.',
   'Lernaufgaben nach Leitner: Rechnen mit Ziffernblock, Zahlenhaus, Blitzblick im Zehnerfeld, Nachbarzahlen, Silben klatschen, Reime, Anlaut.',
   'Meistersteine für Aufgaben, die an mehreren Tagen sitzen. Der Bohrer ab Stufe 2 braucht sie. Die Rechentafel im Labor zeigt den Stand.',
-  'Wissenstüren in der Tiefe öffnen sich nach drei richtigen Aufgaben. Sternbild und Waage bis 20 sind neue bzw. erweiterte Rätsel.',
+  'Wissenstüren in der Tiefe öffnen sich nach drei richtigen Aufgaben, jede zweite mit einem Rätsel. Sternbild und Waage bis 20 sind neue bzw. erweiterte Rätsel.',
   'Lagerfeuer als Haltepunkt mit Tagesbilanz, optionales Tageslimit (hier unten), Erkundungskarte mit Nebel, Leuchtmarken unter der Erde.',
-  'Für Eltern: Schulstand, Stolperaufgaben, Sicherungs-Erinnerung, Ton-Stufe „Nur Sprache“, Linkshänder-Steuerung im Menü.']};
+  'Für Eltern: Schulstand, Stolperaufgaben mit Übungsblatt zum Drucken, Sicherungs-Erinnerung, Vorlesestimme und Tempo, Ton-Stufe „Nur Sprache“, Linkshänder-Steuerung im Menü, Datenschutz (hier unten).']};
 let newsOpen=null;
 function parNews(){
   if(newsOpen===null){ let seen=0; try{ seen=+localStorage.getItem('lavaland-news')||0; }catch(_){} newsOpen=seen<NEWS.v; if(newsOpen) try{ localStorage.setItem('lavaland-news',String(NEWS.v)); }catch(_){} }

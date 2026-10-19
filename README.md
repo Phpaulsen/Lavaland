@@ -44,6 +44,13 @@ In der Elternansicht lässt sich außerdem einstellen:
 - **Spielstand sichern**: Erinnerung, wenn lange nicht gesichert wurde.
 - **Stolperaufgaben**: Welche Aufgaben oft falsch sind.
 
+## Datenschutz
+
+- Das Spiel sendet nichts: kein Konto, keine Werbung, keine Statistik, keine Schriften oder Skripte von fremden Servern (per Content-Security-Policy erzwungen: `connect-src 'self'`). Alles bleibt im Browser des Geräts.
+- Daten verlassen das Gerät nur, wenn man selbst „Sichern“ oder „Protokoll exportieren“ antippt.
+- GitHub Pages sieht beim Laden wie jeder Webserver die IP-Adresse. Die installierte App startet danach aus dem eigenen Speicher.
+- Vorlesen nutzt die Sprachausgabe des Browsers. Online-Stimmen (in der Elternansicht mit ☁ markiert) schicken den vorgelesenen Text an den Hersteller (z. B. Google). Der Text enthält nur Aufgaben und Ansagen, keine Namen. Wer das nicht will, wählt eine lokale Stimme.
+
 ## Entwicklung
 
 Alles steckt in `index.html` (Spiel, Grafik, Töne), dazu `sw.js` für den Offline-Betrieb. Kein Build-Schritt: Datei öffnen genügt.
