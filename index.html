@@ -291,10 +291,20 @@ body{
 .mk.wait{filter:grayscale(1);opacity:.6}
 .mk.go{background:var(--good);animation:near 1.3s ease-in-out infinite}
 .mk.max{background:#f1f9e4;box-shadow:none;color:#2f8f4a;font-weight:700}
-.brain{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;padding-top:10px;border-top:2.5px dashed var(--ink)}
+.brain{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:5px;padding-top:10px;border-top:2.5px dashed var(--ink)}
 .brain button{min-width:0;padding:4px 3px 5px;margin:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;background:#fff;border:2.5px solid var(--ink);border-radius:12px;color:var(--ink);font-size:20px;line-height:1}
 .brain i{display:block;width:100%;height:8px;box-sizing:border-box;border:2px solid var(--ink);border-radius:5px;background:#fff;overflow:hidden}
 .brain i b{display:block;height:100%;background:#7b4fd6}
+.tafb{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:10px;padding:8px 12px;width:100%;background:#eef4ff;border:2.5px solid var(--ink);border-radius:14px;color:var(--ink);font:700 20px/1 var(--font-learn);cursor:pointer}
+.tafs{max-width:520px;max-height:88vh;overflow:auto}
+.taf{display:grid;gap:3px;margin-top:8px}
+.taf span{display:grid;place-items:center;height:34px;border-radius:8px;border:2px solid #c9d2dc;background:#fff;color:#8a93a0;font:700 12px/1 var(--font-learn);white-space:nowrap}
+.taf span.x{visibility:hidden}
+.taf span.b1{border-color:#ffb3a8;background:#fff1ee;color:var(--ink)}
+.taf span.b2{border-color:#ffd38a;background:#fff6e0;color:var(--ink)}
+.taf span.b3{border-color:#9bd8ff;background:#e4f5ff;color:var(--ink)}
+.taf span.b4{border-color:#3aa0e8;background:#bfe6ff;color:var(--ink)}
+.taf span.b5{border-color:#e0a800;background:#ffe27a;color:var(--ink)}
 .inv button:focus-visible,.chipm:focus-visible,.mk:focus-visible,.rc .tl:focus-visible,.brain button:focus-visible{outline:3px solid var(--lava);outline-offset:2px}
 
 #pz{position:fixed;inset:0;z-index:6;display:grid;place-items:center;padding:12px;background:rgba(29,42,58,.62)}
@@ -619,6 +629,13 @@ button.wt{cursor:pointer}
     <div class="inv" id="lab-inv"></div>
     <div id="lab-rcp"></div>
     <div class="brain" id="lab-brain"></div>
+    <button class="tafb" id="lab-taf" aria-label="Rechentafel und Buchstaben anschauen"></button>
+  </div>
+</div>
+<div id="tafel" class="ov" hidden>
+  <div class="sheet tafs" role="dialog" aria-label="Rechentafel"><button class="xb" aria-label="Schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg></button>
+    <div class="par-tabs" id="taf-tabs"></div>
+    <div class="taf" id="taf-grid"></div>
   </div>
 </div>
 <div id="mine" class="ov" hidden>
@@ -4460,6 +4477,7 @@ const ZN=[
 ];
 /* Material: Bild, Name, Mehrzahl, wo man es findet */
 const MAT={
+  ms:['💠','Meisterstein','Meistersteine','Meistersteine bekommst du, wenn eine Aufgabe richtig gut sitzt: Wenn du sie an verschiedenen Tagen immer wieder richtig weißt. Auf der Rechentafel siehst du, welche schon fast so weit sind.'],
   zr:['⚙️','Zahnrad','Zahnräder','Zahnräder bekommst du, wenn du eine Rätselmaschine löst. Über jeder schwebt ein Zahnrad.'],
   fe:['🔩','Eisen','Eisen','Eisen steckt tief unten im dunklen und im roten Gestein. Bohr dich mit der Tunnelbohrmaschine hinunter.'],
   mo:['🌙','Mondstein','Mondsteine','Mondsteine gibt es auf dem Mond. Er ist eine ganze Welt. Flieg mit der Rakete hin und lande auf ihm.'],
@@ -4470,7 +4488,7 @@ const MAT={
   ei:['❄️','Eiskern','Eiskerne','Eiskerne gibt es auf dem Eisplaneten, weit über den Felsbrocken. Er ist eine ganze Welt. Dafür brauchst du die Rakete Stufe 2.'],
   fp:['🔥','Feuerperle','Feuerperlen','Feuerperlen liegen im Lavameer ganz unten, manche mitten in der Lava. Dafür brauchst du den Bohrer Stufe 3.']
 };
-const MATK=['zr','fe','mo','pi','st','kn','kr','ei','fp'], MATZ={fe:1,pi:3,kn:4,kr:5,fp:6};
+const MATK=['zr','ms','fe','mo','pi','st','kn','kr','ei','fp'], MATZ={fe:1,pi:3,kn:4,kr:5,fp:6};
 /* Die drei Geräte und ihre Baupläne. Unten und oben wechseln sich ab: Für den nächsten Bohrer braucht man etwas aus dem Weltraum und umgekehrt. */
 const GEAR={
   dr:{e:'⛏️',n:'Bohrer',art:'den Bohrer',rc:[{fe:6,zr:1},{pi:4,st:4,zr:2},{kr:4,ei:4,zr:3}],
@@ -4919,6 +4937,7 @@ function renderLab(){
   h='';
   for(const p of PZT){ const l=hero.pz[p.id]|0; h+='<button data-pzt="'+p.id+'" aria-label="'+p.n+': Stufe '+(l+1)+' von 10"><span aria-hidden="true">'+p.e+'</span><i><b style="width:'+((l+1)*10)+'%"></b></i></button>'; }
   $('lab-brain').innerHTML=h;
+  $('lab-taf').innerHTML='<span aria-hidden="true">🔢</span><span aria-hidden="true">💠</span>'+(hero.mat.ms|0);
 }
 function openLab(){
   renderLab(); $('lab').hidden=false; talkLock=0;
@@ -6195,6 +6214,8 @@ function loadFacts(){
 }
 function saveFacts(){ if(frozen) return; try{ localStorage.setItem('lavaland-facts',JSON.stringify(FS)); }catch(_){} }
 loadFacts();
+/* Wer schon Fakten in Fach 4 oder 5 hat, bekommt die Meistersteine dafür beim ersten Start nachträglich. */
+(function(){ if(FS.mg) return; FS.mg={}; let n=0; for(const k in FS.f) if(FS.f[k][0]>=MBOX){ FS.mg[k]=1; n++; } if(n){ hero.mat.ms=(hero.mat.ms|0)+n; hero.mk.ms=1; saveHero(); } saveFacts(); })();
 /* Schulstand: Eltern stellen ein, welcher Zahlenraum und welche Buchstaben in der Schule schon dran waren. Neue Fakten kommen dann nur daraus.
    Schon Geübtes wird weiter wiederholt. Ohne Eintrag gilt alles wie bisher. */
 const ZRN=['bis 5','bis 10','bis 20 ohne Zehnerübergang','bis 20 mit Zehnerübergang'], ABC='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -6273,7 +6294,25 @@ function factDone(q,how,fast){
     r[0]=Math.min(5,Math.max(1,r[0])+1); r[1]=today+BOXD[r[0]];
     if(isNew) FS.ft[d]=0;
   }
+  const mg=r[0]>=MBOX&&!q.free&&masterGive(k);
   fUnlock(d); saveFacts();
+  return mg;
+}
+/* Meisterschaft: Sitzt ein Fakt in Fach 4 (also an verschiedenen Tagen richtig), gibt es einmal einen Meisterstein. Fach 5 leuchtet auf der Rechentafel golden. */
+const MBOX=4;
+function masterGive(k){
+  if(!FS.mg) FS.mg={};
+  if(FS.mg[k]) return false;
+  FS.mg[k]=1; hero.mat.ms=(hero.mat.ms|0)+1; hero.mk.ms=1; heroDirty=true; saveHero();
+  return true;
+}
+function fName(k){
+  let m;
+  if((m=/^(\d+)([+-])(\d+)$/.exec(k))) return m[1]+(m[2]==='+'?' plus ':' minus ')+m[3];
+  if((m=/^count:(\d+)$/.exec(k))) return m[1]+' Sterne zählen';
+  if((m=/^anlaut:(.+)$/.exec(k))) return 'der Anfang von '+m[1];
+  if((m=/^case:(.)$/.exec(k))) return 'das kleine '+m[1].toLowerCase();
+  return 'das Wort '+k.slice(5);
 }
 function lettersFor(wd,n){
   const c=wd.w.charAt(0);
@@ -6405,7 +6444,8 @@ function win(q,how){
   q.lock=true; holeShow(q.ans);
   const h=$('q').querySelector('.hole'); if(h) h.classList.add('ok');
   const fast=how==='ok'&&q.k1&&q.k1-Math.max(q.t0,q.te)<FASTMS;
-  if(!q.free) factDone(q,how,fast);
+  const mg=!q.free&&factDone(q,how,fast);
+  if(mg){ banner('💠 '+(hero.mat.ms|0),2400); setTimeout(function(){ jingle(); speak('Meisterstein! '+fName(q.f)+' sitzt jetzt richtig gut.'); },350); labBadge(false); }
   energy=Math.min(MAXE,energy+SEG); tone(how==='ok'?[660,880]:[520,660]); addXp(how==='ok'?8:4); qEvent('quiz',1);
   battShown=-1; renderBatt();
   if(doorQ){
@@ -7267,6 +7307,33 @@ function parSchool(){
   if(SCH.on) h+='<div class="par-act"><button id="par-sall">Schulstand aufheben</button></div>';
   return h;
 }
+/* ---------- Rechentafel: Alle Plus- und Minusaufgaben bis 20 und die Buchstaben. Die Farbe zeigt, wie gut eine Aufgabe sitzt; 💠 heißt Meisterstein, ⭐ heißt ganz sicher. ---------- */
+let tafTab='p';
+function tafCell(k,t){ const r=FS.f[k], b=r?r[0]:0; return '<span class="'+(b?'b'+b:'')+'">'+(b>=5?'⭐':b>=MBOX?'💠':t)+'</span>'; }
+function renderTafel(){
+  $('taf-tabs').innerHTML=[['p','＋'],['m','−'],['l','Aa']].map(function(q){ return '<button data-tt="'+q[0]+'"'+(tafTab===q[0]?' class="on"':'')+' aria-label="'+(q[0]==='p'?'Plus':q[0]==='m'?'Minus':'Buchstaben')+'">'+q[1]+'</button>'; }).join('');
+  const all={}; STAGES.m.forEach(function(s){ s.forEach(function(k){ all[k]=1; }); }); STAGES.l.forEach(function(s){ s.forEach(function(k){ all[k]=1; }); });
+  let h='', cols=9;
+  if(tafTab==='l'){
+    cols=4;
+    WORDS.forEach(function(wd){ h+=tafCell('anlaut:'+wd.w,wd.w.charAt(0)+'…')+tafCell('word:'+wd.w,wd.w); });
+    CASES.split('').forEach(function(c){ h+=tafCell('case:'+c,c+' '+c.toLowerCase()); });
+  }else{
+    const op=tafTab==='p'?'+':'-';
+    for(let a=1;a<=19;a++){
+      let row='', any=false;
+      for(let b=1;b<=9;b++){ const k=a+op+b; if(all[k]){ any=true; row+=tafCell(k,a+(op==='+'?'+':'−')+b); } else row+='<span class="x"></span>'; }
+      if(any) h+=row;
+    }
+  }
+  const g=$('taf-grid'); g.style.gridTemplateColumns='repeat('+cols+',minmax(0,1fr))'; g.innerHTML=h;
+}
+function openTafel(){ tafTab='p'; renderTafel(); $('tafel').hidden=false; speak('Deine Rechentafel. Je mehr Farbe, desto besser sitzt die Aufgabe. Ein blauer Stein ist ein Meisterstein.'); }
+$('lab-taf').addEventListener('click',function(){ $('lab').hidden=true; openTafel(); });
+$('tafel').addEventListener('click',function(e){
+  if(e.target===$('tafel')||e.target.closest('.xb')){ $('tafel').hidden=true; return; }
+  const b=e.target.closest('[data-tt]'); if(b){ tafTab=b.dataset.tt; renderTafel(); }
+});
 /* Lernstand nach Leitner: wie viele Fakten in welchem Fach liegen, getrennt nach Rechnen und Buchstaben. */
 function parFacts(){
   const c={m:[0,0,0,0,0,0],l:[0,0,0,0,0,0]};
