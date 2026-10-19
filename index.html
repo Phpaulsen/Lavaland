@@ -1009,7 +1009,16 @@ const BT=[
     fauna:[['🐸','hop',3,'BLUBB!'],['🦋','fly',3,'FLATTER!'],['🐙','walk',1,'GLIBBER!']],picks:[['🍇','tiny',2],['🍄','big',2]]},
   {id:'goo',e:'🟢',n:'den Glibbersumpf',n2:'noch einen Glibbersumpf',to:'zum Glibbersumpf',w:[3000,1400],sky:[[100,80,160],[230,200,240]],hill:[[110,150,110],[80,120,90]],cg:[120,200,90],ce:[80,90,70],cr:[70,80,90],night:.15,
     wat:['rgba(120,220,90,.78)','rgba(170,240,130,.84)'],flat:110,fs:140,flora:['fern','shroom'],clr:240,
-    fauna:[['👽','sit',1,'BLUBB? BLUBB!','gift',26],['🪼','fly',2,'SCHWABBEL!'],['🐌','walk',2,'SCHLEIM!','slow']],picks:[['🫧','float',3],['⭐','star',1]]}
+    fauna:[['👽','sit',1,'BLUBB? BLUBB!','gift',26],['🪼','fly',2,'SCHWABBEL!'],['🐌','walk',2,'SCHLEIM!','slow']],picks:[['🫧','float',3],['⭐','star',1]]},
+  /* Die vier kleinen Planeten sind kleine runde Welten mit nur einer Land-Art. */
+  {id:'cheese',e:'🧀',n:'das Käseland',n2:'noch ein Käseland',to:'ins Käseland',w:[3000,1400],sky:[[255,196,110],[255,240,200]],hill:[[250,210,110],[236,186,80]],cg:[255,214,90],ce:[240,190,70],cr:[214,164,58],night:0,noCloud:1,
+    fauna:[['🐭','walk',5,'PIEP PIEP!'],['🐀','walk',1,'KÄSE HER!']],picks:[['🧀','food',4],['⭐','star',1]]},
+  {id:'cookie',e:'🍪',n:'das Keksland',n2:'noch ein Keksland',to:'ins Keksland',w:[3000,1400],sky:[[150,210,255],[255,236,210]],hill:[[214,170,120],[190,140,90]],cg:[214,160,100],ce:[170,110,60],cr:[110,70,40],night:0,
+    fs:160,flora:['lolly','cane'],clr:140,fauna:[['🧁','hop',3,'BOING!'],['🍩','walk',2,'MAMPF!','eat']],picks:[['🍪','food',4],['🍬','sugar',2]]},
+  {id:'disco',e:'🪩',n:'die Tanzfläche',n2:'noch eine Tanzfläche',to:'zur Tanzfläche',w:[3000,1400],sky:[[30,14,70],[110,40,150]],hill:[[110,50,160],[80,30,130]],cg:[255,90,210],ce:[90,40,140],cr:[44,32,84],night:.3,noCloud:1,
+    fs:200,flora:['crystal'],clr:120,fauna:[['🕺','hop',2,'YEAH!'],['💃','hop',2,'TANZ MIT!'],['🦩','walk',2,'FLAMINGO!']],picks:[['⭐','star',2],['🎈','float',2]]},
+  {id:'eye',e:'👁️',n:'das Glubschland',n2:'noch ein Glubschland',to:'ins Glubschland',w:[3000,1400],sky:[[180,140,255],[255,210,240]],hill:[[240,150,200],[210,120,180]],cg:[255,150,180],ce:[200,90,130],cr:[150,70,110],night:0,
+    fs:130,flora:['shroom','fern'],clr:120,fauna:[['👁️','hop',3,'GLUBSCH!'],['👀','walk',2,'ICH SEH DICH!'],['🐙','walk',1,'GLIBBER!']],picks:[['🍇','tiny',2],['⭐','star',1]]}
 ];
 const FH={fir:[62,40],cactus:[34,26],palm:[72,30],jungle:[110,60],giant:[250,0],lolly:[46,30],cane:[40,14],shroom:[12,12],dead:[60,40],grave:[20,6],fern:[30,18],crystal:[30,44],flower:[14,10],bush:[16,10],tree:[62,40]};
 
@@ -1034,6 +1043,10 @@ function hBio(b,x,raw){
     case 15: { const f=sm(Math.min(u,1-u)*3.5); h=20-f*(a*190*Math.abs(Math.sin(x*.0037+p))+60*Math.abs(Math.sin(x*.012+p*2)))+roll*.3; break; }
     case 16: h=PADH+78*sm(Math.min(u,1-u)*5)+roll*.12; break;
     case 17: h=roll*.9-26*Math.abs(Math.sin(x*.0051+p)); break;
+    case 19: h=roll*.4+craters(b,x,1.3); break;
+    case 20: h=roll*.5-34*Math.abs(Math.sin(x*.0042+p)); break;
+    case 21: h=24*Math.round(roll*.8/24); break;
+    case 22: h=roll*.9; break;
     case 18: h=PADH+66*sm(Math.min(u,1-u)*5)+roll*.15; break;
     case 14: { const f=sm(Math.min(u,1-u)*3); h=24-f*(170+70*Math.sin(x*.0029+p))+roll*.7+craters(b,x,.7); break; }
     default: h=roll*.7;
@@ -2739,7 +2752,8 @@ function restore(sv){
 function newSeed(){ return 1+Math.floor(Math.random()*999983); }
 
 /* ---------- Reisen zwischen den Welten: Die Welt, die man verlässt, wird gespeichert, die neue geladen oder zum ersten Mal erzeugt. ---------- */
-let traveling=false, portalT=0, portalOff='', exitHint=false;
+let traveling=false, portalT=0, portalOff='', exitHint=false, portO=null;
+function orbsOf(id){ const R=RLM[id]; return R.orb?[R.orb()]:R.orbs(); }
 function newRealm(){
   seen={}; eggGot={}; lootGot={}; orbGot={}; matGot={}; pzGot={};
   shapeWorld(); planetGen();
@@ -2786,8 +2800,11 @@ function arrive(from,to,m){
     if(!seen.hi){ seen.hi=1; later(1,function(){ say('',R.hello); }); }
     else later(.6,function(){ banner(R.e,1800); speak('Wieder auf '+R.n+'.'); });
     if(quest&&quest.type==='moon'&&to==='moon') quest.p=1;
+    if(to==='disco') disco(12);
   }else{
-    const o=RLM[from].orb();
+    const L=orbsOf(from); let o=L[0];
+    for(const q of L) if(portO&&Math.hypot(q.x-portO.x,q.y-portO.y)<1) o=q;
+    portO=o; grow(o.x+3200);
     P.x=o.x; P.y=o.y-o.r-40; portalOff=from;
     later(.6,function(){ say('','Zurück im Weltraum! Unten liegt die Erde.'); });
   }
@@ -2805,10 +2822,10 @@ function portalTick(dt){
     return;
   }
   let hit='';
-  if(P.y<-3000) for(const id in RLM){
-    const o=RLM[id].orb(), d=Math.hypot(P.x-o.x,P.y-o.y);
-    if(portalOff===id){ if(d>o.r+260) portalOff=''; continue; }
-    if(P.on&&d<o.r+30&&(P.mode==='walk'||P.mode==='rocket'||P.mode==='plane')) hit=id;
+  if(P.y<-3000) for(const id in RLM) for(const o of orbsOf(id)){
+    const d=Math.hypot(P.x-o.x,P.y-o.y);
+    if(portalOff===id){ if(d>o.r+260&&o===portO) portalOff=''; continue; }
+    if(P.on&&d<o.r+30&&(P.mode==='walk'||P.mode==='rocket'||P.mode==='plane')){ hit=id; portO=o; }
   }
   if(hit){ portalT+=dt; if(portalT>.9) travel(hit); } else portalT=0;
 }
@@ -3757,6 +3774,20 @@ const PETS={dog:'🐕',cat:'🐈',dragon:'🐉',chick:'🐥',dino:'🦕',rex:'�
 /* Belohnungen für goldene Eier: Anzahl, Art, Kennung, Name */
 const WEAR=[[1,'pet','chick','ein Küken'],[2,'hat','cap','eine Kappe'],[3,'pet','dino','einen Langhals-Dino'],[5,'trail','trail','eine Regenbogen-Spur'],[7,'pet','uni','ein Einhorn'],[10,'hat','grad','einen Doktorhut'],[13,'pet','ghost','ein Gespenst'],[16,'pet','robot','einen Roboter'],[20,'hat','helm','einen Helm'],[25,'pet','ufo','ein UFO'],[-1,'pet','rex','ein Dino-Baby'],[-1,'pet','alien','ein Außerirdischer'],[-1,'pet','sala','ein Feuersalamander']];
 const ORBN=['Du bist auf dem Käsemond gelandet! Hier wohnen die Mäuse.','Ein Planet aus Keks! Bitte nicht alles aufessen.','Der Disco-Planet! Hier tanzen alle.','Hilfe, der Planet guckt dich an! Das ist Glubschi.'];
+/* Die vier kleinen Planeten. Zu jeder Art gibt es mehrere Planeten am Himmel, die alle in dieselbe kleine Welt führen. */
+[['cheese',19,[[250,200,90],[200,120,60],['🪨','den Käsefels'],['🧀','das warme Käsegestein'],['🐭','die Mäusehöhlen'],['🕳️','die Käselöcher'],['💎','die Kristallkäsehallen'],['🫕','den Fonduekern']]],
+ ['cookie',20,[[150,100,60],[120,70,50],['🍪','den Keksboden'],['🍫','die Schokoschicht'],['🥐','die Krümelhöhlen'],['🍬','die Zuckergrotten'],['🍭','die Bonbonhallen'],['🍯','den Karamellkern']]],
+ ['disco',21,[[70,40,120],[150,40,120],['🔊','den Bassfels'],['✨','die Glitzerschicht'],['🕺','die Tanzhöhlen'],['💡','die Lichtgrotten'],['🪞','die Spiegelhallen'],['🌟','den Funkelkern']]],
+ ['eye',22,[[170,90,130],[150,60,80],['👁️','den Glubschfels'],['👀','die Glotzschicht'],['😵','die Augenhöhlen'],['😉','die Zwinkergrotten'],['🦋','die Wimpernhallen'],['⚫','den Pupillenkern']]]].forEach(function(q,k){
+  const c=q[2];
+  RLM[q[0]]={e:BT[q[1]].e,n:'diesen kleinen Planeten',w:12000,salt:404+k,lands:[q[1]],exit:-2600,small:k,
+    orbs:function(){ return ORBS.filter(function(o){ return o.i&&o.k===k; }); },
+    pal:{deep:c[0],hot:c[1],z:[[c[0],BT[q[1]].cg,[30,20,40]],[c[1],BT[q[1]].ce,[40,20,20]],[BT[q[1]].cr,BT[q[1]].cg,[20,20,40]],[[130,40,30],[210,90,50],[40,10,8]]]},
+    zn:c.slice(2), mat:[['fe',5,1],['pi',3,3]],
+    zc:[null,null,null,BT[q[1]].fauna[0],null,BT[q[1]].fauna[1],['🐲','sit',1,'FAUCH!','',26]],
+    lk:[0,0,0,WATER,0,WATER,LAVA],
+    hello:ORBN[k]+' Diese kleine Welt ist rund. Lauf einmal ganz herum! Zum Heimflug flieg mit der Rakete ganz hoch hinauf.'};
+});
 const NIGHT_T=[10,14,44], NIGHT_B=[40,40,96], MD={st:[84,191,230],sb:[212,244,238],h1:'#9bd8c4',h2:'#74c493',nl:0,w1:'rgba(48,140,224,.74)',w2:'rgba(132,204,246,.8)'};
 const EGGSVG='<svg viewBox="0 0 24 24" aria-hidden="true">'+QI.egg+'</svg>';
 let ufo=null, ufoNext=20, skyRb=0, tkN=0, tkT=0, nightOn=false, nightA=0, discoT=0, beatT=0, keySeq='', dTaps=[], idleT=0, zT=0, skyBonk=0, bolt=null, mapPg=0, throws=[], trexT=0, slipWas=false;
