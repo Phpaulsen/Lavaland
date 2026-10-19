@@ -297,6 +297,19 @@ body{
 .brain i b{display:block;height:100%;background:#7b4fd6}
 .tafb{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:10px;padding:8px 12px;width:100%;background:#eef4ff;border:2.5px solid var(--ink);border-radius:14px;color:var(--ink);font:700 20px/1 var(--font-learn);cursor:pointer}
 .tafs{max-width:520px;max-height:88vh;overflow:auto}
+#camp{background:rgba(8,10,30,.86)}
+.camps{max-width:460px;background:#1c2244;color:#fff6e0;text-align:center}
+.camps .fire{font-size:84px;line-height:1;display:inline-block;animation:flick 1.1s ease-in-out infinite;transform-origin:50% 90%}
+@keyframes flick{0%,100%{transform:scale(1) rotate(-2deg)}50%{transform:scale(1.07,1.12) rotate(2deg)}}
+.camps .sky{height:28px;background:radial-gradient(circle,#fff 1px,transparent 2px) 0 0/34px 22px;opacity:.6}
+.campst{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:12px 0}
+.campst span{display:flex;align-items:center;gap:6px;padding:6px 12px;border:2.5px solid #fff6e0;border-radius:14px;font:700 22px/1 var(--font-learn)}
+.campz{font-size:30px;letter-spacing:6px;min-height:8px}
+.campb{display:flex;gap:14px;justify-content:center;margin-top:14px}
+.campb button{width:96px;height:72px;border:3px solid var(--ink);border-radius:20px;font-size:34px;cursor:pointer}
+.campb .go{background:#5ec27a}.campb .rest{background:#7b8fd6}
+.camps.night .fire{animation:none;opacity:.5}
+.camps.night .campst,.camps.night .campz{display:none}
 .taf{display:grid;gap:3px;margin-top:8px}
 .taf span{display:grid;place-items:center;height:34px;border-radius:8px;border:2px solid #c9d2dc;background:#fff;color:#8a93a0;font:700 12px/1 var(--font-learn);white-space:nowrap}
 .taf span.x{visibility:hidden}
@@ -636,6 +649,15 @@ button.wt{cursor:pointer}
   <div class="sheet tafs" role="dialog" aria-label="Rechentafel"><button class="xb" aria-label="Schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg></button>
     <div class="par-tabs" id="taf-tabs"></div>
     <div class="taf" id="taf-grid"></div>
+  </div>
+</div>
+<div id="camp" class="ov" hidden>
+  <div class="sheet camps" id="camp-s" role="dialog" aria-label="Lagerfeuer">
+    <div class="sky" aria-hidden="true"></div>
+    <div class="fire" id="camp-f" aria-hidden="true">🔥</div>
+    <div class="campz" id="camp-z" aria-hidden="true"></div>
+    <div class="campst" id="camp-st"></div>
+    <div class="campb"><button class="go" id="camp-go" aria-label="Weiterspielen">▶️</button><button class="rest" id="camp-rest" aria-label="Für heute Schluss">🌙</button></div>
   </div>
 </div>
 <div id="mine" class="ov" hidden>
@@ -4732,7 +4754,7 @@ function doorOpen(v){
   const c=doorCols(v), fr=vFloor(v);
   for(let cx=c[0];cx<=c[1];cx++) for(let cy=fr-8;cy<fr;cy++){ grid[cy*GX+cx]=0; life[cy*GX+cx]=0; }
   scanMobile(); sfx('pop'); jingle(); confetti(v.x-v.rx,v.fy-30); addXp(30);
-  say('','Die Wissenstür ist offen! Drinnen liegt ein Schatz.');
+  say('','Die Wissenstür ist offen! Drinnen liegt ein Schatz.'); dayAdd('z','🚪'); campSoon();
 }
 function drawDoor(v){
   const x=v.x-v.rx-8, y=v.fy, g=reduced?.6:.6+.4*Math.sin(time*3);
@@ -4768,7 +4790,7 @@ function deepRestore(sv){
 function matFound(m){
   const k=m.k, n=(hero.mat[k]|0)+1;
   matGot[m.id]=1; hero.mat[k]=n; heroDirty=true;
-  sfx('coin'); addXp(6); qEvent('mat',1);
+  sfx('coin'); addXp(6); qEvent('mat',1); dayAdd('mat');
   for(let i=0;i<10;i++) spawn(5,m.x,m.y,(Math.random()-.5)*180,-60-Math.random()*160,.7,2);
   banner(MAT[k][0]+' '+n,1500);
   if(!hero.mk[k]){ hero.mk[k]=1; say('',MAT[k][1]+'! Das kann Professor Zahnrad in der Werkstatt gebrauchen. Tippe oben auf den Schraubenschlüssel, dann siehst du, wofür.'); pulse('btn-lab'); }
@@ -4816,10 +4838,10 @@ function deepTick(dt){
   if(P.mode!=='coaster'){
     const z=zoneAt(P.x,P.y-12), R=rlm();
     if(R){
-      if(z&&!seen['z'+z]){ seen['z'+z]=1; jingle(); confetti(P.x,P.y); addXp(30); banner(R.zn[z-1][0]+' ⭐',2400); say('','Du hast '+R.zn[z-1][1]+' erreicht!'); }
+      if(z&&!seen['z'+z]){ seen['z'+z]=1; jingle(); confetti(P.x,P.y); addXp(30); banner(R.zn[z-1][0]+' ⭐',2400); say('','Du hast '+R.zn[z-1][1]+' erreicht!'); dayAdd('z',R.zn[z-1][0]); campSoon(); }
     }else if(z>hero.zn){
       hero.zn=z; saveHero(); jingle(); confetti(P.x,P.y); addXp(30); banner(ZN[z].e+' ⭐',2400);
-      say('','Du hast '+ZN[z].n+' erreicht! Der Aufzug zu Hause fährt jetzt bis hierher.');
+      say('','Du hast '+ZN[z].n+' erreicht! Der Aufzug zu Hause fährt jetzt bis hierher.'); dayAdd('z',ZN[z].e); campSoon();
     }
   }
   const pts=[[P.x,P.y-16]];
@@ -5251,7 +5273,7 @@ function pzWin(){
   tone([523,659,784,1047]);
   if(clean) hero.pz[id]=Math.min(9,(hero.pz[id]|0)+1);
   else if(c.fails>=5||c.hint>=2) hero.pz[id]=Math.max(0,(hero.pz[id]|0)-1);
-  hero.pzn=(hero.pzn|0)+1;
+  hero.pzn=(hero.pzn|0)+1; dayAdd('pz');
   /* Akku: voll nur ohne Fehler und Tipp, sonst ein Strich weniger je Fehler und Tipp, mindestens einer. */
   const segs=clean?5:Math.max(1,5-c.fails-c.hint), full=segs>=5||energy>=MAXE;
   gold+=g; lootDirty=true; energy=Math.max(energy,segs*SEG); battShown=-1; renderBatt(); addXp(first?20:6); qEvent('pz',1);
@@ -6304,7 +6326,7 @@ const MBOX=4;
 function masterGive(k){
   if(!FS.mg) FS.mg={};
   if(FS.mg[k]) return false;
-  FS.mg[k]=1; hero.mat.ms=(hero.mat.ms|0)+1; hero.mk.ms=1; heroDirty=true; saveHero();
+  FS.mg[k]=1; hero.mat.ms=(hero.mat.ms|0)+1; dayAdd('ms'); hero.mk.ms=1; heroDirty=true; saveHero();
   labBadge(true);
   return true;
 }
@@ -6448,6 +6470,7 @@ function win(q,how){
   const fast=how==='ok'&&q.k1&&q.k1-Math.max(q.t0,q.te)<FASTMS;
   const mg=!q.free&&factDone(q,how,fast);
   if(mg){ banner('💠 '+(hero.mat.ms|0),2400); setTimeout(function(){ jingle(); speak('Meisterstein! '+fName(q.f)+' sitzt jetzt richtig gut.'); },350); labBadge(false); }
+  dayAdd('q');
   energy=Math.min(MAXE,energy+SEG); tone(how==='ok'?[660,880]:[520,660]); addXp(how==='ok'?8:4); qEvent('quiz',1);
   battShown=-1; renderBatt();
   if(doorQ){
@@ -7336,6 +7359,49 @@ $('tafel').addEventListener('click',function(e){
   if(e.target===$('tafel')||e.target.closest('.xb')){ $('tafel').hidden=true; return; }
   const b=e.target.closest('[data-tt]'); if(b){ tafTab=b.dataset.tt; renderTafel(); }
 });
+/* Tagesbilanz und Lagerfeuer: Nach einem neuen Ort lädt ein Lagerfeuer zur Pause ein. Weiterspielen ist immer erlaubt. */
+let DAY=null;
+function dayLoad(){
+  const d=new Date().toDateString();
+  if(!DAY){ try{ DAY=JSON.parse(localStorage.getItem('lavaland-day')||'null'); }catch(_){ DAY=null; } }
+  if(!DAY||typeof DAY!=='object'||DAY.d!==d) DAY={d:d,q:0,pz:0,ms:0,mat:0,z:[],t:0,fire:0};
+  if(!Array.isArray(DAY.z)) DAY.z=[];
+  return DAY;
+}
+function daySave(){ try{ localStorage.setItem('lavaland-day',JSON.stringify(DAY)); }catch(_){} }
+function dayAdd(k,v){ dayLoad(); if(k==='z'){ if(DAY.z.length<12) DAY.z.push(v); } else DAY[k]=(DAY[k]|0)+1; daySave(); }
+let dayT=0;
+function dayTick(dt){ dayT+=dt; if(dayT>=5){ dayLoad(); DAY.t+=dayT; dayT=0; daySave(); } }
+const CAMPGAP=600;
+let campT=null;
+/* Höchstens alle zehn Spielminuten, und nur wenn gerade nichts anderes offen ist. */
+function campSoon(){
+  dayLoad(); if(DAY.t-DAY.fire<CAMPGAP||campT) return;
+  campT=setTimeout(function tryCamp(){ if(uiOpen()||paused||!ready){ campT=setTimeout(tryCamp,3000); return; } campT=null; openCamp(''); },4500);
+}
+function plural(n,a,b){ return n+' '+(n===1?a:b); }
+function openCamp(why){
+  dayLoad(); DAY.fire=DAY.t; daySave();
+  const st=[['✅',DAY.q,'Aufgaben richtig'],['⚙️',DAY.pz,'Rätsel gelöst'],['💠',DAY.ms,'Meistersteine'],['🎒',DAY.mat,'Fundstücke']];
+  $('camp-st').innerHTML=st.filter(function(x){ return x[1]>0; }).map(function(x){ return '<span aria-label="'+x[1]+' '+x[2]+'"><i aria-hidden="true">'+x[0]+'</i>'+x[1]+'</span>'; }).join('');
+  $('camp-z').textContent=DAY.z.join('');
+  $('camp-s').classList.remove('night'); $('camp-go').hidden=false;
+  $('camp').hidden=false; sfx('pop');
+  const bits=[];
+  if(DAY.q) bits.push(plural(DAY.q,'Aufgabe','Aufgaben')+' richtig gelöst');
+  if(DAY.pz) bits.push(plural(DAY.pz,'Rätsel','Rätsel')+' geknackt');
+  if(DAY.ms) bits.push(plural(DAY.ms,'Meisterstein','Meistersteine')+' bekommen');
+  if(DAY.z.length) bits.push(plural(DAY.z.length,'neuen Ort','neue Orte')+' entdeckt');
+  const sum=bits.length?'Heute hast du '+(bits.length>1?bits.slice(0,-1).join(', ')+' und '+bits[bits.length-1]:bits[0])+'. ':'';
+  speak((why||'Ein Lagerfeuer! Zeit für eine kleine Pause. ')+sum+'Du kannst weiterspielen, oder für heute Schluss machen.');
+}
+function campRest(){
+  saveGame(false);
+  $('camp-s').classList.add('night');
+  speak('Gute Nacht! Dein Spiel ist gespeichert. Morgen geht es genau hier weiter.');
+}
+$('camp-go').addEventListener('click',function(){ $('camp').hidden=true; });
+$('camp-rest').addEventListener('click',function(){ if($('camp-s').classList.contains('night')){ $('camp').hidden=true; return; } campRest(); });
 /* Lernstand nach Leitner: wie viele Fakten in welchem Fach liegen, getrennt nach Rechnen und Buchstaben. */
 function parFacts(){
   const c={m:[0,0,0,0,0,0],l:[0,0,0,0,0,0]};
@@ -7397,7 +7463,7 @@ function frame(t){
     accum+=dt; let n=0;
     while(accum>=1/30&&n<2){ paintStep(); step(); accum-=1/30; n++; }
     if(accum>.1) accum=0;
-    update(dt); worldTick(dt); deepTick(dt); winterTick(dt); taskTick(dt); findsTick(dt); questTick(dt); autosave(dt); drain(dt);
+    update(dt); worldTick(dt); deepTick(dt); winterTick(dt); taskTick(dt); findsTick(dt); questTick(dt); autosave(dt); drain(dt); dayTick(dt);
     /* Läuft es auf diesem Gerät zu langsam, sinkt die Auflösung in Stufen. */
     if(raw<.2){ perfT+=raw; perfN++; }
     if(perfN>=150){ if(perfT/perfN>.026&&maxDpr>1){ maxDpr=Math.max(1,maxDpr-.5); resize(); } perfT=0; perfN=0; }
