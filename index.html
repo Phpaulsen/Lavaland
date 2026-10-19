@@ -6494,7 +6494,16 @@ function fUnlock(d){
 }
 const retry=[];
 let lastF='', lastDom='';
-function pickFact(){
+/* Abwechslung: Aufgabenart (Plus, Minus, Zahlenhaus, Silben …). Gemischtes Üben hält wach und trainiert, die passende Strategie zu erkennen (Interleaving). Kommt dieselbe Art zweimal hintereinander, wird beim dritten Mal eine andere bevorzugt, wenn es eine gibt. */
+let kindHist=[];
+function fKind(k){ const i=k.indexOf(':'); return i>0?k.slice(0,i):k.indexOf('+')>0?'add':'sub'; }
+function mixPrefer(a){
+  if(kindHist.length<2||kindHist[0]!==kindHist[1]) { const o=a.filter(function(k){ return fKind(k)!==kindHist[0]; }); return o.length&&Math.random()<.5?o:a; }
+  const o=a.filter(function(k){ return fKind(k)!==kindHist[0]; });
+  return o.length?o:a;
+}
+function pickFact(){ const k=pickFact0(); kindHist.unshift(fKind(k)); kindHist.length=Math.min(kindHist.length,2); return k; }
+function pickFact0(){
   const today=dayNo();
   if(FS.nd!==today){ FS.nd=today; FS.nn={m:0,l:0}; }
   for(let i=0;i<retry.length;i++) retry[i].n--;
@@ -6513,13 +6522,15 @@ function pickFact(){
       /* Fällige zuerst, die schwächsten vorn. Neue nur in Maßen, damit nicht zu viel Ungeübtes auf einmal kommt. */
       if(due.length&&(p||Math.random()<.75||!fresh.length)){
         due.sort(function(a,b){ return FS.f[a][0]-FS.f[b][0]||FS.f[a][1]-FS.f[b][1]; });
-        return due[ri(0,Math.min(2,due.length-1))];
+        const dv=mixPrefer(due.slice(0,6));
+        return dv[ri(0,Math.min(2,dv.length-1))];
       }
       let open=0; for(const k in FS.f) if(fDom(k)===d&&FS.f[k][0]===1) open++;
       if(fresh.length&&FS.nn[d]<NEWDAY&&open<4){
         /* Meist aus der höchsten offenen Stufe, damit nach der Einstufung nicht das längst Gekonnte drankommt. */
         const top=fresh.filter(function(x){ return x[1]===FS.u[d]; }), pool=top.length&&Math.random()<.7?top:fresh;
-        return pool[ri(0,pool.length-1)][0];
+        const pv=mixPrefer(pool.map(function(x){ return x[0]; }));
+        return pv[ri(0,pv.length-1)];
       }
     }
   }
