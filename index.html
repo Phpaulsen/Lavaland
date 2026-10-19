@@ -1,6 +1,6 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Lavaland</title><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#7fd0e8"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Lavaland"><link rel="apple-touch-icon" href="apple-touch-icon.png"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="referrer" content="no-referrer"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Lavaland</title><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#7fd0e8"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Lavaland"><link rel="apple-touch-icon" href="apple-touch-icon.png"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap" crossorigin>
 <style>
 /* Layout: Vollbild-Spielwelt, oben ein Raster aus Bild-Tasten (Fahrzeuge, Malwerkzeuge, Aufgaben), unten zwei Daumenfelder. Keine Schrift, nur Bilder. */
 :root{
@@ -6086,6 +6086,19 @@ $('sound').addEventListener('click',function(){
 });
 /* ---------- Spielstand umziehen: Alles aus diesem Browser (Welt, Held, Funde, Einstellungen, Protokoll) als eine Datei. Der Speicher gehört zur Adresse, darum braucht der Umzug vom Artefakt auf eine eigene Seite oder in die Homescreen-App diesen Weg. ---------- */
 const BAK_DBS=['lavaland','lavaland-log'];
+/* Eine Sicherungsdatei kann von irgendwoher kommen. Erlaubt sind nur die bekannten Datenbanken, Tabellen, Datentypen und Schlüssel. */
+const BAK_ST={'lavaland':['save'],'lavaland-log':['ev','day']}, BAK_MAX=64e6;
+const TYPED=['Uint8Array','Int8Array','Uint8ClampedArray','Uint16Array','Int16Array','Uint32Array','Int32Array','Float32Array','Float64Array'], BADK=['__proto__','constructor','prototype'];
+function bakOk(b){
+  if(!b||b.app!=='lavaland'||!b.db||typeof b.db!=='object'||Array.isArray(b.db)) return false;
+  for(const n in b.db){
+    const d=b.db[n];
+    if(!BAK_ST[n]||!d||typeof d!=='object'||!d.st||typeof d.st!=='object') return false;
+    for(const t in d.st){ const e=d.st[t]; if(BAK_ST[n].indexOf(t)<0||!e||!Array.isArray(e.r)||!Array.isArray(e.k)) return false; }
+  }
+  if(b.ls!=null){ if(typeof b.ls!=='object') return false; for(const k in b.ls) if(k.indexOf('lavaland')!==0||typeof b.ls[k]!=='string'||b.ls[k].length>4e6) return false; }
+  return true;
+}
 let bakIn=null;
 function b64(u8){ let s=''; for(let i=0;i<u8.length;i+=0x8000) s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000)); return btoa(s); }
 function unb64(s){ const b=atob(s), u=new Uint8Array(b.length); for(let i=0;i<b.length;i++) u[i]=b.charCodeAt(i); return u; }
@@ -6104,9 +6117,9 @@ function dec(v){
       if(v.$t==='Date') return new Date(v.$d);
       const u=unb64(v.$b);
       if(v.$t==='ArrayBuffer') return u.buffer;
-      const T=window[v.$t]; if(typeof T==='function'&&/Array$/.test(v.$t)) return new T(u.buffer);
+      if(TYPED.indexOf(v.$t)>=0) return new window[v.$t](u.buffer);
     }
-    const o={}; for(const k in v) o[k]=dec(v[k]); return o;
+    const o={}; for(const k in v) if(BADK.indexOf(k)<0) o[k]=dec(v[k]); return o;
   }
   return v;
 }
@@ -6193,11 +6206,12 @@ function bakSave(){
 }
 function bakPick(file){
   if(!file) return;
+  if(file.size>BAK_MAX){ flash('imp','warn'); tone([170],'sawtooth'); return; }
   const rd=new FileReader();
   rd.onload=function(){
     let b=null;
     try{ b=JSON.parse(rd.result); }catch(_){}
-    if(!b||b.app!=='lavaland'||!b.db||typeof b.db!=='object'){ flash('imp','warn'); tone([170],'sawtooth'); return; }
+    if(!bakOk(b)){ flash('imp','warn'); tone([170],'sawtooth'); return; }
     bakIn=b; $('menu').hidden=true; $('imp-ok').hidden=false; speak('Spielstand laden? Die Welt hier wird dann ersetzt.');
   };
   rd.onerror=function(){ flash('imp','warn'); tone([170],'sawtooth'); };
@@ -7483,6 +7497,7 @@ function dayLoad(){
   if(!DAY){ try{ DAY=JSON.parse(localStorage.getItem('lavaland-day')||'null'); }catch(_){ DAY=null; } }
   if(!DAY||typeof DAY!=='object'||DAY.d!==d) DAY={d:d,q:0,pz:0,ms:0,mat:0,z:[],t:0,fire:0};
   if(!Array.isArray(DAY.z)) DAY.z=[];
+  ['q','pz','ms','mat','t','fire','lim'].forEach(function(k){ DAY[k]=+DAY[k]||0; }); DAY.z=DAY.z.filter(function(z){ return typeof z==='string'&&z.length<9; }).slice(0,12);
   return DAY;
 }
 function daySave(){ try{ localStorage.setItem('lavaland-day',JSON.stringify(DAY)); }catch(_){} }
