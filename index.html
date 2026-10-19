@@ -321,6 +321,8 @@ body{
 .pzc.sp2{background:#ff8a1f}
 .pzc.sp3{background:#58b548}
 .pzc.flash{animation:near .5s ease-in-out 2}
+.pzt.flash{border-radius:10px;animation:near .5s ease-in-out 3}
+#pz-hint.off{opacity:.35;filter:grayscale(1)}
 .pzmir{display:flex;align-items:center;gap:7px}
 .pzmir.hz{flex-direction:column}
 .mline{width:5px;align-self:stretch;border-radius:3px;background:repeating-linear-gradient(var(--lava) 0 8px,transparent 8px 14px)}
@@ -406,7 +408,7 @@ button.wt{cursor:pointer}
   .post{top:88px;border-bottom-width:30px}
 }
 @media (prefers-reduced-motion:reduce){
-  .mk.go,.pzc.flash,#pz-body.win{animation:none}
+  .mk.go,.pzc.flash,.pzt.flash,#pz-body.win{animation:none}
   .beam,.pzc.pp svg,#fade{transition:none}
 }
 
@@ -604,7 +606,7 @@ button.wt{cursor:pointer}
       <button class="round" id="quiz-say" aria-label="Aufgabe vorlesen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9h4l5-4v14l-5-4H3z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg></button>
       <span class="cells big" id="quiz-cells"><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i></span>
       <button class="round go" id="quiz-go" aria-label="Weiterspielen" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z" fill="currentColor"/></svg></button>
-      <button class="round" id="quiz-pz" aria-label="Lieber ein Rätsel lösen. Dann ist der Akku sofort voll."></button>
+      <button class="round" id="quiz-pz" aria-label="Lieber ein Rätsel lösen. Ohne Fehler und Tipp wird der Akku ganz voll."></button>
     </div>
     <div id="q"></div>
     <div id="ans"></div>
@@ -4708,7 +4710,7 @@ function pzOpen(m){
   $('pz-body').classList.remove('win');
   pzc.st=T.make(lv);
   $('pz').hidden=false;
-  pzDraw(); speak(T.say(pzc.st));
+  pzDraw(); pzHintUi(); speak(T.say(pzc.st));
   if(T.start) T.start(pzc.st);
 }
 function pzDraw(){
@@ -4726,10 +4728,19 @@ function pzClose(){
   if(c&&!c.won&&c.fails>=3){ hero.pz[c.T.id]=Math.max(0,(hero.pz[c.T.id]|0)-1); saveHero(); }
   if(c&&c.m.quiz&&!c.won&&energy<=0){ pending=null; setTool(null,true); if(P.mode!=='walk') setMode('walk'); pulse('batt'); }
 }
+/* Tipps: erst nach dem ersten Fehlversuch, einer pro Rätsel (ab Stufe 7 zwei). So hilft der Tipp beim Hängenbleiben, löst aber nicht das Rätsel. */
+function pzHintMax(c){ return c.lv>=6?2:1; }
+function pzHintUi(){ const c=pzc; if(c) $('pz-hint').classList.toggle('off',c.fails<1||c.hint>=pzHintMax(c)); }
 function pzFail(quiet){
   const c=pzc; c.fails++;
   if(!quiet) tone([170],'sawtooth');
-  if(c.fails===3) pulse('pz-hint');
+  if(c.fails===3&&c.hint<pzHintMax(c)) pulse('pz-hint');
+  pzHintUi();
+}
+/* Falsche Antwort bei Auswahl-Rätseln: Lösung kurz zeigen, dann ein neues Rätsel gleicher Stufe. Durchprobieren der übrigen Antworten geht so nicht. */
+function pzReveal(text){
+  const c=pzc; c.busy=true; speak(text);
+  pzLater(2200,function(){ c.busy=false; c.st=c.T.make(c.lv); pzDraw(); speak(c.T.say(c.st)); });
 }
 function pzWin(){
   const c=pzc; if(!c||c.won) return;
@@ -4739,7 +4750,9 @@ function pzWin(){
   if(clean) hero.pz[id]=Math.min(9,(hero.pz[id]|0)+1);
   else if(c.fails>=5||c.hint>=2) hero.pz[id]=Math.max(0,(hero.pz[id]|0)-1);
   hero.pzn=(hero.pzn|0)+1;
-  gold+=g; lootDirty=true; energy=MAXE; battShown=-1; renderBatt(); addXp(first?20:6); qEvent('pz',1);
+  /* Akku: voll nur ohne Fehler und Tipp, sonst ein Strich weniger je Fehler und Tipp, mindestens einer. */
+  const segs=clean?5:Math.max(1,5-c.fails-c.hint), full=segs>=5||energy>=MAXE;
+  gold+=g; lootDirty=true; energy=Math.max(energy,segs*SEG); battShown=-1; renderBatt(); addXp(first?20:6); qEvent('pz',1);
   if(first){ pzGot[c.m.id]=1; hero.mat.zr=(hero.mat.zr|0)+1; hero.mk.zr=1; }
   saveHero();
   $('pz-body').classList.add('win');
@@ -4747,9 +4760,9 @@ function pzWin(){
   setTimeout(function(){
     if(pzc!==c) return;
     $('pz').hidden=true; pzc=null; confetti(P.x,P.y); jingle();
-    if(first) say('',hero.pzn===1?'Geschafft! Die Maschine läuft wieder und schenkt dir ein Zahnrad. Der Akku ist auch wieder voll. Zahnräder braucht Professor Zahnrad in der Werkstatt.':clean?'Geschafft, ganz ohne Fehler! Noch ein Zahnrad. Das nächste Rätsel dieser Art wird kniffliger.':'Geschafft! Noch ein Zahnrad.');
+    if(first) say('',hero.pzn===1?'Geschafft! Die Maschine läuft wieder und schenkt dir ein Zahnrad. Der Akku ist auch wieder geladen. Zahnräder braucht Professor Zahnrad in der Werkstatt.':clean?'Geschafft, ganz ohne Fehler! Noch ein Zahnrad. Das nächste Rätsel dieser Art wird kniffliger.':'Geschafft! Noch ein Zahnrad.');
     else if(clean) say('',c.m.quiz?'Ohne Fehler! Der Akku ist voll. Das nächste Rätsel dieser Art wird kniffliger.':'Ohne Fehler! Das nächste Rätsel dieser Art wird kniffliger.');
-    else if(c.m.quiz) say('','Geschafft! Der Akku ist wieder voll.');
+    else if(c.m.quiz) say('',full?'Geschafft! Der Akku ist wieder voll.':'Geschafft! Der Akku ist ein Stück geladen. Ohne Fehler und Tipp wird er ganz voll.');
     labBadge(true);
     if(c.m.quiz){ const f=pending; pending=null; if(f) f(); }
   },1500);
@@ -4759,7 +4772,11 @@ $('pz').addEventListener('click',function(e){
   if(!pzc) return;
   if(e.target.closest('#pz-say')){ speak(pzc.T.say(pzc.st)); return; }
   if(pzc.busy) return;
-  if(e.target.closest('#pz-hint')){ pzc.hint++; pzc.T.hint(pzc.st); return; }
+  if(e.target.closest('#pz-hint')){
+    if(pzc.hint>=pzHintMax(pzc)){ speak('Den Tipp hast du schon bekommen. Du schaffst den Rest!'); return; }
+    if(pzc.fails<1){ speak('Probier es erst einmal selbst. Wenn es nicht klappt, gibt es einen Tipp.'); return; }
+    pzc.hint++; pzHintUi(); pzc.T.hint(pzc.st); return;
+  }
   const b=e.target.closest('[data-a]');
   if(b&&!b.disabled) pzc.T.act(pzc.st,b.dataset.a,b);
 });
@@ -4795,7 +4812,7 @@ function mkMuster(lv){
     st.hole=lv===6?len-1:ri(4,len-2);
     st.ps=ps; st.pc=pc; st.sh=sh; st.co=co;
   }
-  if(unit){ for(let i=0;i<len;i++) st.seq.push(T[unit[i%unit.length]]); st.hole=mid?ri(2,len-3):len-1; }
+  if(unit){ for(let i=0;i<len;i++) st.seq.push(T[unit[i%unit.length]]); st.hole=mid?ri(2,len-3):len-1; st.u=unit.length; }
   const ans=st.seq[st.hole], nOpt=lv<3?3:4; let opts;
   if(st.k==='cnt'){
     const set=[ans.n];
@@ -4822,11 +4839,16 @@ function drMuster(st){
 function acMuster(st,a,b){
   const t=st.opts[+a];
   if(tkKey(t)===st.ans){ b.classList.add('ok'); const h=$('pz-hole'); h.innerHTML=tkHtml(t); h.style.border='0'; pzWin(); }
-  else{ b.classList.add('no'); b.disabled=true; pzFail(); }
+  else{
+    b.classList.add('no'); pzFail();
+    for(const o of $('pz-ctl').querySelectorAll('[data-a]')){ o.disabled=true; if(tkKey(st.opts[+o.dataset.a])===st.ans) o.classList.add('ok'); }
+    const h=$('pz-hole'), t=st.seq[st.hole]; h.innerHTML=tkHtml(t); h.style.borderColor='#58b548';
+    pzReveal('Schau, das hier gehört in die Lücke. Jetzt kommt eine neue Reihe.');
+  }
 }
 function hiMuster(st){
-  const bs=$('pz-ctl').querySelectorAll('[data-a]');
-  for(const b of bs){ if(!b.disabled&&tkKey(st.opts[+b.dataset.a])!==st.ans){ b.classList.add('no'); b.disabled=true; break; } }
+  /* Zeigt den Teil, der sich wiederholt, statt eine Antwort wegzustreichen. */
+  if(st.u){ const ts=$('pz-body').querySelectorAll('.pzrow>span'); for(let i=0;i<st.u&&i<ts.length;i++) if(i!==st.hole) ts[i].classList.add('flash'); }
   speak(st.k==='cnt'?'Zähle von einer Zahl zur nächsten. Wie viel kommt jedes Mal dazu oder geht weg?':st.k==='two'?'Schau erst nur auf die Form. Dann schau nur auf die Farbe.':'Sprich die Reihe laut mit. Was wiederholt sich immer wieder?');
 }
 function syMuster(st){ return st.k==='cnt'?'Welche Zahl fehlt? Schau, wie die Zahlen größer oder kleiner werden.':st.k==='two'?'Welches Bild fehlt? Achte auf die Form und auf die Farbe.':'Welches Bild fehlt in der Reihe? Schau, was sich wiederholt.'; }
@@ -4963,7 +4985,7 @@ function rbRun(st){
   pzDraw(); pzLater(260,next);
 }
 function hiRobo(st){
-  const n=Math.max(1,Math.min(st.sol.length-1,pzc.hint));
+  const n=Math.max(1,Math.min(Math.floor(st.sol.length/2),pzc.hint));
   st.prog=st.sol.slice(0,n).map(function(q){ return {d:q.d,n:q.n}; }); st.bad=-1; st.pos=st.s; st.got=0;
   pzDraw(); speak('Ich zeige dir den Anfang. Fahr den Weg mit dem Finger nach. Wie geht es weiter?');
 }
@@ -5013,7 +5035,10 @@ function poWaage(st){
 function acWaage(st,a,b){
   const k=a.charAt(0), i=+a.slice(1);
   if(k==='o'){
-    if(i===st.box){ b.classList.add('ok'); pzWin(); } else{ b.classList.add('no'); b.disabled=true; pzFail(); }
+    if(i===st.box){ b.classList.add('ok'); pzWin(); return; }
+    b.classList.add('no'); pzFail();
+    for(const o of $('pz-ctl').querySelectorAll('[data-a^="o"]')){ o.disabled=true; if(o.dataset.a==='o'+st.box) o.classList.add('ok'); }
+    pzReveal('Das Geschenk wiegt '+st.box+'. Jetzt kommt eine neue Waage.');
     return;
   }
   if(k==='p'){
@@ -5033,8 +5058,8 @@ function acWaage(st,a,b){
 function hiWaage(st){
   const d=wgDiff(st);
   if(st.box) speak('Nimm in Gedanken auf beiden Seiten gleich viel weg. Was bleibt dann für das Geschenk übrig?');
-  else if(d>0) speak('Rechts fehlt noch '+d+'.');
-  else speak('Rechts ist es um '+(-d)+' zu schwer. Tippe rechts ein Gewicht an, dann kommt es wieder herunter.');
+  else if(d>0) speak('Zähle erst links alles zusammen, dann rechts. Wie viel fehlt rechts noch?');
+  else speak('Rechts ist es zu schwer. Zähle beide Seiten zusammen. Tippe rechts ein Gewicht an, dann kommt es wieder herunter.');
 }
 function syWaage(st){
   if(st.box) return 'Die Waage steht gerade. Wie schwer ist das Geschenk?'+(st.L.filter(function(v){ return v<0; }).length>1?' Alle Geschenke sind gleich schwer.':'');
@@ -5608,39 +5633,39 @@ function genQ(){
     const n=ri(1,L===0?6:10);
     q.ans=String(n); q.opts=numOpts(n,nOpt,12);
     q.html='<div class="objs">'+new Array(n+1).join('<svg viewBox="0 0 24 24" aria-hidden="true">'+IC.star+'</svg>')+'</div>';
-    q.say='Wie viele Sterne sind das?';
+    q.say='Wie viele Sterne sind das?'; q.sol='Das sind '+n+' Sterne.';
   }else if(type==='add'){
     const max=L===0?6:L===1?10:20, a=ri(1,max-1), b=ri(1,max-a);
     q.ans=String(a+b); q.opts=numOpts(a+b,nOpt,max+2);
     q.html='<div class="eq">'+a+' + '+b+' = '+HOLE+'</div>'+(L<2?'<div class="dots"><span class="da">'+dots(a)+'</span> <span class="db">'+dots(b)+'</span></div>':'');
-    q.say='Wie viel ist '+a+' plus '+b+'?';
+    q.say='Wie viel ist '+a+' plus '+b+'?'; q.sol=a+' plus '+b+' ist '+(a+b)+'.';
   }else if(type==='sub'){
     const max=L===1?10:20, a=ri(2,max), b=ri(1,a-1);
     q.ans=String(a-b); q.opts=numOpts(a-b,nOpt,max);
     q.html='<div class="eq">'+a+' − '+b+' = '+HOLE+'</div>'+(L<2?'<div class="dots"><span class="da">'+dots(a-b)+'</span><span class="dx">'+dots(b)+'</span></div>':'');
-    q.say='Wie viel ist '+a+' minus '+b+'?';
+    q.say='Wie viel ist '+a+' minus '+b+'?'; q.sol=a+' minus '+b+' ist '+(a-b)+'.';
   }else if(type==='seq'){
     const st=L===2?2:1, max=L===0?10:20, a=ri(1,max-2*st), gap=L===0?2:ri(1,2), seq=[a,a+st,a+2*st];
     q.ans=String(seq[gap]); q.opts=numOpts(seq[gap],nOpt,max+3);
     q.html='<div class="eq">'+seq.map(function(v,i){return i===gap?HOLE:String(v);}).join(' &nbsp; ')+'</div>';
-    q.say='Welche Zahl fehlt?';
+    q.say='Welche Zahl fehlt?'; q.sol='Hier fehlt die '+q.ans+'.';
   }else if(type==='anlaut'){
     const wd=WORDS[ri(0,WORDS.length-1)], c=wd.w.charAt(0);
     const pool=shuffle(LETTERS.split('').filter(function(ch){return ch!==c&&wd.no.indexOf(ch)<0;}));
     q.ans=c; q.opts=shuffle([c].concat(pool.slice(0,nOpt-1)));
     q.html=qpic(wd.ic)+'<div class="eq">'+HOLE+wd.w.slice(1)+'</div>';
-    q.say='Womit fängt '+wd.w+' an?';
+    q.say='Womit fängt '+wd.w+' an?'; q.sol=wd.w+' fängt mit '+c+' an.';
   }else if(type==='case'){
     const c=CASES.charAt(ri(0,CASES.length-1)), lc=c.toLowerCase();
     const pool=shuffle('abdefghklmnrtu'.split('').filter(function(ch){return ch!==lc;}));
     q.ans=lc; q.opts=shuffle([lc].concat(pool.slice(0,nOpt-1)));
     q.html='<div class="eq big">'+c+' → '+HOLE+'</div>';
-    q.say='Welcher kleine Buchstabe gehört zum großen '+c+'?';
+    q.say='Welcher kleine Buchstabe gehört zum großen '+c+'?'; q.sol='Zum großen '+c+' gehört das kleine '+lc+'.';
   }else{
     const ws=shuffle(WORDS.slice()).slice(0,3);
     q.ans=ws[0].w; q.word=true; q.opts=shuffle(ws.map(function(x){return x.w;}));
     q.html=qpic(ws[0].ic);
-    q.say='Welches Wort passt zum Bild?';
+    q.say='Welches Wort passt zum Bild?'; q.sol='Hier steht '+q.ans+'.';
   }
   return q;
 }
@@ -5672,7 +5697,14 @@ function answer(b,v){
     const q0=qcur;
     setTimeout(function(){ if($('quiz').hidden||qcur!==q0) return; if(energy>=MAXE) closeQuiz(); else nextQ(); },800);
   }else{
-    b.classList.add('no'); b.disabled=true; qcur.miss=true; streak=0; skill=Math.max(0,skill-1); saveSkill(); tone([170],'sawtooth');
+    /* Falsch: Die Lösung wird kurz gezeigt und vorgelesen, dann kommt eine neue Aufgabe. Durchprobieren der übrigen Knöpfe geht nicht. */
+    qcur.lock=true; qcur.miss=true; streak=0; skill=Math.max(0,skill-1); saveSkill(); tone([170],'sawtooth');
+    b.classList.add('no');
+    for(const o of $('ans').children){ o.disabled=true; if(o.textContent===qcur.ans) o.classList.add('ok'); }
+    const h=$('q').querySelector('.hole'); if(h) h.textContent=qcur.ans;
+    speak(qcur.sol);
+    const q0=qcur;
+    setTimeout(function(){ if($('quiz').hidden||qcur!==q0) return; nextQ(); },2200);
   }
 }
 
