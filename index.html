@@ -152,6 +152,14 @@ body{
 .opt.word{font-size:23px}
 .opt.ok{background:var(--good);color:#fff}
 .opt.no{background:#e9e4d6;color:#a39c8a;box-shadow:none;transform:translateY(4px)}
+#ans.kp{gap:8px}
+.opt.key{height:56px}
+.opt.key svg{width:30px;height:30px;vertical-align:middle}
+.opt.key.go{background:var(--good);color:#fff}
+.opt.key.del{background:#f1ece0}
+.opt.key:disabled{opacity:.55}
+.hole.ok{border-color:var(--good);color:var(--good)}
+.hole.sol{border-style:solid;border-color:#2f6fd6;color:#2f6fd6}
 
 /* Auswahl-Fenster für Fahrzeuge, Werkzeuge und Funde */
 .ov{position:fixed;inset:0;z-index:5;display:grid;place-items:center;padding:16px;background:rgba(29,42,58,.55)}
@@ -461,6 +469,8 @@ button.wt{cursor:pointer}
   .objs{grid-template-columns:repeat(5,30px)}
   .objs svg{width:30px;height:30px}
   .opt{height:54px}
+  .opt.key{height:44px;font-size:26px}
+  #ans.kp{gap:6px}
   .round{width:42px;height:42px}
   .cells.big i{height:30px}
 }
@@ -5585,9 +5595,7 @@ $('yes').addEventListener('click',function(){
 
 /* ---------- Lernen: Der Akku wird mit richtig gelösten Aufgaben geladen und läuft leer, solange ein Fahrzeug oder Werkzeug benutzt wird. ---------- */
 const SEG=75, MAXE=5*SEG;
-let skill=0, qcur=null, pending=null, lastType='', battShown=-1, streak=0, battLow=false, warnS=0;
-try{ skill=parseInt(localStorage.getItem('lavaland-skill')||'0',10)||0; }catch(_){ skill=0; }
-function saveSkill(){ try{ localStorage.setItem('lavaland-skill',String(skill)); }catch(_){} }
+let qcur=null, pending=null, battShown=-1, battLow=false, warnS=0;
 function renderBatt(){
   const k=Math.ceil(energy/SEG*8);
   if(k===battShown) return;
@@ -5652,96 +5660,257 @@ const WORDS=[
 ];
 const LETTERS='AEIOUMLRSTNFBHWKDP', CASES='ABDEFGHLMNRT';
 function qpic(key){ return '<svg class="qpic" viewBox="0 0 24 24" aria-hidden="true">'+(IC[key]||QI[key])+'</svg>'; }
+/* ---------- Lernkern: Jede Aufgabe ist ein eigener Fakt (7+5, Anlaut von Maus) mit einem Fach nach Leitner.
+   Fach 1 kommt in derselben Runde wieder, Fach 2 morgen, dann nach 2, 4 und 8 Tagen. Fach 5 heißt: sitzt.
+   Neue Fakten kommen in Schulbuch-Reihenfolge: bis 5, bis 10, bis 20 ohne und dann mit Zehnerübergang. ---------- */
+const BOXD=[0,0,1,2,4,8], NEWDAY=12, FASTMS=3000;
+function dayNo(t){ const d=t?new Date(t):new Date(); return Math.floor((d.getTime()-d.getTimezoneOffset()*6e4)/864e5); }
+const STAGES=(function(){
+  const m=[[],[],[],[]], l=[[],[],[]];
+  for(let n=1;n<=10;n++) m[n<=6?0:1].push('count:'+n);
+  for(let a=1;a<=9;a++) for(let b=1;b<=9;b++){ const s=a+b; if(s<=5) m[0].push(a+'+'+b); else if(s<=10) m[1].push(a+'+'+b); else m[3].push(a+'+'+b); }
+  for(let a=2;a<=10;a++) for(let b=1;b<a;b++) m[a<=5?0:1].push(a+'-'+b);
+  for(let a=10;a<=19;a++) for(let b=1;b<=9;b++){ if(a%10+b<=9) m[2].push(a+'+'+b); }
+  for(let a=11;a<=19;a++) for(let b=1;b<=9;b++){ if(b<=a%10) m[2].push(a+'-'+b); else if(a-b>=2&&a<=18) m[3].push(a+'-'+b); }
+  WORDS.forEach(function(wd){ l[0].push('anlaut:'+wd.w); l[2].push('word:'+wd.w); });
+  CASES.split('').forEach(function(c){ l[1].push('case:'+c); });
+  return {m:m,l:l};
+})();
+let FS=null;
+function loadFacts(){
+  try{ FS=JSON.parse(localStorage.getItem('lavaland-facts')||'null'); }catch(_){ FS=null; }
+  if(!FS||FS.v!==1||!FS.f){
+    /* Wer schon mit dem alten Zähler weit war, startet eine Stufe höher. Den Rest erledigt der Schnellaufstieg. */
+    let sk=0; try{ sk=parseInt(localStorage.getItem('lavaland-skill')||'0',10)||0; }catch(_){}
+    const t=sk>=22?2:sk>=8?1:0;
+    FS={v:1,u:{m:t,l:t},f:{},nd:0,nn:{m:0,l:0},ft:{m:0,l:0}};
+  }
+}
+function saveFacts(){ if(frozen) return; try{ localStorage.setItem('lavaland-facts',JSON.stringify(FS)); }catch(_){} }
+loadFacts();
+function fDom(k){ return /^(anlaut|case|word):/.test(k)?'l':'m'; }
+function fStage(k){ const d=fDom(k), S=STAGES[d]; for(let i=0;i<S.length;i++) if(S[i].indexOf(k)>=0) return i; return 0; }
+/* Eine Stufe öffnet die nächste, wenn 60 % ihrer Fakten mindestens in Fach 2 sind, oder sofort, wenn die letzten vier neuen Fakten alle auf Anhieb und schnell saßen (Einstufung). */
+function fUnlock(d){
+  const S=STAGES[d], top=FS.u[d];
+  if(top>=S.length-1) return;
+  const st=S[top]; let n=0;
+  st.forEach(function(k){ const r=FS.f[k]; if(r&&r[0]>=2) n++; });
+  if(n>=st.length*.6||FS.ft[d]>=4){ FS.u[d]=top+1; FS.ft[d]=0; }
+}
+const retry=[];
+let lastF='', lastDom='';
+function pickFact(){
+  const today=dayNo();
+  if(FS.nd!==today){ FS.nd=today; FS.nn={m:0,l:0}; }
+  for(let i=0;i<retry.length;i++) retry[i].n--;
+  const ri0=retry.findIndex(function(r){ return r.n<=0&&r.k!==lastF; });
+  if(ri0>=0) return retry.splice(ri0,1)[0].k;
+  const doms=Math.random()<.6?['m','l']:['l','m'];
+  for(let p=0;p<2;p++){
+    for(const d of doms){
+      const due=[], fresh=[];
+      for(let s=0;s<=FS.u[d];s++) STAGES[d][s].forEach(function(k){
+        if(k===lastF||retry.some(function(r){ return r.k===k; })) return;
+        const r=FS.f[k];
+        if(!r) fresh.push([k,s]);
+        else if(r[1]<=today) due.push(k);
+      });
+      /* Fällige zuerst, die schwächsten vorn. Neue nur in Maßen, damit nicht zu viel Ungeübtes auf einmal kommt. */
+      if(due.length&&(p||Math.random()<.75||!fresh.length)){
+        due.sort(function(a,b){ return FS.f[a][0]-FS.f[b][0]||FS.f[a][1]-FS.f[b][1]; });
+        return due[ri(0,Math.min(2,due.length-1))];
+      }
+      let open=0; for(const k in FS.f) if(fDom(k)===d&&FS.f[k][0]===1) open++;
+      if(fresh.length&&FS.nn[d]<NEWDAY&&open<4){
+        /* Meist aus der höchsten offenen Stufe, damit nach der Einstufung nicht das längst Gekonnte drankommt. */
+        const top=fresh.filter(function(x){ return x[1]===FS.u[d]; }), pool=top.length&&Math.random()<.7?top:fresh;
+        return pool[ri(0,pool.length-1)][0];
+      }
+    }
+  }
+  /* Nichts fällig und nichts Neues: früh wiederholen, ohne dass das Fach steigt. */
+  const any=Object.keys(FS.f).filter(function(k){ return k!==lastF; });
+  if(any.length){ any.sort(function(a,b){ return FS.f[a][1]-FS.f[b][1]; }); return any[ri(0,Math.min(4,any.length-1))]; }
+  return STAGES.m[0][ri(0,STAGES.m[0].length-1)];
+}
+/* how: 'ok' beim ersten Versuch, 'ok2' beim zweiten Versuch am Ziffernblock, 'miss' falsch. */
+function factDone(q,how,fast){
+  const k=q.f, d=fDom(k), today=dayNo();
+  let r=FS.f[k];
+  const isNew=!r;
+  if(isNew){ r=FS.f[k]=[0,today]; FS.nn[d]++; }
+  const wasDue=r[1]<=today;
+  if(how==='miss'){
+    r[0]=1; r[1]=today; FS.ft[d]=0;
+    retry.push({k:k,n:ri(2,3)});
+  }else if(how==='ok2'){
+    r[0]=Math.max(1,r[0]); r[1]=today+1; FS.ft[d]=0;
+  }else if(isNew&&fast){
+    r[0]=3; r[1]=today+BOXD[3];
+    if(fStage(k)===FS.u[d]) FS.ft[d]++;
+  }else if(isNew||wasDue){
+    r[0]=Math.min(5,Math.max(1,r[0])+1); r[1]=today+BOXD[r[0]];
+    if(isNew) FS.ft[d]=0;
+  }
+  fUnlock(d); saveFacts();
+}
+function lettersFor(wd,n){
+  const c=wd.w.charAt(0);
+  return shuffle([c].concat(shuffle(LETTERS.split('').filter(function(ch){ return ch!==c&&wd.no.indexOf(ch)<0; })).slice(0,n-1)));
+}
 const HOLE='<span class="hole">?</span>';
-function genQ(){
-  const L=skill<8?0:skill<22?1:2;
-  const types=L===0?['count','add','anlaut','seq']:L===1?['add','sub','anlaut','case','seq','count']:['add','sub','case','word','seq','anlaut'];
-  let type=types[ri(0,types.length-1)];
-  if(type===lastType) type=types[(types.indexOf(type)+1)%types.length];
-  lastType=type;
-  const nOpt=L===0?3:4, q={L:L,type:type,ans:'',opts:[],html:'',say:'',word:false,miss:false,lock:false};
-  if(type==='count'){
-    const n=ri(1,L===0?6:10);
-    q.ans=String(n); q.opts=numOpts(n,nOpt,12);
-    q.html='<div class="objs">'+new Array(n+1).join('<svg viewBox="0 0 24 24" aria-hidden="true">'+IC.star+'</svg>')+'</div>';
-    q.say='Wie viele Sterne sind das?'; q.sol='Das sind '+n+' Sterne.'; q.f='count:'+n;
-  }else if(type==='add'){
-    const max=L===0?6:L===1?10:20, a=ri(1,max-1), b=ri(1,max-a);
-    q.ans=String(a+b); q.opts=numOpts(a+b,nOpt,max+2);
-    q.html='<div class="eq">'+a+' + '+b+' = '+HOLE+'</div>'+(L<2?'<div class="dots"><span class="da">'+dots(a)+'</span> <span class="db">'+dots(b)+'</span></div>':'');
-    q.say='Wie viel ist '+a+' plus '+b+'?'; q.sol=a+' plus '+b+' ist '+(a+b)+'.'; q.f=a+'+'+b;
-  }else if(type==='sub'){
-    const max=L===1?10:20, a=ri(2,max), b=ri(1,a-1);
-    q.ans=String(a-b); q.opts=numOpts(a-b,nOpt,max);
-    q.html='<div class="eq">'+a+' − '+b+' = '+HOLE+'</div>'+(L<2?'<div class="dots"><span class="da">'+dots(a-b)+'</span><span class="dx">'+dots(b)+'</span></div>':'');
-    q.say='Wie viel ist '+a+' minus '+b+'?'; q.sol=a+' minus '+b+' ist '+(a-b)+'.'; q.f=a+'-'+b;
-  }else if(type==='seq'){
-    const st=L===2?2:1, max=L===0?10:20, a=ri(1,max-2*st), gap=L===0?2:ri(1,2), seq=[a,a+st,a+2*st];
-    q.ans=String(seq[gap]); q.opts=numOpts(seq[gap],nOpt,max+3);
-    q.html='<div class="eq">'+seq.map(function(v,i){return i===gap?HOLE:String(v);}).join(' &nbsp; ')+'</div>';
-    q.say='Welche Zahl fehlt?'; q.sol='Hier fehlt die '+q.ans+'.'; q.f='seq:'+seq.map(function(v,i){return i===gap?'_':v;}).join(',');
-  }else if(type==='anlaut'){
-    const wd=WORDS[ri(0,WORDS.length-1)], c=wd.w.charAt(0);
-    const pool=shuffle(LETTERS.split('').filter(function(ch){return ch!==c&&wd.no.indexOf(ch)<0;}));
-    q.ans=c; q.opts=shuffle([c].concat(pool.slice(0,nOpt-1)));
+/* Zehnerübergang wird in zwei Schritten erklärt: erst bis zur 10, dann der Rest. */
+function solAdd(a,b){
+  const s=a+b;
+  if(a<10&&s>10){ const t=10-a; return a+' plus '+t+' ist 10. Dann noch '+(b-t)+' dazu, das ist '+s+'.'; }
+  return a+' plus '+b+' ist '+s+'.';
+}
+function solSub(a,b){
+  const s=a-b;
+  if(a>10&&s<10&&b>a%10){ const t=a%10; return a+' minus '+t+' ist 10. Dann noch '+(b-t)+' weg, das ist '+s+'.'; }
+  return a+' minus '+b+' ist '+s+'.';
+}
+function mkQ(k){
+  const st=fStage(k), q={L:st,f:k,ans:'',opts:[],html:'',say:'',word:false,pad:false,inp:'',tries:0,miss:false,lock:false};
+  let m;
+  if((m=/^count:(\d+)$/.exec(k))){
+    const n=+m[1]; q.type='count'; q.pad=true; q.ans=String(n);
+    q.html='<div class="objs">'+new Array(n+1).join('<svg viewBox="0 0 24 24" aria-hidden="true">'+IC.star+'</svg>')+'</div><div class="eq">'+HOLE+'</div>';
+    q.say='Wie viele Sterne sind das?'; q.sol='Das sind '+n+' Sterne.';
+  }else if((m=/^(\d+)([+-])(\d+)$/.exec(k))){
+    const a=+m[1], b=+m[3], add=m[2]==='+', r=add?a+b:a-b;
+    q.type=add?'add':'sub'; q.pad=true; q.ans=String(r);
+    q.dots=add?'<div class="dots"><span class="da">'+dots(a)+'</span> <span class="db">'+dots(b)+'</span></div>':'<div class="dots"><span class="da">'+dots(r)+'</span><span class="dx">'+dots(b)+'</span></div>';
+    q.html='<div class="eq">'+a+(add?' + ':' − ')+b+' = '+HOLE+'</div>'+(st<2?q.dots:'');
+    q.say='Wie viel ist '+a+(add?' plus ':' minus ')+b+'?'; q.sol=add?solAdd(a,b):solSub(a,b);
+  }else if((m=/^anlaut:(.+)$/.exec(k))){
+    const wd=WORDS.find(function(w){ return w.w===m[1]; })||WORDS[0], c=wd.w.charAt(0);
+    q.type='anlaut'; q.ans=c; q.opts=lettersFor(wd,6);
     q.html=qpic(wd.ic)+'<div class="eq">'+HOLE+wd.w.slice(1)+'</div>';
-    q.say='Womit fängt '+wd.w+' an?'; q.sol=wd.w+' fängt mit '+c+' an.'; q.f='anlaut:'+wd.w;
-  }else if(type==='case'){
-    const c=CASES.charAt(ri(0,CASES.length-1)), lc=c.toLowerCase();
-    const pool=shuffle('abdefghklmnrtu'.split('').filter(function(ch){return ch!==lc;}));
-    q.ans=lc; q.opts=shuffle([lc].concat(pool.slice(0,nOpt-1)));
+    q.say='Womit fängt '+wd.w+' an?'; q.sol=wd.w+' fängt mit '+c+' an.';
+  }else if((m=/^case:(.)$/.exec(k))){
+    const c=m[1], lc=c.toLowerCase();
+    q.type='case'; q.ans=lc; q.opts=shuffle([lc].concat(shuffle('abdefghklmnrtu'.split('').filter(function(ch){ return ch!==lc; })).slice(0,5)));
     q.html='<div class="eq big">'+c+' → '+HOLE+'</div>';
-    q.say='Welcher kleine Buchstabe gehört zum großen '+c+'?'; q.sol='Zum großen '+c+' gehört das kleine '+lc+'.'; q.f='case:'+c;
+    q.say='Welcher kleine Buchstabe gehört zum großen '+c+'?'; q.sol='Zum großen '+c+' gehört das kleine '+lc+'.';
   }else{
-    const ws=shuffle(WORDS.slice()).slice(0,3);
-    q.ans=ws[0].w; q.word=true; q.opts=shuffle(ws.map(function(x){return x.w;}));
-    q.html=qpic(ws[0].ic);
-    q.say='Welches Wort passt zum Bild?'; q.sol='Hier steht '+q.ans+'.'; q.f='word:'+ws[0].w;
+    const w=k.slice(5), wd=WORDS.find(function(x){ return x.w===w; })||WORDS[0];
+    q.type='word'; q.word=true; q.ans=wd.w;
+    q.opts=shuffle([wd.w].concat(shuffle(WORDS.filter(function(x){ return x!==wd; })).slice(0,3).map(function(x){ return x.w; })));
+    q.html=qpic(wd.ic);
+    q.say='Welches Wort passt zum Bild?'; q.sol='Hier steht '+q.ans+'.';
   }
   return q;
 }
+/* Zahlenfolgen bleiben als Abwechslung dabei, ohne Fach. */
+function mkSeq(){
+  const big=FS.u.m>=2, st=big?ri(1,2):1, max=big?20:10, a=ri(1,max-2*st), gap=ri(1,2), seq=[a,a+st,a+2*st];
+  return {L:FS.u.m,type:'seq',pad:true,inp:'',tries:0,ans:String(seq[gap]),opts:[],word:false,miss:false,lock:false,free:true,
+    html:'<div class="eq">'+seq.map(function(v,i){ return i===gap?HOLE:String(v); }).join(' &nbsp; ')+'</div>',
+    say:'Welche Zahl fehlt?',sol:'Hier fehlt die '+seq[gap]+'.',f:'seq:'+seq.map(function(v,i){ return i===gap?'_':v; }).join(',')};
+}
+function genQ(){
+  if(Math.random()<.1&&lastF.indexOf('seq:')!==0){ const q=mkSeq(); lastF=q.f; lastDom='m'; return q; }
+  const k=pickFact(), q=mkQ(k), r=FS.f[k];
+  q.box=r?r[0]:0; lastF=k; lastDom=fDom(k);
+  return q;
+}
+const PADK=['1','2','3','4','5','6','7','8','9','del','0','ok'];
 function nextQ(){
   qcur=genQ();
-  $('q').innerHTML=qcur.html;
-  const ans=$('ans'); ans.innerHTML='';
-  ans.style.gridTemplateColumns='repeat('+(qcur.opts.length===3&&!qcur.word?3:2)+',minmax(0,1fr))';
-  qcur.opts.forEach(function(v){
-    const b=document.createElement('button');
-    b.className='opt'+(qcur.word?' word':''); b.textContent=v;
-    b.addEventListener('click',function(){ answer(b,v); });
-    ans.appendChild(b);
-  });
-  battShown=-1; renderBatt(); LOG.qStart(qcur,speak(qcur.say));
+  const q=qcur;
+  $('q').innerHTML=q.html;
+  const ans=$('ans'); ans.innerHTML=''; ans.classList.toggle('kp',q.pad);
+  if(q.pad){
+    ans.style.gridTemplateColumns='repeat(3,minmax(0,1fr))';
+    PADK.forEach(function(k){
+      const b=document.createElement('button');
+      b.className='opt key'+(k==='ok'?' go':'')+(k==='del'?' del':'');
+      b.dataset.k=k;
+      if(k==='ok'){ b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5" stroke="currentColor" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>'; b.setAttribute('aria-label','Fertig'); }
+      else if(k==='del'){ b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h11v14H9l-6-7z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M12 9l5 6M17 9l-5 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>'; b.setAttribute('aria-label','Löschen'); }
+      else b.textContent=k;
+      b.addEventListener('click',function(){ padKey(k); });
+      ans.appendChild(b);
+    });
+  }else{
+    ans.style.gridTemplateColumns='repeat('+(q.word?2:3)+',minmax(0,1fr))';
+    q.opts.forEach(function(v){
+      const b=document.createElement('button');
+      b.className='opt'+(q.word?' word':''); b.textContent=v;
+      b.addEventListener('click',function(){ answer(b,v); });
+      ans.appendChild(b);
+    });
+  }
+  battShown=-1; renderBatt();
+  const u=speak(q.say);
+  LOG.qStart(q,u);
+  /* Für den Schnellaufstieg zählt die Zeit ab Ende der Vorlesung. */
+  q.t0=performance.now(); q.te=q.t0;
+  if(u){ const prev=u.onend; u.onend=function(e){ if(prev) prev(e); q.te=performance.now(); }; }
+}
+function holeShow(t){ const h=$('q').querySelector('.hole'); if(h) h.textContent=t; }
+function padKey(k){
+  const q=qcur;
+  if(!q||q.lock||!q.pad) return;
+  if(k==='ok'){ if(q.inp) padSubmit(); return; }
+  if(k==='del') q.inp=q.inp.slice(0,-1);
+  else{ if(!q.k1) q.k1=performance.now(); if(q.inp==='0') q.inp=k; else if(q.inp.length<2) q.inp+=k; }
+  holeShow(q.inp||'?');
+}
+function padSubmit(){
+  const q=qcur, v=String(+q.inp);
+  if(v===q.ans){ LOG.qTap(v); win(q,q.tries?'ok2':'ok'); return; }
+  if(!q.tries){
+    /* Erster Fehler am Ziffernblock: nochmal, denn oft ist es nur vertippt. */
+    q.tries=1; q.inp=''; LOG.qTap(v,true); tone([300,240]);
+    const h=$('q').querySelector('.hole'); if(h){ h.textContent='?'; h.classList.remove('bump'); void h.offsetWidth; h.classList.add('bump'); }
+    speak('Noch einmal.');
+    return;
+  }
+  LOG.qTap(v); lose(q);
 }
 function answer(b,v){
-  if(!qcur||qcur.lock) return;
+  const q=qcur;
+  if(!q||q.lock) return;
+  if(!q.k1) q.k1=performance.now();
   LOG.qTap(v);
-  if(v===qcur.ans){
-    qcur.lock=true; b.classList.add('ok');
-    const h=$('q').querySelector('.hole'); if(h) h.textContent=v;
-    if(!qcur.miss){
-      energy=Math.min(MAXE,energy+SEG); skill++; tone([660,880]); addXp(8); qEvent('quiz',1);
-      /* Drei richtige in Folge geben Gold extra. */
-      if(++streak%3===0){ gold+=5; lootDirty=true; hudLoot(); banner('3 × <svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5" stroke="#2f8f4a" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg> +5'+COIN,1300); }
-    }
-    else tone([520]);
-    saveSkill(); battShown=-1; renderBatt();
-    const q0=qcur;
-    setTimeout(function(){ if($('quiz').hidden||qcur!==q0) return; if(energy>=MAXE) closeQuiz(); else nextQ(); },800);
-  }else{
-    /* Falsch: Die Lösung wird kurz gezeigt und vorgelesen, dann kommt eine neue Aufgabe. Durchprobieren der übrigen Knöpfe geht nicht. */
-    qcur.lock=true; qcur.miss=true; streak=0; skill=Math.max(0,skill-1); saveSkill(); tone([170],'sawtooth');
-    b.classList.add('no');
-    for(const o of $('ans').children){ o.disabled=true; if(o.textContent===qcur.ans) o.classList.add('ok'); }
-    const h=$('q').querySelector('.hole'); if(h) h.textContent=qcur.ans;
-    speak(qcur.sol);
-    const q0=qcur;
-    setTimeout(function(){ if($('quiz').hidden||qcur!==q0) return; nextQ(); },2200);
+  if(v===q.ans){ b.classList.add('ok'); win(q,'ok'); return; }
+  b.classList.add('no');
+  for(const o of $('ans').children){ o.disabled=true; if(o.textContent===q.ans) o.classList.add('ok'); }
+  lose(q);
+}
+function win(q,how){
+  q.lock=true; holeShow(q.ans);
+  const h=$('q').querySelector('.hole'); if(h) h.classList.add('ok');
+  const fast=how==='ok'&&q.k1&&q.k1-Math.max(q.t0,q.te)<FASTMS;
+  if(!q.free) factDone(q,how,fast);
+  energy=Math.min(MAXE,energy+SEG); tone(how==='ok'?[660,880]:[520,660]); addXp(how==='ok'?8:4); qEvent('quiz',1);
+  battShown=-1; renderBatt();
+  setTimeout(function(){ if($('quiz').hidden||qcur!==q) return; if(energy>=MAXE) closeQuiz(); else nextQ(); },800);
+}
+/* Falsch: Die Lösung wird gezeigt und vorgelesen, beim Rechnen mit Punkten. Keine Strafe, der Fakt kommt bald wieder. */
+function lose(q){
+  q.lock=true; q.miss=true; tone([170],'sawtooth');
+  if(!q.free) factDone(q,'miss',false);
+  holeShow(q.ans);
+  const h=$('q').querySelector('.hole'); if(h) h.classList.add('sol');
+  if(q.pad){
+    if(q.dots&&!$('q').querySelector('.dots')) $('q').insertAdjacentHTML('beforeend',q.dots);
+    for(const o of $('ans').children) o.disabled=true;
   }
+  speak(q.sol);
+  setTimeout(function(){ if($('quiz').hidden||qcur!==q) return; nextQ(); },q.pad?3600:2200);
 }
 
 const keymap={ArrowLeft:'l',ArrowRight:'r',ArrowUp:'u',ArrowDown:'d',a:'l',d:'r',w:'u',s:'d'};
 window.addEventListener('keydown',function(e){
+  if(qcur&&qcur.pad&&!$('quiz').hidden){
+    if(/^[0-9]$/.test(e.key)){ padKey(e.key); e.preventDefault(); return; }
+    if(e.key==='Backspace'){ padKey('del'); e.preventDefault(); return; }
+    if(e.key==='Enter'){ padKey('ok'); e.preventDefault(); return; }
+  }
   if(e.key==='Escape'){ document.querySelectorAll('.ov,#panel').forEach(function(o){ o.hidden=true; }); pzClose(); return; }
   if(paused||uiOpen()||(e.target&&e.target.tagName==='BUTTON'&&e.key==='Enter')) return;
   const k=keymap[e.key];
@@ -6421,12 +6590,12 @@ const LOG=(function(){
     qStart:function(c,u){
       try{
         qEnd('skip');
-        const e={k:'q',t:Date.now(),ty:c.type,f:c.f,L:c.L,n:c.opts.length,ok:c.ans,taps:[],tts:null,p0:performance.now()};
+        const e={k:'q',t:Date.now(),ty:c.type,f:c.f,L:c.L,n:c.pad?21:c.opts.length,bx:c.box,ok:c.ans,taps:[],tts:null,p0:performance.now()};
         q=e;
         if(u){ const p0=e.p0; u.onend=function(){ e.tts=Math.round(performance.now()-p0); }; }
       }catch(_){}
     },
-    qTap:function(v){ try{ if(!q) return; q.taps.push([v,Math.round(performance.now()-q.p0)]); qEnd(v===q.ok?'ok':'miss'); }catch(_){} },
+    qTap:function(v,more){ try{ if(!q) return; q.taps.push([v,Math.round(performance.now()-q.p0)]); if(!more) qEnd(v===q.ok?'ok':'miss'); }catch(_){} },
     qClose:function(){ try{ if(q){ qEnd('quit'); push({k:'x',t:Date.now(),what:'quiz',left:Math.ceil((MAXE-energy)/SEG)}); } }catch(_){} },
     qSwitch:function(){ try{ qEnd('switch'); push({k:'x',t:Date.now(),what:'switch'}); }catch(_){} },
     pStart:function(c){ try{ c.lg={t:Date.now(),p0:performance.now(),fph:null}; }catch(_){} },
@@ -6517,6 +6686,7 @@ function parRender(o){
   h+='<tr><td>Lernaufgaben-Fenster geöffnet</td><td>'+qo+'</td></tr><tr><td>davon vorzeitig geschlossen</td><td>'+xq+'</td></tr>';
   h+='<tr><td>„Lieber ein Rätsel“ gewählt</td><td>'+xs+'</td></tr><tr><td>Rätsel ohne Lösung geschlossen</td><td>'+pq+' von '+ps.length+'</td></tr></table>';
   h+='<h3>Rechnen und Buchstaben</h3>';
+  h+=parFacts();
   if(!qs.length) h+='<p>Noch keine beantworteten Aufgaben.</p>';
   else{
     h+='<p>Denkanteil = Treffer beim ersten Tippen, um Zufall bereinigt. 0 % ist reines Raten, 100 % immer gleich richtig. Unter '+PMIN+' Aufgaben grau.</p>';
@@ -6540,6 +6710,14 @@ function parRender(o){
   h+='</table><p>Fehler und Tipps je gelöstem Rätsel. „0 % ↓“ oben heißt: schlechter als reines Raten. Fehler sind zwischen Maschinen nicht vergleichbar (Spiegel und Rohre zählen einzelne Fehlklicks). Vergleiche eine Maschine mit sich selbst über die Zeit.</p>';
   h+='<h3>Daten</h3><p>Alles liegt nur in diesem Browser. Rohdaten werden nach 90 Tagen gelöscht, die Tageszeiten bleiben.</p><div class="par-act"><button id="par-exp">Protokoll exportieren</button><button id="par-del">'+(parDel?'Wirklich löschen?':'Protokoll löschen')+'</button></div>';
   $('par-body').innerHTML=h;
+}
+/* Lernstand nach Leitner: wie viele Fakten in welchem Fach liegen, getrennt nach Rechnen und Buchstaben. */
+function parFacts(){
+  const c={m:[0,0,0,0,0,0],l:[0,0,0,0,0,0]};
+  for(const k in FS.f) c[fDom(k)][FS.f[k][0]]++;
+  const tot={m:0,l:0}; ['m','l'].forEach(function(d){ STAGES[d].forEach(function(s,i){ if(i<=FS.u[d]) tot[d]+=s.length; }); });
+  const row=function(n,d){ const a=c[d]; return '<tr><td>'+n+'</td><td>'+(tot[d]-a[1]-a[2]-a[3]-a[4]-a[5])+'</td><td>'+a[1]+'</td><td>'+a[2]+'</td><td>'+(a[3]+a[4])+'</td><td>'+a[5]+'</td><td>'+(FS.u[d]+1)+' / '+STAGES[d].length+'</td></tr>'; };
+  return '<table><tr><th>Fakten</th><th>neu</th><th>Fach 1</th><th>Fach 2</th><th>Fach 3–4</th><th>sitzt</th><th>Stufe</th></tr>'+row('Rechnen','m')+row('Buchstaben','l')+'</table><p>Fach 1 übt er gerade, „sitzt“ heißt mehrfach mit Abstand richtig. Neu zählt nur, was in den freigeschalteten Stufen noch nicht drankam.</p>';
 }
 /* Gestapelte Balken für die letzten 14 Tage, Minuten je Tag. */
 function parBars(all){
