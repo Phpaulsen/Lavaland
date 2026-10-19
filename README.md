@@ -18,6 +18,12 @@ Der Spielstand liegt im Browser und gehört zur jeweiligen Adresse (claude.ai-Ar
 
 Die Datei enthält Welt, Held, Funde, Einstellungen und das Spielprotokoll (`lavaland-log`, falls vorhanden).
 
+## Elternansicht
+
+Das Spiel führt ein Protokoll nur auf diesem Gerät (IndexedDB `lavaland-log`): Zeit je Bereich (Lernaufgaben, Rätsel, Sandbox, Sandbox mit leerem Akku, Menüs), jede Lernaufgabe mit Fakt, allen angetippten Antworten und Antwortzeiten, jedes Rätsel mit Stufe, Fehlern, Tipps und Ausgang. Das Protokoll beeinflusst das Spiel nicht.
+
+Öffnen: Zahnrad → im Menüfenster 3 Sekunden auf eine freie Stelle zwischen den Knöpfen drücken → Malaufgabe lösen. Dort gibt es auch Export und Löschen. Rohdaten werden nach 90 Tagen gelöscht, die Tageszeiten bleiben.
+
 ## Lizenz
 
 MIT, siehe [LICENSE](LICENSE).

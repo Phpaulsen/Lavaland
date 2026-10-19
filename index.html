@@ -472,6 +472,27 @@ button.wt{cursor:pointer}
   #say span{transition:none}
   #chip .bar i{transition:none}
 }
+/* Elternansicht: für Erwachsene, mit Text */
+.pgs{max-width:300px;display:flex;flex-direction:column;align-items:center;gap:12px}
+#pg-q{font:700 34px/1.2 var(--font-learn);font-variant-numeric:tabular-nums}
+.pg-keys{display:grid;grid-template-columns:repeat(3,58px);gap:8px}
+.pars{max-width:640px;max-height:calc(100vh - 32px);overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch;user-select:text;-webkit-user-select:text;font:14px/1.45 system-ui,sans-serif}
+.pars h2{margin:0 0 8px;font:700 20px/1.2 var(--font-ui)}
+.pars h3{margin:16px 0 6px;font:700 16px/1.2 var(--font-ui)}
+.pars p{margin:6px 0}
+.pars table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.pars td,.pars th{padding:4px 5px;border-bottom:1px solid #e0d8c4;text-align:right}
+.pars td:first-child,.pars th:first-child{text-align:left}
+.pars th{font-weight:700;font-size:12px;color:#5a6472}
+.pars tr.few td{color:#a39c8a}
+.pars td.warn{background:#ffe6a8;font-weight:700}
+.par-tabs,.par-act{display:flex;gap:8px;flex-wrap:wrap}
+.par-tabs button,.par-act button{height:36px;padding:0 14px;border:2px solid var(--ink);border-radius:18px;background:#fff;color:var(--ink);font:700 14px/1 var(--font-ui);cursor:pointer}
+.par-tabs button.on{background:var(--sun)}
+.par-ch{display:block;width:100%;max-width:520px;margin:6px 0}
+.par-ch text{font:10px system-ui,sans-serif;fill:#5a6472}
+.par-leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px}
+.par-leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
 </style>
 
 <canvas id="c" aria-label="Spielwelt mit Hügeln, Höhlen, Vulkan, Schneeberg, fremden Ländern, tiefen Zonen unter der Erde und dem Weltraum"></canvas>
@@ -594,6 +615,12 @@ button.wt{cursor:pointer}
     <div id="pz-body"></div>
     <div id="pz-ctl"></div>
   </div>
+</div>
+<div id="pgate" class="ov" hidden>
+  <div class="sheet pgs" role="dialog" aria-label="Für Eltern"><button class="xb" aria-label="Schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg></button><div id="pg-q"></div><div class="pg-keys" id="pg-keys"></div></div>
+</div>
+<div id="par" class="ov" hidden>
+  <div class="sheet pars" role="dialog" aria-label="Elternansicht: Spielverhalten"><button class="xb" aria-label="Schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg></button><h2>Spielverhalten</h2><div id="par-body"></div></div>
 </div>
 <div id="fade" hidden></div>
 <div id="say" aria-live="polite"><span id="say-in"></span></div>
@@ -2107,6 +2134,7 @@ function speak(text){
     const u=new SpeechSynthesisUtterance(text);
     u.lang='de-DE'; u.rate=.95; u.pitch=1.1;
     window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+    return u;
   }catch(_){}
 }
 let muted=false, noiseBuf=null, coinT=0, coinN=0, digSfxT=0, flameSfx=0;
@@ -4702,7 +4730,7 @@ function idxs(n){ const a=[]; for(let i=0;i<n;i++) a.push(i); return a; }
 function pzOpen(m){
   const T=PZI[m.t], lv=clamp((hero.pz[m.t]|0)+(m.zb|0),0,9);
   keys.l=keys.r=keys.u=keys.d=keys.a=false; talkLock=0;
-  pzc={m:m,T:T,lv:lv,fails:0,hint:0,won:false,busy:false,st:null};
+  pzc={m:m,T:T,lv:lv,fails:0,hint:0,won:false,busy:false,st:null}; LOG.pStart(pzc);
   $('pz-ic').textContent=T.e;
   let h=''; for(let i=0;i<10;i++) h+='<i'+(i<=lv?' class="on"':'')+'></i>';
   $('pz-lv').innerHTML=h;
@@ -4722,6 +4750,7 @@ function pzDraw(){
 function pzClose(){
   if($('pz').hidden) return;
   const c=pzc;
+  LOG.pQuit(c);
   pzClear(); $('pz').hidden=true; pzc=null;
   try{ if(window.speechSynthesis) window.speechSynthesis.cancel(); }catch(_){}
   /* Wer nach vielen Fehlversuchen aufgibt, bekommt beim nächsten Mal ein leichteres Rätsel dieser Art. */
@@ -4744,7 +4773,7 @@ function pzReveal(text){
 }
 function pzWin(){
   const c=pzc; if(!c||c.won) return;
-  c.won=true; c.busy=true; pzClear();
+  c.won=true; c.busy=true; pzClear(); LOG.pWin(c);
   const id=c.T.id, first=!c.m.quiz&&!pzGot[c.m.id], clean=c.fails<=1&&!c.hint, g=first?8+2*c.lv:3;
   tone([523,659,784,1047]);
   if(clean) hero.pz[id]=Math.min(9,(hero.pz[id]|0)+1);
@@ -4775,7 +4804,7 @@ $('pz').addEventListener('click',function(e){
   if(e.target.closest('#pz-hint')){
     if(pzc.hint>=pzHintMax(pzc)){ speak('Den Tipp hast du schon bekommen. Du schaffst den Rest!'); return; }
     if(pzc.fails<1){ speak('Probier es erst einmal selbst. Wenn es nicht klappt, gibt es einen Tipp.'); return; }
-    pzc.hint++; pzHintUi(); pzc.T.hint(pzc.st); return;
+    LOG.pHint(pzc); pzc.hint++; pzHintUi(); pzc.T.hint(pzc.st); return;
   }
   const b=e.target.closest('[data-a]');
   if(b&&!b.disabled) pzc.T.act(pzc.st,b.dataset.a,b);
@@ -4783,6 +4812,7 @@ $('pz').addEventListener('click',function(e){
 
 /* Am Akku: ein Rätsel statt fünf Lernaufgaben. Die Arten wechseln der Reihe nach, damit keine ausgelassen wird. */
 $('quiz-pz').addEventListener('click',function(){
+  LOG.qSwitch();
   $('quiz').hidden=true; paused=false;
   pzOpen({id:'quiz',t:PZT[(hero.pzn|0)%PZT.length].id,zb:0,quiz:true});
 });
@@ -5573,10 +5603,11 @@ function need(fn){ if(energy>0) fn(); else openQuiz(fn); }
 function openQuiz(then){
   if(then) pending=then;
   paused=true; keys.l=keys.r=keys.u=keys.d=keys.a=false; talkLock=0;
-  $('quiz').hidden=false; nextQ();
+  $('quiz').hidden=false; LOG.qOpen(); nextQ();
   $('quiz-pz').textContent=PZT[(hero.pzn|0)%PZT.length].e; $('quiz-pz').classList.toggle('near',(hero.pzn|0)<3);
 }
 function closeQuiz(){
+  LOG.qClose();
   $('quiz').hidden=true; paused=false;
   try{ if(window.speechSynthesis) window.speechSynthesis.cancel(); }catch(_){}
   const f=pending; pending=null;
@@ -5628,44 +5659,44 @@ function genQ(){
   let type=types[ri(0,types.length-1)];
   if(type===lastType) type=types[(types.indexOf(type)+1)%types.length];
   lastType=type;
-  const nOpt=L===0?3:4, q={type:type,ans:'',opts:[],html:'',say:'',word:false,miss:false,lock:false};
+  const nOpt=L===0?3:4, q={L:L,type:type,ans:'',opts:[],html:'',say:'',word:false,miss:false,lock:false};
   if(type==='count'){
     const n=ri(1,L===0?6:10);
     q.ans=String(n); q.opts=numOpts(n,nOpt,12);
     q.html='<div class="objs">'+new Array(n+1).join('<svg viewBox="0 0 24 24" aria-hidden="true">'+IC.star+'</svg>')+'</div>';
-    q.say='Wie viele Sterne sind das?'; q.sol='Das sind '+n+' Sterne.';
+    q.say='Wie viele Sterne sind das?'; q.sol='Das sind '+n+' Sterne.'; q.f='count:'+n;
   }else if(type==='add'){
     const max=L===0?6:L===1?10:20, a=ri(1,max-1), b=ri(1,max-a);
     q.ans=String(a+b); q.opts=numOpts(a+b,nOpt,max+2);
     q.html='<div class="eq">'+a+' + '+b+' = '+HOLE+'</div>'+(L<2?'<div class="dots"><span class="da">'+dots(a)+'</span> <span class="db">'+dots(b)+'</span></div>':'');
-    q.say='Wie viel ist '+a+' plus '+b+'?'; q.sol=a+' plus '+b+' ist '+(a+b)+'.';
+    q.say='Wie viel ist '+a+' plus '+b+'?'; q.sol=a+' plus '+b+' ist '+(a+b)+'.'; q.f=a+'+'+b;
   }else if(type==='sub'){
     const max=L===1?10:20, a=ri(2,max), b=ri(1,a-1);
     q.ans=String(a-b); q.opts=numOpts(a-b,nOpt,max);
     q.html='<div class="eq">'+a+' − '+b+' = '+HOLE+'</div>'+(L<2?'<div class="dots"><span class="da">'+dots(a-b)+'</span><span class="dx">'+dots(b)+'</span></div>':'');
-    q.say='Wie viel ist '+a+' minus '+b+'?'; q.sol=a+' minus '+b+' ist '+(a-b)+'.';
+    q.say='Wie viel ist '+a+' minus '+b+'?'; q.sol=a+' minus '+b+' ist '+(a-b)+'.'; q.f=a+'-'+b;
   }else if(type==='seq'){
     const st=L===2?2:1, max=L===0?10:20, a=ri(1,max-2*st), gap=L===0?2:ri(1,2), seq=[a,a+st,a+2*st];
     q.ans=String(seq[gap]); q.opts=numOpts(seq[gap],nOpt,max+3);
     q.html='<div class="eq">'+seq.map(function(v,i){return i===gap?HOLE:String(v);}).join(' &nbsp; ')+'</div>';
-    q.say='Welche Zahl fehlt?'; q.sol='Hier fehlt die '+q.ans+'.';
+    q.say='Welche Zahl fehlt?'; q.sol='Hier fehlt die '+q.ans+'.'; q.f='seq:'+seq.map(function(v,i){return i===gap?'_':v;}).join(',');
   }else if(type==='anlaut'){
     const wd=WORDS[ri(0,WORDS.length-1)], c=wd.w.charAt(0);
     const pool=shuffle(LETTERS.split('').filter(function(ch){return ch!==c&&wd.no.indexOf(ch)<0;}));
     q.ans=c; q.opts=shuffle([c].concat(pool.slice(0,nOpt-1)));
     q.html=qpic(wd.ic)+'<div class="eq">'+HOLE+wd.w.slice(1)+'</div>';
-    q.say='Womit fängt '+wd.w+' an?'; q.sol=wd.w+' fängt mit '+c+' an.';
+    q.say='Womit fängt '+wd.w+' an?'; q.sol=wd.w+' fängt mit '+c+' an.'; q.f='anlaut:'+wd.w;
   }else if(type==='case'){
     const c=CASES.charAt(ri(0,CASES.length-1)), lc=c.toLowerCase();
     const pool=shuffle('abdefghklmnrtu'.split('').filter(function(ch){return ch!==lc;}));
     q.ans=lc; q.opts=shuffle([lc].concat(pool.slice(0,nOpt-1)));
     q.html='<div class="eq big">'+c+' → '+HOLE+'</div>';
-    q.say='Welcher kleine Buchstabe gehört zum großen '+c+'?'; q.sol='Zum großen '+c+' gehört das kleine '+lc+'.';
+    q.say='Welcher kleine Buchstabe gehört zum großen '+c+'?'; q.sol='Zum großen '+c+' gehört das kleine '+lc+'.'; q.f='case:'+c;
   }else{
     const ws=shuffle(WORDS.slice()).slice(0,3);
     q.ans=ws[0].w; q.word=true; q.opts=shuffle(ws.map(function(x){return x.w;}));
     q.html=qpic(ws[0].ic);
-    q.say='Welches Wort passt zum Bild?'; q.sol='Hier steht '+q.ans+'.';
+    q.say='Welches Wort passt zum Bild?'; q.sol='Hier steht '+q.ans+'.'; q.f='word:'+ws[0].w;
   }
   return q;
 }
@@ -5680,10 +5711,11 @@ function nextQ(){
     b.addEventListener('click',function(){ answer(b,v); });
     ans.appendChild(b);
   });
-  battShown=-1; renderBatt(); speak(qcur.say);
+  battShown=-1; renderBatt(); LOG.qStart(qcur,speak(qcur.say));
 }
 function answer(b,v){
   if(!qcur||qcur.lock) return;
+  LOG.qTap(v);
   if(v===qcur.ans){
     qcur.lock=true; b.classList.add('ok');
     const h=$('q').querySelector('.hole'); if(h) h.textContent=v;
@@ -6298,9 +6330,257 @@ function resetWorld(seed){
   scanMobile();
 }
 
+/* ---------- Spielprotokoll für Eltern: Was er wann spielt und wie er Aufgaben löst. Liegt nur auf diesem Gerät, in einer eigenen Datenbank, damit ein Fehler hier nie den Spielstand trifft. Das Protokoll schaut nur zu: Nichts davon ändert Belohnung oder Schwierigkeit. ---------- */
+const LOG=(function(){
+  const KEEP=90, IDLE=60, buf=[], acc={};
+  let dbp=null, q=null, flushT=0, lastIn=performance.now(), accDay='';
+  function day(t){ const d=t?new Date(t):new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  /* Fehlt etwas (etwa nach einem Spielstand-Umzug, der nur die Daten mitbringt), wird die Datenbank eine Version höher neu eingerichtet. */
+  function op(ver){
+    return new Promise(function(res,rej){
+      let rq;
+      try{ rq=ver?indexedDB.open('lavaland-log',ver):indexedDB.open('lavaland-log'); }catch(e){ rej(e); return; }
+      rq.onupgradeneeded=function(){
+        const db=rq.result;
+        if(!db.objectStoreNames.contains('ev')) db.createObjectStore('ev',{autoIncrement:true});
+        if(!db.objectStoreNames.contains('day')) db.createObjectStore('day',{keyPath:'d'});
+        const es=rq.transaction.objectStore('ev'); if(!es.indexNames.contains('d')) es.createIndex('d','d');
+      };
+      rq.onsuccess=function(){
+        const db=rq.result;
+        let ok=false; try{ ok=db.objectStoreNames.contains('day')&&db.transaction('ev').objectStore('ev').indexNames.contains('d'); }catch(_){}
+        if(!ok){ const v=db.version+1; db.close(); if(ver) rej(new Error('log db')); else op(v).then(res,rej); return; }
+        db.onversionchange=function(){ db.close(); dbp=null; }; res(db);
+      };
+      rq.onerror=function(){ rej(rq.error); };
+    });
+  }
+  function open(){
+    if(!dbp){ dbp=op(0); dbp.catch(function(){ dbp=null; }); }
+    return dbp;
+  }
+  function push(e){ if(frozen) return; e.d=day(e.t); buf.push(e); }
+  function flush(){
+    if(frozen||(!buf.length&&!accDay)) return;
+    const evs=buf.splice(0), d=accDay, sec=Object.assign({},acc), ss=acc.$s|0;
+    for(const k in acc) delete acc[k]; accDay='';
+    open().then(function(db){
+      const tx=db.transaction(['ev','day'],'readwrite'), es=tx.objectStore('ev');
+      evs.forEach(function(e){ es.add(e); });
+      if(d){
+        const ds=tx.objectStore('day'), g=ds.get(d);
+        g.onsuccess=function(){
+          const r=g.result||{d:d,sec:{},sess:0};
+          for(const k in sec) if(k!=='$s') r.sec[k]=Math.round(((r.sec[k]||0)+sec[k])*10)/10;
+          r.sess=(r.sess|0)+ss; ds.put(r);
+        };
+      }
+    }).catch(function(){});
+  }
+  /* Rohereignisse nach 90 Tagen weg, die Tagesbilanzen bleiben. */
+  function prune(){
+    const cut=day(Date.now()-KEEP*864e5);
+    open().then(function(db){
+      const c=db.transaction('ev','readwrite').objectStore('ev').index('d').openCursor(IDBKeyRange.upperBound(cut,true));
+      c.onsuccess=function(){ const k=c.result; if(k){ k.delete(); k.continue(); } };
+    }).catch(function(){});
+  }
+  function state(){
+    if(!$('par').hidden||!$('pgate').hidden) return '';
+    if((performance.now()-lastIn)/1000>IDLE) return 'idle';
+    if(pzc) return 'pz';
+    if(!$('quiz').hidden) return 'quiz';
+    if(paused||uiOpen()) return 'ui';
+    return energy<=0?'empty':'play';
+  }
+  function qEnd(how){
+    if(!q) return;
+    const e=q; q=null; delete e.p0; e.end=how; e.first=e.taps.length>0&&e.taps[0][0]===e.ok; push(e);
+  }
+  function pEnd(c,how){
+    if(!c||!c.lg) return;
+    const g=c.lg; c.lg=null;
+    push({k:'p',t:g.t,id:c.T.id,lv:c.lv,src:c.m.quiz?'akku':'welt',ms:Math.round(performance.now()-g.p0),fails:c.fails,hint:c.hint,fph:g.fph,end:how});
+  }
+  ['pointerdown','keydown'].forEach(function(n){ document.addEventListener(n,function(){ lastIn=performance.now(); },true); });
+  document.addEventListener('visibilitychange',function(){ if(document.hidden) flush(); });
+  window.addEventListener('pagehide',flush);
+  return {
+    open:open, day:day, flush:flush,
+    start:function(){ try{ prune(); acc.$s=(acc.$s|0)+1; accDay=day(); push({k:'s',t:Date.now()}); flush(); }catch(_){} },
+    tick:function(raw){
+      try{
+        if(document.hidden) return;
+        const s=state(), d=day();
+        if(accDay&&accDay!==d) flush();
+        if(s){ accDay=d; acc[s]=(acc[s]||0)+Math.min(1,raw); }
+        flushT+=raw; if(flushT>30){ flushT=0; flush(); }
+      }catch(_){}
+    },
+    qOpen:function(){ try{ push({k:'qo',t:Date.now()}); }catch(_){} },
+    qStart:function(c,u){
+      try{
+        qEnd('skip');
+        const e={k:'q',t:Date.now(),ty:c.type,f:c.f,L:c.L,n:c.opts.length,ok:c.ans,taps:[],tts:null,p0:performance.now()};
+        q=e;
+        if(u){ const p0=e.p0; u.onend=function(){ e.tts=Math.round(performance.now()-p0); }; }
+      }catch(_){}
+    },
+    qTap:function(v){ try{ if(!q) return; q.taps.push([v,Math.round(performance.now()-q.p0)]); qEnd(v===q.ok?'ok':'miss'); }catch(_){} },
+    qClose:function(){ try{ if(q){ qEnd('quit'); push({k:'x',t:Date.now(),what:'quiz',left:Math.ceil((MAXE-energy)/SEG)}); } }catch(_){} },
+    qSwitch:function(){ try{ qEnd('switch'); push({k:'x',t:Date.now(),what:'switch'}); }catch(_){} },
+    pStart:function(c){ try{ c.lg={t:Date.now(),p0:performance.now(),fph:null}; }catch(_){} },
+    pHint:function(c){ try{ if(c&&c.lg&&c.lg.fph===null) c.lg.fph=c.fails; }catch(_){} },
+    pWin:function(c){ try{ pEnd(c,'won'); }catch(_){} },
+    pQuit:function(c){ try{ if(c&&!c.won) pEnd(c,'quit'); }catch(_){} }
+  };
+})();
+/* ---------- Elternansicht: 3 Sekunden auf eine freie Stelle im Menü drücken, dann eine Malaufgabe. Die Schranke wird nicht vorgelesen, sonst wäre sie nur ein weiteres Rätsel. ---------- */
+const QNAME={count:'Zählen',add:'Plus',sub:'Minus',seq:'Zahlenfolge',anlaut:'Anlaut',case:'Groß/klein',word:'Wort zum Bild'};
+const SNAME={quiz:'Rechnen/Buchstaben',pz:'Rätsel',play:'Sandbox',empty:'Sandbox, Akku leer',ui:'Menüs'};
+const SCOL={quiz:'#2f6fd6',pz:'#7b4fd6',play:'#58b548',empty:'#ff5a1f',ui:'#c4bca6'};
+const PMIN=20;
+let pgA=0, pgB=0, pgIn='', pgMiss=0, parRange=7, parDel=false, holdT=0;
+$('menu').querySelector('.sheet').addEventListener('pointerdown',function(e){
+  if(e.target.closest('button')) return;
+  clearTimeout(holdT); holdT=setTimeout(pgOpen,3000);
+});
+['pointerup','pointercancel','pointerleave'].forEach(function(n){ $('menu').querySelector('.sheet').addEventListener(n,function(){ clearTimeout(holdT); }); });
+function pgOpen(){
+  $('menu').hidden=true; pgA=ri(3,9); pgB=ri(3,9); pgIn=''; pgMiss=0;
+  try{ if(window.speechSynthesis) window.speechSynthesis.cancel(); }catch(_){}
+  pgDraw(); $('pgate').hidden=false;
+}
+function pgDraw(){ $('pg-q').textContent=pgA+' × '+pgB+' = '+(pgIn||'?'); }
+$('pg-keys').innerHTML=[1,2,3,4,5,6,7,8,9,'⌫',0,'OK'].map(function(k){ return '<button class="pzb sm" data-k="'+k+'">'+k+'</button>'; }).join('');
+$('pg-keys').addEventListener('click',function(e){
+  const b=e.target.closest('[data-k]'); if(!b) return;
+  const k=b.dataset.k;
+  if(k==='⌫') pgIn=pgIn.slice(0,-1);
+  else if(k==='OK'){
+    if(+pgIn===pgA*pgB){ $('pgate').hidden=true; parOpen(); return; }
+    pgIn=''; if(++pgMiss>=2){ $('pgate').hidden=true; return; }
+    pgA=ri(3,9); pgB=ri(3,9);
+  }
+  else if(pgIn.length<3) pgIn+=k;
+  pgDraw();
+});
+$('pgate').querySelector('.xb').addEventListener('click',function(){ $('pgate').hidden=true; });
+$('par').querySelector('.xb').addEventListener('click',function(){ $('par').hidden=true; });
+function parOpen(){
+  parDel=false; $('par').hidden=false; $('par-body').innerHTML='<p>Lade …</p>';
+  LOG.flush();
+  setTimeout(parLoad,150);
+}
+function parGet(){
+  return LOG.open().then(function(db){
+    return new Promise(function(res,rej){
+      const tx=db.transaction(['ev','day'],'readonly'), o={ev:[],day:[]};
+      tx.objectStore('ev').getAll().onsuccess=function(e){ o.ev=e.target.result; };
+      tx.objectStore('day').getAll().onsuccess=function(e){ o.day=e.target.result; };
+      tx.oncomplete=function(){ res(o); }; tx.onerror=function(){ rej(tx.error); };
+    });
+  });
+}
+function med(a){ if(!a.length) return null; const s=a.slice().sort(function(x,y){return x-y;}), m=s.length>>1; return s.length%2?s[m]:(s[m-1]+s[m])/2; }
+function pct(x){ return Math.round(x*100)+' %'; }
+function mins(s){ return s<90?Math.round(s)+' s':Math.round(s/60)+' min'; }
+/* Geraten: erster Tap falsch und dabei zu schnell (vor Ende der Vorlesung), Taps dicht hintereinander oder alle Antworten durchprobiert. */
+function guessed(e){
+  if(!e.taps.length||e.first) return false;
+  const t=e.taps, lim=e.tts||1500;
+  if(t[0][1]<lim) return true;
+  for(let i=1;i<t.length;i++) if(t[i][1]-t[i-1][1]<700) return true;
+  return t.length>=e.n;
+}
+function parLoad(){
+  parGet().then(parRender,function(){ $('par-body').innerHTML='<p>Das Protokoll ist auf diesem Gerät nicht lesbar (privater Modus oder blockierter Speicher).</p>'; });
+}
+function parRender(o){
+  const now=Date.now(), from=LOG.day(now-(parRange-1)*864e5);
+  const ev=o.ev.filter(function(e){ return e.d>=from; }), days=o.day.filter(function(r){ return r.d>=from; });
+  const sum={quiz:0,pz:0,play:0,empty:0,ui:0,idle:0}; let sess=0;
+  days.forEach(function(r){ for(const k in sum) sum[k]+=r.sec[k]||0; sess+=r.sess|0; });
+  const act=sum.quiz+sum.pz+sum.play+sum.empty+sum.ui, learn=sum.quiz+sum.pz;
+  let h='<div class="par-tabs">'+[1,7,30].map(function(n){ return '<button data-r="'+n+'"'+(n===parRange?' class="on"':'')+'>'+(n===1?'Heute':n+' Tage')+'</button>'; }).join('')+'</div>';
+  h+='<h3>Zeit</h3>';
+  if(!act) h+='<p>Noch keine Spielzeit in diesem Zeitraum.</p>';
+  else{
+    h+='<p><b>Lernanteil '+pct(learn/act)+'</b> von '+mins(act)+' aktiver Zeit in '+sess+' Sitzung'+(sess===1?'':'en')+'. Dazu '+mins(sum.idle)+' ohne Berührung.</p>';
+    h+=parBars(o.day);
+    h+='<div class="par-leg">'+Object.keys(SNAME).map(function(k){ return '<span><i style="background:'+SCOL[k]+'"></i>'+SNAME[k]+' '+mins(sum[k])+'</span>'; }).join('')+'</div>';
+  }
+  const qs=ev.filter(function(e){ return e.k==='q'&&e.taps.length; });
+  const qo=ev.filter(function(e){ return e.k==='qo'; }).length, xq=ev.filter(function(e){ return e.k==='x'&&e.what==='quiz'; }).length, xs=ev.filter(function(e){ return e.k==='x'&&e.what==='switch'; }).length;
+  const ps=ev.filter(function(e){ return e.k==='p'; }), pq=ps.filter(function(e){ return e.end==='quit'; }).length;
+  h+='<h3>Umgehung</h3><table><tr><td>Sandbox mit leerem Akku</td><td'+(act&&sum.empty>learn&&sum.empty>300?' class="warn"':'')+'>'+mins(sum.empty)+'</td></tr>';
+  h+='<tr><td>Lernaufgaben-Fenster geöffnet</td><td>'+qo+'</td></tr><tr><td>davon vorzeitig geschlossen</td><td>'+xq+'</td></tr>';
+  h+='<tr><td>„Lieber ein Rätsel“ gewählt</td><td>'+xs+'</td></tr><tr><td>Rätsel ohne Lösung geschlossen</td><td>'+pq+' von '+ps.length+'</td></tr></table>';
+  h+='<h3>Rechnen und Buchstaben</h3>';
+  if(!qs.length) h+='<p>Noch keine beantworteten Aufgaben.</p>';
+  else{
+    h+='<p>Denkanteil = Treffer beim ersten Tippen, um Zufall bereinigt. 0 % ist reines Raten, 100 % immer gleich richtig. Unter '+PMIN+' Aufgaben grau.</p>';
+    h+='<table><tr><th>Typ</th><th>Anzahl</th><th>Denkanteil</th><th>Zeit bis 1. Tipp</th><th>geraten</th></tr>';
+    const by={}; qs.forEach(function(e){ (by[e.ty]=by[e.ty]||[]).push(e); });
+    const row=function(name,a){
+      const p=a.filter(function(e){ return e.first; }).length/a.length, c=a.reduce(function(s,e){ return s+1/e.n; },0)/a.length;
+      const k=(p-c)/(1-c), few=a.length<PMIN, m=med(a.map(function(e){ return e.taps[0][1]; })), g=a.filter(guessed).length/a.length;
+      return '<tr'+(few?' class="few"':'')+'><td>'+name+'</td><td>'+a.length+'</td><td'+(!few&&k<.3?' class="warn"':'')+'>'+(k<0?'0 % ↓':pct(k))+'</td><td>'+(m/1000).toFixed(1)+' s</td><td'+(!few&&g>.3?' class="warn"':'')+'>'+pct(g)+'</td></tr>';
+    };
+    Object.keys(QNAME).forEach(function(t){ if(by[t]) h+=row(QNAME[t],by[t]); });
+    h+=row('<b>Alle</b>',qs)+'</table>';
+  }
+  h+='<h3>Rätselmaschinen</h3><table><tr><th>Maschine</th><th>Stufe</th><th>gelöst</th><th>Fehler</th><th>Tipps</th><th>abgebr.</th></tr>';
+  PZT.forEach(function(T){
+    const a=ps.filter(function(e){ return e.id===T.id; }), w=a.filter(function(e){ return e.end==='won'; }), n=w.length||1;
+    const lv0=a.length?a[0].lv+1:null, lv1=(hero.pz[T.id]|0)+1;
+    const sf=w.reduce(function(s,e){ return s+e.fails; },0)/n, sh=w.reduce(function(s,e){ return s+e.hint; },0)/n;
+    h+='<tr'+(a.length<5?' class="few"':'')+'><td>'+T.e+'&nbsp;'+T.n.replace('Kristall-','').replace('Bilder-','')+'</td><td>'+(lv0&&lv0!==lv1?lv0+' → ':'')+lv1+'</td><td>'+w.length+'</td><td>'+(w.length?sf.toFixed(1):'–')+'</td><td'+(w.length>=5&&sh>=1?' class="warn"':'')+'>'+(w.length?sh.toFixed(1):'–')+'</td><td>'+(a.length-w.length)+'</td></tr>';
+  });
+  h+='</table><p>Fehler und Tipps je gelöstem Rätsel. „0 % ↓“ oben heißt: schlechter als reines Raten. Fehler sind zwischen Maschinen nicht vergleichbar (Spiegel und Rohre zählen einzelne Fehlklicks). Vergleiche eine Maschine mit sich selbst über die Zeit.</p>';
+  h+='<h3>Daten</h3><p>Alles liegt nur in diesem Browser. Rohdaten werden nach 90 Tagen gelöscht, die Tageszeiten bleiben.</p><div class="par-act"><button id="par-exp">Protokoll exportieren</button><button id="par-del">'+(parDel?'Wirklich löschen?':'Protokoll löschen')+'</button></div>';
+  $('par-body').innerHTML=h;
+}
+/* Gestapelte Balken für die letzten 14 Tage, Minuten je Tag. */
+function parBars(all){
+  const n=14, W=320, H=110, bw=W/n, by={}, ks=Object.keys(SNAME);
+  all.forEach(function(r){ by[r.d]=r; });
+  const ds=[]; for(let i=n-1;i>=0;i--) ds.push(LOG.day(Date.now()-i*864e5));
+  let mx=1; ds.forEach(function(d){ const r=by[d]; if(r){ let s=0; ks.forEach(function(k){ s+=r.sec[k]||0; }); mx=Math.max(mx,s); } });
+  let g='';
+  ds.forEach(function(d,i){
+    const r=by[d]; let y=H;
+    if(r) ks.forEach(function(k){ const v=(r.sec[k]||0)/mx*(H-14); if(v>0){ y-=v; g+='<rect x="'+(i*bw+2).toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+(bw-4).toFixed(1)+'" height="'+v.toFixed(1)+'" fill="'+SCOL[k]+'"><title>'+d+' '+SNAME[k]+': '+mins(r.sec[k])+'</title></rect>'; } });
+    if(i%2===n%2||i===n-1) g+='<text x="'+(i*bw+bw/2).toFixed(1)+'" y="'+(H+12)+'" text-anchor="middle">'+(+d.slice(8))+'.</text>';
+  });
+  g+='<text x="0" y="9">'+mins(mx)+'</text>';
+  return '<svg class="par-ch" viewBox="0 0 '+W+' '+(H+16)+'" role="img" aria-label="Spielzeit je Tag, letzte 14 Tage">'+g+'</svg>';
+}
+$('par-body').addEventListener('click',function(e){
+  const r=e.target.closest('[data-r]');
+  if(r){ parRange=+r.dataset.r; parLoad(); return; }
+  if(e.target.closest('#par-exp')){
+    parGet().then(function(o){
+      const b=new Blob([JSON.stringify({app:'lavaland-log',at:new Date().toISOString(),ev:o.ev,day:o.day})],{type:'application/json'});
+      const a=document.createElement('a'), u=URL.createObjectURL(b);
+      a.href=u; a.download='lavaland-protokoll-'+LOG.day()+'.json'; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(u); },4000);
+    }).catch(function(){});
+    return;
+  }
+  if(e.target.closest('#par-del')){
+    if(!parDel){ parDel=true; e.target.closest('#par-del').textContent='Wirklich löschen?'; return; }
+    LOG.open().then(function(db){
+      const tx=db.transaction(['ev','day'],'readwrite'); tx.objectStore('ev').clear(); tx.objectStore('day').clear();
+      tx.oncomplete=function(){ parDel=false; parLoad(); };
+    }).catch(function(){});
+  }
+});
+
 let last=0, accum=0, lastIcon='';
 function frame(t){
   const raw=(t-last)/1000||0, dt=Math.min(.034,raw); last=t;
+  LOG.tick(raw);
   /* Solange ein Fenster offen ist, steht das Spiel still und der Akku läuft nicht leer. */
   if(!(paused||uiOpen())){
     accum+=dt; let n=0;
@@ -6319,7 +6599,7 @@ function frame(t){
 function start(){
   resize();
   const go=function(){
-    ready=true; updateStars(); renderAlbum(); syncUI(); syncSound(); battShown=-1; renderBatt();
+    ready=true; LOG.start(); updateStars(); renderAlbum(); syncUI(); syncSound(); battShown=-1; renderBatt();
     stEnter(); syncOwn(); renderStory();
     if(!hero.st.on) setTimeout(function(){ if(!hero.st.on&&!uiOpen()&&!paused){ say('','Psst! Über Nacht ist etwas Seltsames passiert. Tippe auf das Buch!'); pulse('btn-story'); } },2800);
     else if(!hero.big) setTimeout(function(){ if(!uiOpen()&&!paused){ hero.big=true; if(nextLand()){ hero.quest={type:'land',goal:1,p:0}; showQuest(false); } saveHero(); say('','Neu! Hinter dem Schneeberg liegen jetzt viele fremde Länder. Fahr hinten am Berg hinunter und entdecke sie!'); pulse('btn-map'); } },2800);
