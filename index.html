@@ -7930,7 +7930,7 @@ $('par-body').addEventListener('click',function(e){
   }
 });
 
-let last=0, accum=0, lastIcon='';
+let last=0, accum=0, lastIcon='', drawN=0;
 function frame(t){
   const raw=(t-last)/1000||0, dt=Math.min(.034,raw); last=t;
   LOG.tick(raw);
@@ -7945,7 +7945,10 @@ function frame(t){
     if(raw<.2){ perfT+=raw; perfN++; }
     if(perfN>=150){ if(perfT/perfN>.026&&maxDpr>1){ maxDpr=Math.max(1,maxDpr-.5); resize(); } perfT=0; perfN=0; }
   }
-  draw();
+  /* Akku sparen: Hinter einem offenen Fenster steht die Welt still, dann reichen 6 Bilder pro Sekunde. Ohne Berührung reichen 30. */
+  drawN++;
+  const every=(paused||uiOpen())?10:LOG.state()==='idle'?2:1;
+  if(drawN>=every){ drawN=0; draw(); }
   const ic=actIcon(); if(ic!==lastIcon){ actEl.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+AI[ic]+'</svg>'; lastIcon=ic; }
   requestAnimationFrame(frame);
 }
