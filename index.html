@@ -6467,7 +6467,10 @@ function zw(a,b,sub){
 const WORDS=[
   {w:'Auto',ic:'car',no:''},{w:'Flugzeug',ic:'plane',no:''},{w:'Bagger',ic:'bagger',no:''},{w:'Feuer',ic:'fire',no:'TNH'},
   {w:'Stern',ic:'star',no:''},{w:'Haus',ic:'haus',no:'MLR'},{w:'Mond',ic:'mond',no:'F'},{w:'Sonne',ic:'sonne',no:'TWN'},
-  {w:'Baum',ic:'baum',no:'RS'},{w:'Wolke',ic:'wolke',no:''},{w:'Apfel',ic:'apfel',no:''},{w:'Ball',ic:'ball',no:'FHW'},{w:'Fisch',ic:'fisch',no:'TW'}
+  {w:'Baum',ic:'baum',no:'RS'},{w:'Wolke',ic:'wolke',no:''},{w:'Apfel',ic:'apfel',no:''},{w:'Ball',ic:'ball',no:'FHW'},{w:'Fisch',ic:'fisch',no:'TW'},
+  /* Dazu die Bilder aus Silben und Reimen. Reimpaare (Maus/Haus, Tanne/Kanne) schließen sich gegenseitig als Ablenker aus, sonst wäre beides richtig. */
+  {w:'Maus',ic:'maus',no:'HLR'},{w:'Tisch',ic:'tisch',no:'FW'},{w:'Tonne',ic:'tonne',no:'SW'},{w:'Hose',ic:'hose',no:'RDL'},{w:'Rose',ic:'rose',no:'HDL'},
+  {w:'Tanne',ic:'tanne',no:'KWP'},{w:'Kanne',ic:'kanne',no:'TWP'},{w:'Banane',ic:'banane',no:''},{w:'Tomate',ic:'tomate',no:''}
 ];
 /* Silben klatschen: Bild ansehen, Wort hören, mitklatschen. Die Silben stehen farbig darunter, wie im Silbenlesen in der Schule. */
 const SYL=[['Auto','car','Au-to'],['Flugzeug','plane','Flug-zeug'],['Bagger','bagger','Bag-ger'],['Feuer','fire','Feu-er'],['Stern','star','Stern'],['Haus','haus','Haus'],['Mond','mond','Mond'],
