@@ -20,3 +20,5 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Rauchtest
         run: node tests/smoke.mjs
+      - name: Offline-Test
+        run: node tests/offline.mjs

@@ -2,37 +2,10 @@
 // Aufruf: node tests/smoke.mjs   (braucht das npm-Paket playwright und einen Chromium)
 // Optional: CHROMIUM=/pfad/zu/chrome
 import { createRequire } from 'module';
-import http from 'http';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { serve } from './server.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium, devices } = require('playwright');
-const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-const ANCHOR = "document.addEventListener('visibilitychange',function(){ if(document.hidden) saveGame(false); });";
-const TYPES = { '.html': 'text/html', '.json': 'application/json', '.js': 'text/javascript', '.png': 'image/png', '.woff2': 'font/woff2' };
-
-// Kleiner Server, der in die Seite einen Zugang zu den internen Variablen einbaut (nur für den Test).
-function serve() {
-  return new Promise(res => {
-    const srv = http.createServer((q, r) => {
-      let p = decodeURIComponent(q.url.split('?')[0]);
-      if (p === '/') p = '/index.html';
-      const f = path.join(ROOT, path.normalize(p));
-      if (!f.startsWith(ROOT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); r.end(); return; }
-      let b = fs.readFileSync(f);
-      if (p === '/index.html') {
-        const s = b.toString();
-        if (!s.includes(ANCHOR)) throw new Error('Testanker in index.html fehlt');
-        b = Buffer.from(s.replace(ANCHOR, 'window.__ev=function(s){return eval(s);};\n' + ANCHOR));
-      }
-      r.writeHead(200, { 'content-type': TYPES[path.extname(f)] || 'application/octet-stream' });
-      r.end(b);
-    });
-    srv.listen(0, '127.0.0.1', () => res(srv));
-  });
-}
 
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });

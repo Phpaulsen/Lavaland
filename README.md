@@ -48,7 +48,7 @@ In der Elternansicht lässt sich außerdem einstellen:
 
 Alles steckt in `index.html` (Spiel, Grafik, Töne), dazu `sw.js` für den Offline-Betrieb. Kein Build-Schritt: Datei öffnen genügt.
 
-- **Tests**: `tests/smoke.mjs` startet das Spiel in einem Handy-Browser und prüft Start, Laufen, eine Lernaufgabe, Elternansicht, Planetenreise und Neuladen. Lokal: `npm i --no-save playwright && npx playwright install chromium && node tests/smoke.mjs`. Läuft automatisch bei jedem PR.
+- **Tests**: `tests/smoke.mjs` startet das Spiel in einem Handy-Browser und prüft Start, Laufen, eine Lernaufgabe, Elternansicht, Planetenreise und Neuladen. Lokal: `npm i --no-save playwright && npx playwright install chromium && node tests/smoke.mjs`. `tests/offline.mjs` prüft, dass die App nach dem ersten Besuch ohne Netz startet. Beides läuft automatisch bei jedem PR.
 - **Jeder Merge auf `main` geht sofort live** (GitHub Pages). Deshalb nur über PRs mit grünem Test.
 - **Spielstand nie brechen**: Speicherformate nur rückwärtskompatibel ändern. Neue Daten bekommen neue Schlüssel, alte Schlüssel bleiben lesbar. Weltgenerierung neuer Dinge mit eigenem Zufallsstrom, damit bestehende Welten gleich bleiben.
 - **Service Worker**: Bei Änderungen an der Dateiliste in `sw.js` die Versionsnummer `CACHE` hochzählen. Die Seite selbst lädt immer zuerst aus dem Netz.
