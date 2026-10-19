@@ -77,6 +77,8 @@ body{
   color:var(--paper);background:var(--lava);border:3px solid var(--ink);box-shadow:0 4px 0 var(--ink);
 }
 #act svg{width:34px;height:34px}
+#mark{position:absolute;bottom:74px;left:15px;width:54px;height:54px;padding:0;border-radius:50%;font-size:26px;cursor:pointer;background:rgba(40,36,70,.9);border:3px solid var(--ink);box-shadow:0 3px 0 var(--ink)}
+#mark.on{background:#ffe27a}
 #act.down{color:var(--ink)}
 
 #panel{position:fixed;inset:0;z-index:5;display:grid;place-items:center;padding:16px;background:rgba(29,42,58,.55)}
@@ -567,6 +569,7 @@ button.wt{cursor:pointer}
   <button class="key" id="key-r" aria-label="Nach rechts"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4l9 8-9 8z" fill="currentColor"/></svg></button>
 </div>
 <div class="pad right">
+  <button id="mark" aria-label="Leuchtmarke setzen oder aufheben" hidden>🔆</button>
   <button id="act" aria-label="Aktion"></button>
   <div class="stack">
     <button class="key" id="key-u" aria-label="Nach oben"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16l8-9 8 9z" fill="currentColor"/></svg></button>
@@ -4520,6 +4523,7 @@ function renderFog(){
   const mark=function(x,y,e){ const tx=Math.floor(x/CELL/FGT), ty=fRow(y); if(tx<c0||tx>c1||!fogHas(a,tx,ty)) return; g.fillText(e,(tx-c0+.5)*S,ty*S+S/2-4); };
   for(const m of MACH) if(!pzGot[m.id]&&!m.gone&&m.y===m.y) mark(m.x,m.y-20,'⚙️');
   for(const v of VAULTS) if(doorShut(v)) mark(v.x,v.fy-20,'🚪');
+  for(const m of marks()) mark(m[0],m[1]-14,'🔆');
   if(!realm) mark(WSX,ground(WSX)-30,'🏠'); else mark(LANDX,ground(LANDX)-30,'🚀');
   const px=(P.x/CELL/FGT-c0)*S, py=clamp((P.y-TOP)/CELL/FGT,0,FH)*S;
   g.fillStyle='#ff3b3b'; g.strokeStyle='#fff'; g.lineWidth=2; g.beginPath(); g.arc(px,py,5,0,TAU); g.fill(); g.stroke();
@@ -5171,6 +5175,41 @@ function drawCry(d){
   }
   ctx.restore();
 }
+/* ---------- Leuchtmarken: Unter der Erde kann man bis zu acht Lichter setzen, um sich Stellen zu merken. Sie leuchten im Dunkeln und stehen auf der Karte. ---------- */
+const MKMAX=8, MKS={};
+function mkKey(){ return 'lavaland-marks'+(realm?'-'+realm:''); }
+function marks(){
+  const k=mkKey(); if(MKS[k]) return MKS[k];
+  let a=[]; try{ a=JSON.parse(localStorage.getItem(k)||'[]'); }catch(_){}
+  if(!Array.isArray(a)) a=[];
+  MKS[k]=a.filter(function(m){ return Array.isArray(m)&&isFinite(m[0])&&isFinite(m[1]); }).slice(0,MKMAX);
+  return MKS[k];
+}
+function mkSave(){ try{ localStorage.setItem(mkKey(),JSON.stringify(marks())); }catch(_){} }
+function mkNear(){ const a=marks(); for(let i=0;i<a.length;i++) if(Math.abs(a[i][0]-P.x)<40&&Math.abs(a[i][1]-P.y)<50) return i; return -1; }
+function mkCan(){ return P.mode==='walk'&&P.on&&P.y>ground(P.x)+60; }
+let mkShown=null;
+function mkTick(){
+  const c=mkCan(), n=c?mkNear():-1, st=c?(n>=0?'on':'off'):'';
+  if(st===mkShown) return; mkShown=st;
+  const b=$('mark'); b.hidden=!c; b.classList.toggle('on',n>=0);
+}
+function mkTap(){
+  if(!mkCan()) return;
+  const a=marks(), i=mkNear();
+  if(i>=0){ a.splice(i,1); mkSave(); sfx('tick'); speak('Leuchtmarke aufgehoben. Du hast noch '+(MKMAX-a.length)+'.'); }
+  else if(a.length>=MKMAX){ tone([170],'sawtooth'); speak('Alle acht Leuchtmarken sind schon gesetzt. Geh zu einer hin und heb sie auf, dann kannst du sie woanders hinstellen.'); }
+  else{ a.push([Math.round(P.x),Math.round(P.y)]); mkSave(); sfx('pop'); spawn(5,P.x,P.y-10,0,-80,.6,2); if(a.length===1) speak('Eine Leuchtmarke! Sie leuchtet im Dunkeln und steht auf der Karte. Du hast acht davon.'); }
+  mkShown=null;
+}
+$('mark').addEventListener('click',function(e){ e.preventDefault(); mkTap(); });
+function drawMark(x,y){
+  const t=performance.now()/600, k=.75+.25*Math.sin(t+x);
+  ctx.fillStyle='rgba(255,226,122,'+(.25*k).toFixed(3)+')'; circle(x,y-14,16);
+  ctx.fillStyle=INK; ctx.fillRect(x-2,y-10,4,10);
+  ctx.fillStyle='#ffe27a'; ctx.beginPath(); ctx.moveTo(x,y-24); ctx.lineTo(x+7,y-14); ctx.lineTo(x,y-6); ctx.lineTo(x-7,y-14); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.stroke();
+}
 function drawDeep(x0,x1,y0,y1){
   const gy=ground(WSX);
   if(WSX>x0-80&&WSX<x1+80&&gy>y0-10&&gy<y1+100) drawLab();
@@ -5179,6 +5218,7 @@ function drawDeep(x0,x1,y0,y1){
   for(const m of MACH) if(m.y===m.y&&m.x>x0-30&&m.x<x1+30&&m.y>y0-10&&m.y<y1+90) drawMach(m);
   for(const v of VAULTS) if(v.x-v.rx>x0-40&&v.x-v.rx<x1+40&&v.fy>y0-10&&v.fy<y1+70&&doorShut(v)) drawDoor(v);
   for(const m of MATS) if(!matGot[m.id]&&m.x>x0-20&&m.x<x1+20&&m.y>y0-20&&m.y<y1+20) drawMat(m);
+  for(const m of marks()) if(m[0]>x0-30&&m[0]<x1+30&&m[1]>y0-10&&m[1]<y1+40) drawMark(m[0],m[1]);
 }
 /* Unter der Erde wird es dunkel. Die Lampe und alles, was leuchtet, machen helle Flecken. Ganz schwarz wird es nie. */
 function darkAt(y){
@@ -5207,6 +5247,7 @@ function drawDark(){
   for(const m of MATS) if(!matGot[m.id]&&Math.abs(m.x-cam.x)<vw&&Math.abs(m.y-cam.y)<vh) hole(m.x,m.y,46,.75);
   for(const m of MACH) if(m.y===m.y&&Math.abs(m.x-cam.x)<vw&&Math.abs(m.y-cam.y)<vh) hole(m.x,m.y-30,90,.9);
   for(const v of VAULTS) if(Math.abs(v.x-cam.x)<vw&&Math.abs(v.y-cam.y)<vh) hole(v.x-v.rx-8,v.fy-28,70,.85);
+  for(const m of marks()) if(Math.abs(m[0]-cam.x)<vw&&Math.abs(m[1]-cam.y)<vh) hole(m[0],m[1]-14,150,.9);
   for(const p of PADS) if(p.y>900&&Math.abs(p.x-cam.x)<vw&&Math.abs(p.y-cam.y)<vh) hole(p.x,p.y,80,.8);
   for(const d of ZDEC) if(d.k==='cry'&&Math.abs(d.x-cam.x)<vw&&Math.abs(d.y-cam.y)<vh) hole(d.x,d.y-20,100,.8);
   if(Math.abs(LIFTX-cam.x)<vw) for(let k=1;k<ZN.length;k++) if(Math.abs(ZN[k].y-cam.y)<vh) hole(LIFTX,ZN[k].y-30,150,.95);
@@ -7161,7 +7202,7 @@ function resetWorld(seed){
   SEED=seed||newSeed();
   /* Eine neue Erde: Mond und Planeten werden dann auch neu. */
   setRealm('');
-  try{ localStorage.removeItem('lavaland-realm'); for(const k in FOG) delete FOG[k]; Object.keys(localStorage).forEach(function(k){ if(k.indexOf('lavaland-fog')===0) localStorage.removeItem(k); }); }catch(_){}
+  try{ localStorage.removeItem('lavaland-realm'); for(const k in FOG) delete FOG[k]; for(const k in MKS) delete MKS[k]; Object.keys(localStorage).forEach(function(k){ if(k.indexOf('lavaland-fog')===0||k.indexOf('lavaland-marks')===0) localStorage.removeItem(k); }); }catch(_){}
   idbDo('readwrite',function(st){ for(const id in RLM) st.delete(realmKey(id)); return st.count(); }).catch(function(){});
   seen={}; eggGot={}; lootGot={}; orbGot={}; matGot={}; pzGot={};
   shapeWorld();
@@ -7552,7 +7593,7 @@ function frame(t){
     accum+=dt; let n=0;
     while(accum>=1/30&&n<2){ paintStep(); step(); accum-=1/30; n++; }
     if(accum>.1) accum=0;
-    update(dt); worldTick(dt); deepTick(dt); winterTick(dt); taskTick(dt); findsTick(dt); questTick(dt); autosave(dt); drain(dt); fogTick(dt);
+    update(dt); worldTick(dt); deepTick(dt); winterTick(dt); taskTick(dt); findsTick(dt); questTick(dt); autosave(dt); drain(dt); fogTick(dt); mkTick();
     /* Läuft es auf diesem Gerät zu langsam, sinkt die Auflösung in Stufen. */
     if(raw<.2){ perfT+=raw; perfN++; }
     if(perfN>=150){ if(perfT/perfN>.026&&maxDpr>1){ maxDpr=Math.max(1,maxDpr-.5); resize(); } perfT=0; perfN=0; }
