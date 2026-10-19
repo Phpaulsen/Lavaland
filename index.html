@@ -570,6 +570,8 @@ button.wt{cursor:pointer}
 .par-news{margin:4px 0 10px;padding:8px 12px;border:2.5px solid var(--ink);border-radius:12px;background:#eef4ff}
 .par-news summary{font-weight:700;cursor:pointer}
 .par-news ul{margin:6px 0 0;padding-left:20px}
+.par-err td{text-align:left!important;vertical-align:top;word-break:break-word}
+.par-err td:first-child{white-space:nowrap;padding-right:10px}
 .par-note{background:#fff3c4;border-radius:10px;padding:8px 10px}
 .par-ch{display:block;width:100%;max-width:520px;margin:6px 0}
 .par-ch text{font:10px system-ui,sans-serif;fill:#5a6472}
@@ -744,6 +746,17 @@ button.wt{cursor:pointer}
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
+/* Fehlerprotokoll: Technische Fehler bleiben nur auf diesem Gerät (höchstens 20, gleiche zusammengefasst) und stehen in der Elternansicht. So lässt sich ein Problem auf dem Handy des Kindes nachvollziehen. */
+const ERRK='lavaland-err';
+function errLoad(){ try{ const a=JSON.parse(localStorage.getItem(ERRK)||'[]'); return Array.isArray(a)?a.filter(function(e){ return e&&typeof e.m==='string'; }):[]; }catch(_){ return []; } }
+function errAdd(m,w){
+  m=String(m||'Unbekannter Fehler').slice(0,200); w=String(w||'').slice(0,80);
+  const a=errLoad(), o=a.find(function(e){ return e.m===m&&e.w===w; });
+  if(o){ o.n=(o.n|0)+1; o.t=Date.now(); } else{ a.push({t:Date.now(),m:m,w:w,n:1}); if(a.length>20) a.shift(); }
+  try{ localStorage.setItem(ERRK,JSON.stringify(a)); }catch(_){}
+}
+window.addEventListener('error',function(e){ if(e&&e.message) errAdd(e.message,(String(e.filename||'').split('/').pop()||'')+':'+(e.lineno|0)); });
+window.addEventListener('unhandledrejection',function(e){ const r=e&&e.reason; errAdd('Promise: '+(r&&r.message||r),''); });
 const cv=$('c'); let ctx=cv.getContext('2d');
 const reduced=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 const K='#1d2a3a';
@@ -7567,6 +7580,7 @@ function parRender(o){
     h+='<tr'+(a.length<5?' class="few"':'')+'><td>'+T.e+'&nbsp;'+T.n.replace('Kristall-','').replace('Bilder-','')+'</td><td>'+(lv0&&lv0!==lv1?lv0+' → ':'')+lv1+'</td><td>'+w.length+'</td><td>'+(w.length?sf.toFixed(1):'–')+'</td><td'+(w.length>=5&&sh>=1?' class="warn"':'')+'>'+(w.length?sh.toFixed(1):'–')+'</td><td>'+(a.length-w.length)+'</td></tr>';
   });
   h+='</table><p>Fehler und Tipps je gelöstem Rätsel. „0 % ↓“ oben heißt: schlechter als reines Raten. Fehler sind zwischen Maschinen nicht vergleichbar (Spiegel und Rohre zählen einzelne Fehlklicks). Vergleiche eine Maschine mit sich selbst über die Zeit.</p>';
+  h+=parErr();
   h+='<h3>Daten</h3><p>Alles liegt nur in diesem Browser. Rohdaten werden nach 90 Tagen gelöscht, die Tageszeiten bleiben.</p><div class="par-act"><button id="par-exp">Protokoll exportieren</button><button id="par-del">'+(parDel?'Wirklich löschen?':'Protokoll löschen')+'</button></div>';
   $('par-body').innerHTML=h;
 }
@@ -7614,6 +7628,13 @@ function parStoreInfo(){
     const t=(r[0]?'Der Browser schützt den Speicher vor automatischem Löschen.':'Der Browser darf den Speicher bei Platzmangel löschen. Installiert (Zum Startbildschirm) ist er meist geschützt.')+(r[1]&&r[1].usage?' Belegt: '+(r[1].usage/1048576).toFixed(1)+' MB.':'');
     if(t!==parStore){ parStore=t; if(!$('par').hidden) parLoad(); }
   }).catch(function(){});
+}
+function parErr(){
+  const a=errLoad();
+  if(!a.length) return '';
+  let h='<h3>Technische Fehler</h3><p>Diese Fehler sind im Spiel aufgetreten. Für eine Fehlermeldung kopieren und weitergeben, es stehen keine persönlichen Daten darin.</p><table class="par-err">';
+  a.slice().reverse().forEach(function(e){ h+='<tr><td>'+new Date(e.t).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</td><td>'+esc(e.m)+(e.w?' <small>('+esc(e.w)+')</small>':'')+(e.n>1?' ×'+(e.n|0):'')+'</td></tr>'; });
+  return h+'</table><div class="par-act"><button id="par-errc">Kopieren</button><button id="par-errx">Löschen</button></div>';
 }
 /* Stolperaufgaben: Fakten, die im Zeitraum oft nicht auf Anhieb saßen, mit der häufigsten falschen Antwort. Daten aus der Sicherung gelten als fremd, darum wird alles maskiert. */
 function esc(t){ return String(t).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
@@ -7756,6 +7777,12 @@ $('par-body').addEventListener('click',function(e){
     else{ const c=lt.dataset.lt; SCH.l=SCH.l.indexOf(c)>=0?SCH.l.replace(c,''):SCH.l+c; }
     saveSchool(); parLoad(); return;
   }
+  if(e.target.closest('#par-errc')){
+    const t=errLoad().map(function(x){ return new Date(x.t).toISOString()+' '+x.m+(x.w?' ('+x.w+')':'')+(x.n>1?' x'+x.n:''); }).join('\n')+'\n'+navigator.userAgent;
+    if(navigator.clipboard) navigator.clipboard.writeText(t).then(function(){ flash('par-errc','ok'); },function(){});
+    return;
+  }
+  if(e.target.closest('#par-errx')){ try{ localStorage.removeItem(ERRK); }catch(_){} parLoad(); return; }
   if(e.target.closest('#par-bak')){ bakSave(); setTimeout(parLoad,1500); return; }
   if(e.target.closest('#par-sall')){ SCH.on=false; saveSchool(); parLoad(); return; }
   const lm=e.target.closest('[data-lim]');

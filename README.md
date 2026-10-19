@@ -65,6 +65,7 @@ Gespeicherte Daten (alles nur auf dem Gerät):
 | localStorage `lavaland-day` | Tagesbilanz fürs Lagerfeuer |
 | localStorage `lavaland-realm`, `-fog*`, `-marks*` | aktuelle Welt, Karte, Leuchtmarken |
 | localStorage `lavaland-mute`, `-lefty`, `-psst`, `-news`, `-bak-at` | Einstellungen und Hinweise |
+| localStorage `lavaland-err` | die letzten 20 technischen Fehler (Elternansicht) |
 
 ## Lizenz
 
