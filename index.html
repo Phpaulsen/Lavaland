@@ -297,6 +297,9 @@ body{
 .brain i b{display:block;height:100%;background:#7b4fd6}
 .tafb{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:10px;padding:8px 12px;width:100%;background:#eef4ff;border:2.5px solid var(--ink);border-radius:14px;color:var(--ink);font:700 20px/1 var(--font-learn);cursor:pointer}
 .tafs{max-width:520px;max-height:88vh;overflow:auto}
+#map .sheet{min-width:0}
+.mapv{width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;margin:4px 0 10px;border:2.5px solid var(--ink);border-radius:12px;background:#151522;-webkit-overflow-scrolling:touch}
+.mapv canvas{display:block}
 #camp{background:rgba(8,10,30,.86)}
 .camps{max-width:460px;background:#1c2244;color:#fff6e0;text-align:center}
 .camps .fire{font-size:84px;line-height:1;display:inline-block;animation:flick 1.1s ease-in-out infinite;transform-origin:50% 90%}
@@ -635,7 +638,7 @@ button.wt{cursor:pointer}
   </div>
 </div>
 <div id="map" class="ov" hidden>
-  <div class="sheet" role="dialog" aria-label="Karte: Reise zu einem entdeckten Land"><button class="xb" aria-label="Schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg></button><div class="cards c4" id="map-cards"></div></div>
+  <div class="sheet" role="dialog" aria-label="Karte: Reise zu einem entdeckten Land"><button class="xb" aria-label="Schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg></button><div class="mapv" id="map-v"><canvas id="map-c" aria-label="Karte von allem, was du schon erkundet hast"></canvas></div><div class="cards c4" id="map-cards"></div></div>
 </div>
 <div id="story" class="ov" hidden>
   <div class="sheet" role="dialog" aria-label="Geschichte: Das Geheimnis vom Schneeberg"><button class="xb" aria-label="Schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg></button><div class="cards c4" id="story-cards"></div></div>
@@ -4458,6 +4461,70 @@ function renderMap(){
   else if(nextLand()) h+='<button class="card place shut" data-go="" aria-label="Noch nicht entdeckt"><span aria-hidden="true">❓</span></button>';
   $('map-cards').innerHTML=h;
 }
+/* ---------- Erkundungskarte: Ein Querschnitt der Welt. Sichtbar ist nur, wo man schon war; die Lampe deckt mehr auf. ---------- */
+const FGT=40, FGW=Math.ceil(GX/FGT), FGH=Math.ceil(GY/FGT), FOG={};
+function fRow(y){ return clamp(Math.floor((y-TOP)/CELL/FGT),0,FGH-1); }
+let fogDirty=false, fogT=0;
+function fogKey(){ return 'lavaland-fog'+(realm?'-'+realm:''); }
+function fogArr(){
+  const k=fogKey(); if(FOG[k]) return FOG[k];
+  const a=new Uint8Array(Math.ceil(FGW*FGH/8)); let got=false;
+  try{ const b=localStorage.getItem(k); if(b){ const t=atob(b); if(t.length===a.length){ for(let i=0;i<t.length;i++) a[i]=t.charCodeAt(i); got=true; } } }catch(_){}
+  FOG[k]=a; if(!got) fogSeed(a);
+  return a;
+}
+function fogSet(a,tx,ty){ if(tx<0||ty<0||tx>=FGW||ty>=FGH) return; const i=ty*FGW+tx; if(!(a[i>>3]&(1<<(i&7)))){ a[i>>3]|=1<<(i&7); fogDirty=true; } }
+function fogHas(a,tx,ty){ const i=ty*FGW+tx; return !!(a[i>>3]&(1<<(i&7))); }
+/* Alte Spielstände: Oberfläche entdeckter Länder und der Aufzugschacht bis zur erreichten Zone sind schon bekannt. */
+function fogSeed(a){
+  const c0=Math.floor(RC0/FGT), c1=Math.min(FGW-1,Math.floor(Math.min(RC1,genF)/FGT));
+  for(let tx=c0;tx<=c1;tx++){
+    const x=(tx+.5)*FGT*CELL, bi=bix[clamp(Math.floor(x/CELL),0,GX-1)];
+    if(!realm&&!(x<BEND||(bi&&seen[bi-1]))) continue;
+    if(realm&&Math.abs(x-LANDX)>3000) continue;
+    const gy=fRow(ground(x)); for(let ty=0;ty<=gy+1;ty++) fogSet(a,tx,ty);
+  }
+  if(!realm&&hero.zn>0){ const tx=Math.floor(LIFTX/CELL/FGT), r=ZN[Math.min(hero.zn,ZN.length-1)].row; for(let ty=0;ty<=Math.floor(r/FGT)+1;ty++){ fogSet(a,tx,ty); fogSet(a,tx-1,ty); } }
+  fogDirty=true;
+}
+function fogTick(dt){
+  fogT-=dt; if(fogT>0) return; fogT=.4;
+  const a=fogArr(), tx=Math.floor(P.x/CELL/FGT), ty=fRow(P.y), r=1+(hero.lp|0);
+  for(let dy=-r;dy<=r;dy++) for(let dx=-r-1;dx<=r+1;dx++) if(dx*dx+dy*dy<=(r+1)*(r+1)) fogSet(a,tx+dx,ty+dy);
+  if(P.y<ground(P.x)) for(let y=0,gy=fRow(ground(P.x));y<=gy;y++) fogSet(a,tx,y);
+}
+function fogSave(){
+  if(!fogDirty) return; fogDirty=false;
+  for(const k in FOG){ let t=''; const a=FOG[k]; for(let i=0;i<a.length;i+=4096) t+=String.fromCharCode.apply(null,a.subarray(i,i+4096)); try{ localStorage.setItem(k,btoa(t)); }catch(_){} }
+}
+setInterval(fogSave,15000);
+document.addEventListener('visibilitychange',function(){ if(document.hidden) fogSave(); });
+const FCOL=['','#ff6a1f','#ffb02e','#3a8fe0','#8a5a35','#7a7a84','#bfe8ff','#8a5a2b','#2b2b36','#4d4660','#8c3a2a','#ff3d00','#f2c84b','#61d6e8','#ffffff','#e8d6b0'];
+function renderFog(){
+  const a=fogArr(), cv=$('map-c'), S=4, c0=Math.floor(RC0/FGT), c1=Math.min(FGW-1,Math.floor(RC1/FGT)), w=c1-c0+1, dpr=Math.min(2,window.devicePixelRatio||1);
+  /* Nur so tief zeigen, wie schon erkundet ist, plus ein Stück Dunkel darunter. */
+  let deep=0; for(let ty=FGH-1;ty>0&&!deep;ty--) for(let tx=c0;tx<=c1;tx++) if(fogHas(a,tx,ty)){ deep=ty; break; }
+  const FH=Math.min(FGH,Math.max(16,deep+5));
+  cv.width=w*S*dpr; cv.height=FH*S*dpr; cv.style.width=(w*S)+'px'; cv.style.height=(FH*S)+'px';
+  const g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.fillStyle='#151522'; g.fillRect(0,0,w*S,FH*S);
+  for(let tx=c0;tx<=c1;tx++){
+    const cx=Math.min(GX-1,tx*FGT+(FGT>>1)), gr=(ground(cx*CELL)-TOP)/CELL;
+    for(let ty=0;ty<FH;ty++){
+      if(!fogHas(a,tx,ty)) continue;
+      const cy=ty*FGT+(FGT>>1); let m=cx<genF?grid[cy*GX+cx]:0;
+      g.fillStyle=m?(FCOL[m]||'#666'):(cy<gr?'#8fcdf0':'#2c2638');
+      g.fillRect((tx-c0)*S,ty*S,S,S);
+    }
+  }
+  g.font='12px sans-serif'; g.textAlign='center'; g.textBaseline='middle';
+  const mark=function(x,y,e){ const tx=Math.floor(x/CELL/FGT), ty=fRow(y); if(tx<c0||tx>c1||!fogHas(a,tx,ty)) return; g.fillText(e,(tx-c0+.5)*S,ty*S+S/2-4); };
+  for(const m of MACH) if(!pzGot[m.id]&&!m.gone&&m.y===m.y) mark(m.x,m.y-20,'⚙️');
+  for(const v of VAULTS) if(doorShut(v)) mark(v.x,v.fy-20,'🚪');
+  if(!realm) mark(WSX,ground(WSX)-30,'🏠'); else mark(LANDX,ground(LANDX)-30,'🚀');
+  const px=(P.x/CELL/FGT-c0)*S, py=clamp((P.y-TOP)/CELL/FGT,0,FH)*S;
+  g.fillStyle='#ff3b3b'; g.strokeStyle='#fff'; g.lineWidth=2; g.beginPath(); g.arc(px,py,5,0,TAU); g.fill(); g.stroke();
+  const v=$('map-v'); requestAnimationFrame(function(){ v.scrollLeft=px-v.clientWidth/2; });
+}
 function mapClick(e){
   const b=e.target.closest('[data-go]'); if(!b) return;
   const go=b.dataset.go;
@@ -5957,7 +6024,7 @@ $('panel').addEventListener('click',function(e){ if(e.target===$('panel')) $('pa
 tap($('chip'),function(){ if(task) speak(task.done?'Geschafft! Super!':(task.data.stage2&&task.def.say2?task.def.say2:task.def.say)); });
 tap($('btn-menu'),function(){ $('menu').hidden=false; });
 tap($('btn-story'),function(){ renderStory(); $('story').hidden=false; });
-tap($('btn-map'),function(){ mapPg=0; renderMap(); $('map').hidden=false; });
+tap($('btn-map'),function(){ mapPg=0; renderMap(); $('map').hidden=false; renderFog(); });
 tap($('btn-lab'),openLab);
 $('map-cards').addEventListener('click',mapClick);
 $('eggs').addEventListener('click',eggClick);
@@ -7094,7 +7161,7 @@ function resetWorld(seed){
   SEED=seed||newSeed();
   /* Eine neue Erde: Mond und Planeten werden dann auch neu. */
   setRealm('');
-  try{ localStorage.removeItem('lavaland-realm'); }catch(_){}
+  try{ localStorage.removeItem('lavaland-realm'); for(const k in FOG) delete FOG[k]; Object.keys(localStorage).forEach(function(k){ if(k.indexOf('lavaland-fog')===0) localStorage.removeItem(k); }); }catch(_){}
   idbDo('readwrite',function(st){ for(const id in RLM) st.delete(realmKey(id)); return st.count(); }).catch(function(){});
   seen={}; eggGot={}; lootGot={}; orbGot={}; matGot={}; pzGot={};
   shapeWorld();
@@ -7485,7 +7552,7 @@ function frame(t){
     accum+=dt; let n=0;
     while(accum>=1/30&&n<2){ paintStep(); step(); accum-=1/30; n++; }
     if(accum>.1) accum=0;
-    update(dt); worldTick(dt); deepTick(dt); winterTick(dt); taskTick(dt); findsTick(dt); questTick(dt); autosave(dt); drain(dt);
+    update(dt); worldTick(dt); deepTick(dt); winterTick(dt); taskTick(dt); findsTick(dt); questTick(dt); autosave(dt); drain(dt); fogTick(dt);
     /* Läuft es auf diesem Gerät zu langsam, sinkt die Auflösung in Stufen. */
     if(raw<.2){ perfT+=raw; perfN++; }
     if(perfN>=150){ if(perfT/perfN>.026&&maxDpr>1){ maxDpr=Math.max(1,maxDpr-.5); resize(); } perfT=0; perfN=0; }
