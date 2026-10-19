@@ -64,6 +64,9 @@ body{
 .pad{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);display:flex;gap:10px;align-items:flex-end}
 .pad.left{left:16px}
 .pad.right{right:16px}
+body.lefty .pad.left{left:auto;right:16px}
+body.lefty .pad.right{right:auto;left:16px;flex-direction:row-reverse}
+body.lefty #mark{left:auto;right:15px}
 .stack{display:flex;flex-direction:column;gap:10px}
 .key{
   width:62px;height:62px;padding:0;border-radius:50%;cursor:pointer;touch-action:none;
@@ -629,6 +632,7 @@ button.wt{cursor:pointer}
     <div class="cards">
       <button class="card pick" id="save" aria-label="Speichern"></button>
       <button class="card pick" id="sound" aria-label="Ton an oder aus" aria-pressed="true"></button>
+      <button class="card pick" id="hand" aria-label="Steuerung spiegeln für Linkshänder" aria-pressed="false"></button>
       <button class="card pick" id="reset" aria-label="Neue Welt"></button>
       <button class="card pick" id="fs" aria-label="Vollbild an oder aus" aria-pressed="false" hidden></button>
       <button class="card pick" id="exp" aria-label="Spielstand als Datei sichern"></button>
@@ -6105,6 +6109,11 @@ $('story-cards').addEventListener('click',function(e){
   else stBegin();
 });
 tap($('quest'),function(){ if(quest&&!quest.done){ const d=QDEF[quest.type]; speak(d.say(quest)); pulse(d.hint(quest)); } });
+/* Linkshänder: Laufen rechts, Springen und Aktion links. */
+let lefty=false; try{ lefty=localStorage.getItem('lavaland-lefty')==='1'; }catch(_){}
+function syncHand(){ document.body.classList.toggle('lefty',lefty); $('hand').innerHTML='<span style="font-size:34px;display:inline-block;transform:scaleX('+(lefty?-1:1)+')" aria-hidden="true">🫲</span>'; $('hand').setAttribute('aria-pressed',String(lefty)); }
+$('hand').addEventListener('click',function(){ lefty=!lefty; try{ localStorage.setItem('lavaland-lefty',lefty?'1':'0'); }catch(_){} syncHand(); sfx('pop'); speak(lefty?'Steuerung gespiegelt: Laufen jetzt rechts.':'Steuerung wie vorher: Laufen links.'); });
+syncHand();
 $('sound').addEventListener('click',function(){
   if(muted){ muted=false; fxOff=false; } else if(fxOff){ muted=true; fxOff=false; } else fxOff=true;
   try{ localStorage.setItem('lavaland-mute',muted?'1':fxOff?'s':'0'); if(muted&&window.speechSynthesis) window.speechSynthesis.cancel(); }catch(_){}
