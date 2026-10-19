@@ -565,6 +565,9 @@ button.wt{cursor:pointer}
 .par-lt{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:6px;margin:6px 0}
 .par-lt button{height:38px;border:2px solid var(--ink);border-radius:10px;background:#fff;color:var(--ink);font:700 16px/1 var(--font-learn);cursor:pointer}
 .par-lt button.on{background:var(--sun)}
+.par-news{margin:4px 0 10px;padding:8px 12px;border:2.5px solid var(--ink);border-radius:12px;background:#eef4ff}
+.par-news summary{font-weight:700;cursor:pointer}
+.par-news ul{margin:6px 0 0;padding-left:20px}
 .par-note{background:#fff3c4;border-radius:10px;padding:8px 10px}
 .par-ch{display:block;width:100%;max-width:520px;margin:6px 0}
 .par-ch text{font:10px system-ui,sans-serif;fill:#5a6472}
@@ -7518,6 +7521,7 @@ function parRender(o){
   days.forEach(function(r){ for(const k in sum) sum[k]+=r.sec[k]||0; sess+=r.sess|0; });
   const act=sum.quiz+sum.pz+sum.play+sum.empty+sum.ui, learn=sum.quiz+sum.pz;
   let h='<div class="par-tabs">'+[1,7,30].map(function(n){ return '<button data-r="'+n+'"'+(n===parRange?' class="on"':'')+'>'+(n===1?'Heute':n+' Tage')+'</button>'; }).join('')+'</div>';
+  h=parNews()+h;
   h+=parSchool();
   h+=parSafe();
   h+='<h3>Zeit</h3>';
@@ -7572,6 +7576,20 @@ function parSchool(){
   h+='<h3>Spielzeit am Tag</h3><p>Heute bisher '+mins(DAY.t)+'. Ist die Zeit erreicht, kommt das Lagerfeuer mit Gute-Nacht-Ansage, danach alle 10 Minuten wieder. Das Spiel sperrt nicht.</p>';
   h+='<div class="par-tabs">'+LIMS.map(function(n){ return '<button data-lim="'+n+'"'+(LIM===n?' class="on"':'')+'>'+(n?n+' min':'aus')+'</button>'; }).join('')+'</div>';
   return h;
+}
+/* Was ist neu: kurze Liste für Eltern. Beim ersten Öffnen nach einem Update steht sie offen oben, danach zugeklappt. */
+const NEWS={v:2,t:'Planeten und Lernkern',items:[
+  'Mond, Eisplanet, Blubberplanet und vier kleine Planeten sind eigene Welten mit Unterwelt. Ganz unten liegt je ein Planetenkern.',
+  'Lernaufgaben nach Leitner: Rechnen mit Ziffernblock, Zahlenhaus, Blitzblick im Zehnerfeld, Nachbarzahlen, Silben klatschen, Reime, Anlaut.',
+  'Meistersteine für Aufgaben, die an mehreren Tagen sitzen. Der Bohrer ab Stufe 2 braucht sie. Die Rechentafel im Labor zeigt den Stand.',
+  'Wissenstüren in der Tiefe öffnen sich nach drei richtigen Aufgaben. Sternbild und Waage bis 20 sind neue bzw. erweiterte Rätsel.',
+  'Lagerfeuer als Haltepunkt mit Tagesbilanz, optionales Tageslimit (hier unten), Erkundungskarte mit Nebel, Leuchtmarken unter der Erde.',
+  'Für Eltern: Schulstand, Stolperaufgaben, Sicherungs-Erinnerung, Ton-Stufe „Nur Sprache“, Linkshänder-Steuerung im Menü.']};
+let newsOpen=null;
+function parNews(){
+  if(newsOpen===null){ let seen=0; try{ seen=+localStorage.getItem('lavaland-news')||0; }catch(_){} newsOpen=seen<NEWS.v; if(newsOpen) try{ localStorage.setItem('lavaland-news',String(NEWS.v)); }catch(_){} }
+  const fresh=newsOpen;
+  return '<details class="par-news"'+(fresh?' open':'')+'><summary>Neu: '+NEWS.t+'</summary><ul>'+NEWS.items.map(function(t){ return '<li>'+t+'</li>'; }).join('')+'</ul></details>';
 }
 /* Spielstand absichern: Der Stand liegt nur in diesem Browser. Wann zuletzt gesichert wurde und ob der Browser den Speicher schützt, steht hier. */
 let parStore='';
