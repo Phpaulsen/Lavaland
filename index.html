@@ -914,6 +914,29 @@ const B0=8760, EXT_X=B0-220, EXC=Math.floor(EXT_X/CELL), HOME_END=1400, WL=14, W
 const bio=new Uint8Array(GX), bio2=new Uint8Array(GX), bmx=new Uint8Array(GX), bix=new Uint8Array(GX), noCave=new Uint8Array(GX), liqM=new Uint8Array(GX), liqY=new Int16Array(GX), ORBS=[MOON];
 let BIO=[], STR=[], CRE=[], PICKS=[], PADS=[], DECO=[], EGGS=[], LOOT=[], DROPS=[], genF=0, stI=0, winC=-9999, NT0=0, NC0=0;
 let seen={}, eggGot={}, lootGot={}, orbGot={};
+/* ---------- Andere Welten: Der Mond und die Planeten sind ganze Welten mit Ländern, Höhlen und Tiefe, so rund wie die Erde.
+   Wer auf einem landet, reist dorthin. Die Erde wird so lange gespeichert. Eine fremde Welt liegt im Gitter ab x=PX0 und ist RW breit;
+   wer an einem Ende hinausläuft, kommt am anderen wieder herein. Links und rechts liegt je ein Streifen, der das andere Ende zeigt. ---------- */
+const PX0=9600, PM=960, PMC=PM/CELL, LANDX=PX0+700, PADH=-20;
+const RLM={
+  moon:{e:'🌙',n:'den Mond',w:28800,salt:101,lands:[13,14],exit:-2600,orb:function(){ return MOON; },
+    pal:{deep:[86,88,102],hot:[110,84,70],z:[[[70,110,150],[150,200,235],[20,40,62]],[[44,120,110],[90,200,170],[10,44,40]],[[110,80,170],[180,150,240],[30,20,60]],[[120,70,40],[190,110,60],[40,18,12]]]},
+    zn:[['🪨','den Mondfels'],['🟤','das Glühgestein'],['🧊','die Eisgrotten'],['✨','die Leuchthöhlen'],['🔮','die Kristallkammern'],['⚙️','den Eisenkern']],
+    mat:[['mo',18,0],['fe',10,1],['kr',5,5]],
+    zc:[null,null,null,['🐧','sit',1,'BRRR!','',22],['🐛','sit',1,'GLÜH!','sparkle',18],['👾','sit',1,'PIEP?','sparkle',22],['🤖','sit',1,'BIEP BUUP!','',24]],
+    lk:[0,0,0,ICE,WATER,WATER,LAVA],
+    hello:'Du bist auf dem Mond gelandet! Er ist eine ganze Welt mit Bergen, Kratern und tiefen Höhlen. Lauf herum und grab nach Mondsteinen. Wenn du heim willst, flieg mit der Rakete ganz hoch hinauf.'}
+};
+let realm='', RW=WORLD_W, RX0=0, RC0=0, RC1=GX;
+function rlm(){ return realm?RLM[realm]:null; }
+function setRealm(id){
+  realm=id&&RLM[id]?id:'';
+  const R=rlm();
+  RW=R?R.w:WORLD_W; RX0=R?PX0:0; RC0=Math.floor(RX0/CELL); RC1=Math.min(GX-PMC-1,RC0+Math.round(RW/CELL));
+  if(typeof setPal==='function') setPal(R);
+}
+/* Spalte, deren Boden eine Randspalte zeigt: links das Ende der Welt, rechts der Anfang. */
+function wc(cx){ return !realm?cx:cx<RC0?cx+(RC1-RC0):cx>=RC1?cx-(RC1-RC0):cx; }
 
 /* Die Land-Arten: Farben für Himmel, Hügel, Gras, Erde und Fels, dazu Pflanzen, Tiere und Fundsachen. */
 const BT=[
@@ -951,7 +974,14 @@ const BT=[
     flat:100,fs:170,flora:['flower','tree','flower','bush','tree'],clr:150,clp:60,
     fauna:[['🐄','walk',3,'MUUUH!','cow',28],['🐖','walk',2,'OINK!'],['🐑','walk',3,'MÄÄH!'],['🐔','walk',3,'GACK!','hen',18],['🐴','walk',1,'WIEHER!','bront',30]],picks:[['🥕','food',3],['🍎','food',3]]},
   {id:'end',e:'🏁',n:'das Ende der Welt',n2:'das Ende der Welt',to:'ans Ende der Welt',w:[0,0],sky:[[40,40,90],[250,180,140]],hill:[[120,100,150],[90,70,120]],cg:[200,200,210],ce:[150,150,165],cr:[110,110,130],night:0,
-    flat:160,fs:260,flora:['flower','bush'],clr:230}
+    flat:160,fs:260,flora:['flower','bush'],clr:230},
+  /* Länder auf dem Mond: dunkle Mondmeere und helle Mondberge, beide voller Krater. Der Himmel ist schwarz, Wolken gibt es keine. */
+  {id:'mare',e:'🌑',n:'das Mondmeer',n2:'noch ein Mondmeer',to:'ans Mondmeer',w:[3600,1800],sky:[[4,6,22],[22,20,52]],hill:[[70,72,86],[52,54,66]],cg:[150,152,160],ce:[118,120,130],cr:[92,94,106],night:0,space:1,noCloud:1,
+    flat:120,fs:420,flora:['crystal'],clr:200,
+    fauna:[['🐇','hop',3,'HOPS!'],['👾','walk',2,'PIEP PIEP!']],picks:[['⭐','star',1],['🧀','food',2]]},
+  {id:'mberg',e:'🏔️',n:'die Mondberge',n2:'noch mehr Mondberge',to:'in die Mondberge',w:[3200,1600],sky:[[4,6,22],[22,20,52]],hill:[[110,112,124],[86,88,100]],cg:[206,208,214],ce:[170,172,180],cr:[132,134,146],night:0,space:1,noCloud:1,
+    fs:520,flora:['crystal'],clr:220,
+    fauna:[['👽','sit',1,'HALLO, ERDENKIND!','gift',26],['🛸','fly',2,'WUUUSCH!'],['🐇','hop',2,'HOPS!']],picks:[['⭐','star',2]]}
 ];
 const FH={cactus:[34,26],palm:[72,30],jungle:[110,60],giant:[250,0],lolly:[46,30],cane:[40,14],shroom:[12,12],dead:[60,40],grave:[20,6],fern:[30,18],crystal:[30,44],flower:[14,10],bush:[16,10],tree:[62,40]};
 
@@ -972,14 +1002,33 @@ function hBio(b,x,raw){
     case 7: { const f=sm(Math.min(u,1-u)*4.5); h=6+f*(232+16*Math.sin(x*.004+p)); h-=f*(h+46)*Math.exp(-Math.pow((x-b.px)/150,2)); break; }
     case 8: h=30-e*(a*210*Math.abs(Math.sin(x*.0058+p))+64*Math.abs(Math.sin(x*.017+p*2))); break;
     case 10: h=0; break;
+    case 13: h=34+roll*.35+craters(b,x,1); break;
+    case 14: { const f=sm(Math.min(u,1-u)*3); h=24-f*(170+70*Math.sin(x*.0029+p))+roll*.7+craters(b,x,.7); break; }
     default: h=roll*.7;
   }
   if(!raw&&T.flat){ const d=Math.abs(x-b.qx); if(d<T.flat+90) h+=(b.hq-h)*sm(d<T.flat?1:1-(d-T.flat)/90); }
   return h;
 }
+/* Krater: eine Mulde mit einem Wall rundherum. Wo sie liegen, hängt nur vom Land ab. */
+function craters(b,x,k){
+  const w=b.x1-b.x0, n=Math.max(2,Math.floor(w/900)); let h=0;
+  for(let i=0;i<n;i++){
+    const c=b.x0+w*(i+.25+.5*hash2(b.s,i))/n, R=60+150*hash2(i,b.s), d=Math.abs(x-c);
+    if(d>R+90) continue;
+    h+=k*((d<R?(42+R*.25)*(1-d*d/(R*R)):0)-26*Math.exp(-Math.pow((d-R)/34,2)));
+  }
+  return h;
+}
 function rawX(x){
   let k=bix[clamp(Math.floor(x/CELL),0,GX-1)]-1; if(k<0) k=0;
-  const b=BIO[k], h=hBio(b,x), d0=x-b.x0, d1=b.x1-x;
+  const b=BIO[k], d0=x-b.x0, d1=b.x1-x;
+  let h=hBio(b,x);
+  if(realm){
+    /* Auf fremden Welten: Am Landeplatz und an beiden Enden ist der Boden gleich hoch, damit die Welt rundherum zusammenpasst. */
+    const dl=Math.abs(x-LANDX); if(dl<420) h+=(PADH-h)*sm(dl<260?1:1-(dl-260)/160);
+    if(k===0&&d0<300) return PADH+(h-PADH)*sm(d0/300);
+    if(k===BIO.length-1&&d1<300) return PADH+(h-PADH)*sm(d1/300);
+  }
   if(d0<220){ const o=k>0?hBio(BIO[k-1],x):rawH(x); return o+(h-o)*sm((d0+220)/440); }
   if(d1<220&&k<BIO.length-1){ const o=hBio(BIO[k+1],x); return h+(o-h)*sm((220-d1)/440); }
   return h;
@@ -991,6 +1040,8 @@ function rawG(x){ return (x<EXT_X||!BIO.length)?rawH(x):rawX(x); }
 let OLD_N=0, OLD_END=0;
 function layout(){
   BIO=[]; let r=rng(SEED*13+7); const cnt={}; let x=B0, bag=[], i=0, last=0;
+  const R=rlm();
+  if(R){ r=rng(SEED*13+R.salt); x=PX0; }
   const add=function(t,w){
     const b={t:t,x0:x,x1:x+w,i:i++,s:Math.floor(r()*1e6),n:cnt[t]|0};
     cnt[t]=b.n+1; last=t;
@@ -1009,6 +1060,16 @@ function layout(){
       const t=bag.pop(); add(t,BT[t].w[0]+Math.floor(r()*BT[t].w[1]));
     }
   };
+  if(R){
+    /* Eine fremde Welt: ihre Länder wechseln sich ab, das letzte reicht genau bis zum Ende. */
+    const E=PX0+RW;
+    while(x<E){
+      const t=R.lands[i%R.lands.length]; let w=BT[t].w[0]+Math.floor(r()*BT[t].w[1]);
+      if(E-x-w<BT[t].w[0]*.6) w=E-x;
+      add(t,w);
+    }
+    return;
+  }
   fill(WORLD_W0); OLD_N=i; OLD_END=x;
   r=rng(SEED*29+11); fill(WORLD_W);
   add(12,WORLD_W-x);
@@ -1104,6 +1165,17 @@ BUILD[12]=function(b,r){
   LOOT.push({id:b.i*4+3,x:b.qx+40,y:b.hq-16,g:200,bur:false,tro:true});
   DECO.push({k:'door',x:WORLD_W-12,y:ground(WORLD_W-40)});
 };
+BUILD[13]=function(b,r){
+  STR.push({k:'house',x:b.qx,y:b.hq,w:5,h:3,m:ROCK,c1:colOf(b.qx+80)});
+  DECO.push({k:'sign',x:b.qx+90,y:b.hq,e:'🚩'});
+  addCre(b,['👩‍🚀','sit',1,'WILLKOMMEN IN DER MONDSTATION!','',24],r,b.qx-2,b.hq);
+  LOOT.push({id:b.i*4+3,x:b.qx+26,y:b.hq-16,g:40,bur:false});
+};
+BUILD[14]=function(b,r){
+  const y=ground(b.qx)+150;
+  STR.push({k:'geode',x:b.qx,y:y,c1:colOf(b.qx+140)});
+  LOOT.push({id:b.i*4+3,x:b.qx,y:y+30,g:60,bur:false});
+};
 function populate(b){
   const T=BT[b.t], r=rng(b.s*7+b.i), w=b.x1-b.x0, tier=Math.min(3,b.n), t0=trees.length;
   DECO.push({k:'gate',x:b.x0+240,b:b});
@@ -1117,22 +1189,26 @@ function populate(b){
   }
   for(const q of T.picks||[]) for(let n=0;n<q[2];n++) PICKS.push({e:q[0],ty:q[1],x:b.x0+300+r()*(w-600),y:NaN,t:0});
   for(let n=0;n<2;n++){ const x=b.x0+320+r()*(w-640); if(Math.abs(x-b.qx)>250&&Math.abs(x-b.px)>210) LOOT.push({id:b.i*4+n,x:x,y:ground(x)+56+r()*50,g:20+10*tier,bur:true}); }
-  for(let n=0;n<w/800;n++) clouds.push({x:b.x0+r()*w,y:-190-r()*900,s:.7+r()*1.1});
+  if(!T.noCloud) for(let n=0;n<w/800;n++) clouds.push({x:b.x0+r()*w,y:-190-r()*900,s:.7+r()*1.1});
   if(BUILD[b.t]) BUILD[b.t](b,r,tier);
 }
 /* Berechnet die ganze Welt neu aus der Welt-Nummer: Bodenform, Farben, Pflanzen, Tiere, Bauwerke, Planeten. Die Zellen selbst entstehen später. */
+function zoneCols(){ for(let cx=0;cx<GX;cx++){ const c=wc(cx); zS1[cx]=630+Math.round(3*Math.sin(c*.027+1)); z4[cx]=960+Math.round(10*Math.sin(c*.013+2)); zS2[cx]=1290+Math.round(4*Math.sin(c*.022)); zS3[cx]=1640+Math.round(4*Math.sin(c*.019+4)); } }
+const HOME_T=[], HOME_C=[];
 function shapeWorld(){
   layout();
+  const R=rlm(), C0=R?RC0:EXC, C1=R?RC1:GX;
+  zoneCols();
   bix.fill(0); bio.fill(0); bmx.fill(0); noCave.fill(0); liqM.fill(0); liqY.fill(0);
   for(const b of BIO){ const c0=Math.floor(b.x0/CELL), c1=Math.min(GX,Math.floor(b.x1/CELL)); for(let cx=c0;cx<c1;cx++){ bix[cx]=b.i+1; bio[cx]=b.t; } }
   /* Am Rand zweier Länder mischen sich die Farben. */
   for(let k=0;k<BIO.length;k++){
-    const c0=Math.floor(BIO[k].x0/CELL), pt=k?BIO[k-1].t:0;
+    const c0=Math.floor(BIO[k].x0/CELL), pt=k?BIO[k-1].t:R?BIO[BIO.length-1].t:0;
     for(let d=-20;d<20;d++){ const cx=c0+d; if(cx>0&&cx<GX){ bio[cx]=pt; bio2[cx]=BIO[k].t; bmx[cx]=Math.max(1,Math.round((d+20)/40*255)); } }
   }
-  for(let i=EXC;i<GX+2;i++) g0[i]=rawG(i*CELL);
+  for(let i=C0;i<(R?C1:GX+2);i++) g0[i]=rawG(i*CELL);
   for(const b of BIO){ if(b.t===1||b.t===3) b.ly=Math.min(rawG(b.px-98),rawG(b.px+98))+9; else if(b.t===6) b.ly=Math.min(rawG(b.px-92),rawG(b.px+92))+14; }
-  for(let cx=EXC;cx<GX;cx++){
+  for(let cx=C0;cx<C1;cx++){
     const x=(cx+.5)*CELL, g=Math.ceil((rawG(x)-TOP)/CELL-.5), b=bix[cx]?BIO[bix[cx]-1]:null;
     const rock=b&&(b.t===8||(b.t===6&&Math.abs(x-b.px)<300));
     grow0[cx]=g; mtop[cx]=g;
@@ -1145,7 +1221,20 @@ function shapeWorld(){
     else if((t===1||t===3)&&dp<240){ noCave[cx]=1; if(dp<100){ liqM[cx]=WATER; liqY[cx]=Math.floor((b.ly-TOP)/CELL); } }
     else if(t===10||dq<240) noCave[cx]=1;
   }
-  trees.length=NT0; clouds.length=NC0; CRE=[]; PICKS=[]; PADS=[]; DECO=[]; EGGS=[]; LOOT=[]; STR=[]; DROPS=[]; ORBS.length=1;
+  trees.length=0; clouds.length=0; CRE=[]; PICKS=[]; PADS=[]; DECO=[]; EGGS=[]; LOOT=[]; STR=[]; DROPS=[]; ORBS.length=0;
+  if(R){
+    /* Die Randstreifen zeigen das jeweils andere Ende der Welt. */
+    const L=[g0,grow0,mtop,rA,rB,rD,rH,rC,bix,bio,bio2,bmx,noCave,liqM,liqY];
+    for(let d=0;d<PMC;d++) for(const a of L){ a[RC0-PMC+d]=a[RC1-PMC+d]; a[RC1+d]=a[RC0+d]; }
+    g0[RC1+PMC]=g0[RC0+PMC];
+    for(const b of BIO) populate(b);
+    DECO.push({k:'sign',x:LANDX-90,y:ground(LANDX-90),e:'🚀'});
+    planetDeep(R);
+    return;
+  }
+  for(const t of HOME_T) trees.push(Object.assign({},t));
+  for(const c of HOME_C) clouds.push(Object.assign({},c));
+  ORBS.push(MOON);
   /* Rund um die Heimat: Tannen hinten am Berg, Nessie im Höhlensee, ein Maulwurf unter dem Start, ein Wegweiser und drei Fundsachen. */
   const r=rng(SEED*5+3), hb={i:-1,x0:0,x1:HOME_W,t:0};
   for(let x=7380;x<8250;x+=120+r()*90){ const cx=Math.floor(x/CELL); trees.push({x:x,gy:TOP+mtop[cx]*CELL,row:mtop[cx],h:62+r()*40,state:0,t:0,s:.85+r()*.4,fir:true}); }
@@ -1225,11 +1314,12 @@ function scanMobile(){
 }
 /* Erzeugt eine Spalte der Welt: Schichten, Höhlen, Gold und Edelsteine, Wasser oder Lava in Becken, den Schneeberg. */
 function genCol(cx,from){
-  const x=(cx+.5)*CELL, g=grow0[cx], cA=rA[cx], cB=rB[cx], cD=rD[cx], cH=rH[cx], cC=rC[cx];
+  if(realm&&(cx<RC0-PMC||cx>=RC1+PMC)){ for(let cy=0;cy<GY;cy++) grid[cy*GX+cx]=BED; return; }
+  const x=(wc(cx)+.5)*CELL, g=grow0[cx], cA=rA[cx], cB=rB[cx], cD=rD[cx], cH=rH[cx], cC=rC[cx];
   const a1=zS1[cx], a2=z4[cx], a3=zS2[cx], a4=zS3[cx], edge=cx>0&&cx<GX-1;
-  const s1=(SEED%977)*3.17, s2=(SEED%613)*5.31, s3=(SEED%389)*7.77;
+  const ns=realm?SEED*31+RLM[realm].salt:SEED, s1=(ns%977)*3.17, s2=(ns%613)*5.31, s3=(ns%389)*7.77;
   let safe, pond, gb, rich=false;
-  if(cx<HOME_GX){ safe=!(x<1300||(x>2400&&x<3640)||Math.abs(x-SITE.chest-40)<150); pond=Math.abs(x-SITE.pond)<240; gb=Math.ceil((baseG(x)-TOP)/CELL-.5); }
+  if(cx<HOME_GX&&!realm){ safe=!(x<1300||(x>2400&&x<3640)||Math.abs(x-SITE.chest-40)<150); pond=Math.abs(x-SITE.pond)<240; gb=Math.ceil((baseG(x)-TOP)/CELL-.5); }
   else{ safe=noCave[cx]<2; pond=noCave[cx]===1; gb=g; rich=bix[cx]>0&&BIO[bix[cx]-1].t===8; }
   if(!from) for(let cy=0;cy<g;cy++) grid[cy*GX+cx]=0;
   /* Im Lavameer stehen Felswände. Dazwischen liegt Lava in einer langen Höhle. Zu den Wänden hin steigt der Boden an und bildet ein trockenes Ufer. */
@@ -1272,7 +1362,7 @@ function genCol(cx,from){
   if(!from&&liqM[cx]) for(let cy=Math.max(1,liqY[cx]);cy<g;cy++) grid[cy*GX+cx]=liqM[cx];
   if(cx===0||cx===GX-1) for(let cy=0;cy<GY;cy++) grid[cy*GX+cx]=BED;
   for(let cy=GY-3;cy<GY;cy++) grid[cy*GX+cx]=BED;
-  if(!from&&cx>=SNC0&&cx<=SNC1) winterCol(cx);
+  if(!from&&!realm&&cx>=SNC0&&cx<=SNC1) winterCol(cx);
 }
 /* Die Heimat entsteht sofort, der Rest der Welt wächst beim Reisen. */
 function gen(){
@@ -1298,6 +1388,11 @@ function gen(){
   scanMobile();
   fillCrater(); fillPond();
   houseBlocks('smash').forEach(function(b){fillBlock(b[0],b[1]);});
+}
+/* Eine fremde Welt zum ersten Mal: Sie entsteht rund um den Landeplatz und wächst beim Reisen. */
+function planetGen(){
+  grid.fill(0); life.fill(0); stamp.fill(0); genF=0; stI=0;
+  grow(LANDX+3200);
 }
 function grow(toX){
   const c1=Math.min(GX,Math.ceil(toX/CELL)+1);
@@ -1518,6 +1613,8 @@ for(let i=0;i<36;i++) clouds.push({x:rnd()*HOME_W,y:-170-rnd()*980,s:.7+rnd()*1.
 /* Auf dem Schneeberg stehen die Bäume oben auf dem Schnee und sind verschneite Tannen. */
 for(const tr of trees){ const cx=Math.floor(tr.x/CELL); if(mtop[cx]<grow0[cx]){ tr.row=mtop[cx]; tr.gy=TOP+mtop[cx]*CELL; } if(tr.x>SNX) tr.fir=true; }
 NT0=trees.length; NC0=clouds.length;
+for(const t of trees) HOME_T.push(Object.assign({},t));
+for(const c of clouds) HOME_C.push(Object.assign({},c));
 
 /* ---------- Schienen ---------- */
 let tracks=[];
@@ -1766,8 +1863,15 @@ function burn(){
   smoke(P.x,P.y-16,9); shake=Math.max(shake,.25);
 }
 function boundsX(){
+  if(realm){ if(P.x<RX0) wrapX(RW); else if(P.x>=RX0+RW) wrapX(-RW); return; }
   if(P.x<40){P.x=40; if(P.vx<0)P.vx=0; if(P.mode==='plane')P.face=1;}
   if(P.x>WORLD_W-40){P.x=WORLD_W-40; if(P.vx>0)P.vx=0; if(P.mode==='plane')P.face=-1;}
+}
+/* Auf einer fremden Welt geht es rundherum: Wer am Ende hinausläuft, kommt am Anfang wieder herein. */
+function wrapX(d){
+  P.x+=d; cam.x+=d; pet.x+=d; parts.length=0; ghost=null;
+  grow(Math.max(P.x,cam.x)+3200); scanMobile();
+  if(!seen.round&&BIO.every(function(b){ return seen[b.i]; })){ seen.round=1; gold+=50; lootDirty=true; confetti(P.x,P.y); jingle(); banner('🌍 +50'+COIN,2400); say('','Du bist einmal ganz um '+rlm().n+' herum gereist!'); }
 }
 function mover(dt,hw,h,step,half){
   let hit=false;
@@ -2045,7 +2149,7 @@ function update(dt){
   }else{ pan.x-=pan.x*Math.min(1,dt*2.5); pan.y-=pan.y*Math.min(1,dt*2.5); }
   const tx=P.x+clamp(P.vx*.3,-110,110)+pan.x, ty=P.y-vh*.08-20+pan.y;
   cam.x+=(tx-cam.x)*Math.min(1,dt*4); cam.y+=(ty-cam.y)*Math.min(1,dt*5);
-  if(vw<WORLD_W) cam.x=clamp(cam.x,vw/2,WORLD_W-vw/2);
+  if(!realm&&vw<WORLD_W) cam.x=clamp(cam.x,vw/2,WORLD_W-vw/2);
 }
 
 /* ---------- Malen mit dem Finger ---------- */
@@ -2266,12 +2370,13 @@ function volcanoPlan(){
 function teleport(x){
   if(P.mode!=='walk') setMode('walk');
   grow(x+3200);
-  P.x=clamp(x,60,WORLD_W-60); P.y=surfaceY(P.x); P.vx=0; P.vy=0; P.on=true; P.chute=false; P.hurt=.5;
+  P.x=clamp(x,RX0+60,RX0+RW-60); P.y=surfaceY(P.x); P.vx=0; P.vy=0; P.on=true; P.chute=false; P.hurt=.5;
   cam.x=P.x; cam.y=P.y-80;
   smoke(P.x,P.y-20,6);
 }
 function setChipTool(key){ $('chip-tool').innerHTML=IC[key]; }
 function startTask(def){
+  if(realm){ $('panel').hidden=true; say('','Diese Aufgaben gibt es auf der Erde. Flieg mit der Rakete ganz hoch, dann kommst du heim.'); return; }
   $('panel').hidden=true;
   task={id:def.id,def:def,p:0,done:false,t:0,data:{}};
   chest=null;
@@ -2564,13 +2669,14 @@ function snapshot(){
   const pk={};
   for(const k in parked) pk[k]=parked[k]?Object.assign({},parked[k]):null;
   if(P.mode!=='walk'&&P.mode!=='coaster'&&P.mode!=='ski'&&P.mode!=='dragon') pk[P.mode]=park();
-  return {v:5,w:2,gy:GY,f:genF,snow:1,seed:SEED,runs:g,tracks:tracks.map(function(T){return {raw:T.raw,user:T.user,rb:!!T.rb};}),px:P.x,py:P.y,parked:pk,
+  return {v:5,w:2,rl:realm,gy:GY,f:genF,snow:1,seed:SEED,runs:g,tracks:tracks.map(function(T){return {raw:T.raw,user:T.user,rb:!!T.rb};}),px:P.x,py:P.y,parked:pk,
     trees:trees.map(function(t){return t.state===1?2:t.state;}),hidden:hidden,energy:energy,props:props,seen:seen,eggGot:eggGot,lootGot:lootGot,orbGot:orbGot,matGot:matGot,pzGot:pzGot};
 }
+function realmKey(id){ return id?'planet-'+id:SAVEKEY; }
 function saveGame(manual){
-  if(saving||!ready||frozen) return;
+  if(saving||!ready||frozen||traveling) return;
   saving=true; saveFinds(); saveHero();
-  idbDo('readwrite',function(st){ return st.put(snapshot(),SAVEKEY); }).then(function(){
+  idbDo('readwrite',function(st){ return st.put(snapshot(),realmKey(realm)); }).then(function(){
     saving=false; if(manual){ flash('save','ok'); tone([660,880]); speak('Gespeichert.'); banner(svg24(QI.save)+'<svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5" stroke="#2f8f4a" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',1400); setTimeout(function(){ $('menu').hidden=true; },500); }
   },function(){
     saving=false; if(manual){ flash('save','warn'); tone([170],'sawtooth'); }
@@ -2597,6 +2703,81 @@ function restore(sv){
   scanMobile();
 }
 function newSeed(){ return 1+Math.floor(Math.random()*999983); }
+
+/* ---------- Reisen zwischen den Welten: Die Welt, die man verlässt, wird gespeichert, die neue geladen oder zum ersten Mal erzeugt. ---------- */
+let traveling=false, portalT=0, portalOff='', exitHint=false;
+function newRealm(){
+  seen={}; eggGot={}; lootGot={}; orbGot={}; matGot={}; pzGot={};
+  shapeWorld(); planetGen();
+  parts.length=0; ghost=null; chest=null; stroke=null; strokeId=null; task=null; $('chip').hidden=true;
+  for(const tr of trees){ tr.state=0; tr.t=0; }
+  tracks=[]; props=[]; bombs.length=0; hidden=[]; guide=null;
+  for(const k in parked) parked[k]=null;
+  P.x=LANDX; P.y=surfaceY(LANDX);
+  scanMobile();
+}
+function travel(to){
+  if(traveling) return;
+  traveling=true; portalT=0;
+  const from=realm, m=P.mode, en=energy, f=$('fade');
+  f.hidden=false; void f.offsetWidth; f.classList.add('on'); sfx('whoosh');
+  const done=function(){ f.classList.remove('on'); setTimeout(function(){ f.hidden=true; },380); traveling=false; };
+  setTimeout(function(){
+    let sv0=null;
+    try{ sv0=snapshot(); }catch(_){ done(); return; }
+    idbDo('readwrite',function(st){ return st.put(sv0,realmKey(from)); }).then(function(){
+      return idbDo('readonly',function(st){ return st.get(realmKey(to)); });
+    }).then(function(sv){
+      try{
+        setRealm(to);
+        if(sv&&runsOk(sv)&&sv.seed===SEED&&(sv.rl||'')===to) restore(sv);
+        else if(to) newRealm();
+        else throw new Error('earth');
+      }catch(e){
+        setRealm(from); try{ restore(sv0); }catch(_){}
+        energy=en; done(); tone([170],'sawtooth'); return;
+      }
+      energy=en; arrive(from,to,m);
+      try{ if(to) localStorage.setItem('lavaland-realm',to); else localStorage.removeItem('lavaland-realm'); }catch(_){}
+      traveling=false; saveGame(false); traveling=true;
+      done();
+    },function(){ done(); tone([170],'sawtooth'); });
+  },450);
+}
+function arrive(from,to,m){
+  const R=rlm();
+  if(m==='rocket'||m==='plane'){ P.mode=m; parked[m]=null; P.ang=0; }
+  if(R){
+    P.x=LANDX; P.y=surfaceY(LANDX)-(P.mode==='walk'?2:260);
+    if(!seen.hi){ seen.hi=1; later(1,function(){ say('',R.hello); }); }
+    else later(.6,function(){ banner(R.e,1800); speak('Wieder auf '+R.n+'.'); });
+    if(quest&&quest.type==='moon'&&to==='moon') quest.p=1;
+  }else{
+    const o=RLM[from].orb();
+    P.x=o.x; P.y=o.y-o.r-40; portalOff=from;
+    later(.6,function(){ say('','Zurück im Weltraum! Unten liegt die Erde.'); });
+  }
+  P.vx=0; P.vy=0; P.on=false; P.chute=false;
+  cam.x=P.x; cam.y=P.y-80; dkA=darkAt(cam.y); exitHint=false;
+  scanMobile(); syncUI();
+}
+/* Landet man auf dem Mond oder einem Planeten und bleibt kurz stehen, beginnt die Reise. Oben über einer fremden Welt geht es zurück. */
+function portalTick(dt){
+  if(traveling||uiOpen()) return;
+  const R=rlm();
+  if(R){
+    if(P.y<-1400&&!exitHint){ exitHint=true; say('','Flieg noch ein Stück höher, dann geht es zurück zur Erde.'); }
+    if(P.y<R.exit) travel('');
+    return;
+  }
+  let hit='';
+  if(P.y<-3000) for(const id in RLM){
+    const o=RLM[id].orb(), d=Math.hypot(P.x-o.x,P.y-o.y);
+    if(portalOff===id){ if(d>o.r+260) portalOff=''; continue; }
+    if(P.on&&d<o.r+30&&(P.mode==='walk'||P.mode==='rocket'||P.mode==='plane')) hit=id;
+  }
+  if(hit){ portalT+=dt; if(portalT>.9) travel(hit); } else portalT=0;
+}
 
 /* ---------- Held, Verbesserungen und Markt: Gold und Edelsteine kaufen Stufen, Begleiter, Hüte, Bomben und Rummel-Bauten. ---------- */
 let hero={xp:0,lvl:1,up:{dig:0,motor:0,jet:0,compass:0,luck:0,heat:0},own:{},pet:'',hat:'',tnt:0,qn:0,quest:null,day:'',st:{ch:1,on:false},eggs:0,trail:false,ext:false,big:false,dr:0,rk:0,lp:0,zn:0,mat:{},mk:{},pz:{},pzn:0,deep:false,fin:0};
@@ -2853,7 +3034,7 @@ function questTick(dt){
   const t=quest.type;
   if(t==='deep') quest.p=Math.max(quest.p,P.y);
   else if(t==='high') quest.p=Math.max(quest.p,-P.y);
-  else if(t==='moon'){ if(P.on&&P.y<-3000&&P.mode!=='coaster') quest.p=1; }
+  else if(t==='moon'){ if((P.on&&P.y<-3000&&P.mode!=='coaster')||realm==='moon') quest.p=1; }
   else if(t==='drive'){ if(P.mode===quest.veh&&P.on) quest.p+=Math.abs(P.vx)*dt; }
   else if(t==='ski'){ if(P.mode==='ski'&&P.on&&P.ball<=0&&onSnow()) quest.p+=Math.abs(P.vx)*dt; }
   renderQuest();
@@ -2867,6 +3048,7 @@ function questTick(dt){
 }
 function questPoint(){
   if(!quest||quest.done) return null;
+  if(realm&&(quest.type==='buy'||quest.type==='moon'||quest.type==='ski'||quest.type==='salto')) return null;
   if(quest.type==='buy') return [STALL_X,ground(STALL_X)-70];
   if(quest.type==='pz'){ const m=nextMach(); return m?[m.x,m.y-52]:null; }
   if(quest.type==='moon') return [MOON.x,MOON.y-MOON.r-26];
@@ -3326,6 +3508,7 @@ function winterTick(dt){
   for(const q of due) q.fn();
   if(balls.length) ballsTick(dt);
   if(fws.length) fwsTick(dt);
+  if(realm) return;
   if((cam.x>5100&&cam.x<9600)||hero.st.ch===2){ hareTick(dt); yetiTick(dt); pensTick(dt); }
   fauTick(dt); mamaTick(dt);
   manT-=dt; if(manT<=0){ manT=.4; menTick(); }
@@ -3551,7 +3734,7 @@ function kidScale(){
   return 1;
 }
 function nextLand(){ for(const b of BIO) if(!seen[b.i]) return b; return null; }
-function eggLand(){ for(const b of BIO) if(seen[b.i]&&!eggGot[b.i]&&b.t!==12) return b; return null; }
+function eggLand(){ for(const b of BIO) if(seen[b.i]&&!eggGot[b.i]&&b.t<12) return b; return null; }
 
 /* ---------- Tiere ---------- */
 function creInit(c){
@@ -3867,7 +4050,8 @@ function worldTick(dt){
   nightA+=((nightOn?1:0)-nightA)*Math.min(1,dt*1.5);
   const bi=bix[clamp(Math.floor(P.x/CELL),0,GX-1)];
   if(bi&&!seen[bi-1]&&P.x>BIO[bi-1].x0+90) discover(BIO[bi-1]);
-  if(!hero.ext&&P.x>7340){ hero.ext=true; saveHero(); say('','Hinter dem Schneeberg geht die Welt weiter. Niemand weiß, wie weit!'); }
+  portalTick(dt);
+  if(!hero.ext&&!realm&&P.x>7340){ hero.ext=true; saveHero(); say('','Hinter dem Schneeberg geht die Welt weiter. Niemand weiß, wie weit!'); }
   creTick(dt); pickTick(dt); padsTick(); secretsTick();
   /* Landung auf einem fremden Planeten */
   if(P.on&&P.y<-3000) for(const o of ORBS){
@@ -3906,6 +4090,7 @@ function worldTick(dt){
 
 /* Nachts kommt manchmal ein UFO. Wer unter dem Lichtstrahl stehen bleibt, wird auf einen fremden Planeten gebracht. */
 function ufoTick(dt){
+  if(realm){ ufo=null; return; }
   if(!ufo){
     if(nightA>.8&&P.mode==='walk'&&P.on&&P.y>-800&&P.y<300&&time>ufoNext) ufo={x:P.x-520,y:P.y-420,t:0,hold:0};
     return;
@@ -4133,10 +4318,10 @@ function drawWorldFront(){
 
 /* ---------- Karte zum Reisen und die Belohnungen für goldene Eier ---------- */
 function renderMap(){
-  const L=[{e:'🏠',x:820,n:'nach Hause',k:-2},{e:'⛷️',x:5700,n:'zum Schneeberg',k:-1}], per=11;
+  const R=rlm(), L=R?[{e:R.e,x:LANDX,n:'zum Landeplatz',k:-2}]:[{e:'🏠',x:820,n:'nach Hause',k:-2},{e:'⛷️',x:5700,n:'zum Schneeberg',k:-1}], per=11;
   for(const b of BIO) if(seen[b.i]) L.push({e:BT[b.t].e,x:b.x0+240,n:BT[b.t].to,k:b.i,num:b.n+1});
   const pages=Math.max(1,Math.ceil(L.length/per)); if(mapPg>=pages) mapPg=0;
-  const here=bix[clamp(Math.floor(P.x/CELL),0,GX-1)]-1, cur=here>=0?here:(P.x>5600?-1:-2);
+  const here=bix[clamp(Math.floor(P.x/CELL),0,GX-1)]-1, cur=here>=0?here:(P.x>5600&&!R?-1:-2);
   let h='';
   L.slice(mapPg*per,mapPg*per+per).forEach(function(q){
     h+='<button class="card place'+(q.k===cur?' cur':'')+'" data-go="'+q.x+'" data-say="'+q.n+'" aria-label="Reise '+q.n+'"><span aria-hidden="true">'+q.e+'</span>'+(q.num>1?'<small>'+q.num+'</small>':'')+'</button>';
@@ -4191,7 +4376,7 @@ const ZN=[
 const MAT={
   zr:['⚙️','Zahnrad','Zahnräder','Zahnräder bekommst du, wenn du eine Rätselmaschine löst. Über jeder schwebt ein Zahnrad.'],
   fe:['🔩','Eisen','Eisen','Eisen steckt tief unten im dunklen und im roten Gestein. Bohr dich mit der Tunnelbohrmaschine hinunter.'],
-  mo:['🌙','Mondstein','Mondsteine','Mondsteine liegen oben auf dem Mond. Flieg mit der Rakete hin.'],
+  mo:['🌙','Mondstein','Mondsteine','Mondsteine gibt es auf dem Mond. Er ist eine ganze Welt. Flieg mit der Rakete hin und lande auf ihm.'],
   pi:['🍄','Leuchtpilz','Leuchtpilze','Leuchtpilze wachsen in den Pilzgrotten, unter der rostroten Schicht. Dafür brauchst du den Bohrer Stufe 1.'],
   st:['☄️','Sternenerz','Sternenerz','Sternenerz liegt auf den großen Felsbrocken hoch über dem Mond. Dafür brauchst du die Rakete Stufe 1.'],
   kn:['🐚','Urzeit-Muschel','Urzeit-Muscheln','Urzeit-Muscheln stecken in den Urzeit-Höhlen, noch unter den Pilzgrotten.'],
@@ -4264,7 +4449,8 @@ function deepWorld(){
   for(let n=0;n<18;n++) mat('kn',xr(n<11),yr(ZA[1]+4,ZB[1]-4));
   for(let n=0;n<18;n++) mat('kr',xr(n<11),yr(ZA[2]+2,ZB[2]-2));
   for(let n=0;n<12;n++) mat('fp',xr(n<8),n%2?yr(SEA_L+3,SEA_B-6):yr(ZA[3]+4,ZB[3]));
-  for(let n=0;n<8;n++){ const dx=-205+n*58+r()*16; mat('mo',MOON.x+dx,MOON.y-Math.sqrt(MOON.r*MOON.r-dx*dx)-12); }
+  /* Mondsteine liegen jetzt auf dem Mond selbst, der eine eigene Welt ist. Die alten Plätze behalten ihre Nummern, liegen aber nirgends mehr. */
+  for(let n=0;n<8;n++){ r(); MATS.push({id:mi++,k:'mo',x:-1e5,y:-1e5,off:1}); }
 
   /* Rätselmaschinen: drei in der Heimat, eine in jedem Land, je drei in jeder tiefen Zone, vier im Weltraum. */
   MACH.push({id:'h0',t:'muster',x:1330,y:NaN,sf:1,zb:0},{id:'h1',t:'robo',x:4280,y:NaN,sf:1,zb:0},{id:'h2',t:'spiegel',x:8590,y:NaN,sf:1,zb:0});
@@ -4377,6 +4563,39 @@ function deepFar(hb){
   for(let n=0;n<8;n++){ const x=xr(), y=room(x,yr(ZA[2]+16,ZB[2]-16),70+r()*50,40); ZDEC.push({k:'cry',x:x,y:y,s:.8+r()*.8,c:Math.floor(r()*3)}); if(n%4===1) addCre(hb,['🐧','sit',1,'BRRR!','',22],r,x+34,y); }
   for(let n=0;n<4;n++){ const x=xr(); addCre(hb,['🐲','sit',1,'FAUCH!','',26],r,x,room(x,yr(ZA[3]+16,ZB[3]-30),80,40)); }
 }
+/* Die Tiefe einer fremden Welt: dieselben harten Schichten wie auf der Erde, aber eigene Zonen, Material, Rätselmaschinen und Bewohner. */
+function planetDeep(R){
+  MATS=[]; MACH=[]; ZDEC=[]; SPACE={};
+  const r=rng(SEED*37+R.salt), X0=PX0+300, XW=RW-600, hb={i:-1,x0:PX0,x1:PX0+RW,t:0};
+  let mi=0, di=0, ti=Math.floor(r()*4);
+  const mat=function(k,x,y){ MATS.push({id:mi++,k:k,x:x,y:y}); };
+  const yr=function(a,b){ return TOP+CELL*(a+r()*(b-a)); };
+  const xr=function(){ return X0+r()*XW; };
+  const types=['muster','spiegel','robo','waage'];
+  const room=function(x,y,rx,ry){ const s={k:'room',x:x,y:y,rx:rx,ry:ry,hw:0,nw:1,c1:colOf(x+rx+14)}; STR.push(s); return roomY(s); };
+  const ZA=[368,560,660,978,1322,1672], ZB=[552,616,944,1272,1622,1880], ZBN=[0,1,1,1,2,3];
+  /* Material: Zone 0 heißt oben auf dem Boden oder knapp darunter. */
+  for(const q of R.mat) for(let n=0;n<q[1];n++){
+    const x=xr();
+    if(q[2]) mat(q[0],x,yr(ZA[q[2]-1]+4,ZB[q[2]-1]-4));
+    else mat(q[0],x,n%2?ground(x)-12:ground(x)+30+r()*90);
+  }
+  /* Zwei Rätselmaschinen oben, eine in jeder tiefen Zone */
+  for(let n=0;n<2;n++) MACH.push({id:'p'+(di++),t:types[(ti++)%4],x:PX0+RW*(.3+.4*n)+r()*900,y:NaN,sf:1,zb:n});
+  for(let z=2;z<6;z++){ const x=xr(); MACH.push({id:'p'+(di++),t:types[(ti++)%4],x:x,y:room(x,ZA[z]+24+r()*(ZB[z]-ZA[z]-48),92,44),zb:ZBN[z]}); }
+  /* Höhlen mit Bewohnern, Seen und Kristallen */
+  for(let z=3;z<=6;z++){
+    const a=ZA[z-1], b=ZB[z-1], f=R.zc[z];
+    for(let n=0;n<8;n++){
+      const x=xr(), y=room(x,yr(a+16,b-16),60+r()*60,38);
+      if(z===4&&n%2===0){ const h=34+r()*40; PADS.push({k:'shroom',x:x,y:y-h,w:26+r()*8,h:h,pow:560+h*2,c:n,bt:0}); }
+      else if(z===5&&n%2===0) ZDEC.push({k:'cry',x:x,y:y,s:.8+r()*.8,c:Math.floor(r()*3)});
+      if(f&&n%3===0) addCre(hb,f,r,x+30,y);
+    }
+    if(R.lk[z]) for(let n=0;n<10;n++){ const x=xr(), rx=64+r()*70, y=yr(a+16,b-30), ry=26+r()*14; STR.push({k:'lake',x:x,y:y,rx:rx,ry:ry,m:R.lk[z],nw:1,c1:colOf(x+rx+26)}); }
+  }
+  STR.sort(function(p,q){ return p.c1-q.c1; });
+}
 /* Rund um Werkstatt und Aufzug stehen keine Bäume. */
 function deepHome(){ for(let i=0;i<NT0&&i<trees.length;i++){ const t=trees[i]; if(Math.abs(t.x-WSX)<64||Math.abs(t.x-LIFTX)<50||Math.abs(t.x-1330)<30) t.state=3; } }
 /* Nach dem Laden: Was in der alten, breiteren Welt hinter der neuen Grenze lag, kommt nach Hause. */
@@ -4450,8 +4669,10 @@ function deepTick(dt){
   mhT-=dt;
   if(mhT<=0){ mhT=.6; const lim=(genF-8)*CELL; for(const m of MACH) if(m.sf&&m.x<lim) m.y=surfaceY(m.x); }
   if(P.mode!=='coaster'){
-    const z=zoneAt(P.x,P.y-12);
-    if(z>hero.zn){
+    const z=zoneAt(P.x,P.y-12), R=rlm();
+    if(R){
+      if(z&&!seen['z'+z]){ seen['z'+z]=1; jingle(); confetti(P.x,P.y); addXp(30); banner(R.zn[z-1][0]+' ⭐',2400); say('','Du hast '+R.zn[z-1][1]+' erreicht!'); }
+    }else if(z>hero.zn){
       hero.zn=z; saveHero(); jingle(); confetti(P.x,P.y); addXp(30); banner(ZN[z].e+' ⭐',2400);
       say('','Du hast '+ZN[z].n+' erreicht! Der Aufzug zu Hause fährt jetzt bis hierher.');
     }
@@ -4471,7 +4692,7 @@ function deepTick(dt){
     }
     if(!(hero.fin&1)&&Math.hypot(P.x-SPACE.gate.x,P.y-SPACE.gate.y)<SPACE.gate.r+40) finale(1);
   }
-  if(!(hero.fin&2)&&P.y>9000&&cellAt(P.x,P.y+3)===CORE) finale(2);
+  if(!(hero.fin&2)&&!realm&&P.y>9000&&cellAt(P.x,P.y+3)===CORE) finale(2);
   if(!hero.deep&&performance.now()>talkLock&&Math.abs(P.x-WSX)<110&&Math.abs(P.y-ground(WSX))<90) deepIntro();
   if(guide&&time>guide.t) guide=null;
 }
@@ -4515,9 +4736,16 @@ function deepTap(wx,wy){
 /* Pfeil zu dem Ort, an dem es ein Material gibt. Erst in der richtigen Zone zeigt er auf das nächste Stück. */
 function matWhere(k){
   if(k==='zr'){ const m=nextMach(); return m?[m.x,m.y-52]:null; }
+  if(realm){
+    /* Auf fremden Welten: zum nächsten Stück, sonst nach oben, heim zur Erde. */
+    let b=null, bd=1e12;
+    if(k!=='lab') for(const m of MATS){ if(m.k!==k||matGot[m.id]) continue; const d=Math.hypot(m.x-P.x,m.y-P.y); if(d<bd){ bd=d; b=m; } }
+    return b?[b.x,b.y]:[P.x,P.y-500];
+  }
   if(k==='lab') return [WSX,ground(WSX)-96];
-  if(k==='mo'||k==='st'||k==='ei'){
-    const o=k==='mo'?MOON:k==='st'?SPACE.stn:SPACE.ice;
+  if(k==='mo') return [MOON.x,MOON.y-MOON.r-30];
+  if(k==='st'||k==='ei'){
+    const o=k==='st'?SPACE.stn:SPACE.ice;
     if(o&&Math.hypot(P.x-o.x,P.y-o.y)>o.r+(k==='st'?2600:700)) return [o.x,o.y-o.r-30];
   }else if(zoneAt(P.x,P.y)<MATZ[k]){
     const gy=ground(LIFTX);
@@ -5575,7 +5803,7 @@ function dbLoad(name,d){
   return go(d.v).catch(function(e){ if(e&&e.name==='VersionError') return go(0); throw e; });
 }
 function bakMake(){
-  const fresh=ready?idbDo('readwrite',function(st){ return st.put(snapshot(),SAVEKEY); }).catch(function(){}):Promise.resolve();
+  const fresh=ready&&!traveling?idbDo('readwrite',function(st){ return st.put(snapshot(),realmKey(realm)); }).catch(function(){}):Promise.resolve();
   saveFinds(); saveHero();
   return fresh.then(function(){ return Promise.all(BAK_DBS.map(dbDump)); }).then(function(rs){
     const ls={}, db={};
@@ -6027,10 +6255,10 @@ const P_WALLE=pal([[74,50,38],[70,47,36],[78,53,40],[72,49,37]]), P_WALLR=pal([[
 const WOODS=[[226,87,76],[242,182,50],[79,154,216],[88,179,104],[216,165,106]];
 const P_WOOD=pal(WOODS), P_WOODD=pal(WOODS.map(function(c){return [Math.floor(c[0]*.7),Math.floor(c[1]*.7),Math.floor(c[2]*.7)];}));
 const C_BED=c32(30,26,34);
-const P_DEEP=pal([[58,62,84],[52,56,78],[64,68,92],[55,59,80]]), P_HOT=pal([[104,50,44],[96,44,40],[114,56,46],[100,48,42]]);
+let P_DEEP=pal([[58,62,84],[52,56,78],[64,68,92],[55,59,80]]), P_HOT=pal([[104,50,44],[96,44,40],[114,56,46],[100,48,42]]);
 const P_CORE=pal([[255,236,150],[255,214,90],[255,180,60],[255,246,205]]), P_GOLD=pal([[240,196,50],[228,180,40],[250,214,80],[236,190,46]]);
 const P_GEM=pal([[80,220,230],[230,110,220],[120,240,170],[255,255,255]]);
-const P_WALLD=pal([[28,30,44],[26,28,41],[31,33,48],[27,29,43]]), P_WALLH=pal([[58,26,24],[54,24,22],[62,28,26],[56,25,23]]);
+let P_WALLD=pal([[28,30,44],[26,28,41],[31,33,48],[27,29,43]]), P_WALLH=pal([[58,26,24],[54,24,22],[62,28,26],[56,25,23]]);
 const P_SNOW=pal([[226,238,249],[218,232,246],[234,243,251],[222,235,247]]), P_SNOWT=pal([[255,255,255],[250,253,255],[255,255,255],[246,251,255]]), P_WALLS=pal([[66,94,130],[62,89,124],[71,100,137],[64,91,127]]);
 /* Jedes Land hat eigene Farben für Gras, Erde, Fels und Höhlenwände. Nummer 0 ist die Heimat. */
 function pal4(c,f){ const q=function(d){ return [clamp(Math.round(c[0]*f+d),0,255),clamp(Math.round(c[1]*f+d),0,255),clamp(Math.round(c[2]*f+d),0,255)]; }; return pal([q(0),q(-8),q(7),q(-4)]); }
@@ -6038,7 +6266,15 @@ const PGR=[P_GRASS], PGR2=[P_GRASS2], PEA=[P_EARTH], PRO=[P_ROCK], PWE=[P_WALLE]
 for(let b=1;b<BT.length;b++){ const T=BT[b]; PGR.push(pal4(T.cg,1)); PGR2.push(pal4(T.cg,.82)); PEA.push(pal4(T.ce,1)); PRO.push(pal4(T.cr,1)); PWE.push(pal4(T.ce,.5)); PWR.push(pal4(T.cr,.48)); }
 const RBC=['#e63946','#ff8a1f','#ffd23f','#58b548','#3aa0e8','#7b4fd6'];
 /* Farben der Tiefe: Pilzgrotten, Urzeit-Höhlen, Kristalltiefen, Lavameer. Dazu die drei harten Schichten. */
-const PZR=[pal4([44,104,110],1),pal4([156,120,74],1),pal4([92,80,160],1),pal4([62,42,48],1)], PZE=[pal4([84,170,120],1),pal4([206,170,104],1),pal4([150,180,235],1),pal4([120,56,44],1)], PZW=[pal4([16,44,52],1),pal4([58,42,28],1),pal4([24,20,58],1),pal4([30,12,14],1)];
+let PZR=[pal4([44,104,110],1),pal4([156,120,74],1),pal4([92,80,160],1),pal4([62,42,48],1)], PZE=[pal4([84,170,120],1),pal4([206,170,104],1),pal4([150,180,235],1),pal4([120,56,44],1)], PZW=[pal4([16,44,52],1),pal4([58,42,28],1),pal4([24,20,58],1),pal4([30,12,14],1)];
+/* Fremde Welten haben eigene Farben für die Tiefe. Die Erdfarben bleiben hier liegen. */
+const EPAL={deep:P_DEEP,hot:P_HOT,wd:P_WALLD,wh:P_WALLH,zr:PZR,ze:PZE,zw:PZW};
+function setPal(R){
+  if(!R){ P_DEEP=EPAL.deep; P_HOT=EPAL.hot; P_WALLD=EPAL.wd; P_WALLH=EPAL.wh; PZR=EPAL.zr; PZE=EPAL.ze; PZW=EPAL.zw; return; }
+  const q=R.pal;
+  P_DEEP=pal4(q.deep,1); P_HOT=pal4(q.hot,1); P_WALLD=pal4(q.deep,.4); P_WALLH=pal4(q.hot,.45);
+  PZR=q.z.map(function(z){ return pal4(z[0],1); }); PZE=q.z.map(function(z){ return pal4(z[1],1); }); PZW=q.z.map(function(z){ return pal4(z[2],1); });
+}
 const PSH=[pal([[168,84,40],[146,70,32],[214,128,66]]),pal([[150,70,190],[128,56,168],[204,134,238]]),pal([[30,26,40],[20,16,28],[84,72,110]])];
 const IMG=256, oc=document.createElement('canvas'); oc.width=IMG; oc.height=IMG;
 const octx=oc.getContext('2d'), img=octx.createImageData(IMG,IMG), px=new Uint32Array(img.data.buffer);
@@ -6314,6 +6550,13 @@ function arrow(x,y,ang,r,col){
 }
 const MOONC=[[-90,-60,38],[60,-110,26],[110,10,44],[-20,70,30],[-140,60,22],[30,-20,18],[-60,-160,20]];
 function drawSpace(){
+  const R=rlm();
+  if(R){
+    /* Über einer fremden Welt: die Linie, hinter der es heim zur Erde geht */
+    const vw=W/S, ly=R.exit+20;
+    if(Math.abs(ly-cam.y)<H/S/2+60){ ctx.strokeStyle='rgba(120,200,255,.6)'; ctx.lineWidth=3; ctx.setLineDash([14,12]); ctx.beginPath(); ctx.moveTo(cam.x-vw/2-20,ly); ctx.lineTo(cam.x+vw/2+20,ly); ctx.stroke(); ctx.setLineDash([]); emo('🌍',cam.x,ly-24,24); }
+    return;
+  }
   for(const o of ORBS) if(o.i&&Math.abs(o.x-cam.x)<1700) drawOrb(o);
   drawFar();
   ctx.strokeStyle='#f0d9a0'; ctx.lineWidth=9; ctx.lineCap='butt';
@@ -6356,7 +6599,7 @@ function fillCells(buf,n,col,lift){
 function draw(){
   const vw=W/S, vh=H/S;
   ctx.setTransform(DPR,0,0,DPR,0,0);
-  const md=mood(), nl=md.nl, alt=clamp(-cam.y/1100,0,1), sp=clamp((-cam.y-1500)/1400,0,1), sa=Math.max(sp,nl*.9);
+  const md=mood(), nl=md.nl, alt=realm?0:clamp(-cam.y/1100,0,1), sp=clamp((-cam.y-1500)/1400,0,1), sa=realm?1:Math.max(sp,nl*.9);
   const sky=ctx.createLinearGradient(0,0,0,H);
   sky.addColorStop(0,mix(lerpC(lerpC(md.st,SKY_TH,alt),NIGHT_T,nl),SPACE_T,sp)); sky.addColorStop(1,mix(lerpC(lerpC(md.sb,SKY_BH,alt),NIGHT_B,nl),SPACE_B,sp));
   ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
@@ -6375,6 +6618,8 @@ function draw(){
   if(nl<.98){ ctx.globalAlpha=1-nl; ctx.fillStyle='rgba(255,210,63,.28)'; circle(sunX,sunY,46*S); ctx.fillStyle='#ffd23f'; circle(sunX,sunY,30*S); }
   if(nl>.02){ ctx.globalAlpha=nl; ctx.fillStyle='rgba(244,240,216,.22)'; circle(sunX,sunY,40*S); ctx.fillStyle='#f4f0d8'; circle(sunX,sunY,26*S); ctx.fillStyle='#d8d2b4'; circle(sunX-8*S,sunY-6*S,6*S); circle(sunX+9*S,sunY+7*S,4*S); }
   ctx.globalAlpha=1;
+  /* Von fremden Welten aus sieht man die Erde am Himmel. */
+  if(realm){ const ex=W*.3, ey=H*.32-cam.y*S*.02, er=34*S; ctx.fillStyle='rgba(120,190,255,.25)'; circle(ex,ey,er*1.25); ctx.fillStyle='#3aa0e8'; circle(ex,ey,er); ctx.fillStyle='#58b548'; circle(ex-er*.35,ey-er*.2,er*.35); circle(ex+er*.3,ey+er*.3,er*.28); ctx.fillStyle='rgba(255,255,255,.8)'; circle(ex+er*.1,ey-er*.6,er*.18); }
   hills(.22,-30,45,md.h1,.004);
   if(skyRb>time&&nl<.5){ ctx.globalAlpha=Math.min(.75,(skyRb-time)*.4)*(1-nl); ctx.lineWidth=7*S; for(let k=0;k<6;k++){ ctx.strokeStyle=RBC[k]; ctx.beginPath(); ctx.arc(W*.5,H*.66,W*.46-k*7*S,Math.PI,0); ctx.stroke(); } ctx.globalAlpha=1; }
   hills(.48,-2,30,md.h2,.007);
@@ -6557,6 +6802,10 @@ function actIcon(){
 
 function resetWorld(seed){
   SEED=seed||newSeed();
+  /* Eine neue Erde: Mond und Planeten werden dann auch neu. */
+  setRealm('');
+  try{ localStorage.removeItem('lavaland-realm'); }catch(_){}
+  idbDo('readwrite',function(st){ for(const id in RLM) st.delete(realmKey(id)); return st.count(); }).catch(function(){});
   seen={}; eggGot={}; lootGot={}; orbGot={}; matGot={}; pzGot={};
   shapeWorld();
   gen();
@@ -6877,7 +7126,18 @@ function start(){
     return false;
   };
   /* Erst der neue Spielstand, dann der alte. Erst wenn beides fehlt oder kaputt ist, gibt es eine neue Welt. */
-  idbDo('readonly',function(st){ return st.get(SAVEKEY); }).then(function(sv){
+  /* War das Kind zuletzt auf dem Mond oder einem Planeten, geht es dort weiter. Klappt das nicht, geht es auf der Erde weiter. */
+  let rl=''; try{ rl=localStorage.getItem('lavaland-realm')||''; }catch(_){}
+  const away=RLM[rl]?idbDo('readonly',function(st){ return st.get(realmKey(rl)); }).then(function(sv){
+    if(!(sv&&runsOk(sv)&&sv.rl===rl)) return false;
+    try{ setRealm(rl); restore(sv); return true; }catch(_){ setRealm(''); return false; }
+  },function(){ return false; }):Promise.resolve(false);
+  away.then(function(ok){
+    if(ok) return true;
+    setRealm('');
+    return idbDo('readonly',function(st){ return st.get(SAVEKEY); });
+  }).then(function(sv){
+    if(sv===true) return true;
     if(tryLoad(sv)) return true;
     return idbDo('readonly',function(st){ return st.get('world'); }).then(tryLoad);
   }).then(function(ok){
