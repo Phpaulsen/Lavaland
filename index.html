@@ -4938,8 +4938,13 @@ function vaultPlan(salt,near,X0,XW,per){
 function doorCols(v){ return [Math.floor((v.x-v.rx-20)/CELL),Math.floor((v.x-v.rx*.55)/CELL)]; }
 function doorShut(v){ const c=Math.floor((v.x-v.rx-8)/CELL); return c<genF&&grid[(vFloor(v)-3)*GX+c]===BED; }
 function nearDoor(){ for(const v of VAULTS) if(Math.abs(P.x-(v.x-v.rx-28))<46&&Math.abs(P.y-v.fy)<44&&doorShut(v)) return v; return null; }
+/* Jede zweite Tür ist eine Rätseltür: Statt drei Aufgaben öffnet sie ein Rätsel, eine Stufe kniffliger als sonst. Das Zeichen an der Tür verrät vorher, welches. */
+const DOORPZ=['muster','spiegel','waage','robo','stern'];
+function doorPz(v){ return v.id%2?DOORPZ[(v.id>>1)%DOORPZ.length]:''; }
 function doorAsk(v){
-  if(!$('quiz').hidden) return;
+  if(!$('quiz').hidden||!$('pz').hidden) return;
+  const pt=doorPz(v);
+  if(pt){ pzOpen({t:pt,zb:1,quiz:true,door:v}); return; }
   doorQ={v:v,n:0}; $('quiz-pz').hidden=true;
   openQuiz(null);
   banner('🚪 ○○○',1800);
@@ -4955,7 +4960,7 @@ function drawDoor(v){
   ctx.fillStyle='rgba(255,210,63,'+(.25*g).toFixed(3)+')'; rr(x-22,y-58,44,60,10);
   ctx.fillStyle='#6b4a2e'; rr(x-15,y-50,30,50,8);
   ctx.fillStyle='#8a6240'; rr(x-11,y-46,22,44,6);
-  emo('❓',x,y-28,18);
+  const pt=doorPz(v); emo(pt?PZI[pt].e:'❓',x,y-28,18);
 }
 /* Rund um Werkstatt und Aufzug stehen keine Bäume. */
 function deepHome(){ for(let i=0;i<NT0&&i<trees.length;i++){ const t=trees[i]; if(Math.abs(t.x-WSX)<64||Math.abs(t.x-LIFTX)<50||Math.abs(t.x-1330)<30) t.state=3; } }
@@ -5516,6 +5521,7 @@ function pzWin(){
   setTimeout(function(){
     if(pzc!==c) return;
     $('pz').hidden=true; pzc=null; confetti(P.x,P.y); jingle();
+    if(c.m.door){ labBadge(true); doorOpen(c.m.door); return; }
     if(first) say('',hero.pzn===1?'Geschafft! Die Maschine läuft wieder und schenkt dir ein Zahnrad. Der Akku ist auch wieder geladen. Zahnräder braucht Professor Zahnrad in der Werkstatt.':clean?'Geschafft, ganz ohne Fehler! Noch ein Zahnrad. Das nächste Rätsel dieser Art wird kniffliger.':'Geschafft! Noch ein Zahnrad.');
     else if(clean) say('',c.m.quiz?'Ohne Fehler! Der Akku ist voll. Das nächste Rätsel dieser Art wird kniffliger.':'Ohne Fehler! Das nächste Rätsel dieser Art wird kniffliger.');
     else if(c.m.quiz) say('',full?'Geschafft! Der Akku ist wieder voll.':'Geschafft! Der Akku ist ein Stück geladen. Ohne Fehler und Tipp wird er ganz voll.');
