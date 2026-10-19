@@ -66,6 +66,13 @@ test('Lernaufgabe mit Ziffernblock richtig lösen', async ({ ev, page }) => {
   if (!(e > 0)) throw new Error('Akku nicht geladen: ' + e);
 });
 
+test('Escape schließt die Aufgabe und gibt das Spiel frei', async ({ ev, page }) => {
+  await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; openQuiz()");
+  await page.waitForTimeout(300);
+  await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+  if (!(await ev("$('quiz').hidden")) || await ev('paused')) throw new Error('Aufgabe offen oder Spiel pausiert');
+});
+
 test('Elternansicht zeigt das Protokoll', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); paused=false; parOpen()");
   await page.waitForTimeout(1500);

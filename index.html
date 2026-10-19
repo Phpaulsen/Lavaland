@@ -180,6 +180,11 @@ body.lefty #mark{left:auto;right:15px}
 .opt.word{font-size:23px}
 .opt.ok{background:var(--good);color:#fff}
 .opt.no{background:#e9e4d6;color:#a39c8a;box-shadow:none;transform:translateY(4px)}
+/* Richtig/falsch nicht nur über Farbe (Rot-Grün-Schwäche betrifft etwa jeden zwölften Jungen): Haken und Kreuz als Zeichen. */
+.opt.ok,.opt.no{position:relative}
+.opt.ok::after,.opt.no::after{position:absolute;right:-8px;top:-10px;width:26px;height:26px;border-radius:50%;border:2.5px solid var(--ink);font:900 16px/21px var(--font-ui);text-align:center;color:#fff}
+.opt.ok::after{content:'✓';background:var(--good)}
+.opt.no::after{content:'✗';background:#d64545}
 #ans.kp{gap:8px}
 .opt.key{height:56px}
 .opt.key svg{width:30px;height:30px;vertical-align:middle}
@@ -6792,6 +6797,8 @@ window.addEventListener('keydown',function(e){
     if(e.key==='Backspace'){ padKey('del'); e.preventDefault(); return; }
     if(e.key==='Enter'){ padKey('ok'); e.preventDefault(); return; }
   }
+  /* Escape schließt die Aufgabe wie das X, sonst bliebe das Spiel pausiert. */
+  if(e.key==='Escape'&&!$('quiz').hidden){ closeQuiz(); return; }
   if(e.key==='Escape'){ document.querySelectorAll('.ov,#panel').forEach(function(o){ o.hidden=true; }); pzClose(); return; }
   if(paused||uiOpen()||(e.target&&e.target.tagName==='BUTTON'&&e.key==='Enter')) return;
   const k=keymap[e.key];
