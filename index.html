@@ -751,7 +751,7 @@ AI.sonar='<circle cx="12" cy="12" r="2.600" fill="currentColor"/><path d="M6.500
 
 /* ---------- Welt ---------- */
 /* Die Heimat ist 7200 breit. Dahinter liegen die fremden Länder. Nach unten reicht die Welt dreimal so tief wie früher. */
-const HOME_W=7200, HOME_GX=1200, WORLD_W=57600, CELL=6, GX=9600, GY=2048, GY0=686, KEEPR=626, WINW=420, SW=2*WINW+9, ROWW=320, SH=14, TOP=-912, VOLC=2700, G=900, TAU=6.2832;
+const HOME_W=7200, HOME_GX=1200, WORLD_W0=57600, WORLD_W=115200, CELL=6, GX=WORLD_W/CELL, GY=2048, GY0=686, KEEPR=626, WINW=420, SW=2*WINW+9, ROWW=320, SH=14, TOP=-912, VOLC=2700, G=900, TAU=6.2832;
 /* Schichten nach unten: Erde, Fels, Tiefengestein, heißes Gestein, Erdkern. Gold und Edelsteine stecken im Gestein. */
 const LAVA=1, FIRE=2, WATER=3, EARTH=4, ROCK=5, ICE=6, WOOD=7, BED=8, DEEP=9, HOT=10, CORE=11, GOLD=12, GEM=13, SNOW=14, SHELL=15;
 const MAX_LAVA=7000, MAX_WATER=30000, MAX_FIRE=1400;
@@ -986,9 +986,11 @@ function rawX(x){
 }
 function rawG(x){ return (x<EXT_X||!BIO.length)?rawH(x):rawX(x); }
 
-/* Reihenfolge der Länder: Alle Arten kommen einmal dran, dann wird neu gemischt. Am Schluss liegt das Ende der Welt. */
+/* Reihenfolge der Länder: Alle Arten kommen einmal dran, dann wird neu gemischt. Am Schluss liegt das Ende der Welt.
+   Die Welt ist doppelt so breit wie früher. Die Länder der alten Hälfte bleiben genau so, wie sie waren; wo früher das Ende der Welt lag, geht es mit neuen Ländern weiter. */
+let OLD_N=0, OLD_END=0;
 function layout(){
-  BIO=[]; const r=rng(SEED*13+7), cnt={}; let x=B0, bag=[], i=0, last=0;
+  BIO=[]; let r=rng(SEED*13+7); const cnt={}; let x=B0, bag=[], i=0, last=0;
   const add=function(t,w){
     const b={t:t,x0:x,x1:x+w,i:i++,s:Math.floor(r()*1e6),n:cnt[t]|0};
     cnt[t]=b.n+1; last=t;
@@ -997,14 +999,18 @@ function layout(){
     b.hq=TOP+24*Math.round((hBio(b,b.qx,true)-TOP)/24);
     BIO.push(b); x+=w;
   };
-  while(x<WORLD_W-5600||i<11){
-    if(!bag.length){
-      for(let t=1;t<=11;t++) bag.push(t);
-      for(let k=10;k>0;k--){ const j=Math.floor(r()*(k+1)), q=bag[k]; bag[k]=bag[j]; bag[j]=q; }
-      if(bag[10]===last){ const q=bag[10]; bag[10]=bag[0]; bag[0]=q; }
+  const fill=function(end){
+    while(x<end-5600||i<11){
+      if(!bag.length){
+        for(let t=1;t<=11;t++) bag.push(t);
+        for(let k=10;k>0;k--){ const j=Math.floor(r()*(k+1)), q=bag[k]; bag[k]=bag[j]; bag[j]=q; }
+        if(bag[10]===last){ const q=bag[10]; bag[10]=bag[0]; bag[0]=q; }
+      }
+      const t=bag.pop(); add(t,BT[t].w[0]+Math.floor(r()*BT[t].w[1]));
     }
-    const t=bag.pop(); add(t,BT[t].w[0]+Math.floor(r()*BT[t].w[1]));
-  }
+  };
+  fill(WORLD_W0); OLD_N=i; OLD_END=x;
+  r=rng(SEED*29+11); fill(WORLD_W);
   add(12,WORLD_W-x);
 }
 function addTree(x,k,r){
@@ -1332,13 +1338,17 @@ function unpackRuns(b,f){
   }
   return k===b.length;
 }
+let cutX=0;
 function runsOk(sv){ return sv.v===5&&sv.gy===GY&&sv.f>0&&sv.f<=GX&&sv.runs instanceof Uint8Array; }
 function loadCells(sv){
   const old=sv.v<4, f0=sv.v>=3?sv.f:HOME_GX;
   let f=Math.min(f0,GX);
-  if(old&&sv.v===3) f=Math.min(f,Math.floor((BIO[BIO.length-1].x0-300)/CELL));
+  if(old&&sv.v===3) f=Math.min(f,Math.floor((OLD_END-300)/CELL));
+  /* Spielstände aus der halb so breiten Welt: Wo früher das Ende der Welt lag, liegt jetzt ein neues Land. Dieser Teil wird neu erzeugt. */
+  cutX=0;
+  if(sv.v>=4&&!sv.w&&f>Math.floor((OLD_END-300)/CELL)){ f=Math.floor((OLD_END-300)/CELL); cutX=f*CELL-300; }
   grid.fill(0);
-  if(sv.v>=5){ if(!unpackRuns(sv.runs,f)) throw new Error('runs'); }
+  if(sv.v>=5){ if(!unpackRuns(sv.runs,f0)) throw new Error('runs'); }
   else{
     const rows=old?KEEPR:GY;
     for(let cy=0;cy<rows;cy++) grid.set(sv.grid.subarray(cy*f0,cy*f0+f),cy*GX);
@@ -2554,7 +2564,7 @@ function snapshot(){
   const pk={};
   for(const k in parked) pk[k]=parked[k]?Object.assign({},parked[k]):null;
   if(P.mode!=='walk'&&P.mode!=='coaster'&&P.mode!=='ski'&&P.mode!=='dragon') pk[P.mode]=park();
-  return {v:5,gy:GY,f:genF,snow:1,seed:SEED,runs:g,tracks:tracks.map(function(T){return {raw:T.raw,user:T.user,rb:!!T.rb};}),px:P.x,py:P.y,parked:pk,
+  return {v:5,w:2,gy:GY,f:genF,snow:1,seed:SEED,runs:g,tracks:tracks.map(function(T){return {raw:T.raw,user:T.user,rb:!!T.rb};}),px:P.x,py:P.y,parked:pk,
     trees:trees.map(function(t){return t.state===1?2:t.state;}),hidden:hidden,energy:energy,props:props,seen:seen,eggGot:eggGot,lootGot:lootGot,orbGot:orbGot,matGot:matGot,pzGot:pzGot};
 }
 function saveGame(manual){
@@ -4235,7 +4245,7 @@ function shellOk(i){
 /* Legt fest, wo Material, Rätselmaschinen, Stationen, Seen, Höhlen und die Körper im Weltraum liegen. Alles hängt nur von der Welt-Nummer ab. */
 function deepWorld(){
   MATS=[]; MACH=[]; ZDEC=[];
-  const r=rng(SEED*17+5), WW=WORLD_W, hb={i:-1,x0:0,x1:WW,t:0};
+  const r=rng(SEED*17+5), WW=WORLD_W0, hb={i:-1,x0:0,x1:WORLD_W,t:0};
   let mi=0, di=0, ti=0;
   const mat=function(k,x,y){ MATS.push({id:mi++,k:k,x:x,y:y}); };
   const yr=function(a,b){ return TOP+CELL*(a+r()*(b-a)); };
@@ -4258,7 +4268,9 @@ function deepWorld(){
 
   /* Rätselmaschinen: drei in der Heimat, eine in jedem Land, je drei in jeder tiefen Zone, vier im Weltraum. */
   MACH.push({id:'h0',t:'muster',x:1330,y:NaN,sf:1,zb:0},{id:'h1',t:'robo',x:4280,y:NaN,sf:1,zb:0},{id:'h2',t:'spiegel',x:8590,y:NaN,sf:1,zb:0});
-  for(const b of BIO) if(b.t!==12) MACH.push({id:'b'+b.i,t:nt(),x:b.t===7?b.px-12:b.t===10?b.x0+330:b.qx+150,y:NaN,sf:1,zb:b.i<4?0:1});
+  /* Länder der neuen Hälfte bekommen ihre Maschinen-Arten aus einer eigenen Reihe, damit sich an den alten nichts ändert. */
+  let ti2=0;
+  for(const b of BIO) if(b.t!==12) MACH.push({id:'b'+b.i,t:b.i<OLD_N?nt():types[(ti2++)%7],x:b.t===7?b.px-12:b.t===10?b.x0+330:b.qx+150,y:NaN,sf:1,zb:b.i<4?0:1});
   for(let k=1;k<=6;k++) ZN[k].y=room(LIFTX,TOP+ZN[k].row*CELL,124,48,0);
   dm(LIFTX+300,ZN[1].row,0,90); dm(LIFTX+300,ZN[2].row,1,90);
   for(let z=0;z<4;z++){
@@ -4330,7 +4342,40 @@ function deepWorld(){
   addCre(hb,['👾','sit',1,'PIEP PIEP!','sparkle',24],r,gate.x-210,top(gate,-210));
   LOOT.push({id:9001,x:jun.x-120,y:top(jun,-120)-10,g:80,bur:false});
   SPACE={stn:stn,ice:ice,jun:jun,gate:gate};
+  deepFar(hb);
   STR.sort(function(p,q){ return p.c1-q.c1; });
+}
+/* Die Tiefe unter der neuen Hälfte der Welt: Material, Rätselmaschinen, Höhlen und Tiere wie in der alten Hälfte, aus einer eigenen Zufallsreihe. */
+function deepFar(hb){
+  const r=rng(SEED*31+17), X0=WORLD_W0+300, XW=WORLD_W-X0-900;
+  let mi=MATS.length;
+  const mat=function(k,x,y){ MATS.push({id:mi++,k:k,x:x,y:y}); };
+  const yr=function(a,b){ return TOP+CELL*(a+r()*(b-a)); };
+  const xr=function(){ return X0+r()*XW; };
+  const types=['muster','spiegel','robo','waage','echo','rohre','sudoku'];
+  let di=100, ti=Math.floor(r()*7);
+  const room=function(x,y,rx,ry){ const s={k:'room',x:x,y:y,rx:rx,ry:ry,hw:0,nw:1,c1:colOf(x+rx+14)}; STR.push(s); return roomY(s); };
+  const ZA=[660,978,1322,1672], ZB=[944,1272,1622,1880], ZBN=[1,1,2,3];
+  for(let n=0;n<12;n++) mat('fe',xr(),yr(368,616));
+  for(let n=0;n<7;n++) mat('pi',xr(),yr(ZA[0]+4,ZB[0]-4));
+  for(let n=0;n<7;n++) mat('kn',xr(),yr(ZA[1]+4,ZB[1]-4));
+  for(let n=0;n<7;n++) mat('kr',xr(),yr(ZA[2]+2,ZB[2]-2));
+  for(let n=0;n<4;n++) mat('fp',xr(),n%2?yr(SEA_L+3,SEA_B-6):yr(ZA[3]+4,ZB[3]));
+  for(let z=0;z<4;z++){
+    const a=ZA[z], b=ZB[z], x=xr();
+    MACH.push({id:'d'+(di++),t:types[(ti++)%7],x:x,y:room(x,a+24+r()*(b-a-48),92,44),zb:ZBN[z]});
+  }
+  for(let n=0;n<8;n++){
+    const x=xr(), y=room(x,yr(ZA[0]+12,ZB[0]-12),54+r()*30,34), h=34+r()*40;
+    PADS.push({k:'shroom',x:x,y:y-h,w:26+r()*8,h:h,pow:560+h*2,c:n,bt:0});
+    if(n%3===0) addCre(hb,['🐛','sit',1,'GLÜH!','sparkle',18],r,x+40,y);
+  }
+  for(let n=0;n<10;n++) ZDEC.push({k:'bone',x:xr(),y:yr(ZA[1]+6,ZB[1]-6),s:.8+r()*.9,f:r()<.5?-1:1,v:n%3});
+  for(let n=0;n<5;n++){ const x=xr(), y=room(x,yr(ZA[1]+20,ZB[1]-20),120+r()*50,46); addCre(hb,n%2?['🦕','walk',1,'MÖÖÖH!','bront',40]:['🦖','sit',1,'ROAR!','',28],r,x,y).rng=60; }
+  const lake=function(m,a,b,n){ for(let i=0;i<n;i++){ const x=xr(), rx=64+r()*70, y=yr(a,b), ry=26+r()*14; STR.push({k:'lake',x:x,y:y,rx:rx,ry:ry,m:m,nw:1,c1:colOf(x+rx+26)}); } };
+  lake(WATER,ZA[1]+16,ZB[1]-16,10); lake(WATER,ZA[2]+16,ZB[2]-16,16); lake(LAVA,ZA[3]+16,ZB[3]-30,12);
+  for(let n=0;n<8;n++){ const x=xr(), y=room(x,yr(ZA[2]+16,ZB[2]-16),70+r()*50,40); ZDEC.push({k:'cry',x:x,y:y,s:.8+r()*.8,c:Math.floor(r()*3)}); if(n%4===1) addCre(hb,['🐧','sit',1,'BRRR!','',22],r,x+34,y); }
+  for(let n=0;n<4;n++){ const x=xr(); addCre(hb,['🐲','sit',1,'FAUCH!','',26],r,x,room(x,yr(ZA[3]+16,ZB[3]-30),80,40)); }
 }
 /* Rund um Werkstatt und Aufzug stehen keine Bäume. */
 function deepHome(){ for(let i=0;i<NT0&&i<trees.length;i++){ const t=trees[i]; if(Math.abs(t.x-WSX)<64||Math.abs(t.x-LIFTX)<50||Math.abs(t.x-1330)<30) t.state=3; } }
@@ -4343,8 +4388,8 @@ function deepRestore(sv){
     if(P.y>deep) P.y=deep;
     for(const n in parked){ const o=parked[n]; if(o&&o.y>deep) o.y=deep; }
   }
-  if(sv.v===3){
-    const lim=genF*CELL-300;
+  if(sv.v===3||cutX){
+    const lim=sv.v===3?genF*CELL-300:cutX;
     if(P.x>lim){ P.x=820; P.y=surfaceY(820)-2; }
     let k=0;
     for(const n in parked){ const o=parked[n]; if(o&&o.x>lim){ o.x=560+k*46; o.y=surfaceY(o.x); o.vy=0; o.ang=0; k++; } }
