@@ -927,6 +927,13 @@ const RLM={
     lk:[0,0,0,ICE,WATER,WATER,LAVA],
     hello:'Du bist auf dem Mond gelandet! Er ist eine ganze Welt mit Bergen, Kratern und tiefen Höhlen. Lauf herum und grab nach Mondsteinen. Wenn du heim willst, flieg mit der Rakete ganz hoch hinauf.'}
 };
+RLM.ice={e:'❄️',n:'den Eisplaneten',w:43200,salt:202,lands:[15,16],exit:-2600,orb:function(){ return SPACE.ice||{x:1900,y:-16000,r:420}; },
+  pal:{deep:[96,130,170],hot:[150,90,96],z:[[[150,200,230],[220,240,255],[40,70,100]],[[120,96,80],[190,160,130],[44,32,26]],[[60,140,120],[120,230,170],[14,40,44]],[[130,40,30],[210,90,50],[40,10,8]]]},
+  zn:[['🧊','das Eisgestein'],['🔥','das warme Gestein'],['❄️','die Frostgrotten'],['🦣','die Mammuthöhlen'],['🌌','die Polarlichtgrotten'],['🌋','das Lavaherz']],
+  mat:[['ei',20,0],['fe',8,1],['kn',6,3],['fp',5,6]],
+  zc:[null,null,null,['🦭','sit',1,'ORK ORK!','',24],['🦣','walk',1,'TÖRÖÖÖ!','bront',40],['🐧','sit',1,'BRRR!','',22],['🐲','sit',1,'FAUCH!','',26]],
+  lk:[0,0,0,ICE,WATER,ICE,LAVA],
+  hello:'Du bist auf dem Eisplaneten gelandet! Er ist riesig, mit Gletschern, einem zugefrorenen Meer und Höhlen voller Eis. Hier liegen die Eiskerne. Wenn du heim willst, flieg mit der Rakete ganz hoch hinauf.'};
 let realm='', RW=WORLD_W, RX0=0, RC0=0, RC1=GX;
 function rlm(){ return realm?RLM[realm]:null; }
 function setRealm(id){
@@ -981,9 +988,16 @@ const BT=[
     fauna:[['🐇','hop',3,'HOPS!'],['👾','walk',2,'PIEP PIEP!']],picks:[['⭐','star',1],['🧀','food',2]]},
   {id:'mberg',e:'🏔️',n:'die Mondberge',n2:'noch mehr Mondberge',to:'in die Mondberge',w:[3200,1600],sky:[[4,6,22],[22,20,52]],hill:[[110,112,124],[86,88,100]],cg:[206,208,214],ce:[170,172,180],cr:[132,134,146],night:0,space:1,noCloud:1,
     fs:520,flora:['crystal'],clr:220,
-    fauna:[['👽','sit',1,'HALLO, ERDENKIND!','gift',26],['🛸','fly',2,'WUUUSCH!'],['🐇','hop',2,'HOPS!']],picks:[['⭐','star',2]]}
+    fauna:[['👽','sit',1,'HALLO, ERDENKIND!','gift',26],['🛸','fly',2,'WUUUSCH!'],['🐇','hop',2,'HOPS!']],picks:[['⭐','star',2]]},
+  /* Länder auf dem Eisplaneten: hohe Gletscher mit Tannen und ein zugefrorenes Meer, unter dessen Eis Wasser liegt. */
+  {id:'glacier',e:'🧊',n:'den Gletscher',n2:'noch einen Gletscher',to:'zum Gletscher',w:[3600,1800],sky:[[120,180,235],[225,242,255]],hill:[[200,225,245],[170,205,235]],cg:[244,250,255],ce:[205,226,242],cr:[130,160,196],night:0,
+    fs:150,flora:['fir','fir','crystal'],clr:200,
+    fauna:[['🐻‍❄️','walk',1,'BRUMM!','scare',30],['🦅','fly',2,'KRAAH!'],['🐺','walk',1,'AUUUU!']],picks:[['❄️','star',2],['🐟','food',2]]},
+  {id:'icesea',e:'🐧',n:'das Eismeer',n2:'noch ein Eismeer',to:'ans Eismeer',w:[3400,1600],sky:[[110,170,230],[235,246,255]],hill:[[190,220,245],[160,200,235]],cg:[240,248,255],ce:[200,222,240],cr:[120,150,190],night:0,
+    flat:110,fs:260,flora:['fir','crystal'],clr:240,
+    fauna:[['🐧','walk',4,'QUAK QUAK!'],['🦭','sit',2,'ORK ORK!'],['🐋','sit',1,'PFFFFT!','',34]],picks:[['🐟','food',3],['⭐','star',1]]}
 ];
-const FH={cactus:[34,26],palm:[72,30],jungle:[110,60],giant:[250,0],lolly:[46,30],cane:[40,14],shroom:[12,12],dead:[60,40],grave:[20,6],fern:[30,18],crystal:[30,44],flower:[14,10],bush:[16,10],tree:[62,40]};
+const FH={fir:[62,40],cactus:[34,26],palm:[72,30],jungle:[110,60],giant:[250,0],lolly:[46,30],cane:[40,14],shroom:[12,12],dead:[60,40],grave:[20,6],fern:[30,18],crystal:[30,44],flower:[14,10],bush:[16,10],tree:[62,40]};
 
 function sm(t){ t=t<0?0:t>1?1:t; return t*t*(3-2*t); }
 function colOf(x){ return Math.ceil(x/CELL); }
@@ -1003,6 +1017,8 @@ function hBio(b,x,raw){
     case 8: h=30-e*(a*210*Math.abs(Math.sin(x*.0058+p))+64*Math.abs(Math.sin(x*.017+p*2))); break;
     case 10: h=0; break;
     case 13: h=34+roll*.35+craters(b,x,1); break;
+    case 15: { const f=sm(Math.min(u,1-u)*3.5); h=20-f*(a*190*Math.abs(Math.sin(x*.0037+p))+60*Math.abs(Math.sin(x*.012+p*2)))+roll*.3; break; }
+    case 16: h=PADH+78*sm(Math.min(u,1-u)*5)+roll*.12; break;
     case 14: { const f=sm(Math.min(u,1-u)*3); h=24-f*(170+70*Math.sin(x*.0029+p))+roll*.7+craters(b,x,.7); break; }
     default: h=roll*.7;
   }
@@ -1076,7 +1092,7 @@ function layout(){
 }
 function addTree(x,k,r){
   const f=FH[k], t={x:x,gy:ground(x),row:grow0[Math.floor(x/CELL)],h:f[0]+r()*f[1],state:0,t:0,s:.85+r()*.4};
-  if(k!=='tree') t.kind=k;
+  if(k==='fir') t.fir=true; else if(k!=='tree') t.kind=k;
   trees.push(t); return t;
 }
 function addCre(b,f,r,x,y){
@@ -1180,7 +1196,7 @@ function populate(b){
   const T=BT[b.t], r=rng(b.s*7+b.i), w=b.x1-b.x0, tier=Math.min(3,b.n), t0=trees.length;
   DECO.push({k:'gate',x:b.x0+240,b:b});
   if(T.flora) for(let x=b.x0+70;x<b.x1-70;x+=T.fs*(.55+r()*.9)){
-    if(Math.abs(x-b.x0-240)<50||Math.abs(x-b.qx)<(T.clr||150)||Math.abs(x-b.px)<(T.clp||0)) continue;
+    if(Math.abs(x-b.x0-240)<50||Math.abs(x-b.qx)<(T.clr||150)||Math.abs(x-b.px)<(T.clp||0)||liqM[Math.floor(x/CELL)]===ICE) continue;
     addTree(x,T.flora[Math.floor(r()*T.flora.length)],r);
   }
   for(const f of T.fauna||[]) for(let n=0;n<f[2];n++){
@@ -1220,6 +1236,7 @@ function shapeWorld(){
     else if(t===6&&dp<320){ noCave[cx]=2; if(dp<92){ liqM[cx]=LAVA; liqY[cx]=Math.floor((b.ly-TOP)/CELL); } }
     else if((t===1||t===3)&&dp<240){ noCave[cx]=1; if(dp<100){ liqM[cx]=WATER; liqY[cx]=Math.floor((b.ly-TOP)/CELL); } }
     else if(t===10||dq<240) noCave[cx]=1;
+    if(t===16&&x>b.x0+260&&x<b.x1-260&&dq>=240){ noCave[cx]=2; liqM[cx]=ICE; liqY[cx]=Math.floor((PADH+8-TOP)/CELL); }
   }
   trees.length=0; clouds.length=0; CRE=[]; PICKS=[]; PADS=[]; DECO=[]; EGGS=[]; LOOT=[]; STR=[]; DROPS=[]; ORBS.length=0;
   if(R){
@@ -1359,7 +1376,7 @@ function genCol(cx,from){
     }
     grid[cy*GX+cx]=m;
   }
-  if(!from&&liqM[cx]) for(let cy=Math.max(1,liqY[cx]);cy<g;cy++) grid[cy*GX+cx]=liqM[cx];
+  if(!from&&liqM[cx]) for(let cy=Math.max(1,liqY[cx]);cy<g;cy++) grid[cy*GX+cx]=liqM[cx]===ICE&&cy>liqY[cx]+2?WATER:liqM[cx];
   if(cx===0||cx===GX-1) for(let cy=0;cy<GY;cy++) grid[cy*GX+cx]=BED;
   for(let cy=GY-3;cy<GY;cy++) grid[cy*GX+cx]=BED;
   if(!from&&!realm&&cx>=SNC0&&cx<=SNC1) winterCol(cx);
@@ -4381,7 +4398,7 @@ const MAT={
   st:['☄️','Sternenerz','Sternenerz','Sternenerz liegt auf den großen Felsbrocken hoch über dem Mond. Dafür brauchst du die Rakete Stufe 1.'],
   kn:['🐚','Urzeit-Muschel','Urzeit-Muscheln','Urzeit-Muscheln stecken in den Urzeit-Höhlen, noch unter den Pilzgrotten.'],
   kr:['🔮','Tiefenkristall','Tiefenkristalle','Tiefenkristalle gibt es in den Kristalltiefen, unter der lila Schicht. Dafür brauchst du den Bohrer Stufe 2.'],
-  ei:['❄️','Eiskern','Eiskerne','Eiskerne liegen auf dem Eisplaneten, weit über den Felsbrocken. Dafür brauchst du die Rakete Stufe 2.'],
+  ei:['❄️','Eiskern','Eiskerne','Eiskerne gibt es auf dem Eisplaneten, weit über den Felsbrocken. Er ist eine ganze Welt. Dafür brauchst du die Rakete Stufe 2.'],
   fp:['🔥','Feuerperle','Feuerperlen','Feuerperlen liegen im Lavameer ganz unten, manche mitten in der Lava. Dafür brauchst du den Bohrer Stufe 3.']
 };
 const MATK=['zr','fe','mo','pi','st','kn','kr','ei','fp'], MATZ={fe:1,pi:3,kn:4,kr:5,fp:6};
@@ -4520,9 +4537,12 @@ function deepWorld(){
   }
   ORBS.push(stn,ice,jun,gate);
   const top=function(o,dx){ return o.y-Math.sqrt(o.r*o.r-dx*dx); };
-  for(let n=0;n<12;n++){ const dx=-330+n*60+r()*20; mat('ei',ice.x+dx,top(ice,dx)-12); }
-  MACH.push({id:'s0',t:nt(),x:stn.x,y:top(stn,0),zb:1},{id:'s1',t:nt(),x:ice.x+382,y:top(ice,382),zb:2},{id:'s2',t:nt(),x:jun.x-30,y:top(jun,-30),zb:2},{id:'s3',t:nt(),x:gate.x+170,y:top(gate,170),zb:3});
-  addCre(hb,['🐧','sit',1,'KALT HIER!','',24],r,ice.x-372,top(ice,-372));
+  /* Eiskerne liegen jetzt auf dem Eisplaneten selbst. Die alten Plätze behalten ihre Nummern, liegen aber nirgends mehr. */
+  for(let n=0;n<12;n++){ r(); MATS.push({id:mi++,k:'ei',x:-1e5,y:-1e5,off:1}); }
+  MACH.push({id:'s0',t:nt(),x:stn.x,y:top(stn,0),zb:1},{id:'s1',t:nt(),x:ice.x+382,y:top(ice,382),zb:2,gone:1},{id:'s2',t:nt(),x:jun.x-30,y:top(jun,-30),zb:2},{id:'s3',t:nt(),x:gate.x+170,y:top(gate,170),zb:3});
+  /* Auf dem Eisplaneten selbst stehen jetzt eigene Rätselmaschinen. */
+  MACH=MACH.filter(function(m){ return !m.gone; });
+  for(let k=0;k<5;k++) r();
   addCre(hb,['👽','sit',1,'BLUBB?','gift',26],r,jun.x+80,top(jun,80));
   addCre(hb,['👽','sit',1,'WILLKOMMEN!','sparkle',26],r,gate.x-150,top(gate,-150));
   addCre(hb,['👾','sit',1,'PIEP PIEP!','sparkle',24],r,gate.x-210,top(gate,-210));
@@ -4744,8 +4764,9 @@ function matWhere(k){
   }
   if(k==='lab') return [WSX,ground(WSX)-96];
   if(k==='mo') return [MOON.x,MOON.y-MOON.r-30];
-  if(k==='st'||k==='ei'){
-    const o=k==='st'?SPACE.stn:SPACE.ice;
+  if(k==='ei'&&SPACE.ice) return [SPACE.ice.x,SPACE.ice.y-SPACE.ice.r-30];
+  if(k==='st'){
+    const o=SPACE.stn;
     if(o&&Math.hypot(P.x-o.x,P.y-o.y)>o.r+(k==='st'?2600:700)) return [o.x,o.y-o.r-30];
   }else if(zoneAt(P.x,P.y)<MATZ[k]){
     const gy=ground(LIFTX);
@@ -6599,7 +6620,7 @@ function fillCells(buf,n,col,lift){
 function draw(){
   const vw=W/S, vh=H/S;
   ctx.setTransform(DPR,0,0,DPR,0,0);
-  const md=mood(), nl=md.nl, alt=realm?0:clamp(-cam.y/1100,0,1), sp=clamp((-cam.y-1500)/1400,0,1), sa=realm?1:Math.max(sp,nl*.9);
+  const md=mood(), spc=realm&&BT[bio[clamp(Math.floor(cam.x/CELL),0,GX-1)]].space, nl=md.nl, alt=spc?0:clamp(-cam.y/1100,0,1), sp=clamp((-cam.y-1500)/1400,0,1), sa=spc?1:Math.max(sp,nl*.9);
   const sky=ctx.createLinearGradient(0,0,0,H);
   sky.addColorStop(0,mix(lerpC(lerpC(md.st,SKY_TH,alt),NIGHT_T,nl),SPACE_T,sp)); sky.addColorStop(1,mix(lerpC(lerpC(md.sb,SKY_BH,alt),NIGHT_B,nl),SPACE_B,sp));
   ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
