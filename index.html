@@ -506,6 +506,10 @@ button.wt{cursor:pointer}
 .par-tabs,.par-act{display:flex;gap:8px;flex-wrap:wrap}
 .par-tabs button,.par-act button{height:36px;padding:0 14px;border:2px solid var(--ink);border-radius:18px;background:#fff;color:var(--ink);font:700 14px/1 var(--font-ui);cursor:pointer}
 .par-tabs button.on{background:var(--sun)}
+.par-lt{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:6px;margin:6px 0}
+.par-lt button{height:38px;border:2px solid var(--ink);border-radius:10px;background:#fff;color:var(--ink);font:700 16px/1 var(--font-learn);cursor:pointer}
+.par-lt button.on{background:var(--sun)}
+.par-note{background:#fff3c4;border-radius:10px;padding:8px 10px}
 .par-ch{display:block;width:100%;max-width:520px;margin:6px 0}
 .par-ch text{font:10px system-ui,sans-serif;fill:#5a6472}
 .par-leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px}
@@ -6191,6 +6195,19 @@ function loadFacts(){
 }
 function saveFacts(){ if(frozen) return; try{ localStorage.setItem('lavaland-facts',JSON.stringify(FS)); }catch(_){} }
 loadFacts();
+/* Schulstand: Eltern stellen ein, welcher Zahlenraum und welche Buchstaben in der Schule schon dran waren. Neue Fakten kommen dann nur daraus.
+   Schon Geübtes wird weiter wiederholt. Ohne Eintrag gilt alles wie bisher. */
+const ZRN=['bis 5','bis 10','bis 20 ohne Zehnerübergang','bis 20 mit Zehnerübergang'], ABC='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+let SCH={on:false,zr:3,l:'',at:0};
+try{ const o=JSON.parse(localStorage.getItem('lavaland-school')||'null'); if(o&&typeof o==='object'){ SCH.on=!!o.on; SCH.zr=clamp(o.zr|0,0,3); SCH.l=String(o.l||'').replace(/[^A-Z]/g,''); SCH.at=+o.at||0; } }catch(_){}
+function saveSchool(){ SCH.at=Date.now(); try{ localStorage.setItem('lavaland-school',JSON.stringify(SCH)); }catch(_){} }
+function schoolOk(k,s){
+  if(!SCH.on) return true;
+  if(fDom(k)==='m') return s<=SCH.zr;
+  const v=k.slice(k.indexOf(':')+1).toUpperCase();
+  if(k.indexOf('word:')===0) return v.split('').every(function(c){ return SCH.l.indexOf(c)>=0; });
+  return SCH.l.indexOf(v.charAt(0))>=0;
+}
 function fDom(k){ return /^(anlaut|case|word):/.test(k)?'l':'m'; }
 function fStage(k){ const d=fDom(k), S=STAGES[d]; for(let i=0;i<S.length;i++) if(S[i].indexOf(k)>=0) return i; return 0; }
 /* Eine Stufe öffnet die nächste, wenn 60 % ihrer Fakten mindestens in Fach 2 sind, oder sofort, wenn die letzten vier neuen Fakten alle auf Anhieb und schnell saßen (Einstufung). */
@@ -6216,7 +6233,7 @@ function pickFact(){
       for(let s=0;s<=FS.u[d];s++) STAGES[d][s].forEach(function(k){
         if(k===lastF||retry.some(function(r){ return r.k===k; })) return;
         const r=FS.f[k];
-        if(!r) fresh.push([k,s]);
+        if(!r){ if(schoolOk(k,s)) fresh.push([k,s]); }
         else if(r[1]<=today) due.push(k);
       });
       /* Fällige zuerst, die schwächsten vorn. Neue nur in Maßen, damit nicht zu viel Ungeübtes auf einmal kommt. */
@@ -7200,6 +7217,7 @@ function parRender(o){
   days.forEach(function(r){ for(const k in sum) sum[k]+=r.sec[k]||0; sess+=r.sess|0; });
   const act=sum.quiz+sum.pz+sum.play+sum.empty+sum.ui, learn=sum.quiz+sum.pz;
   let h='<div class="par-tabs">'+[1,7,30].map(function(n){ return '<button data-r="'+n+'"'+(n===parRange?' class="on"':'')+'>'+(n===1?'Heute':n+' Tage')+'</button>'; }).join('')+'</div>';
+  h+=parSchool();
   h+='<h3>Zeit</h3>';
   if(!act) h+='<p>Noch keine Spielzeit in diesem Zeitraum.</p>';
   else{
@@ -7239,6 +7257,16 @@ function parRender(o){
   h+='<h3>Daten</h3><p>Alles liegt nur in diesem Browser. Rohdaten werden nach 90 Tagen gelöscht, die Tageszeiten bleiben.</p><div class="par-act"><button id="par-exp">Protokoll exportieren</button><button id="par-del">'+(parDel?'Wirklich löschen?':'Protokoll löschen')+'</button></div>';
   $('par-body').innerHTML=h;
 }
+function parSchool(){
+  let h='<h3>Schulstand</h3>';
+  const wk=SCH.on?Math.floor((Date.now()-SCH.at)/(7*864e5)):0;
+  if(SCH.on&&wk>=4) h+='<p class="par-note">Der Schulstand wurde seit '+wk+' Wochen nicht geändert. Stimmt er noch?</p>';
+  h+='<p>'+(SCH.on?'Neue Aufgaben kommen nur aus dem, was hier eingestellt ist.':'Noch nicht eingestellt: Das Spiel nimmt alles in Schulbuch-Reihenfolge.')+'</p>';
+  h+='<div class="par-tabs">'+ZRN.map(function(n,i){ return '<button data-zr="'+i+'"'+(SCH.on&&SCH.zr===i?' class="on"':'')+'>'+n+'</button>'; }).join('')+'</div>';
+  h+='<p>Buchstaben, die schon dran waren:</p><div class="par-lt">'+ABC.map(function(c){ return '<button data-lt="'+c+'"'+(SCH.on&&SCH.l.indexOf(c)>=0?' class="on"':'')+'>'+c+'</button>'; }).join('')+'</div>';
+  if(SCH.on) h+='<div class="par-act"><button id="par-sall">Schulstand aufheben</button></div>';
+  return h;
+}
 /* Lernstand nach Leitner: wie viele Fakten in welchem Fach liegen, getrennt nach Rechnen und Buchstaben. */
 function parFacts(){
   const c={m:[0,0,0,0,0,0],l:[0,0,0,0,0,0]};
@@ -7265,6 +7293,14 @@ function parBars(all){
 $('par-body').addEventListener('click',function(e){
   const r=e.target.closest('[data-r]');
   if(r){ parRange=+r.dataset.r; parLoad(); return; }
+  const z=e.target.closest('[data-zr]'), lt=e.target.closest('[data-lt]');
+  if(z||lt){
+    if(!SCH.on){ SCH.on=true; SCH.l=''; }
+    if(z) SCH.zr=+z.dataset.zr;
+    else{ const c=lt.dataset.lt; SCH.l=SCH.l.indexOf(c)>=0?SCH.l.replace(c,''):SCH.l+c; }
+    saveSchool(); parLoad(); return;
+  }
+  if(e.target.closest('#par-sall')){ SCH.on=false; saveSchool(); parLoad(); return; }
   if(e.target.closest('#par-exp')){
     parGet().then(function(o){
       const b=new Blob([JSON.stringify({app:'lavaland-log',at:new Date().toISOString(),ev:o.ev,day:o.day})],{type:'application/json'});
