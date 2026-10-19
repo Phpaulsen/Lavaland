@@ -330,6 +330,13 @@ body{
 .pzc.sp3{background:#58b548}
 .pzc.flash{animation:near .5s ease-in-out 2}
 .pzt.flash{border-radius:10px;animation:near .5s ease-in-out 3}
+.pzsky{position:relative;margin:0 auto;border-radius:18px;background:radial-gradient(circle at 30% 20%,#27306e,#0b1236 70%);border:3px solid var(--ink)}
+.pzsky svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.pzdot{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;padding:0;border:0;border-radius:50%;cursor:pointer;background:radial-gradient(circle,#fffbe0 0,#ffd23f 38%,rgba(255,210,63,.25) 62%,rgba(255,210,63,0) 72%);color:var(--ink);font:700 15px/44px var(--font-learn)}
+.pzdot.done{background:radial-gradient(circle,#fff 0,#9bd8ff 40%,rgba(155,216,255,0) 70%)}
+.pzdot.flash{animation:near .5s ease-in-out 3}
+.pzdot.no{background:radial-gradient(circle,#ffd0d0 0,#e63946 40%,rgba(230,57,70,0) 70%)}
+.pzshape{position:absolute;inset:0;display:grid;place-items:center;font-size:96px;animation:near .6s ease-in-out 2}
 #pz-hint.off{opacity:.35;filter:grayscale(1)}
 .pzmir{display:flex;align-items:center;gap:7px}
 .pzmir.hz{flex-direction:column}
@@ -4528,7 +4535,7 @@ function deepWorld(){
   for(let n=0;n<8;n++){ r(); MATS.push({id:mi++,k:'mo',x:-1e5,y:-1e5,off:1}); }
 
   /* Rätselmaschinen: drei in der Heimat, eine in jedem Land, je drei in jeder tiefen Zone, vier im Weltraum. */
-  MACH.push({id:'h0',t:'muster',x:1330,y:NaN,sf:1,zb:0},{id:'h1',t:'robo',x:4280,y:NaN,sf:1,zb:0},{id:'h2',t:'spiegel',x:8590,y:NaN,sf:1,zb:0});
+  MACH.push({id:'h0',t:'muster',x:1330,y:NaN,sf:1,zb:0},{id:'h1',t:'robo',x:4280,y:NaN,sf:1,zb:0},{id:'h2',t:'spiegel',x:8590,y:NaN,sf:1,zb:0},{id:'n0',t:'stern',x:7010,y:NaN,sf:1,zb:0});
   /* Länder der neuen Hälfte bekommen ihre Maschinen-Arten aus einer eigenen Reihe, damit sich an den alten nichts ändert. */
   let ti2=0;
   for(const b of BIO) if(b.t!==12) MACH.push({id:'b'+b.i,t:b.i<OLD_N?nt():types[(ti2++)%7],x:b.t===7?b.px-12:b.t===10?b.x0+330:b.qx+150,y:NaN,sf:1,zb:b.i<4?0:1});
@@ -4649,7 +4656,7 @@ function planetDeep(R){
   const mat=function(k,x,y){ MATS.push({id:mi++,k:k,x:x,y:y}); };
   const yr=function(a,b){ return TOP+CELL*(a+r()*(b-a)); };
   const xr=function(){ return X0+r()*XW; };
-  const types=['muster','spiegel','robo','waage'];
+  const types=['stern','muster','spiegel','robo','waage'];
   const room=function(x,y,rx,ry){ const s={k:'room',x:x,y:y,rx:rx,ry:ry,hw:0,nw:1,c1:colOf(x+rx+14)}; STR.push(s); return roomY(s); };
   const ZA=[368,560,660,978,1322,1672], ZB=[552,616,944,1272,1622,1880], ZBN=[0,1,1,1,2,3];
   /* Material: Zone 0 heißt oben auf dem Boden oder knapp darunter. */
@@ -4659,8 +4666,8 @@ function planetDeep(R){
     else mat(q[0],x,n%2?ground(x)-12:ground(x)+30+r()*90);
   }
   /* Zwei Rätselmaschinen oben, eine in jeder tiefen Zone */
-  for(let n=0;n<2;n++) MACH.push({id:'p'+(di++),t:types[(ti++)%4],x:PX0+RW*(.3+.4*n)+r()*900,y:NaN,sf:1,zb:n});
-  for(let z=2;z<6;z++){ const x=xr(); MACH.push({id:'p'+(di++),t:types[(ti++)%4],x:x,y:room(x,ZA[z]+24+r()*(ZB[z]-ZA[z]-48),92,44),zb:ZBN[z]}); }
+  for(let n=0;n<2;n++) MACH.push({id:'p'+(di++),t:n?types[(ti++)%5]:'stern',x:PX0+RW*(.3+.4*n)+r()*900,y:NaN,sf:1,zb:n});
+  for(let z=2;z<6;z++){ const x=xr(); MACH.push({id:'p'+(di++),t:types[(ti++)%5],x:x,y:room(x,ZA[z]+24+r()*(ZB[z]-ZA[z]-48),92,44),zb:ZBN[z]}); }
   /* Höhlen mit Bewohnern, Seen und Kristallen */
   for(let z=3;z<=6;z++){
     const a=ZA[z-1], b=ZB[z-1], f=R.zc[z];
@@ -5157,7 +5164,8 @@ const PZT=[
   {id:'waage',e:'⚖️',n:'Waage',col:'#ffd38a',make:mkWaage,draw:drWaage,act:acWaage,hint:hiWaage,say:syWaage,post:poWaage},
   {id:'echo',e:'🎵',n:'Kristall-Echo',col:'#c9a6ff',make:mkEcho,draw:drEcho,act:acEcho,hint:hiEcho,say:syEcho,start:stEcho},
   {id:'rohre',e:'💧',n:'Rohre',col:'#8fd8ff',make:mkRohre,draw:drRohre,act:acRohre,hint:hiRohre,say:syRohre},
-  {id:'sudoku',e:'🔢',n:'Bilder-Sudoku',col:'#b9e89a',make:mkSudoku,draw:drSudoku,act:acSudoku,hint:hiSudoku,say:sySudoku}
+  {id:'sudoku',e:'🔢',n:'Bilder-Sudoku',col:'#b9e89a',make:mkSudoku,draw:drSudoku,act:acSudoku,hint:hiSudoku,say:sySudoku},
+  {id:'stern',e:'✨',n:'Sternbild',col:'#a8b8ff',make:mkStern,draw:drStern,act:acStern,hint:hiStern,say:syStern}
 ];
 const PZI={}; for(const p of PZT) PZI[p.id]=p;
 let pzc=null, pzTm=[];
@@ -5323,6 +5331,69 @@ function hiMuster(st){
   speak(st.k==='cnt'?'Zähle von einer Zahl zur nächsten. Wie viel kommt jedes Mal dazu oder geht weg?':st.k==='two'?'Schau erst nur auf die Form. Dann schau nur auf die Farbe.':'Sprich die Reihe laut mit. Was wiederholt sich immer wieder?');
 }
 function syMuster(st){ return st.k==='cnt'?'Welche Zahl fehlt? Schau, wie die Zahlen größer oder kleiner werden.':st.k==='two'?'Welches Bild fehlt? Achte auf die Form und auf die Farbe.':'Welches Bild fehlt in der Reihe? Schau, was sich wiederholt.'; }
+
+/* ---------- Sternbild: Sterne mit Zahlen der Reihe nach verbinden, bis ein Bild entsteht. Zählt bis 10 oder bis 20, je nach Schulstand, später in Zweierschritten. ---------- */
+const SHAPES=[
+  {n:'ein Stern',e:'⭐',p:[[.5,.05],[.62,.38],[.96,.38],[.69,.6],[.8,.94],[.5,.74],[.2,.94],[.31,.6],[.04,.38],[.38,.38]]},
+  {n:'ein Haus',e:'🏠',p:[[.15,.94],[.15,.46],[.5,.08],[.85,.46],[.85,.94]]},
+  {n:'eine Rakete',e:'🚀',p:[[.5,.04],[.68,.3],[.68,.7],[.86,.94],[.5,.82],[.14,.94],[.32,.7],[.32,.3]]},
+  {n:'ein Fisch',e:'🐟',p:[[.04,.5],[.3,.22],[.62,.25],[.8,.45],[.96,.22],[.96,.78],[.8,.55],[.62,.75],[.3,.78]]},
+  {n:'ein Herz',e:'❤️',p:[[.5,.3],[.65,.1],[.88,.12],[.96,.35],[.85,.6],[.5,.93],[.15,.6],[.04,.35],[.12,.12],[.35,.1]]},
+  {n:'ein Kristall',e:'💎',p:[[.3,.1],[.7,.1],[.92,.38],[.5,.94],[.08,.38]]},
+  {n:'eine Tanne',e:'🌲',p:[[.5,.04],[.78,.38],[.64,.38],[.9,.74],[.56,.74],[.56,.95],[.44,.95],[.44,.74],[.1,.74],[.36,.38],[.22,.38]]}
+];
+function mkStern(lv){
+  const N=[5,6,7,8,9,10,10,11,10,10][lv], big=FS.u.m>=2, two=big&&lv>=8, step=two?2:1;
+  let n=big?N:Math.min(N,10), a=1;
+  if(two) a=2; else if(big&&lv>=6) a=ri(2,20-n+1);
+  const sh=shuffle(SHAPES.filter(function(q){ return q.p.length<=n; }))[0];
+  /* Alle Ecken bleiben, auf den längsten Kanten kommen Sterne dazu, bis es genug sind. */
+  let pts=sh.p.map(function(q){ return q.slice(); });
+  while(pts.length<n){
+    let bi=0, bd=0;
+    for(let i=0;i<pts.length;i++){ const p=pts[i], q=pts[(i+1)%pts.length], d=Math.hypot(p[0]-q[0],p[1]-q[1]); if(d>bd){ bd=d; bi=i; } }
+    const p=pts[bi], q=pts[(bi+1)%pts.length]; pts.splice(bi+1,0,[(p[0]+q[0])/2,(p[1]+q[1])/2]);
+  }
+  const o=ri(0,n-1), dir=ri(0,1)?1:-1, ord=[];
+  for(let i=0;i<n;i++) ord.push(pts[((o+dir*i)%n+n)%n]);
+  return {sh:sh,pts:ord.map(function(p,i){ return [p[0],p[1],a+i*step]; }),k:0,two:two};
+}
+function stSide(){ const land=H<=480; return Math.max(220,Math.min(land?H-130:W-56,land?420:H-300,440)); }
+function drStern(st){
+  const w=stSide(), m=26, sc=w-2*m;
+  let h='<div class="pzsky" id="pz-sky" style="width:'+w+'px;height:'+w+'px"><svg viewBox="0 0 '+w+' '+w+'" aria-hidden="true"><polyline id="pz-line" fill="none" stroke="#9bd8ff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" points=""/></svg>';
+  st.pts.forEach(function(p,i){ h+='<button class="pzdot" data-a="'+i+'" style="left:'+(m+p[0]*sc).toFixed(1)+'px;top:'+(m+p[1]*sc).toFixed(1)+'px" aria-label="Stern '+p[2]+'">'+p[2]+'</button>'; });
+  return [h+'</div>'];
+}
+function stLine(st,close){
+  const w=stSide(), m=26, sc=w-2*m, L=st.pts.slice(0,st.k);
+  if(close) L.push(st.pts[0]);
+  const el=$('pz-line'); if(el) el.setAttribute('points',L.map(function(p){ return (m+p[0]*sc).toFixed(1)+','+(m+p[1]*sc).toFixed(1); }).join(' '));
+}
+function acStern(st,a,b){
+  const i=+a;
+  if(i<st.k) return;
+  if(i===st.k){
+    st.k++; b.classList.remove('no'); b.classList.add('done'); stLine(st,false);
+    const f=330+st.k*30; blip(f,f*1.2,.12,'triangle',.06);
+    if(st.k===st.pts.length){
+      stLine(st,true);
+      $('pz-sky').insertAdjacentHTML('beforeend','<div class="pzshape" aria-hidden="true">'+st.sh.e+'</div>');
+      speak('Das ist '+st.sh.n+'!'); pzWin();
+    }
+    return;
+  }
+  /* Falsch: Der richtige Stern blinkt und es wird gesagt, welche Zahl kommt. Das Bild bleibt, wie es ist. */
+  b.classList.remove('no'); void b.offsetWidth; b.classList.add('no'); pzFail();
+  const nx=$('pz-sky').querySelector('[data-a="'+st.k+'"]'); if(nx){ nx.classList.remove('flash'); void nx.offsetWidth; nx.classList.add('flash'); }
+  const want=st.pts[st.k][2];
+  speak(st.k?'Nach '+st.pts[st.k-1][2]+' kommt '+want+'.':'Fang bei '+want+' an.');
+}
+function hiStern(st){
+  const nx=$('pz-sky').querySelector('[data-a="'+st.k+'"]'); if(nx){ nx.classList.remove('flash'); void nx.offsetWidth; nx.classList.add('flash'); }
+  speak(st.two?'Immer zwei weiter: 2, 4, 6 und so fort.':'Zähl laut mit. Welche Zahl kommt als Nächstes?');
+}
+function syStern(st){ return 'Verbinde die Sterne der Reihe nach. Fang bei '+st.pts[0][2]+' an'+(st.two?' und zähl immer zwei weiter.':'.'); }
 
 /* ---------- 2. Spiegelbild: Die andere Seite so ausmalen, als stünde in der Mitte ein Spiegel. ---------- */
 const SPL=[[2,3,2,1,0],[3,3,3,1,0],[3,3,5,1,0],[3,4,6,1,0],[3,4,6,2,0],[4,4,8,2,0],[4,3,6,2,1],[4,5,10,2,0],[4,4,9,3,1],[5,5,13,3,0]];
