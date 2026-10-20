@@ -44,11 +44,18 @@ In der Elternansicht lässt sich außerdem einstellen:
 - **Spielstand sichern**: Erinnerung, wenn lange nicht gesichert wurde.
 - **Stolperaufgaben**: Welche Aufgaben oft falsch sind.
 
+## Datenschutz
+
+- Das Spiel sendet nichts: kein Konto, keine Werbung, keine Statistik, keine Schriften oder Skripte von fremden Servern (per Content-Security-Policy erzwungen: `connect-src 'self'`). Alles bleibt im Browser des Geräts.
+- Daten verlassen das Gerät nur, wenn man selbst „Sichern“ oder „Protokoll exportieren“ antippt.
+- GitHub Pages sieht beim Laden wie jeder Webserver die IP-Adresse. Die installierte App startet danach aus dem eigenen Speicher.
+- Vorlesen nutzt die Sprachausgabe des Browsers. Online-Stimmen (in der Elternansicht mit ☁ markiert) schicken den vorgelesenen Text an den Hersteller (z. B. Google). Der Text enthält nur Aufgaben und Ansagen, keine Namen. Wer das nicht will, wählt eine lokale Stimme.
+
 ## Entwicklung
 
 Alles steckt in `index.html` (Spiel, Grafik, Töne), dazu `sw.js` für den Offline-Betrieb. Kein Build-Schritt: Datei öffnen genügt.
 
-- **Tests**: `tests/smoke.mjs` startet das Spiel in einem Handy-Browser und prüft Start, Laufen, eine Lernaufgabe, Elternansicht, Planetenreise und Neuladen. Lokal: `npm i --no-save playwright && npx playwright install chromium && node tests/smoke.mjs`. `tests/offline.mjs` prüft, dass die App nach dem ersten Besuch ohne Netz startet. Beides läuft automatisch bei jedem PR.
+- **Tests**: `tests/smoke.mjs` startet das Spiel in einem Handy-Browser und prüft Start, Laufen, eine Lernaufgabe, Elternansicht, Planetenreise und Neuladen. Lokal: `npm i --no-save playwright && npx playwright install chromium && node tests/smoke.mjs`. `tests/offline.mjs` prüft, dass die App nach dem ersten Besuch ohne Netz startet, `tests/upgrade.mjs`, dass ein Spielstand der Live-Version (main) nach dem Update weiterläuft. Alles läuft automatisch bei jedem PR.
 - **Jeder Merge auf `main` geht sofort live** (GitHub Pages). Deshalb nur über PRs mit grünem Test.
 - **Spielstand nie brechen**: Speicherformate nur rückwärtskompatibel ändern. Neue Daten bekommen neue Schlüssel, alte Schlüssel bleiben lesbar. Weltgenerierung neuer Dinge mit eigenem Zufallsstrom, damit bestehende Welten gleich bleiben.
 - **Service Worker**: Bei Änderungen an der Dateiliste in `sw.js` die Versionsnummer `CACHE` hochzählen. Die Seite selbst lädt immer zuerst aus dem Netz.
