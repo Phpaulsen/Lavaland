@@ -209,6 +209,45 @@ test('Spielstand übersteht Neuladen', async ({ ev, page }) => {
   if (g !== 4321) throw new Error('Gold nach Neuladen: ' + g);
 });
 
+// Echte Wischgeste per Touch (CDP), damit das globale Wisch-Verbot mitgeprüft wird.
+async function swipeUp(page, x, y) {
+  const cdp = await page.context().newCDPSession(page);
+  x = Math.round(x); y = Math.round(y);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+  for (let i = 1; i <= 12; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - i * 15 }] }); await page.waitForTimeout(16); }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await cdp.detach();
+}
+
+test('Elternansicht lässt sich bis unten wischen', async ({ ev, page }) => {
+  await ev("OVS.forEach(o=>o.hidden=true); paused=false; parOpen()");
+  await page.waitForTimeout(1500);
+  const r = await page.evaluate(() => { const b = document.querySelector('.pars').getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height * 0.7 }; });
+  await swipeUp(page, r.x, r.y);
+  await page.waitForTimeout(300);
+  const top = await ev("document.querySelector('.pars').scrollTop");
+  await ev("$('par').hidden=true");
+  if (!(top > 50)) throw new Error('Elternansicht scrollt nicht: ' + top);
+});
+
+test('Zu hohe Fenster im Querformat lassen sich wischen, die Welt nicht', async ({ ev, page }) => {
+  const vp = page.viewportSize();
+  await page.setViewportSize({ width: 640, height: 360 });
+  try {
+    await ev("OVS.forEach(o=>o.hidden=true); paused=false; openMarket()");
+    await page.waitForTimeout(400);
+    const m = await ev("({sh:$('market').scrollHeight, ch:$('market').clientHeight, top:$('market').firstElementChild.getBoundingClientRect().top})");
+    if (m.top < 0) throw new Error('Markt beginnt oberhalb des Bildschirms: ' + m.top);
+    if (!(m.sh > m.ch)) throw new Error('Markt passt doch, Test prüft nichts');
+    await swipeUp(page, 320, 250);
+    await page.waitForTimeout(300);
+    if (!(await ev("$('market').scrollTop") > 0)) throw new Error('Markt scrollt nicht');
+    await ev("OVS.forEach(o=>o.hidden=true)");
+    const blocked = await page.evaluate(() => { const t = document.getElementById('c'); const e = new TouchEvent('touchmove', { cancelable: true, bubbles: true, touches: [] }); t.dispatchEvent(e); return e.defaultPrevented; });
+    if (!blocked) throw new Error('Wischen auf der Spielwelt ist nicht gesperrt');
+  } finally { await page.setViewportSize(vp); await ev("OVS.forEach(o=>o.hidden=true); paused=false"); }
+});
+
 const srv = await serve();
 const url = 'http://127.0.0.1:' + srv.address().port + '/';
 const browser = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
