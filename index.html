@@ -878,6 +878,7 @@ AI.flame='<path d="M13 2c0 4 6 6 6 13a7 7 0 0 1-14 0c0-3 2-5 3-8 1 2 2 3 3 3 1-2
 
 QI.egg='<path d="M12 2.500c4 0 7 6 7 10.800a7 7 0 0 1-14 0C5 8.500 8 2.500 12 2.500z" fill="#ffd23f" '+S1+' stroke-width="1.6"/><path d="M9 9.500c.500-1.800 1.500-3 2.800-3.600" stroke="#fff" stroke-width="1.800" stroke-linecap="round" fill="none"/>';
 QI.map='<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z" fill="#bfe6a8" '+S1+' stroke-width="1.6"/><path d="M9 4v14M15 6v14" '+S1+' stroke-width="1.4"/><circle cx="12" cy="10.500" r="2" fill="#e63946" '+S1+' stroke-width="1"/>';
+IC.balloon='<path d="M12 2a7.5 7.5 0 0 0-7.5 7.5c0 3.6 3 6 5.2 8h4.6c2.2-2 5.2-4.4 5.2-8A7.5 7.5 0 0 0 12 2z" fill="#e63946" '+S1+' stroke-width="1.5"/><path d="M12 2c-2 2-2.8 4.8-2.8 7.5 0 3.200 1 6 .5 8M12 2c2 2 2.800 4.800 2.800 7.500 0 3.200-1 6-.5 8" fill="#ffd23f" '+S1+' stroke-width="1.2"/><rect x="9" y="19" width="6" height="3.5" rx="1" fill="#a0632f" '+S1+' stroke-width="1.3"/>';
 IC.sub='<path d="M9 9V5.500h4" fill="none" '+S1+' stroke-width="2"/><rect x="2" y="9" width="18" height="10" rx="5" fill="#ffc21a" '+S1+' stroke-width="1.6"/><circle cx="13" cy="14" r="2.400" fill="#bfe9f5" '+S1+' stroke-width="1.3"/><circle cx="7" cy="14" r="1.500" fill="#bfe9f5" '+S1+' stroke-width="1.1"/><path d="M21.500 10.500v7" '+S1+' stroke-width="2.4"/>';
 AI.sonar='<circle cx="12" cy="12" r="2.600" fill="currentColor"/><path d="M6.500 6.500a8 8 0 0 0 0 11M17.500 6.500a8 8 0 0 1 0 11M3.500 3.500a12 12 0 0 0 0 17M20.500 3.500a12 12 0 0 1 0 17" stroke="currentColor" stroke-width="2.200" fill="none" stroke-linecap="round"/>';
 
@@ -1876,9 +1877,9 @@ function explode(x,y){
 }
 
 /* ---------- Spielfigur ---------- */
-const P={mode:'walk',x:820,y:0,vx:0,vy:0,on:true,landed:false,gs:0,face:1,chute:false,air:0,run:0,ang:0,turbo:0,soot:0,hurt:0,track:null,s:0,v:0,arm:.75,load:0,digT:0,climb:0,lift:0,da:0,bed:0,ball:0,spin:0,rot:0,frost:0,jet:false,back:false};
+const P={mode:'walk',x:820,y:0,vx:0,vy:0,on:true,landed:false,gs:0,face:1,chute:false,air:0,run:0,ang:0,turbo:0,soot:0,hurt:0,track:null,s:0,v:0,arm:.75,load:0,digT:0,climb:0,lift:0,da:0,bed:0,ball:0,spin:0,rot:0,frost:0,jet:false,back:false,balT:0};
 function grav(){ return P.y<-1700?G*.3:G; }
-const parked={car:null,plane:null,rocket:null,bagger:null,loader:null,dumper:null,tbm:null,sub:null};
+const parked={car:null,plane:null,rocket:null,bagger:null,loader:null,dumper:null,tbm:null,sub:null,balloon:null};
 let ghost=null, chest=null;
 const cam={x:820,y:-60}, pan={x:0,y:0};
 const keys={l:false,r:false,u:false,d:false,a:false};
@@ -1901,7 +1902,7 @@ function setMode(m){
     for(const T of tracks){ const d=Math.abs(T.pts[0][0]-P.x)+Math.abs(T.pts[0][1]-P.y)-(T.user?4000:0); if(d<bd){bd=d;best=T;} }
     P.track=best; P.s=0; P.v=130;
   }else{
-    const jumped=(P.mode==='plane'||P.mode==='rocket'||P.mode==='dragon')&&!P.on;
+    const jumped=(P.mode==='plane'||P.mode==='rocket'||P.mode==='dragon'||P.mode==='balloon')&&!P.on;
     leaveVehicle();
     if(m!=='walk'){
       const pk=parked[m];
@@ -2245,7 +2246,7 @@ function updCoaster(dt,ix){
 }
 function settle(o,dt){
   const f=floorAt(o.x,o.y,26);
-  if(o.y<f-1){ o.vy+=G*dt; o.y=Math.min(f,o.y+o.vy*dt); }
+  if(o.y<f-1){ o.vy+=G*dt; if(o===parked.balloon&&o.vy>70) o.vy=70; o.y=Math.min(f,o.y+o.vy*dt); }
   else{ o.y=f; o.vy=0; o.ang+=(Math.atan(clamp((floorAt(o.x+16,o.y,26)-floorAt(o.x-16,o.y,26))/32,-1.3,1.3))-o.ang)*Math.min(1,dt*10); }
 }
 
@@ -2270,6 +2271,7 @@ function update(dt){
   else if(P.mode==='ski') updSki(dt,ix,u,d);
   else if(P.mode==='dragon') updDragon(dt,ix,u,d);
   else if(P.mode==='sub') updSub(dt,ix,u,d);
+  else if(P.mode==='balloon') updBalloon(dt,ix,u,d);
   else updCoaster(dt,ix);
 
   if(P.mode!=='coaster'&&P.mode!=='dragon'&&P.hurt<=0&&FX.star<=0){
@@ -4271,6 +4273,22 @@ function updSub(dt,ix,u,d){
   if(P.on) P.vy=0;
   P.ang+=((wet?clamp(P.vy/400,-.4,.4)*P.face:(P.on?Math.atan(P.gs):0))-P.ang)*Math.min(1,dt*6);
 }
+/* Heißluftballon: Hoch heizt, dann steigt er. Ohne Heizen sinkt er langsam, Runter lässt Luft ab. Der Wind treibt ihn sanft, mit Links und Rechts lenkt man nur ein wenig. Höher als die Wolken kommt er nicht, die Luft wird zu dünn. */
+const BALLOON_TOP=-1250;
+function updBalloon(dt,ix,u,d){
+  if(ix) P.face=ix;
+  const wind=Math.sin(time*.07+P.x*.0004)*45;
+  if(P.on){ P.vx-=P.vx*Math.min(1,dt*6); }
+  else P.vx+=(ix*95+wind-P.vx)*Math.min(1,dt*.9);
+  let ty=u?-125:d?150:45;
+  if(P.y<BALLOON_TOP&&ty<20){ ty=20; if(u&&P.balT<=0){ P.balT=4; say('','Höher kommt der Ballon nicht. Die Luft ist hier oben zu dünn.'); } }
+  if(P.balT>0) P.balT-=dt;
+  P.vy+=(ty-P.vy)*Math.min(1,dt*(u?1.1:.8));
+  if(u){ if(P.on){ P.on=false; P.y-=2; } if(Math.random()<dt*20) spawn(1,P.x+(Math.random()-.5)*6,P.y-46,(Math.random()-.5)*20,-60,.25,5); }
+  if(mover(dt,15,120,14,10)) P.vx*=-.3;
+  if(P.on){ if(P.landed&&P.vy>90) dust(P.x,P.y); P.vy=0; }
+  P.ang+=(clamp(P.vx/600,-.12,.12)-P.ang)*Math.min(1,dt*3);
+}
 function sonar(){
   FX.sonar=7; blip(1500,1500,.5,'sine',.07);
   for(let i=0;i<16;i++){ const a=i/16*TAU; spawn(5,P.x+Math.cos(a)*14,P.y-16+Math.sin(a)*14,Math.cos(a)*160,Math.sin(a)*160,.6,2); }
@@ -4286,6 +4304,24 @@ function drawSub(x,y,ang,face,occ){
   ctx.fillStyle=INK; circle(-12,-17.5,4.5); ctx.fillStyle='#bfe9f5'; circle(-12,-17.5,3.2);
   ctx.fillStyle=INK; ctx.beginPath(); ctx.ellipse(-33,-17.5,3,3+(occ&&!reduced?8*Math.abs(Math.sin(time*24)):6),0,0,TAU); ctx.fill();
   ctx.fillStyle='#e63946'; ctx.fillRect(-27,-10,54,3);
+  ctx.restore();
+}
+
+function drawBalloon(x,y,ang,occ,heat){
+  ctx.save(); ctx.translate(x,y); ctx.rotate(ang);
+  ctx.strokeStyle=INK; ctx.lineWidth=1.6; ctx.beginPath(); ctx.moveTo(-12,-18); ctx.lineTo(-20,-52); ctx.moveTo(12,-18); ctx.lineTo(20,-52); ctx.moveTo(-4,-18); ctx.lineTo(-7,-50); ctx.moveTo(4,-18); ctx.lineTo(7,-50); ctx.stroke();
+  if(heat){ ctx.fillStyle='#ff7a1f'; ctx.beginPath(); ctx.moveTo(-5,-34); ctx.lineTo(0,-50-Math.random()*10); ctx.lineTo(5,-34); ctx.closePath(); ctx.fill(); ctx.fillStyle='#ffe066'; ctx.beginPath(); ctx.moveTo(-2.5,-34); ctx.lineTo(0,-43-Math.random()*5); ctx.lineTo(2.5,-34); ctx.closePath(); ctx.fill(); }
+  ctx.fillStyle=INK; rr(-7,-35,14,4,1.5);
+  const cols=['#e63946','#ffd23f','#3aa0e8','#ffd23f','#e63946'];
+  ctx.save(); ctx.beginPath(); ctx.moveTo(-20,-52); ctx.bezierCurveTo(-52,-78,-50,-138,0,-140); ctx.bezierCurveTo(50,-138,52,-78,20,-52); ctx.closePath();
+  ctx.fillStyle=INK; ctx.fill(); ctx.clip();
+  for(let i=0;i<5;i++){ ctx.fillStyle=cols[i]; ctx.beginPath(); ctx.ellipse(0,-96,46-i*9.2,46,0,0,TAU); ctx.fill(); }
+  ctx.restore();
+  ctx.lineWidth=3; ctx.strokeStyle=INK; ctx.beginPath(); ctx.moveTo(-20,-52); ctx.bezierCurveTo(-52,-78,-50,-138,0,-140); ctx.bezierCurveTo(50,-138,52,-78,20,-52); ctx.closePath(); ctx.stroke();
+  ctx.fillStyle='#fff8e6'; ctx.globalAlpha=.35; ctx.beginPath(); ctx.ellipse(-22,-108,6,15,-.4,0,TAU); ctx.fill(); ctx.globalAlpha=1;
+  ctx.fillStyle=INK; rr(-15,-20,30,20,4); ctx.fillStyle='#a0632f'; rr(-13,-18,26,16,3);
+  ctx.strokeStyle='#7a4a22'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(-13,-10); ctx.lineTo(13,-10); ctx.stroke();
+  if(occ) head(2,-24,5.5);
   ctx.restore();
 }
 
@@ -6109,7 +6145,7 @@ function hiSudoku(st){
 function sySudoku(st){ return 'In jeder Reihe und in jeder Spalte darf jedes Bild nur einmal vorkommen.'+(st.n===4?' Auch in jedem der vier Kästchen.':'')+' Tippe auf ein leeres Feld, bis das richtige Bild da ist. Rot heißt: Das Bild gibt es dort schon.'; }
 
 /* ---------- Tasten ---------- */
-const VEH=[['walk','Laufen'],['ski','Ski fahren'],['car','Auto'],['plane','Flugzeug'],['rocket','Rakete'],['bagger','Bagger'],['loader','Radlader'],['dumper','Kipper'],['tbm','Tunnelbohrmaschine'],['sub','U-Boot'],['coaster','Achterbahn fahren'],['dragon','Auf Mama Glut fliegen']];
+const VEH=[['walk','Laufen'],['ski','Ski fahren'],['car','Auto'],['plane','Flugzeug'],['rocket','Rakete'],['bagger','Bagger'],['loader','Radlader'],['dumper','Kipper'],['tbm','Tunnelbohrmaschine'],['sub','U-Boot'],['balloon','Heißluftballon'],['coaster','Achterbahn fahren'],['dragon','Auf Mama Glut fliegen']];
 const TOOLS=[['tnt','Bombe legen'],['lava','Lava malen'],['fire','Feuer malen'],['water','Wasser malen'],['ice','Eis malen'],['earth','Erde malen'],['blocks','Bauklötze setzen'],['track','Schiene malen'],['erase','Radierer'],['snow','Schnee malen'],['ball','Schneeball werfen'],['man','Schneemann bauen'],['fw','Feuerwerk zünden']];
 const MODES=VEH.map(function(v){return v[0];}), TOOLN=TOOLS.map(function(t){return t[0];});
 function svg24(inner){ return '<svg viewBox="0 0 24 24" aria-hidden="true">'+inner+'</svg>'; }
@@ -7299,6 +7335,7 @@ function draw(){
   o=parked.tbm; if(o) drawTbm(o.x,o.y,o.ang,o.face,o.da||0,false,0);
   o=parked.bagger; if(o) drawBagger(o.x,o.y,o.ang,o.face,o.arm,o.load,false);
   o=parked.sub; if(o) drawSub(o.x,o.y,o.ang,o.face,false);
+  o=parked.balloon; if(o) drawBalloon(o.x,o.y,o.ang,false,false);
   if(ghost){
     if(ghost.kind==='rocket') drawRocket(ghost.x,ghost.y,Math.atan2(ghost.vx,-ghost.vy-200)*.5,false,false);
     else drawPlane(ghost.x,ghost.y,ghost.vx,ghost.vy,ghost.vx>=0?1:-1,false,0,false);
@@ -7316,6 +7353,7 @@ function draw(){
   else if(P.mode==='rocket') drawRocket(P.x,P.y,P.ang,true,keys.u&&!paused);
   else if(P.mode==='plane') drawPlane(P.x,P.y,P.vx,P.vy,P.face,P.on,P.ang,true);
   else if(P.mode==='sub') drawSub(P.x,P.y,P.ang,P.face,true);
+  else if(P.mode==='balloon') drawBalloon(P.x,P.y,P.ang,true,keys.u&&!paused);
   else if(P.mode==='ski'){ if(P.ball>0) drawRoll(); else drawSkier(P.x,P.y,P.ang,P.face,keys.d&&P.on,!P.on); }
   else if(P.mode==='dragon'){ ctx.save(); ctx.translate(P.x,P.y); ctx.rotate(P.ang); drawDragon(0,0,1.9,P.face,1,reduced?0:Math.sin(time*(P.on?3:10)),true); ctx.restore(); }
   else if(P.track.lift) drawGondola(P.x,P.y-46,true);
@@ -7418,7 +7456,7 @@ function actIcon(){
   if(P.mode==='loader') return (P.lift>18&&P.load>0)?'down':'dig';
   if(P.mode==='dumper') return 'down';
   if(P.mode==='tbm') return 'dig';
-  if(P.mode==='plane'||P.mode==='rocket') return P.on?'exit':'chute';
+  if(P.mode==='plane'||P.mode==='rocket'||P.mode==='balloon') return P.on?'exit':'chute';
   return 'exit';
 }
 
