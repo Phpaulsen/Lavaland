@@ -93,6 +93,18 @@ test('Sternschnuppe landet und gibt Gold', async ({ ev, page }) => {
   await ev('nightOn=false; nightA=0; metNext=time+999');
 });
 
+test('Schiffswrack: Truhe gibt einmal einen Schatz', async ({ ev, page }) => {
+  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk'); teleport(WRECKS[0].x+400)");
+  await page.waitForTimeout(800);
+  const g = await ev('gold');
+  await ev('OVS.forEach(o=>o.hidden=true); paused=false; P.x=WRECKS[0].x; P.y=ground(P.x)-10; P.vy=0'); await page.waitForTimeout(150);
+  const g2 = await ev('gold');
+  if (!(g2 > g) || !(await ev('orbGot[WRECKS[0].k]'))) throw new Error('kein Schatz');
+  await ev('P.x=WRECKS[0].x+2; P.y=ground(P.x)-10'); await page.waitForTimeout(400);
+  if (await ev('gold') !== g2) throw new Error('Schatz doppelt');
+  await ev('teleport(1500)'); await page.waitForTimeout(500);
+});
+
 test('Reise zum Mond und zurück', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; travel('moon')");
   await page.waitForTimeout(3500);
