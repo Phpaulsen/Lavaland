@@ -159,6 +159,19 @@ test('Tastenkürzel: F öffnet Fahrzeuge, X steigt aus', async ({ ev, page }) =>
   if (await ev('P.mode') !== 'walk') throw new Error('X steigt nicht aus');
 });
 
+test('Absturzschutz: kaputtes Nebensystem friert das Spiel nicht ein', async ({ ev, page, errs }) => {
+  const n = errs.length;
+  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk'); for(const k in FX) FX[k]=0; teleport(1200); window.__keep=SIDE.slice(); SIDE.push(function testKaputt(){ throw new Error('Test: absichtlich kaputt'); })");
+  const x0 = await ev('P.x');
+  await page.keyboard.down('ArrowRight'); await page.waitForTimeout(1000); await page.keyboard.up('ArrowRight');
+  const moved = Math.abs(await ev('P.x') - x0);
+  const logged = await ev("errLoad().some(e=>/testKaputt \\(abgeschaltet\\)/.test(e.w))");
+  await ev('SIDE.length=0; window.__keep.forEach(f=>SIDE.push(f)); localStorage.removeItem(ERRK)');
+  errs.length = n;
+  if (moved < 20) throw new Error('Spiel steht nach Fehler still');
+  if (!logged) throw new Error('Fehler nicht im Protokoll');
+});
+
 test('Reise zum Mond und zurück', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; travel('moon')");
   await page.waitForTimeout(3500);
@@ -192,7 +205,7 @@ let failed = 0;
 for (const t of tests) {
   const n = errs.length;
   try {
-    await t.fn({ ev, page });
+    await t.fn({ ev, page, errs });
     if (errs.length > n) throw new Error('Seitenfehler: ' + errs.slice(n).join(' | '));
     console.log('ok   ' + t.name);
   } catch (e) {

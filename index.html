@@ -8915,25 +8915,38 @@ $('par-body').addEventListener('click',function(e){
 
 let last=0, accum=0, lastIcon='', drawN=0;
 function frame(t){
-  const raw=(t-last)/1000||0, dt=Math.min(.034,raw); last=t;
-  LOG.tick(raw);
-  if(ready&&!document.hidden){ const ls=LOG.state(); if(ls&&ls!=='idle') dayTick(Math.min(1,raw)); }
-  /* Solange ein Fenster offen ist, steht das Spiel still und der Akku läuft nicht leer. */
-  if(!(paused||uiOpen())){
-    accum+=dt; let n=0;
-    while(accum>=1/30&&n<2){ paintStep(); step(); accum-=1/30; n++; }
-    if(accum>.1) accum=0;
-    update(dt); arrowsTick(dt); monTick(dt); geyTick(dt); metTick(dt); wreckTick(dt); flyTick(dt); harpTick(dt); worldTick(dt); deepTick(dt); winterTick(dt); taskTick(dt); findsTick(dt); questTick(dt); misTick(dt); autosave(dt); drain(dt); fogTick(dt); mkTick();
-    /* Läuft es auf diesem Gerät zu langsam, sinkt die Auflösung in Stufen. */
-    if(raw<.2){ perfT+=raw; perfN++; }
-    if(perfN>=150){ if(perfT/perfN>.026&&maxDpr>1){ maxDpr=Math.max(1,maxDpr-.5); resize(); } perfT=0; perfN=0; }
-  }
-  /* Akku sparen: Hinter einem offenen Fenster steht die Welt still, dann reichen 6 Bilder pro Sekunde. Ohne Berührung reichen 30. */
-  drawN++;
-  const every=(paused||uiOpen())?10:LOG.state()==='idle'?2:1;
-  if(drawN>=every){ drawN=0; draw(); }
-  const ic=actIcon(); if(ic!==lastIcon){ actEl.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+AI[ic]+'</svg>'; lastIcon=ic; }
+  /* Der nächste Frame wird zuerst bestellt: Ein Fehler irgendwo darf das Spiel nicht einfrieren. */
   requestAnimationFrame(frame);
+  try{
+    const raw=(t-last)/1000||0, dt=Math.min(.034,raw); last=t;
+    LOG.tick(raw);
+    if(ready&&!document.hidden){ const ls=LOG.state(); if(ls&&ls!=='idle') dayTick(Math.min(1,raw)); }
+    /* Solange ein Fenster offen ist, steht das Spiel still und der Akku läuft nicht leer. */
+    if(!(paused||uiOpen())){
+      accum+=dt; let n=0;
+      while(accum>=1/30&&n<2){ paintStep(); step(); accum-=1/30; n++; }
+      if(accum>.1) accum=0;
+      update(dt); for(const f of SIDE) safe(f,dt);
+      /* Läuft es auf diesem Gerät zu langsam, sinkt die Auflösung in Stufen. */
+      if(raw<.2){ perfT+=raw; perfN++; }
+      if(perfN>=150){ if(perfT/perfN>.026&&maxDpr>1){ maxDpr=Math.max(1,maxDpr-.5); resize(); } perfT=0; perfN=0; }
+    }
+    /* Akku sparen: Hinter einem offenen Fenster steht die Welt still, dann reichen 6 Bilder pro Sekunde. Ohne Berührung reichen 30. */
+    drawN++;
+    const every=(paused||uiOpen())?10:LOG.state()==='idle'?2:1;
+    if(drawN>=every){ drawN=0; draw(); }
+    const ic=actIcon(); if(ic!==lastIcon){ actEl.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+AI[ic]+'</svg>'; lastIcon=ic; }
+  }catch(e){
+    errAdd((e&&e.message)||e,'frame'); console.error(e);
+    try{ if(ctx.reset) ctx.reset(); else ctx.setTransform(1,0,0,1,0,0); }catch(_){}
+  }
+}
+/* Absturzschutz für Nebensysteme: Wirft eins dreimal einen Fehler, wird es für diese Sitzung abgeschaltet und steht im Fehlerprotokoll. Der Rest läuft weiter. */
+const SIDE=[arrowsTick,monTick,geyTick,metTick,wreckTick,flyTick,harpTick,worldTick,deepTick,winterTick,taskTick,findsTick,questTick,misTick,autosave,drain,fogTick,mkTick];
+const SAFE=new Map();
+function safe(f,dt){
+  const n=SAFE.get(f)|0; if(n>=3) return;
+  try{ f(dt); }catch(e){ SAFE.set(f,n+1); errAdd((e&&e.message)||e,f.name+(n+1>=3?' (abgeschaltet)':'')); console.error(e); }
 }
 
 function start(){
