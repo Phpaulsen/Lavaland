@@ -172,6 +172,12 @@ test('Absturzschutz: kaputtes Nebensystem friert das Spiel nicht ein', async ({ 
   if (!logged) throw new Error('Fehler nicht im Protokoll');
 });
 
+test('Teilchen-Grenze hält, Ausrufe kommen trotzdem', async ({ ev }) => {
+  const r = await ev("(function(){ for(let i=0;i<3000;i++) spawn(6,P.x,P.y,0,-100,2,3,'#fff'); shout(P.x,P.y-50,'TEST'); return {n:parts.length,max:pmax(),last:parts[parts.length-1].c}; })()");
+  if (r.n > r.max) throw new Error('zu viele Teilchen: ' + r.n);
+  if (r.last !== 'TEST') throw new Error('Ausruf verdrängt');
+});
+
 test('Reise zum Mond und zurück', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; travel('moon')");
   await page.waitForTimeout(3500);

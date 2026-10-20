@@ -1890,8 +1890,10 @@ function demoTrack(){
 
 /* ---------- Teilchen ---------- */
 const parts=[];
+/* Teilchen-Obergrenze: Ist sie erreicht, werden neue Teilchen einfach weggelassen (kostet nichts). Nur Ausrufe wie „BUMM!“ verdrängen das älteste. Auf langsamen Geräten liegt die Grenze niedriger. */
+function pmax(){ return maxDpr<=1?240:460; }
 function spawn(type,x,y,vx,vy,lf,size,c,col){
-  if(parts.length>460) parts.shift();
+  if(parts.length>=pmax()){ if(type!==9) return; parts.shift(); }
   parts.push({type:type,x:x,y:y,vx:vx,vy:vy,life:lf,max:lf,size:size,c:c||0,col:col||'#fff'});
 }
 function smoke(x,y,n){ for(let i=0;i<n;i++) spawn(0,x+(Math.random()-.5)*20,y+(Math.random()-.5)*14,(Math.random()-.5)*60,-30-Math.random()*60,.8+Math.random(),6+Math.random()*7); }
@@ -2368,9 +2370,11 @@ function update(dt){
     }
     if(eruOn>0){ eruOn-=dt; for(let i=0;i<3;i++) spawn(4,VOLC+(Math.random()-.5)*40,cy,(Math.random()-.5)*260,-520-Math.random()*300,2.6,4+Math.random()*4); if(Math.random()<dt*20) spawn(0,VOLC+(Math.random()-.5)*60,cy-20,(Math.random()-.5)*30,-90,3,14+Math.random()*10); }
   }
-  for(let i=parts.length-1;i>=0;i--){
+  let pw=0;
+  for(let i=0;i<parts.length;i++){
     const p=parts[i]; p.life-=dt;
-    if(p.life<=0){ parts.splice(i,1); continue; }
+    if(p.life<=0) continue;
+    parts[pw++]=p;
     if(p.type===0||p.type===7){ p.vy-=20*dt; p.size+=9*dt; }
     else if(p.type===1) p.vy-=70*dt;
     else if(p.type===2) p.vy-=10*dt;
@@ -2381,6 +2385,7 @@ function update(dt){
     p.x+=p.vx*dt; p.y+=p.vy*dt;
     if(p.type===4&&p.vy>0&&solidW(p.x,p.y)) p.life=0;
   }
+  parts.length=pw;
   const vw=W/S, vh=H/S;
   /* Beim Schienenmalen schiebt der Finger am Bildrand die Kamera weiter, so lassen sich lange und hohe Bahnen in einem Zug malen. */
   const sp=strokeId!==null&&stroke?pointers.get(strokeId):null;
@@ -8321,6 +8326,7 @@ function draw(){
   }
 
   for(const p of parts){
+    if(p.x<x0-60||p.x>x1+60||p.y<y0-60||p.y>y1+60) continue;
     const a=p.life/p.max; let col, r=p.size;
     if(p.type===9){
       ctx.globalAlpha=Math.min(1,a*2.5); ctx.font='700 '+p.size+'px system-ui,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -8652,13 +8658,13 @@ function parSchool(){
   return h;
 }
 /* Was ist neu: kurze Liste für Eltern. Beim ersten Öffnen nach einem Update steht sie offen oben, danach zugeklappt. */
-const NEWS={v:3,t:'Planeten und Lernkern',items:[
-  'Mond, Eisplanet, Blubberplanet und vier kleine Planeten sind eigene Welten mit Unterwelt. Ganz unten liegt je ein Planetenkern.',
-  'Lernaufgaben nach Leitner: Rechnen mit Ziffernblock, Zahlenhaus, Blitzblick im Zehnerfeld, Nachbarzahlen, Silben klatschen, Reime, Anlaut.',
-  'Meistersteine für Aufgaben, die an mehreren Tagen sitzen. Der Bohrer ab Stufe 2 braucht sie. Die Rechentafel im Labor zeigt den Stand.',
-  'Wissenstüren in der Tiefe öffnen sich nach drei richtigen Aufgaben, jede zweite mit einem Rätsel. Sternbild und Waage bis 20 sind neue bzw. erweiterte Rätsel.',
-  'Lagerfeuer als Haltepunkt mit Tagesbilanz, optionales Tageslimit (hier unten), Erkundungskarte mit Nebel, Leuchtmarken unter der Erde.',
-  'Für Eltern: Schulstand, Stolperaufgaben mit Übungsblatt zum Drucken, Sicherungs-Erinnerung, Vorlesestimme und Tempo, Ton-Stufe „Nur Sprache“, Linkshänder-Steuerung im Menü, Datenschutz (hier unten).']};
+const NEWS={v:4,t:'Fahrzeuge, Missionen, Werkzeuge',items:[
+  'Neue Fahrzeuge: Heißluftballon, Hubschrauber mit Lastenhaken, Segelboot, Kletterkäfer. Dazu eine Seilrutsche zum Selberspannen.',
+  'Schaufel und Spitzhacke zum Graben zu Fuß, Pfeil und Bogen mit Schießstand. Höhlenmonster aus Glibber lassen sich besiegen und tun nichts Schlimmes (hier unten abschaltbar).',
+  'Missionsbrett mit Aufträgen: Küken retten, Paketdienst (Zahlen lesen), Schatzkarte (Plusaufgabe), Obstkorb (genau abzählen), Feuerwehr, Flaggen auf den Planetengipfeln.',
+  'Neues zum Entdecken: Geysire, Sternschnuppen mit Sternsteinen, Schiffswrack im Inselmeer, Sternwarte zum Sternezählen, Glühwürmchen in der Nacht, Kristallharfe, Vulkanausbruch.',
+  'Für Eltern: ruhige Darstellung ohne Wackeln und Blinken (hier unten), Sandbox-Zeit je Fahrzeug und Werkzeug, Tastenkürzel am Rechner (Taste ? zeigt sie).',
+  'Unter der Haube: Fehler in einem Teil des Spiels halten nicht mehr das ganze Spiel an, weniger Rechenlast bei vielen Funken.']};
 let newsOpen=null;
 function parNews(){
   if(newsOpen===null){ let seen=0; try{ seen=+localStorage.getItem('lavaland-news')||0; }catch(_){} newsOpen=seen<NEWS.v; if(newsOpen) try{ localStorage.setItem('lavaland-news',String(NEWS.v)); }catch(_){} }

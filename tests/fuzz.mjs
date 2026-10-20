@@ -42,6 +42,9 @@ while (Date.now() - t0 < SEC * 1000 && !errs.length) {
     else if (r < .89) { const w = pick(['moon', '', 'ice', '']); last = 'Reise ' + w; await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; RLM['" + w + "']||'" + w + "'===''?travel('" + w + "'):0"); await page.waitForTimeout(3500); }
     else if (r < .92) { last = 'Mission'; await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk'); teleport(MISX); P.x=MISX; P.y=ground(MISX); P.on=true; doAction()"); await page.waitForTimeout(500); }
     else if (r < .95) { last = 'Fernrohr'; await ev("OVS.forEach(o=>o.hidden=true); paused=false; realm===''&&scopeOpen()"); await page.waitForTimeout(200); await page.mouse.click(vp.width / 2, vp.height * .62); }
+    else if (r < .96) { last = 'Seilrutsche'; await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk'); zipAdd&&zipAdd(P.x-40,P.y-120,P.x+260,P.y-20); doAction()"); }
+    else if (r < .97) { last = 'Haken'; await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; setMode('heli'); doAction(); doAction()"); }
+    else if (r < .98) { last = 'Neuladen'; await ev('saveGame(false)'); await page.waitForTimeout(800); await page.reload(); await page.waitForFunction(() => window.__ev && window.__ev('ready'), null, { timeout: 20000 }); await ev('OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE'); }
     else { last = 'Warten'; await page.waitForTimeout(600); }
   } catch (e) { errs.push('Testschritt „' + last + '“: ' + e.message); }
 }
