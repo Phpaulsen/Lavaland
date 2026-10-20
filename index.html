@@ -2974,6 +2974,8 @@ function renderAlbum(){
 
 /* ---------- Speichern: Die ganze Welt liegt als ein Eintrag in der Browser-Datenbank dieses Geräts. ---------- */
 let frozen=false; /* true, solange ein geladener Spielstand eingespielt wird: dann schreibt das Spiel nichts mehr. */
+/* true, wenn die Datenbank beim Start nicht lesbar war: Dann läuft das Spiel mit einer Ersatzwelt, schreibt aber nichts in die Datenbank, damit der echte Spielstand beim nächsten Start wieder da ist. */
+let diskLock=false;
 function idbOpen(){
   return new Promise(function(res,rej){
     let rq;
@@ -2984,6 +2986,7 @@ function idbOpen(){
   });
 }
 function idbDo(mode,fn){
+  if(diskLock&&mode!=='readonly') return Promise.reject(new Error('diskLock'));
   return idbOpen().then(function(db){
     return new Promise(function(res,rej){
       const tx=db.transaction('save',mode), rq=fn(tx.objectStore('save'));
@@ -5596,7 +5599,7 @@ function fogTick(dt){
   if(P.y<ground(P.x)) for(let y=0,gy=fRow(ground(P.x));y<=gy;y++) fogSet(a,tx,y);
 }
 function fogSave(){
-  if(!fogDirty) return; fogDirty=false;
+  if(!fogDirty||frozen) return; fogDirty=false;
   for(const k in FOG){ let t=''; const a=FOG[k]; for(let i=0;i<a.length;i+=4096) t+=String.fromCharCode.apply(null,a.subarray(i,i+4096)); try{ localStorage.setItem(k,btoa(t)); }catch(_){} }
 }
 setInterval(fogSave,15000);
@@ -6471,7 +6474,8 @@ function pzClose(){
   speakStop();
   /* Wer nach vielen Fehlversuchen aufgibt, bekommt beim nächsten Mal ein leichteres Rätsel dieser Art. */
   if(c&&!c.won&&c.fails>=3){ hero.pz[c.T.id]=Math.max(0,(hero.pz[c.T.id]|0)-1); saveHero(); }
-  if(c&&c.m.quiz&&!c.won&&energy<=0){ pending=null; setTool(null,true); if(P.mode!=='walk') setMode('walk'); pulse('batt'); }
+  /* Vom Akku aus geöffnet: wie beim Schließen der Lernaufgabe. Ist schon etwas geladen, geht es mit dem weiter, wofür der Akku gebraucht wurde. Sonst bliebe der Auftrag liegen und käme viel später aus dem Nichts. */
+  if(c&&c.m.quiz&&!c.won){ const f=pending; pending=null; if(energy>0){ if(f) f(); } else{ setTool(null,true); if(P.mode!=='walk') setMode('walk'); pulse('batt'); } }
 }
 /* Tipps: erst nach dem ersten Fehlversuch, einer pro Rätsel (ab Stufe 7 zwei). So hilft der Tipp beim Hängenbleiben, löst aber nicht das Rätsel. */
 function pzHintMax(c){ return c.lv>=6?2:1; }
@@ -6808,7 +6812,7 @@ function mkWaage(lv){
   const st={L:[],R:[],pal:null,items:null,box:0,opts:null,over:false,ang:0};
   const pick=function(arr,n){ return shuffle(arr.slice()).slice(0,n); }, sum=function(a){ let s=0; for(const v of a) s+=v; return s; };
   /* Zahlen bis 20: ab Stufe 3 gibt es die 10, ab Stufe 4 muss man über die 10 hinweg rechnen. Der Schulstand begrenzt die Stufe. */
-  if(SCH.on) lv=Math.min(lv,[1,2,3,9][SCH.zr]);
+  if(SCH.on) lv=Math.min(lv,[0,2,3,9][SCH.zr]);
   if(lv===0){ st.pal=[1,2]; st.L=[ri(3,5)]; }
   else if(lv===1){ st.pal=[1,2,5]; st.L=[ri(6,10)]; }
   else if(lv===2){ st.pal=[1,2,5]; st.L=[ri(2,5),ri(2,5)]; }
@@ -7509,6 +7513,12 @@ function loadFacts(){
     const t=sk>=22?2:sk>=8?1:0;
     FS={v:1,u:{m:t,l:t},f:{},nd:0,nn:{m:0,l:0},ft:{m:0,l:0}};
   }
+  /* Stufen und Zähler absichern: Eine Stufe über der letzten würde jede Aufgabe abstürzen lassen. */
+  if(!FS.u||typeof FS.u!=='object') FS.u={m:0,l:0};
+  if(!FS.nn||typeof FS.nn!=='object') FS.nn={m:0,l:0};
+  if(!FS.ft||typeof FS.ft!=='object') FS.ft={m:0,l:0};
+  ['m','l'].forEach(function(d){ FS.u[d]=clamp(FS.u[d]|0,0,STAGES[d].length-1); FS.nn[d]=FS.nn[d]|0; FS.ft[d]=FS.ft[d]|0; });
+  for(const k in FS.f){ const r=FS.f[k]; if(!Array.isArray(r)||!(r[0]>=0)||!isFinite(r[1])) delete FS.f[k]; else r[0]=clamp(r[0]|0,0,5); }
 }
 function saveFacts(){ if(frozen) return; try{ localStorage.setItem('lavaland-facts',JSON.stringify(FS)); }catch(_){} }
 loadFacts();
@@ -9064,24 +9074,54 @@ function start(){
     return false;
   };
   /* Erst der neue Spielstand, dann der alte. Erst wenn beides fehlt oder kaputt ist, gibt es eine neue Welt. */
+  /* Ein Spielstand, der da ist, sich aber nicht laden lässt (etwa nach einem Fehler in einer neuen Spielversion), wird nie überschrieben:
+     Er bleibt vorher unter 'rescue-…' liegen und kommt mit „Spielstand sichern“ in die Datei. Dasselbe gilt für Mond und Planeten, die zu ihm gehören. */
+  const rescue=function(keys,why){
+    errAdd('Spielstand nicht ladbar, gerettet: '+keys.join(', '),why);
+    return idbDo('readwrite',function(st){
+      keys.forEach(function(k){
+        const g=st.get(k);
+        g.onsuccess=function(){
+          const v=g.result; if(v===undefined) return;
+          /* Derselbe kaputte Stand wird nur einmal abgelegt, auch wenn das Laden bei jedem Start scheitert. */
+          const rk='rescue-'+k+'-'+(v&&v.seed)+'-'+(v&&(v.runs||v.grid)?(v.runs||v.grid).length:0), r=st.get(rk);
+          r.onsuccess=function(){ if(r.result===undefined) st.put(v,rk); };
+        };
+      });
+      return st.count();
+    }).catch(function(){});
+  };
+  const planets=function(){ return Object.keys(RLM).map(realmKey); };
   /* War das Kind zuletzt auf dem Mond oder einem Planeten, geht es dort weiter. Klappt das nicht, geht es auf der Erde weiter. */
   let rl=''; try{ rl=localStorage.getItem('lavaland-realm')||''; }catch(_){}
-  const away=RLM[rl]?idbDo('readonly',function(st){ return st.get(realmKey(rl)); }).then(function(sv){
-    if(!(sv&&runsOk(sv)&&sv.rl===rl)) return false;
-    try{ setRealm(rl); restore(sv); return true; }catch(_){ setRealm(''); return false; }
-  },function(){ return false; }):Promise.resolve(false);
-  away.then(function(ok){
-    if(ok) return true;
-    setRealm('');
-    return idbDo('readonly',function(st){ return st.get(SAVEKEY); });
-  }).then(function(sv){
-    if(sv===true) return true;
-    if(tryLoad(sv)) return true;
-    return idbDo('readonly',function(st){ return st.get('world'); }).then(tryLoad);
-  }).then(function(ok){
-    if(!ok) resetWorld(newSeed());
-    go();
-  },function(){ resetWorld(newSeed()); go(); });
+  const load=function(retry){
+    const away=RLM[rl]?idbDo('readonly',function(st){ return st.get(realmKey(rl)); }).then(function(sv){
+      if(sv===undefined) return false;
+      if(sv&&runsOk(sv)&&sv.rl===rl){ try{ setRealm(rl); restore(sv); return true; }catch(_){ setRealm(''); } }
+      return rescue([realmKey(rl)],'start '+rl).then(function(){ return false; });
+    }):Promise.resolve(false);
+    return away.then(function(ok){
+      if(ok) return true;
+      setRealm('');
+      return idbDo('readonly',function(st){ return st.get(SAVEKEY); }).then(function(sv){
+        if(tryLoad(sv)) return true;
+        const bad=sv!==undefined;
+        return (bad?rescue([SAVEKEY].concat(planets()),'start'):Promise.resolve()).then(function(){
+          return idbDo('readonly',function(st){ return st.get('world'); });
+        }).then(function(old){
+          if(tryLoad(old)) return true;
+          /* Eine neue Erde löscht Mond und Planeten. Gehörten sie zu einem Stand, der nicht ladbar war, sind sie oben schon gerettet. */
+          resetWorld(newSeed()); return true;
+        });
+      });
+    }).catch(function(e){
+      /* Die Datenbank ist gerade nicht lesbar (auf Android etwa bei vollem Speicher). Erst noch einmal versuchen, dann ohne Speichern weiterspielen. */
+      if(!retry) return new Promise(function(res){ setTimeout(res,800); }).then(function(){ return load(true); });
+      errAdd('Datenbank nicht lesbar: '+((e&&e.message)||e),'start');
+      diskLock=true; setRealm(''); resetWorld(newSeed()); return true;
+    });
+  };
+  load(false).then(go,function(){ diskLock=true; setRealm(''); resetWorld(newSeed()); go(); });
 }
 document.addEventListener('visibilitychange',function(){ if(document.hidden) saveGame(false); });
 const hot=window.claude&&window.claude.hot;
