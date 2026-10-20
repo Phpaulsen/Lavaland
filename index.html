@@ -3512,6 +3512,41 @@ MIS.push({id:'map',e:'🦜',win:[30,2],again:true,
   },
   end:'Mein Schatz! Danke, du hast ihn gefunden. Hier, ein Teil davon gehört dir.'});
 
+/* Obstkorb: Bäuerin Frieda braucht genau so viele Äpfel, wie sie sagt. Gesammelte Äpfel liegen im Korb über dem Kind in Fünferreihen wie im Zehnerfeld. Zu viele gibt sie zurück und sagt, wie viele, zu wenige zählt sie nach. */
+MIS.push({id:'apple',e:'👩‍🌾',win:[25,1],again:true,
+  hi:function(m){ return 'Hallo! Ich backe einen Apfelkuchen.'; },
+  start:function(m){
+    const zr=SCH.on?SCH.zr:1; m.n=ri(4,zr===0?5:10); m.c=0; m.a=[];
+    const k=m.n+ri(4,6);
+    for(let i=0;i<k;i++){ const x=misSpot(180,900)+ri(-40,40); m.a.push([Math.round(x),0]); }
+  },
+  steps:[{ic:function(m){ return '🍎'+m.n; },
+    say:function(m){ return 'Ich brauche genau '+m.n+' Äpfel. Nicht mehr und nicht weniger. Sammle sie und bring sie mir.'; },
+    tgt:function(m){
+      if(m.c>=m.n) return [MISX+40,ground(MISX)-70];
+      let b=null, bd=1e9; for(const a of m.a){ if(a[1]) continue; const d=Math.abs(a[0]-P.x); if(d<bd){ bd=d; b=a; } }
+      return b&&bd>500?[b[0],ground(b[0])-40]:null;
+    },
+    tick:function(m){
+      for(const a of m.a) if(!a[1]&&Math.abs(P.x-a[0])<20&&Math.abs(P.y-ground(a[0]))<34){ a[1]=1; m.c++; sfx('coin'); misSave(); }
+      if(P.mode!=='walk'||Math.abs(P.x-MISX-40)>50||Math.abs(P.y-ground(MISX))>60){ m.at=0; return false; }
+      if(m.at||!m.c) return false;
+      m.at=1;
+      if(m.c===m.n) return true;
+      if(m.c>m.n){ const z=m.c-m.n; say('👩‍🌾','Du hast '+m.c+' Äpfel. Ich brauche nur '+m.n+'. Das sind '+z+' zu viel, die schenke ich dir.'); m.c=m.n; misSave(); return true; }
+      say('👩‍🌾','Du hast '+m.c+' Äpfel. Ich brauche '+m.n+'. Es fehlen noch '+(m.n-m.c)+'.'); return false;
+    }}],
+  draw:function(m,x0,x1){
+    emo('👩‍🌾',MISX+40,ground(MISX)-18,30);
+    for(const a of m.a) if(!a[1]&&a[0]>x0-30&&a[0]<x1+30) emo('🍎',a[0],ground(a[0])-9,18);
+    if(m.c&&P.mode==='walk'){
+      const rows=Math.ceil(m.c/5), bx=P.x-27, by=P.y-62-rows*12;
+      ctx.fillStyle='rgba(255,248,230,.9)'; rr(bx-4,by-4,62,rows*12+8,6);
+      for(let i=0;i<m.c;i++){ const r=(i/5)|0, c=i%5; emo('🍎',bx+6+c*12,by+6+r*12,11); }
+    }
+  },
+  end:'Genau richtig! Jetzt kann ich backen. Danke schön!'});
+
 const OVS=Array.prototype.slice.call(document.querySelectorAll('.ov,#panel,#quiz,#pz'));
 function uiOpen(){ for(const o of OVS) if(!o.hidden) return true; return false; }
 function syncSound(){ $('sound').innerHTML=svg24(muted?QI.mute:fxOff?QI.talk:QI.sound); $('sound').setAttribute('aria-pressed',String(!muted)); $('sound').setAttribute('aria-label',muted?'Ton ist aus':fxOff?'Nur Sprache':'Ton ist an'); }
