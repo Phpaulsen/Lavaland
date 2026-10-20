@@ -8658,13 +8658,13 @@ function parSchool(){
   return h;
 }
 /* Was ist neu: kurze Liste für Eltern. Beim ersten Öffnen nach einem Update steht sie offen oben, danach zugeklappt. */
-const NEWS={v:3,t:'Planeten und Lernkern',items:[
-  'Mond, Eisplanet, Blubberplanet und vier kleine Planeten sind eigene Welten mit Unterwelt. Ganz unten liegt je ein Planetenkern.',
-  'Lernaufgaben nach Leitner: Rechnen mit Ziffernblock, Zahlenhaus, Blitzblick im Zehnerfeld, Nachbarzahlen, Silben klatschen, Reime, Anlaut.',
-  'Meistersteine für Aufgaben, die an mehreren Tagen sitzen. Der Bohrer ab Stufe 2 braucht sie. Die Rechentafel im Labor zeigt den Stand.',
-  'Wissenstüren in der Tiefe öffnen sich nach drei richtigen Aufgaben, jede zweite mit einem Rätsel. Sternbild und Waage bis 20 sind neue bzw. erweiterte Rätsel.',
-  'Lagerfeuer als Haltepunkt mit Tagesbilanz, optionales Tageslimit (hier unten), Erkundungskarte mit Nebel, Leuchtmarken unter der Erde.',
-  'Für Eltern: Schulstand, Stolperaufgaben mit Übungsblatt zum Drucken, Sicherungs-Erinnerung, Vorlesestimme und Tempo, Ton-Stufe „Nur Sprache“, Linkshänder-Steuerung im Menü, Datenschutz (hier unten).']};
+const NEWS={v:4,t:'Fahrzeuge, Missionen, Werkzeuge',items:[
+  'Neue Fahrzeuge: Heißluftballon, Hubschrauber mit Lastenhaken, Segelboot, Kletterkäfer. Dazu eine Seilrutsche zum Selberspannen.',
+  'Schaufel und Spitzhacke zum Graben zu Fuß, Pfeil und Bogen mit Schießstand. Höhlenmonster aus Glibber lassen sich besiegen und tun nichts Schlimmes (hier unten abschaltbar).',
+  'Missionsbrett mit Aufträgen: Küken retten, Paketdienst (Zahlen lesen), Schatzkarte (Plusaufgabe), Obstkorb (genau abzählen), Feuerwehr, Flaggen auf den Planetengipfeln.',
+  'Neues zum Entdecken: Geysire, Sternschnuppen mit Sternsteinen, Schiffswrack im Inselmeer, Sternwarte zum Sternezählen, Glühwürmchen in der Nacht, Kristallharfe, Vulkanausbruch.',
+  'Für Eltern: ruhige Darstellung ohne Wackeln und Blinken (hier unten), Sandbox-Zeit je Fahrzeug und Werkzeug, Tastenkürzel am Rechner (Taste ? zeigt sie).',
+  'Unter der Haube: Fehler in einem Teil des Spiels halten nicht mehr das ganze Spiel an, weniger Rechenlast bei vielen Funken.']};
 let newsOpen=null;
 function parNews(){
   if(newsOpen===null){ let seen=0; try{ seen=+localStorage.getItem('lavaland-news')||0; }catch(_){} newsOpen=seen<NEWS.v; if(newsOpen) try{ localStorage.setItem('lavaland-news',String(NEWS.v)); }catch(_){} }
