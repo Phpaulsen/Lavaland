@@ -5055,6 +5055,35 @@ function drawFlies(){
   for(const f of FLIES){ ctx.fillStyle='rgba(200,255,90,'+(.35*k)+')'; circle(f.x,f.y,10); ctx.fillStyle='#eaff8a'; circle(f.x,f.y,2.4); }
   for(const j of JAR){ const p=jarPos(j), fade=Math.min(1,j.t/10); ctx.fillStyle='rgba(220,255,120,'+(.3*k*fade)+')'; circle(p[0],p[1],8); ctx.fillStyle='rgba(234,255,138,'+fade+')'; circle(p[0],p[1],2.6); }
 }
+/* Kristallharfe: In jedem Kristallgebirge stehen fünf singende Kristalle. Wer darüberläuft, spielt Töne. Einmal alle von klein nach groß gespielt, regnet es Funken und es gibt einmal pro Welt 3 Gold. Ein Spielzeug, keine Aufgabe. */
+const HARPN=[523,587,659,784,880], HARPC=['#ff7aa8','#ffb347','#ffe066','#7be0a8','#7ab8ff'];
+let HARPS=[], harpKey='';
+function harpTick(dt){
+  const k=realm+SEED+BIO.length;
+  if(k!==harpKey){ harpKey=k; HARPS=[]; for(const b of BIO) if(b.t===8){ const x0=24*Math.round(b.px/24)-68; HARPS.push({x0:x0,k:'hp'+(realm||'')+b.i,last:-1,seq:[],sh:[0,0,0,0,0]}); } }
+  for(const h of HARPS){
+    for(let i=0;i<5;i++) h.sh[i]=Math.max(0,h.sh[i]-dt*2);
+    if(P.x<h.x0-30||P.x>h.x0+166) { h.last=-1; continue; }
+    const i=Math.round((P.x-h.x0)/34);
+    if(i<0||i>4){ h.last=-1; continue; }
+    const cx=h.x0+i*34, gy=ground(cx);
+    if(Math.abs(P.x-cx)>12||P.y<gy-110||P.y>gy+20||i===h.last) continue;
+    h.last=i; h.sh[i]=1; tone([HARPN[i]],'sine'); spawn(6,cx,gy-30-i*10,(Math.random()-.5)*60,-80,.8,3,HARPC[i]);
+    h.seq.push(i); if(h.seq.length>5) h.seq.shift();
+    if(h.seq.join('')==='01234'){ h.seq=[]; confetti(cx,gy-60); tone([523,659,784,1046]); if(!orbGot[h.k]){ orbGot[h.k]=1; gold+=3; lootDirty=true; banner('🎶 +3'+COIN,2000); } }
+  }
+}
+function drawHarps(x0,x1){
+  for(const h of HARPS){
+    if(h.x0>x1+60||h.x0+170<x0-60) continue;
+    for(let i=0;i<5;i++){
+      const cx=h.x0+i*34, gy=ground(cx), ht=34+i*11, w=9, sh=h.sh[i]*Math.sin(time*40)*2;
+      ctx.fillStyle=INK; ctx.beginPath(); ctx.moveTo(cx+sh,gy-ht-4); ctx.lineTo(cx+w+2,gy-ht*.35); ctx.lineTo(cx+w,gy+2); ctx.lineTo(cx-w,gy+2); ctx.lineTo(cx-w-2,gy-ht*.35); ctx.closePath(); ctx.fill();
+      ctx.fillStyle=HARPC[i]; ctx.beginPath(); ctx.moveTo(cx+sh,gy-ht); ctx.lineTo(cx+w,gy-ht*.35); ctx.lineTo(cx+w-1,gy); ctx.lineTo(cx-w+1,gy); ctx.lineTo(cx-w,gy-ht*.35); ctx.closePath(); ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,'+(.35+.5*h.sh[i])+')'; ctx.beginPath(); ctx.moveTo(cx+sh-1,gy-ht+4); ctx.lineTo(cx-w+3,gy-ht*.35); ctx.lineTo(cx-3,gy-4); ctx.closePath(); ctx.fill();
+    }
+  }
+}
 function drawHandTool(){
   if(!HANDT[tool]||P.mode!=='walk'||P.zip) return;
   const ks=kidScale(), sw=P.swing||0, dn=keys.d;
@@ -8155,6 +8184,7 @@ function draw(){
   drawZips(x0,x1);
   drawMis(x0,x1);
   drawWrecks(x0,x1);
+  drawHarps(x0,x1);
   drawScope(x0,x1);
   drawGeys(x0,x1);
   drawMets();
@@ -8860,7 +8890,7 @@ function frame(t){
     accum+=dt; let n=0;
     while(accum>=1/30&&n<2){ paintStep(); step(); accum-=1/30; n++; }
     if(accum>.1) accum=0;
-    update(dt); arrowsTick(dt); monTick(dt); geyTick(dt); metTick(dt); wreckTick(dt); flyTick(dt); worldTick(dt); deepTick(dt); winterTick(dt); taskTick(dt); findsTick(dt); questTick(dt); misTick(dt); autosave(dt); drain(dt); fogTick(dt); mkTick();
+    update(dt); arrowsTick(dt); monTick(dt); geyTick(dt); metTick(dt); wreckTick(dt); flyTick(dt); harpTick(dt); worldTick(dt); deepTick(dt); winterTick(dt); taskTick(dt); findsTick(dt); questTick(dt); misTick(dt); autosave(dt); drain(dt); fogTick(dt); mkTick();
     /* Läuft es auf diesem Gerät zu langsam, sinkt die Auflösung in Stufen. */
     if(raw<.2){ perfT+=raw; perfN++; }
     if(perfN>=150){ if(perfT/perfN>.026&&maxDpr>1){ maxDpr=Math.max(1,maxDpr-.5); resize(); } perfT=0; perfN=0; }

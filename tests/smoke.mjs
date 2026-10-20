@@ -124,6 +124,15 @@ test('Glühwürmchen fangen', async ({ ev, page }) => {
   await ev('nightOn=false; nightA=0; JAR=[]; FLIES=[]');
 });
 
+test('Kristallharfe von klein nach groß', async ({ ev, page }) => {
+  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk'); for(const k in FX) FX[k]=0; teleport(HARPS[0].x0-80)");
+  await page.waitForTimeout(800);
+  const g = await ev('gold');
+  for (let i = 0; i < 5; i++) { await ev('OVS.forEach(o=>o.hidden=true); P.x=HARPS[0].x0+' + i + '*34; P.y=ground(P.x); P.vy=0'); await page.waitForTimeout(150); }
+  if (!(await ev('gold') > g) || !(await ev('orbGot[HARPS[0].k]'))) throw new Error('Tonleiter nicht erkannt');
+  await ev('teleport(1500)'); await page.waitForTimeout(500);
+});
+
 test('Reise zum Mond und zurück', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; travel('moon')");
   await page.waitForTimeout(3500);
