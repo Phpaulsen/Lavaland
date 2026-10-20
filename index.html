@@ -7510,6 +7510,7 @@ function parRender(o){
     Object.keys(QNAME).forEach(function(t){ if(by[t]) h+=row(QNAME[t],by[t]); });
     h+=row('<b>Alle</b>',qs)+'</table>';
   }
+  h+=parStumble(qs);
   h+='<h3>Rätselmaschinen</h3><table><tr><th>Maschine</th><th>Stufe</th><th>gelöst</th><th>Fehler</th><th>Tipps</th><th>abgebr.</th></tr>';
   PZT.forEach(function(T){
     const a=ps.filter(function(e){ return e.id===T.id; }), w=a.filter(function(e){ return e.end==='won'; }), n=w.length||1;
@@ -7533,6 +7534,27 @@ function parSchool(){
   h+='<h3>Spielzeit am Tag</h3><p>Heute bisher '+mins(DAY.t)+'. Ist die Zeit erreicht, kommt das Lagerfeuer mit Gute-Nacht-Ansage, danach alle 10 Minuten wieder. Das Spiel sperrt nicht.</p>';
   h+='<div class="par-tabs">'+LIMS.map(function(n){ return '<button data-lim="'+n+'"'+(LIM===n?' class="on"':'')+'>'+(n?n+' min':'aus')+'</button>'; }).join('')+'</div>';
   return h;
+}
+/* Stolperaufgaben: Fakten, die im Zeitraum oft nicht auf Anhieb saßen, mit der häufigsten falschen Antwort. Daten aus der Sicherung gelten als fremd, darum wird alles maskiert. */
+function esc(t){ return String(t).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function fLabel(k){
+  let m;
+  if((m=/^(\d+)([+-])(\d+)$/.exec(k))) return m[1]+(m[2]==='+'?' + ':' − ')+m[3];
+  if((m=/^zl:(\d+):(\d+)$/.exec(k))) return m[1]+' = '+m[2]+' + ?';
+  if((m=/^fb:(\d+)$/.exec(k))) return m[1]+' Punkte (Blitzblick)';
+  if((m=/^count:(\d+)$/.exec(k))) return m[1]+' Sterne zählen';
+  if((m=/^(anlaut|syl|rhy|word|case):(.+)$/.exec(k))) return ({anlaut:'Anlaut ',syl:'Silben ',rhy:'Reim auf ',word:'Wort ',case:'Klein zu '})[m[1]]+m[2];
+  return k;
+}
+function parStumble(qs){
+  const by={};
+  qs.forEach(function(e){ if(typeof e.f!=='string'||e.f.indexOf('seq:')===0) return; const r=by[e.f]||(by[e.f]={n:0,x:0,w:{}}); r.n++; if(!e.first){ r.x++; const v=e.taps[0]&&e.taps[0][0]; if(v!=null&&v!==e.ok) r.w[v]=(r.w[v]||0)+1; } });
+  const L=Object.keys(by).filter(function(k){ return by[k].n>=2&&by[k].x>0; }).sort(function(a,b){ return by[b].x/by[b].n-by[a].x/by[a].n||by[b].n-by[a].n; }).slice(0,6);
+  let h='<h3>Stolperaufgaben</h3>';
+  if(!L.length) return h+'<p>Keine Aufgabe ist im Zeitraum mehrfach danebengegangen.</p>';
+  h+='<table><tr><th>Aufgabe</th><th>gestellt</th><th>nicht auf Anhieb</th><th>meist getippt</th></tr>';
+  L.forEach(function(k){ const r=by[k], w=Object.keys(r.w).sort(function(a,b){ return r.w[b]-r.w[a]; })[0]; h+='<tr><td>'+esc(fLabel(k))+'</td><td>'+r.n+'</td><td>'+r.x+'</td><td>'+(w!=null?esc(w):'–')+'</td></tr>'; });
+  return h+'</table><p>Das Spiel holt diese Aufgaben von selbst öfter. Wenn eine dauerhaft hakt, hilft oft ein Gespräch mit Material (Finger, Steckwürfel).</p>';
 }
 /* ---------- Rechentafel: Alle Plus- und Minusaufgaben bis 20 und die Buchstaben. Die Farbe zeigt, wie gut eine Aufgabe sitzt; 💠 heißt Meisterstein, ⭐ heißt ganz sicher. ---------- */
 let tafTab='p';
