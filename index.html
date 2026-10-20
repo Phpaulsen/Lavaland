@@ -4957,6 +4957,35 @@ function drawMets(){
     ctx.fillStyle='rgba(255,240,170,'+gl+')'; circle(r.x-3,r.y-12,2.8);
   }
 }
+/* Schiffswrack: Auf dem Meeresgrund jedes Inselmeers liegt ein altes Schiff. Wer hinabtaucht und die Truhe berührt, findet einmal pro Welt einen Schatz. Aus der ungeöffneten Truhe steigen Blasen, damit man sie von oben sieht. */
+function wrecks(){ const a=[]; for(const b of BIO) if(b.t===7){ const x=24*Math.round((b.x0+(b.x1-b.x0)*.78)/24); a.push({x:x,k:'wr'+(realm||'')+b.i}); } return a; }
+let WRECKS=[], wrKey='';
+function wreckTick(dt){
+  const k=realm+SEED+BIO.length; if(k!==wrKey){ wrKey=k; WRECKS=wrecks(); }
+  for(const w of WRECKS){
+    if(orbGot[w.k]||Math.abs(w.x-P.x)>W/S+200) continue;
+    const gy=ground(w.x);
+    if(Math.random()<dt*2.5) spawn(7,w.x+(Math.random()-.5)*8,gy-14,(Math.random()-.5)*10,-60-Math.random()*30,1.6,3+Math.random()*2);
+    if(Math.abs(P.x-w.x)<30&&P.y>gy-70&&P.y<gy+20){ orbGot[w.k]=1; gold+=25; gems+=1; lootDirty=true; confetti(w.x,gy-20); jingle(); banner('🏴‍☠️ +25'+COIN+' +1'+GEMI,2600); shout(w.x,gy-60,'SCHATZ!','#ffd23f'); }
+  }
+}
+function drawWrecks(x0,x1){
+  for(const w of WRECKS){
+    if(w.x<x0-200||w.x>x1+200) continue;
+    const gy=ground(w.x), open=!!orbGot[w.k];
+    ctx.save(); ctx.translate(w.x-70,gy+6); ctx.rotate(-.12);
+    ctx.fillStyle=INK; ctx.beginPath(); ctx.moveTo(-74,-34); ctx.lineTo(54,-34); ctx.lineTo(40,0); ctx.lineTo(-58,0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#6b4a32'; ctx.beginPath(); ctx.moveTo(-70,-31); ctx.lineTo(50,-31); ctx.lineTo(38,-3); ctx.lineTo(-56,-3); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#4e3524'; ctx.fillRect(-64,-22,108,3); ctx.fillStyle='#1d2b3a'; circle(-30,-17,5); circle(-4,-17,5); circle(22,-17,5);
+    ctx.fillStyle=INK; ctx.fillRect(-12,-110,7,78); ctx.fillStyle='#8a6a4a'; ctx.fillRect(-10,-108,3,76);
+    ctx.fillStyle='rgba(240,232,210,.7)'; ctx.beginPath(); ctx.moveTo(-5,-104); ctx.lineTo(28,-80); ctx.lineTo(-5,-58); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle=INK; ctx.fillRect(w.x-15,gy-22,30,22);
+    ctx.fillStyle='#b5762d'; ctx.fillRect(w.x-13,gy-20,26,18); ctx.fillStyle='#6b4a32'; ctx.fillRect(w.x-13,gy-13,26,3);
+    if(open){ ctx.fillStyle=INK; ctx.fillRect(w.x-15,gy-34,30,8); ctx.fillStyle='#b5762d'; ctx.fillRect(w.x-13,gy-33,26,6); }
+    else{ ctx.fillStyle='#ffd23f'; ctx.fillRect(w.x-3,gy-15,6,6); }
+  }
+}
 function drawHandTool(){
   if(!HANDT[tool]||P.mode!=='walk'||P.zip) return;
   const ks=kidScale(), sw=P.swing||0, dn=keys.d;
@@ -8056,6 +8085,7 @@ function draw(){
   }
   drawZips(x0,x1);
   drawMis(x0,x1);
+  drawWrecks(x0,x1);
   drawGeys(x0,x1);
   drawMets();
   drawArrows();
@@ -8759,7 +8789,7 @@ function frame(t){
     accum+=dt; let n=0;
     while(accum>=1/30&&n<2){ paintStep(); step(); accum-=1/30; n++; }
     if(accum>.1) accum=0;
-    update(dt); arrowsTick(dt); monTick(dt); geyTick(dt); metTick(dt); worldTick(dt); deepTick(dt); winterTick(dt); taskTick(dt); findsTick(dt); questTick(dt); misTick(dt); autosave(dt); drain(dt); fogTick(dt); mkTick();
+    update(dt); arrowsTick(dt); monTick(dt); geyTick(dt); metTick(dt); wreckTick(dt); worldTick(dt); deepTick(dt); winterTick(dt); taskTick(dt); findsTick(dt); questTick(dt); misTick(dt); autosave(dt); drain(dt); fogTick(dt); mkTick();
     /* Läuft es auf diesem Gerät zu langsam, sinkt die Auflösung in Stufen. */
     if(raw<.2){ perfT+=raw; perfN++; }
     if(perfN>=150){ if(perfT/perfN>.026&&maxDpr>1){ maxDpr=Math.max(1,maxDpr-.5); resize(); } perfT=0; perfN=0; }
