@@ -140,6 +140,16 @@ test('Vulkanausbruch wirft Lavabrocken', async ({ ev, page }) => {
   await ev('MROCKS=[]; METS=[]; teleport(1500)'); await page.waitForTimeout(500);
 });
 
+test('Elternansicht: Monster aus, ruhige Darstellung an', async ({ ev, page }) => {
+  await ev("OVS.forEach(o=>o.hidden=true); paused=false; parOpen()"); await page.waitForTimeout(1500);
+  await ev("$('par-body').querySelector('[data-opt=mon0]').click()"); await page.waitForTimeout(800);
+  await ev("$('par-body').querySelector('[data-opt=calm1]').click()"); await page.waitForTimeout(800);
+  if (await ev('OPT.mon') || !(await ev('OPT.calm && reduced && document.body.classList.contains("calm")'))) throw new Error('Optionen nicht übernommen');
+  await ev("$('par').hidden=true; MONS.push({x:P.x,y:P.y,lv:0,face:1,hp:1,hit:0,sq:0,vx:0,vy:0,t:0}); paused=false"); await page.waitForTimeout(300);
+  if (await ev('MONS.length')) throw new Error('Monster trotz aus');
+  await ev("OPT.mon=true; OPT.calm=false; reduced=reducedSys; document.body.classList.remove('calm'); optSave()");
+});
+
 test('Reise zum Mond und zurück', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; travel('moon')");
   await page.waitForTimeout(3500);
