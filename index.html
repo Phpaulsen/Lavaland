@@ -2487,6 +2487,7 @@ cv.addEventListener('pointerdown',function(e){
   e.preventDefault();
   try{cv.setPointerCapture(e.pointerId);}catch(_){}
   pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,has:false,lx:0,ly:0});
+  armGhost(cv);
   if(!tool) tapWorld(e.clientX,e.clientY);
   if(tool==='rope') pointers.get(e.pointerId).rs=toWorld(e.clientX,e.clientY);
   if(tool==='track'&&strokeId===null){
@@ -7148,8 +7149,17 @@ $('cards').innerHTML=TASKS.map(function(t){
   return '<button class="card" data-task="'+t.id+'" aria-label="'+t.name+'"><svg class="pic" viewBox="0 0 48 48" aria-hidden="true">'+PIC[t.id]+'</svg><svg class="got" viewBox="0 0 24 24" aria-hidden="true" hidden>'+IC.star+'</svg></button>';
 }).join('');
 
+/* Geister-Klick: Öffnet ein Tippen schon beim Aufsetzen ein Fenster, landet der Klick nach dem Loslassen im neuen Fenster, etwa auf dem Hintergrund, der es wieder schließt. Ein Klick, der nicht dort ankommt, wo der Finger aufgesetzt hat, wird verschluckt. */
+let ghostEl=null;
+function armGhost(el){ ghostEl=el; }
+window.addEventListener('pointerdown',function(){ ghostEl=null; },true);
+window.addEventListener('keydown',function(){ ghostEl=null; },true);
+window.addEventListener('click',function(e){
+  const g=ghostEl; ghostEl=null;
+  if(g&&!g.contains(e.target)){ e.stopPropagation(); e.preventDefault(); }
+},true);
 function tap(el,fn){
-  el.addEventListener('pointerdown',function(e){ e.preventDefault(); fn(e); });
+  el.addEventListener('pointerdown',function(e){ e.preventDefault(); armGhost(el); fn(e); });
   el.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); fn(e); } });
 }
 function hold(id,k){
