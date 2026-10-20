@@ -310,6 +310,19 @@ test('Zu hohe Fenster im Querformat lassen sich wischen, die Welt nicht', async 
   } finally { await page.setViewportSize(vp); await ev("OVS.forEach(o=>o.hidden=true); paused=false"); }
 });
 
+test('Dreimal am Tag falsch: Fakt ruht bis morgen', async ({ ev }) => {
+  const r = await ev(`(function(){
+    var bak=JSON.stringify(FS), k='rhy:Tanne', n=0, seen=0;
+    for(var i=0;i<3;i++) factDone({f:k},'miss');
+    for(var j=0;j<300;j++){ var f=pickFact(); lastF=f; if(f===k) seen++; }
+    var due=FS.f[k][1]-dayNo();
+    FS=JSON.parse(bak); retry.length=0; saveFacts();
+    return [seen,due];
+  })()`);
+  if (r[0]) throw new Error('Geparkter Fakt kam noch ' + r[0] + '× dran');
+  if (r[1] !== 1) throw new Error('Geparkter Fakt nicht morgen fällig: ' + r[1]);
+});
+
 const srv = await serve();
 const url = 'http://127.0.0.1:' + srv.address().port + '/';
 const browser = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
