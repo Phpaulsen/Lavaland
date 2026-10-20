@@ -7530,7 +7530,11 @@ const LOG=(function(){
         if(document.hidden) return;
         const s=state(), d=day();
         if(accDay&&accDay!==d) flush();
-        if(s){ accDay=d; acc[s]=(acc[s]||0)+Math.min(1,raw); }
+        if(s){
+          accDay=d; const r=Math.min(1,raw); acc[s]=(acc[s]||0)+r;
+          /* Wobei die Sandbox-Zeit vergeht: je Fahrzeug und Werkzeug. Laut Plan fliegen Nebensysteme raus, die mehr als ein Fünftel der Zeit fressen. */
+          if(s==='play'||s==='empty'){ const m='m:'+P.mode; acc[m]=(acc[m]||0)+r; if(tool){ const t='t:'+tool; acc[t]=(acc[t]||0)+r; } }
+        }
         flushT+=raw; if(flushT>30){ flushT=0; flush(); }
       }catch(_){}
     },
@@ -7631,6 +7635,7 @@ function parRender(o){
     h+=parBars(o.day);
     h+='<div class="par-leg">'+Object.keys(SNAME).map(function(k){ return '<span><i style="background:'+SCOL[k]+'"></i>'+SNAME[k]+' '+mins(sum[k])+'</span>'; }).join('')+'</div>';
   }
+  h+=parSand(days,act);
   const qs=ev.filter(function(e){ return e.k==='q'&&e.taps.length; });
   const qo=ev.filter(function(e){ return e.k==='qo'; }).length, xq=ev.filter(function(e){ return e.k==='x'&&e.what==='quiz'; }).length, xs=ev.filter(function(e){ return e.k==='x'&&e.what==='switch'; }).length;
   const ps=ev.filter(function(e){ return e.k==='p'; }), pq=ps.filter(function(e){ return e.end==='quit'; }).length;
@@ -7665,6 +7670,17 @@ function parRender(o){
   h+=parErr();
   h+='<h3>Daten</h3><p>Alles liegt nur in diesem Browser. Rohdaten werden nach 90 Tagen gelöscht, die Tageszeiten bleiben.</p><details class="par-news"><summary>Datenschutz</summary><ul><li>Das Spiel sendet nichts: kein Konto, keine Werbung, keine Statistik, keine Anfragen an fremde Server. Spielstand und Protokoll verlassen das Gerät nur, wenn Sie selbst sichern oder exportieren.</li><li>Beim Laden der Seite sieht GitHub (Betreiber von GitHub Pages) wie bei jeder Webseite die IP-Adresse. Die installierte App lädt danach aus dem Speicher.</li><li>Vorlesen: Stimmen mit ☁ (unter „Vorlesen“) sind Online-Stimmen des Browser-Herstellers. Mit ihnen geht der vorgelesene Text (Aufgaben, Ansagen, nie Namen) an dessen Server. Lokale Stimmen arbeiten nur auf dem Gerät.</li></ul></details><div class="par-act"><button id="par-exp">Protokoll exportieren</button><button id="par-del">'+(parDel?'Wirklich löschen?':'Protokoll löschen')+'</button></div>';
   $('par-body').innerHTML=h;
+}
+/* Sandbox-Zeit nach Fahrzeug und Werkzeug, als Anteil an der aktiven Zeit. Über 20 % ist markiert: Ab da frisst ein Nebensystem laut Plan zu viel Denkzeit. */
+function parSand(days,act){
+  const by={};
+  days.forEach(function(r){ for(const k in r.sec) if(/^[mt]:/.test(k)) by[k]=(by[k]||0)+r.sec[k]; });
+  const ks=Object.keys(by).filter(function(k){ return by[k]>=30; }).sort(function(a,b){ return by[b]-by[a]; });
+  if(!act||!ks.length) return '';
+  const nm={}; VEH.forEach(function(v){ nm['m:'+v[0]]=v[1]; }); TOOLS.forEach(function(t){ nm['t:'+t[0]]=t[1]; });
+  let h='<h3>Sandbox: womit</h3><table><tr><th>Fahrzeug / Werkzeug</th><th>Zeit</th><th>Anteil</th></tr>';
+  ks.forEach(function(k){ const p=by[k]/act; h+='<tr><td>'+esc(nm[k]||k.slice(2))+'</td><td>'+mins(by[k])+'</td><td'+(p>.2&&k!=='m:walk'?' class="warn"':'')+'>'+pct(p)+'</td></tr>'; });
+  return h+'</table><p>Anteil an der ganzen aktiven Zeit. Werkzeuge laufen neben dem Fahrzeug mit. Erst ab diesem Update gezählt.</p>';
 }
 function parSchool(){
   let h='<h3>Schulstand</h3>';

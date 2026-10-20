@@ -56,6 +56,15 @@ test('Elternansicht zeigt das Protokoll', async ({ ev, page }) => {
   await ev("$('par').hidden=true");
 });
 
+test('Elternansicht zählt Sandbox-Zeit je Fahrzeug', async ({ ev, page }) => {
+  await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; setMode('car'); for(let i=0;i<40;i++) LOG.tick(1); LOG.flush(); setMode('walk')");
+  await page.waitForTimeout(500);
+  await ev('parOpen()'); await page.waitForTimeout(1500);
+  const t = await ev("$('par-body').textContent");
+  if (!/Sandbox: womit/.test(t) || !/Auto/.test(t)) throw new Error('Fahrzeugzeit fehlt in der Elternansicht');
+  await ev("$('par').hidden=true");
+});
+
 test('Reise zum Mond und zurück', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; travel('moon')");
   await page.waitForTimeout(3500);
