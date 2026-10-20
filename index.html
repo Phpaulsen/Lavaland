@@ -64,6 +64,9 @@ body{
 .pad{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);display:flex;gap:10px;align-items:flex-end}
 .pad.left{left:16px}
 .pad.right{right:16px}
+body.lefty .pad.left{left:auto;right:16px}
+body.lefty .pad.right{right:auto;left:16px;flex-direction:row-reverse}
+body.lefty #mark{left:auto;right:15px}
 .stack{display:flex;flex-direction:column;gap:10px}
 .key{
   width:62px;height:62px;padding:0;border-radius:50%;cursor:pointer;touch-action:none;
@@ -144,6 +147,12 @@ body{
 .zf{display:inline-grid;grid-template-columns:repeat(5,34px);gap:5px;padding:7px;border:3px solid var(--ink);border-radius:10px;background:#fff}
 .zf i{width:34px;height:34px;border-radius:50%;border:2.5px solid #c9ced6;box-sizing:border-box}
 .zf i.on{background:#e2423c;border-color:var(--ink)}
+.zf.z20{grid-template-columns:repeat(10,22px);gap:3px;padding:5px}
+.zf.z20 i{width:22px;height:22px;border-width:2px}
+.zf.z20 i:nth-child(5n){margin-right:4px}
+.zf i.on2{background:#2f6fd6;border-color:var(--ink)}
+.zf i.off{background:#e2423c;border-color:var(--ink);opacity:.35;position:relative}
+.zf i.off::after{content:'';position:absolute;left:-2px;right:-2px;top:8px;height:3px;background:var(--ink);transform:rotate(-45deg)}
 .zf.blink{animation:zfhide .2s 1.5s forwards}
 @keyframes zfhide{to{opacity:0;visibility:hidden}}
 .dots{font-size:22px;line-height:1;letter-spacing:3px}
@@ -629,6 +638,7 @@ button.wt{cursor:pointer}
     <div class="cards">
       <button class="card pick" id="save" aria-label="Speichern"></button>
       <button class="card pick" id="sound" aria-label="Ton an oder aus" aria-pressed="true"></button>
+      <button class="card pick" id="hand" aria-label="Steuerung spiegeln für Linkshänder" aria-pressed="false"></button>
       <button class="card pick" id="reset" aria-label="Neue Welt"></button>
       <button class="card pick" id="fs" aria-label="Vollbild an oder aus" aria-pressed="false" hidden></button>
       <button class="card pick" id="exp" aria-label="Spielstand als Datei sichern"></button>
@@ -6105,6 +6115,11 @@ $('story-cards').addEventListener('click',function(e){
   else stBegin();
 });
 tap($('quest'),function(){ if(quest&&!quest.done){ const d=QDEF[quest.type]; speak(d.say(quest)); pulse(d.hint(quest)); } });
+/* Linkshänder: Laufen rechts, Springen und Aktion links. */
+let lefty=false; try{ lefty=localStorage.getItem('lavaland-lefty')==='1'; }catch(_){}
+function syncHand(){ document.body.classList.toggle('lefty',lefty); $('hand').innerHTML='<span style="font-size:34px;display:inline-block;transform:scaleX('+(lefty?-1:1)+')" aria-hidden="true">🫲</span>'; $('hand').setAttribute('aria-pressed',String(lefty)); }
+$('hand').addEventListener('click',function(){ lefty=!lefty; try{ localStorage.setItem('lavaland-lefty',lefty?'1':'0'); }catch(_){} syncHand(); sfx('pop'); speak(lefty?'Steuerung gespiegelt: Laufen jetzt rechts.':'Steuerung wie vorher: Laufen links.'); });
+syncHand();
 $('sound').addEventListener('click',function(){
   if(muted){ muted=false; fxOff=false; } else if(fxOff){ muted=true; fxOff=false; } else fxOff=true;
   try{ localStorage.setItem('lavaland-mute',muted?'1':fxOff?'s':'0'); if(muted&&window.speechSynthesis) window.speechSynthesis.cancel(); }catch(_){}
@@ -6357,6 +6372,12 @@ function numOpts(ans,n,max){
   return shuffle(o).map(String);
 }
 function dots(n){ return new Array(n+1).join('●'); }
+/* Zwanzigerfeld für Lösungen über die 10: erst die obere Reihe voll machen, dann weiter unten. Bei Minus werden die weggenommenen Punkte durchgestrichen. */
+function zw(a,b,sub){
+  let f='';
+  for(let i=0;i<20;i++){ let c=''; if(sub){ if(i<a-b) c='on'; else if(i<a) c='off'; } else { if(i<a) c='on'; else if(i<a+b) c='on2'; } f+='<i'+(c?' class="'+c+'"':'')+'></i>'; }
+  return '<div class="zf z20">'+f+'</div>';
+}
 const WORDS=[
   {w:'Auto',ic:'car',no:''},{w:'Flugzeug',ic:'plane',no:''},{w:'Bagger',ic:'bagger',no:''},{w:'Feuer',ic:'fire',no:'TNH'},
   {w:'Stern',ic:'star',no:''},{w:'Haus',ic:'haus',no:'MLR'},{w:'Mond',ic:'mond',no:'F'},{w:'Sonne',ic:'sonne',no:'TWN'},
@@ -6539,6 +6560,7 @@ function mkQ(k){
     const a=+m[1], b=+m[3], add=m[2]==='+', r=add?a+b:a-b;
     q.type=add?'add':'sub'; q.pad=true; q.ans=String(r);
     q.dots=add?'<div class="dots"><span class="da">'+dots(a)+'</span> <span class="db">'+dots(b)+'</span></div>':'<div class="dots"><span class="da">'+dots(r)+'</span><span class="dx">'+dots(b)+'</span></div>';
+    if((add?r:a)>10) q.dots=zw(a,b,!add);
     q.html='<div class="eq">'+a+(add?' + ':' − ')+b+' = '+HOLE+'</div>'+(st<2?q.dots:'');
     q.say='Wie viel ist '+a+(add?' plus ':' minus ')+b+'?'; q.sol=add?solAdd(a,b):solSub(a,b);
   }else if((m=/^fb:(\d+)$/.exec(k))){
