@@ -232,7 +232,10 @@ body.lefty #mark{left:auto;right:15px}
 #quest .bar i{display:block;height:100%;width:0;background:#3aa0e8;transition:width .25s}
 #quest.done{background:var(--sun)}
 #quest:focus-visible{outline:3px solid var(--lava);outline-offset:2px}
-#batt,#mkt,#chip,#quest{height:44px}
+#mis{pointer-events:auto;cursor:pointer;touch-action:none;display:flex;align-items:center;gap:2px;padding:0 10px;margin:0;background:var(--paper);border:3px solid var(--ink);border-radius:24px;box-shadow:0 4px 0 #e63946;color:var(--ink);font:700 22px/1 var(--font-ui)}
+#mis:focus-visible{outline:3px solid var(--lava);outline-offset:2px}
+#mis .st{font-size:18px}
+#batt,#mkt,#chip,#quest,#mis{height:44px}
 @keyframes low{50%{background:#ffb09a}}
 #batt.low{animation:low .6s ease-in-out infinite}
 @keyframes bump{40%{transform:scale(1.1)}}
@@ -527,7 +530,7 @@ button.wt{cursor:pointer}
   .loot{margin-bottom:8px}
   .shop{grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
   .shopc .em{font-size:24px}
-  #batt,#mkt,#chip,#quest{height:40px}
+  #batt,#mkt,#chip,#quest,#mis{height:40px}
   #batt{height:42px}
   .qsheet{max-width:660px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"top top" "q ans";align-items:center;gap:10px 16px;padding:12px 16px}
   .qtop{grid-area:top;justify-self:center}
@@ -606,6 +609,7 @@ button.wt{cursor:pointer}
   <button id="batt" aria-label="Lern-Akku aufladen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 2L4 14h6l-1.5 8L19 10h-6z" fill="#ffd23f" stroke="#1d2a3a" stroke-width="1.6" stroke-linejoin="round"/></svg><span class="cells" id="batt-cells"><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i></span></button>
   <button id="mkt" aria-label="Markt öffnen"><span class="lv" id="lvl">1</span><span class="xpb"><i id="xp"></i></span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="#f0c432" stroke="#1d2a3a" stroke-width="2"/></svg><b id="hud-gold">0</b><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12l4 6-10 11L2 10z" fill="#5fd4e6" stroke="#1d2a3a" stroke-width="2" stroke-linejoin="round"/></svg><b id="hud-gem">0</b></button>
   <button id="quest" aria-label="Auftrag anhören"><svg id="q-ic" viewBox="0 0 24 24" aria-hidden="true"></svg><span class="bar"><i id="q-bar"></i></span><b id="q-txt"></b></button>
+  <button id="mis" hidden aria-label="Mission noch einmal anhören"><span id="mis-e"></span><span class="st" id="mis-s"></span></button>
   <button id="chip" hidden aria-label="Aufgabe noch einmal anhören">
     <svg class="tp" id="chip-pic" viewBox="0 0 48 48" aria-hidden="true"></svg>
     <svg class="ar" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h14m-6-6l6 6-6 6" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
@@ -886,6 +890,7 @@ IC.rope='<path d="M2 4l20 9" '+S1+' stroke-width="2"/><rect x="1" y="2" width="3
 IC.sub='<path d="M9 9V5.500h4" fill="none" '+S1+' stroke-width="2"/><rect x="2" y="9" width="18" height="10" rx="5" fill="#ffc21a" '+S1+' stroke-width="1.6"/><circle cx="13" cy="14" r="2.400" fill="#bfe9f5" '+S1+' stroke-width="1.3"/><circle cx="7" cy="14" r="1.500" fill="#bfe9f5" '+S1+' stroke-width="1.1"/><path d="M21.500 10.500v7" '+S1+' stroke-width="2.4"/>';
 AI.hook='<path d="M12 2v9" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><path d="M12 11a4.500 4.500 0 1 1-4.500 4.500" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M5 13.500l2.500 2 2-2.500" stroke="currentColor" stroke-width="2.400" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
 AI.horn='<path d="M3 9h4l8-5v16l-8-5H3z" fill="currentColor"/><path d="M18 8.5a5 5 0 0 1 0 7M20.500 6a8.500 8.500 0 0 1 0 12" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round"/>';
+AI.mis='<path d="M12 2v3" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><rect x="3" y="5" width="18" height="13" rx="2.500" fill="currentColor"/><path d="M12 18v4" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>';
 AI.sonar='<circle cx="12" cy="12" r="2.600" fill="currentColor"/><path d="M6.500 6.500a8 8 0 0 0 0 11M17.500 6.500a8 8 0 0 1 0 11M3.500 3.500a12 12 0 0 0 0 17M20.500 3.500a12 12 0 0 1 0 17" stroke="currentColor" stroke-width="2.200" fill="none" stroke-linecap="round"/>';
 
 /* ---------- Welt ---------- */
@@ -2041,6 +2046,7 @@ function doAction(){
   if(P.zip){ keys.u=true; zipRide(0); keys.u=false; return; }
   if(P.mode==='walk'){
     const zn=zipNear(); if(zn){ zipGo(zn); return; }
+    if(nearBoard()){ misBoard(); return; }
     if(deepAct()) return;
     if(nearStall()){ openMarket(); return; }
     if(nearLift()){ rideLift(); return; }
@@ -3315,6 +3321,103 @@ function questPoint(){
   }
   return null;
 }
+/* ---------- Missionen: kleine Geschichten mit mehreren Schritten. Am Missionsbrett neben dem Aufzug holt man sich die nächste. Immer nur eine auf einmal, nichts läuft ab, man kann jederzeit etwas anderes machen. ---------- */
+const MISX=1262, MISK='lavaland-mis';
+let MS={done:{},cur:null}, misShown='';
+try{ const o=JSON.parse(localStorage.getItem(MISK)||'null'); if(o&&typeof o==='object'){ if(o.done&&typeof o.done==='object'&&!Array.isArray(o.done)) MS.done=o.done; if(o.cur&&typeof o.cur==='object'&&typeof o.cur.id==='string'&&(o.cur.st|0)===o.cur.st) MS.cur=o.cur; } }catch(_){}
+function misSave(){ if(frozen) return; try{ localStorage.setItem(MISK,JSON.stringify(MS)); }catch(_){} }
+/* Eine Mission: e = wer sie gibt, start(m) richtet sie ein (false = gerade nicht möglich), steps mit Bild, Ansage, Ziel und Prüfung, win = Gold und Edelsteine. */
+const MIS=[];
+function misDef(){ if(!MS.cur) return null; for(const d of MIS) if(d.id===MS.cur.id) return d; return null; }
+function misNext(){
+  for(const d of MIS) if(!MS.done[d.id]&&(!d.can||d.can())) return d;
+  const ag=MIS.filter(function(d){ return d.again&&(!d.can||d.can()); });
+  return ag.length?ag[ri(0,ag.length-1)]:null;
+}
+function misHere(d){ return (d.realm||'')===realm; }
+function nearBoard(){ return !realm&&P.mode==='walk'&&P.on&&Math.abs(P.x-MISX)<44&&Math.abs(P.y-ground(MISX))<60; }
+function misBoard(){
+  const d=misDef();
+  if(d){ misTalk(true); return; }
+  const n=misNext();
+  if(!n){ say('','Du hast alle Missionen geschafft! Super gemacht.'); return; }
+  const m={id:n.id,st:0};
+  if(n.start(m)===false){ say(n.e,n.no||'Das klappt gerade nicht. Versuch es gleich nochmal.'); return; }
+  MS.cur=m; misSave(); sfx('pop'); renderMis(); misTalk(true); pulse('mis');
+}
+function misTalk(intro){
+  const d=misDef(); if(!d) return;
+  const st=d.steps[MS.cur.st], t=(intro&&MS.cur.st===0&&d.hi?d.hi(MS.cur)+' ':'')+st.say(MS.cur);
+  say(d.e,t);
+}
+function renderMis(){
+  const d=misDef(), k=d?d.id+MS.cur.st:'';
+  if(k===misShown) return; misShown=k;
+  $('mis').hidden=!d;
+  if(d){ $('mis-e').textContent=d.e; $('mis-s').textContent=d.steps[MS.cur.st].ic; }
+}
+function misTick(dt){
+  const d=misDef();
+  if(MS.cur&&!d){ MS.cur=null; misSave(); }
+  renderMis();
+  if(!d||!misHere(d)||traveling) return;
+  const m=MS.cur, st=d.steps[m.st];
+  if(!st.tick(m,dt)) return;
+  m.st++;
+  if(m.st>=d.steps.length){
+    MS.done[d.id]=(MS.done[d.id]|0)+1; MS.cur=null; misSave(); renderMis();
+    reward(d.win[0],d.win[1]); later(.3,function(){ say(d.e,d.end); });
+    return;
+  }
+  misSave(); renderMis(); sfx('pop'); later(.2,function(){ misTalk(false); });
+}
+function misPoint(){
+  const d=misDef(); if(!d) return null;
+  if(!misHere(d)) return null;
+  return d.steps[MS.cur.st].tgt(MS.cur);
+}
+function drawMis(x0,x1){
+  if(!realm&&MISX>x0-60&&MISX<x1+60){
+    const gy=ground(MISX), cur=misDef();
+    ctx.fillStyle=INK; ctx.fillRect(MISX-4,gy-62,8,62); ctx.fillStyle='#a0632f'; ctx.fillRect(MISX-2.5,gy-60,5,60);
+    ctx.fillStyle=INK; rr(MISX-30,gy-92,60,40,6); ctx.fillStyle='#d9a066'; rr(MISX-27,gy-89,54,34,4);
+    ctx.fillStyle='#fff8e6'; ctx.fillRect(MISX-20,gy-84,18,13); ctx.fillRect(MISX+3,gy-80,17,16);
+    ctx.fillStyle='#e63946'; circle(MISX-11,gy-84,2.2); circle(MISX+11,gy-80,2.2);
+    if(!cur&&misNext()){ ctx.fillStyle='#e63946'; circle(MISX,gy-110,12); ctx.fillStyle='#fff'; ctx.font='bold 18px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('!',MISX,gy-109); }
+    else if(cur) emo(cur.e,MISX,gy-110,24);
+  }
+  const d=misDef(); if(d&&misHere(d)&&d.draw) d.draw(MS.cur,x0,x1);
+}
+function misFollow(m,dt){ const tx=P.x-P.face*26, ty=P.y-4; m.fx+=(tx-m.fx)*Math.min(1,dt*4); m.fy+=(ty-m.fy)*Math.min(1,dt*5); }
+function misSpot(lo,hi){
+  for(let i=0;i<40;i++){
+    const x=MISX+(Math.random()<.5?-1:1)*ri(lo,hi);
+    if(x<160||Math.abs(x-VOLC)<650||x>SNX-200||Math.abs(x-STALL_X)<80||Math.abs(x-LIFTX)<80) continue;
+    return x;
+  }
+  return MISX+lo;
+}
+
+/* Küken retten: Es ist in eine Höhle unter der Erde gefallen. Hingraben, abholen, zur Henne bringen. */
+MIS.push({id:'chick',e:'🐔',win:[30,1],
+  hi:function(){ return 'Hilfe! Mein Küken ist in ein Loch gefallen und sitzt jetzt unter der Erde.'; },
+  start:function(m){
+    const x=misSpot(450,1000), y=ground(x)+ri(120,170);
+    carveCircle(x,y,22); m.x=x; m.y=y+16; m.fx=m.x; m.fy=m.y;
+  },
+  steps:[
+    {ic:'🐥⛏️',say:function(){ return 'Folge dem roten Pfeil und grab dich zum Küken hinunter.'; },tgt:function(m){ return [m.x,m.y-20]; },
+      tick:function(m){ return P.mode==='walk'&&Math.hypot(P.x-m.x,P.y-m.y)<46; }},
+    {ic:'🐥🏠',say:function(){ return 'Piep! Du hast das Küken gefunden. Bring es zurück zur Henne am Missionsbrett.'; },tgt:function(){ return [MISX,ground(MISX)-60]; },
+      tick:function(m,dt){ misFollow(m,dt); return Math.abs(P.x-MISX)<70&&Math.abs(P.y-ground(MISX))<90; }}
+  ],
+  draw:function(m){
+    const by=ground(MISX);
+    emo('🐔',MISX+40,by-14,26);
+    if(m.st===0) emo('🐥',m.x,m.y-10,22); else emo('🐥',m.fx,m.fy-10,20);
+  },
+  end:'Danke! Mein Küken ist wieder da. Du bist ein echter Retter!'});
+
 const OVS=Array.prototype.slice.call(document.querySelectorAll('.ov,#panel,#quiz,#pz'));
 function uiOpen(){ for(const o of OVS) if(!o.hidden) return true; return false; }
 function syncSound(){ $('sound').innerHTML=svg24(muted?QI.mute:fxOff?QI.talk:QI.sound); $('sound').setAttribute('aria-pressed',String(!muted)); $('sound').setAttribute('aria-label',muted?'Ton ist aus':fxOff?'Nur Sprache':'Ton ist an'); }
@@ -6416,6 +6519,7 @@ $('story-cards').addEventListener('click',function(e){
   else if(k<c) say('',RECAP[k]);
   else stBegin();
 });
+tap($('mis'),function(){ misTalk(false); });
 tap($('quest'),function(){ if(quest&&!quest.done){ const d=QDEF[quest.type]; speak(d.say(quest)); pulse(d.hint(quest)); } });
 /* Linkshänder: Laufen rechts, Springen und Aktion links. */
 let lefty=false; try{ lefty=localStorage.getItem('lavaland-lefty')==='1'; }catch(_){}
@@ -7493,6 +7597,7 @@ function draw(){
     if(!(P.mode==='coaster'&&P.track===T)){ const q=trackAt(T,10); drawCart(q.x,q.y,Math.atan2(q.ty,q.tx),T.dir,false,false); }
   }
   drawZips(x0,x1);
+  drawMis(x0,x1);
   if(tool==='track'){
     for(const T of tracks){ const a=T.pts[0], b=T.pts[T.pts.length-1]; knob(a[0],a[1],8); knob(b[0],b[1],11); }
   }
@@ -7621,7 +7726,7 @@ function draw(){
 
   const mk=mark();
   if(mk) pointTo(mk[0],mk[1],'#ffd23f');
-  else{ const qp=questPoint(); if(qp) pointTo(qp[0],qp[1],'#58b548'); const sp2=storyPoint(); if(sp2) pointTo(sp2[0],sp2[1],'#c77dff'); }
+  else{ const mp=misPoint(); if(mp) pointTo(mp[0],mp[1],'#e63946'); const qp=questPoint(); if(qp) pointTo(qp[0],qp[1],'#58b548'); const sp2=storyPoint(); if(sp2) pointTo(sp2[0],sp2[1],'#c77dff'); }
   if(FX.sonar>0){ const so=sonarTarget(); if(so) pointTo(so[0],so[1],'#ffd23f'); }
   const gp=guidePoint(); if(gp) pointTo(gp[0],gp[1],'#ff8a1f');
   if(hero.up.compass>0&&nearF&&!nearF.got&&nearD<[0,900,2600,1e9][hero.up.compass]) pointTo(nearF.x,nearF.y,'#5fd4e6');
@@ -7629,7 +7734,7 @@ function draw(){
 
 function actIcon(){
   if(P.zip) return 'jump';
-  if(P.mode==='walk'){ if(zipNear()) return 'hook'; const da=deepIcon(); if(da) return da; }
+  if(P.mode==='walk'){ if(zipNear()) return 'hook'; if(nearBoard()) return 'mis'; const da=deepIcon(); if(da) return da; }
   if(P.mode==='walk') return nearStall()?'shop':nearLift()?'lift':(P.chute?'down':(P.on||P.air<.15?'jump':'chute'));
   if(P.mode==='ski') return nearLift()?'lift':(P.on||P.ball>0?'jump':'spin');
   if(P.mode==='dragon') return 'flame';
@@ -7657,6 +7762,7 @@ function resetWorld(seed){
   parts.length=0; ghost=null; chest=null; stroke=null; strokeId=null; task=null; $('chip').hidden=true;
   for(const tr of trees){ tr.state=0; tr.t=0; }
   tracks=[]; zips=[]; P.zip=null; const d=demoTrack(); if(d) tracks.push(d);
+  if(MS.cur){ MS.cur=null; misSave(); }
   P.mode='walk'; P.x=820; P.y=surfaceY(820); P.vx=0; P.vy=0; P.on=true; P.face=1; P.chute=false; P.soot=0; P.hurt=0; P.turbo=0; P.track=null; P.load=0; P.arm=.75; P.ball=0; P.spin=0; P.rot=0; P.frost=0;
   for(const k in parked) parked[k]=null;
   heliLoad='';
@@ -8189,7 +8295,7 @@ function frame(t){
     accum+=dt; let n=0;
     while(accum>=1/30&&n<2){ paintStep(); step(); accum-=1/30; n++; }
     if(accum>.1) accum=0;
-    update(dt); worldTick(dt); deepTick(dt); winterTick(dt); taskTick(dt); findsTick(dt); questTick(dt); autosave(dt); drain(dt); fogTick(dt); mkTick();
+    update(dt); worldTick(dt); deepTick(dt); winterTick(dt); taskTick(dt); findsTick(dt); questTick(dt); misTick(dt); autosave(dt); drain(dt); fogTick(dt); mkTick();
     /* Läuft es auf diesem Gerät zu langsam, sinkt die Auflösung in Stufen. */
     if(raw<.2){ perfT+=raw; perfN++; }
     if(perfN>=150){ if(perfT/perfN>.026&&maxDpr>1){ maxDpr=Math.max(1,maxDpr-.5); resize(); } perfT=0; perfN=0; }

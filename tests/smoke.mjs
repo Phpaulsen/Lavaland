@@ -65,6 +65,16 @@ test('Elternansicht zählt Sandbox-Zeit je Fahrzeug', async ({ ev, page }) => {
   await ev("$('par').hidden=true");
 });
 
+test('Mission am Brett: Küken retten', async ({ ev, page }) => {
+  await ev("OVS.forEach(o=>o.hidden=true); paused=false; MS={done:{},cur:null}; P.mode='walk'; P.x=MISX; P.y=ground(MISX); P.on=true");
+  await page.waitForTimeout(300);
+  await ev('doAction()');
+  if (await ev("!MS.cur||MS.cur.id!=='chick'")) throw new Error('Mission nicht gestartet');
+  await ev('P.x=MS.cur.x; P.y=MS.cur.y; P.vy=0'); await page.waitForTimeout(600);
+  await ev('P.x=MISX+10; P.y=ground(MISX); P.vy=0'); await page.waitForTimeout(1200);
+  if (await ev("!MS.done.chick")) throw new Error('Mission nicht abgeschlossen');
+});
+
 test('Reise zum Mond und zurück', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; travel('moon')");
   await page.waitForTimeout(3500);
