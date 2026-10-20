@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 
 export const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ANCHOR = "document.addEventListener('visibilitychange',function(){ if(document.hidden) saveGame(false); });";
-const TYPES = { '.html': 'text/html', '.json': 'application/json', '.js': 'text/javascript', '.png': 'image/png', '.woff2': 'font/woff2' };
+const TYPES = { '.html': 'text/html', '.json': 'application/json', '.js': 'text/javascript', '.png': 'image/png', '.woff2': 'font/woff2', '.ogg': 'audio/ogg' };
 
 // extra: zusätzliche Pfade, z. B. { '/old/index.html': '/pfad/zur/alten/index.html' }
 export function serve(extra = {}) {

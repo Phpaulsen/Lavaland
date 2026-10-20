@@ -2536,7 +2536,7 @@ function jingle(){
     });
   }catch(_){}
 }
-/* Vorlesestimme: Eltern können in der Elternansicht Stimme und Tempo wählen. Ohne Wahl nimmt der Browser seine deutsche Standardstimme. */
+/* Vorlesestimme: Feste Sätze kommen als Aufnahme aus audio/ (eine natürliche deutsche Stimme, erzeugt mit tools/voice). Nur Sätze ohne Aufnahme spricht die Browserstimme, deren Stimme Eltern in der Elternansicht wählen können. Das Tempo gilt für beide. */
 const VRATES=[.75,.95,1.1];
 let VOICE={v:'',r:.95};
 try{ const o=JSON.parse(localStorage.getItem('lavaland-voice')||'null'); if(o&&typeof o==='object'){ if(typeof o.v==='string') VOICE.v=o.v.slice(0,120); if(VRATES.indexOf(o.r)>=0) VOICE.r=o.r; } }catch(_){}
@@ -2544,15 +2544,74 @@ function voicesDe(){ try{ return speechSynthesis.getVoices().filter(function(v){
 function voiceGet(){ if(!VOICE.v) return null; return voicesDe().find(function(v){ return v.name===VOICE.v; })||null; }
 try{ if('speechSynthesis' in window) speechSynthesis.addEventListener('voiceschanged',function(){ if(typeof parLoad==='function'&&!$('par').hidden) parLoad(); }); }catch(_){}
 function voiceSave(){ try{ localStorage.setItem('lavaland-voice',JSON.stringify(VOICE)); }catch(_){} }
+/* Aufnahmen: audio/index.json ordnet jedem Satz eine Datei zu. Ein Text wird in Sätze geteilt. Nur wenn es für jeden Satz eine Aufnahme gibt, kommen die Aufnahmen, sonst spricht die Browserstimme den ganzen Text. So stecken nie zwei Stimmen in einer Ansage. */
+let VCLIP=null, vcSeq=0, vcAud=null;
+const vcUrl={};
+function speakSplit(t){ return (String(t).replace(/\s+/g,' ').trim().match(/[^.!?]+[.!?]+|[^.!?]+$/g)||[]).map(function(s){ return s.trim(); }).filter(Boolean); }
+try{
+  const a=document.createElement('audio');
+  if(a.canPlayType&&a.canPlayType('audio/ogg; codecs=opus')) fetch('audio/index.json').then(function(r){ return r.ok?r.json():null; }).then(function(j){ if(j&&j.v===1&&j.c) VCLIP=j.c; }).catch(function(){});
+}catch(_){}
+/* Sätze ohne Aufnahme merken (die letzten 40), damit sie beim nächsten Erzeugen dazukommen. Sie stehen in der Elternansicht. */
+function vcMiss(t){ try{ const a=JSON.parse(localStorage.getItem('lavaland-vmiss')||'[]'); if(!Array.isArray(a)||a.indexOf(t)>=0) return; a.push(String(t).slice(0,300)); localStorage.setItem('lavaland-vmiss',JSON.stringify(a.slice(-40))); }catch(_){} }
+function clipGet(id){
+  if(!vcUrl[id]){ vcUrl[id]=fetch('audio/'+id+'.ogg').then(function(r){ if(!r.ok) throw new Error('clip'); return r.blob(); }).then(function(b){ return URL.createObjectURL(b); }); vcUrl[id].catch(function(){ delete vcUrl[id]; }); }
+  return vcUrl[id];
+}
+function speakStop(){
+  vcSeq++;
+  try{ if(vcAud){ vcAud.onended=null; vcAud.pause(); vcAud=null; } }catch(_){}
+  try{ if(window.speechSynthesis) window.speechSynthesis.cancel(); }catch(_){}
+}
+/* Die Browserstimme liest eine Ziffer vor einem Punkt gern als Ordnungszahl („die 8.“ wird „die achte“), deshalb bekommt sie Zahlen als Wörter. Bildzeichen liest sie nicht mit. */
+const NUMW=['null','eins','zwei','drei','vier','fünf','sechs','sieben','acht','neun','zehn','elf','zwölf','dreizehn','vierzehn','fünfzehn','sechzehn','siebzehn','achtzehn','neunzehn'];
+const NUMT=['','','zwanzig','dreißig','vierzig','fünfzig','sechzig','siebzig','achtzig','neunzig'];
+function numWord(n){
+  if(n<20) return NUMW[n];
+  if(n<100) return (n%10?(n%10===1?'ein':NUMW[n%10])+'und':'')+NUMT[Math.floor(n/10)];
+  if(n<1000) return (Math.floor(n/100)===1?'ein':NUMW[Math.floor(n/100)])+'hundert'+(n%100?numWord(n%100):'');
+  return String(n);
+}
+function synthText(t){ return String(t).replace(/\d+/g,function(d){ return numWord(+d); }).replace(/ – /g,', ').replace(/[←-⯿️‍]|[\uD83C-\uD83E][\uDC00-\uDFFF]/g,'').replace(/\s+/g,' ').trim(); }
+function synth(text){
+  if(!('speechSynthesis' in window)) return;
+  const u=new SpeechSynthesisUtterance(synthText(text));
+  u.lang='de-DE'; u.rate=VOICE.r; u.pitch=1;
+  /* Ohne Wahl der Eltern eine Stimme für Deutsch aus Deutschland, damit kein englischer Standard deutsche Wörter verdreht. */
+  const vo=voiceGet()||voicesDe().find(function(v){ return /^de[-_]DE$/i.test(v.lang); }); if(vo) u.voice=vo;
+  window.speechSynthesis.speak(u);
+  return u;
+}
+function clipPlay(ids,text){
+  const seq=vcSeq, h={onend:null};
+  const done=function(){ if(seq===vcSeq&&h.onend){ const f=h.onend; h.onend=null; f(); } };
+  const fail=function(){ if(seq!==vcSeq) return; const u=synth(text); if(u) u.onend=done; else done(); };
+  Promise.all(ids.map(clipGet)).then(function(urls){
+    let i=0;
+    const next=function(){
+      if(seq!==vcSeq) return;
+      if(i>=urls.length){ vcAud=null; done(); return; }
+      const a=new Audio(urls[i++]); vcAud=a;
+      /* Langsam und schnell aus der Elternansicht gelten auch hier, die Tonhöhe bleibt dabei gleich. */
+      a.playbackRate=VOICE.r/.95; a.onended=next;
+      const p=a.play(); if(p&&p.catch) p.catch(function(){ if(i===1) fail(); else next(); });
+    };
+    next();
+  }).catch(fail);
+  return h;
+}
 function speak(text){
   try{
     if(performance.now()<talkLock&&performance.now()-tapT>450) return;
-    if(muted||!('speechSynthesis' in window)) return;
-    const u=new SpeechSynthesisUtterance(text);
-    u.lang='de-DE'; u.rate=VOICE.r; u.pitch=1.1;
-    const vo=voiceGet(); if(vo) u.voice=vo;
-    window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
-    return u;
+    if(muted) return;
+    speakStop();
+    const ss=speakSplit(text);
+    if(VCLIP){
+      const ids=ss.map(function(s){ return VCLIP[s]; });
+      if(ss.length&&ids.every(Boolean)) return clipPlay(ids,text);
+      vcMiss(text);
+    }
+    return synth(text);
   }catch(_){}
 }
 let muted=false, fxOff=false, noiseBuf=null, coinT=0, coinN=0, digSfxT=0, flameSfx=0;
@@ -6403,7 +6462,7 @@ function pzClose(){
   const c=pzc;
   LOG.pQuit(c);
   pzClear(); $('pz').hidden=true; pzc=null;
-  try{ if(window.speechSynthesis) window.speechSynthesis.cancel(); }catch(_){}
+  speakStop();
   /* Wer nach vielen Fehlversuchen aufgibt, bekommt beim nächsten Mal ein leichteres Rätsel dieser Art. */
   if(c&&!c.won&&c.fails>=3){ hero.pz[c.T.id]=Math.max(0,(hero.pz[c.T.id]|0)-1); saveHero(); }
   if(c&&c.m.quiz&&!c.won&&energy<=0){ pending=null; setTool(null,true); if(P.mode!=='walk') setMode('walk'); pulse('batt'); }
@@ -7136,7 +7195,7 @@ $('hand').addEventListener('click',function(){ lefty=!lefty; try{ localStorage.s
 syncHand();
 $('sound').addEventListener('click',function(){
   if(muted){ muted=false; fxOff=false; } else if(fxOff){ muted=true; fxOff=false; } else fxOff=true;
-  try{ localStorage.setItem('lavaland-mute',muted?'1':fxOff?'s':'0'); if(muted&&window.speechSynthesis) window.speechSynthesis.cancel(); }catch(_){}
+  try{ localStorage.setItem('lavaland-mute',muted?'1':fxOff?'s':'0'); }catch(_){} if(muted) speakStop();
   syncSound(); sfx('pop');
   if(fxOff) speak('Nur Sprache.');
 });
@@ -7351,7 +7410,7 @@ function closeQuiz(){
   LOG.qClose();
   doorQ=null; $('quiz-pz').hidden=false;
   $('quiz').hidden=true; paused=false;
-  try{ if(window.speechSynthesis) window.speechSynthesis.cancel(); }catch(_){}
+  speakStop();
   const f=pending; pending=null;
   if(energy>0){ if(f) f(); }
   else{ if(!HANDT[tool]) setTool(null,true); if(P.mode!=='walk'){ const air=!P.on; setMode('walk'); if(air){ P.chute=true; P.vy=Math.min(P.vy,0); } } pulse('batt'); }
@@ -7587,7 +7646,7 @@ function mkQ(k){
   if((m=/^count:(\d+)$/.exec(k))){
     const n=+m[1]; q.type='count'; q.pad=true; q.ans=String(n);
     q.html='<div class="objs">'+new Array(n+1).join('<svg viewBox="0 0 24 24" aria-hidden="true">'+IC.star+'</svg>')+'</div><div class="eq">'+HOLE+'</div>';
-    q.say='Wie viele Sterne sind das?'; q.sol='Das sind '+n+' Sterne.';
+    q.say='Wie viele Sterne sind das?'; q.sol=n===1?'Das ist ein Stern.':'Das sind '+n+' Sterne.';
   }else if((m=/^(\d+)([+-])(\d+)$/.exec(k))){
     const a=+m[1], b=+m[3], add=m[2]==='+', r=add?a+b:a-b;
     q.type=add?'add':'sub'; q.pad=true; q.ans=String(r);
@@ -8527,7 +8586,7 @@ $('menu').querySelector('.sheet').addEventListener('pointerdown',function(e){
 ['pointerup','pointercancel','pointerleave'].forEach(function(n){ $('menu').querySelector('.sheet').addEventListener(n,function(){ clearTimeout(holdT); }); });
 function pgOpen(){
   $('menu').hidden=true; pgA=ri(3,9); pgB=ri(3,9); pgIn=''; pgMiss=0;
-  try{ if(window.speechSynthesis) window.speechSynthesis.cancel(); }catch(_){}
+  speakStop();
   pgDraw(); $('pgate').hidden=false;
 }
 function pgDraw(){ $('pg-q').textContent=pgA+' × '+pgB+' = '+(pgIn||'?'); }
@@ -8697,15 +8756,15 @@ function parErr(){
   return h+'</table><div class="par-act"><button id="par-errc">Kopieren</button><button id="par-errx">Löschen</button></div>';
 }
 function parVoice(){
-  if(!('speechSynthesis' in window)) return '';
   const vs=voicesDe();
-  let h='<h3>Vorlesen</h3><p>Tempo der Vorlesestimme:</p><div class="par-tabs">'+VRATES.map(function(r,i){ return '<button data-vr="'+r+'"'+(VOICE.r===r?' class="on"':'')+'>'+['langsam','normal','schnell'][i]+'</button>'; }).join('')+'</div>';
+  let miss=[]; try{ miss=JSON.parse(localStorage.getItem('lavaland-vmiss')||'[]'); if(!Array.isArray(miss)) miss=[]; }catch(_){}
+  let h='<h3>Vorlesen</h3>'+(VCLIP?'<p>Vorgelesen wird mit Aufnahmen einer natürlichen Stimme ('+Object.keys(VCLIP).length+' Sätze). Die Browserstimme springt nur bei Sätzen ohne Aufnahme ein'+(miss.length?', bisher '+miss.length+'. <button id="par-vmc">Sätze kopieren</button>':'.')+'</p>':'')+'<p>Tempo der Vorlesestimme:</p><div class="par-tabs">'+VRATES.map(function(r,i){ return '<button data-vr="'+r+'"'+(VOICE.r===r?' class="on"':'')+'>'+['langsam','normal','schnell'][i]+'</button>'; }).join('')+'</div>';
   if(vs.length>1){
-    h+='<p>Stimme:</p><div class="par-tabs par-voices"><button data-vv=""'+(!VOICE.v?' class="on"':'')+'>Standard</button>';
+    h+='<p>'+(VCLIP?'Browserstimme für Sätze ohne Aufnahme:':'Stimme:')+'</p><div class="par-tabs par-voices"><button data-vv=""'+(!VOICE.v?' class="on"':'')+'>Standard</button>';
     vs.forEach(function(v){ h+='<button data-vv="'+esc(v.name)+'"'+(VOICE.v===v.name?' class="on"':'')+'>'+esc(v.name.replace(/^(Google|Microsoft)\s*/,'').replace(/\s*\(.*\)$/,'').slice(0,28))+(v.localService?'':' ☁')+'</button>'; });
     h+='</div>';
   }
-  return h+'<div class="par-act"><button id="par-vt">Probe hören</button></div>'+(vs.some(function(v){ return !v.localService; })?'<p class="par-note">☁ = braucht Internet.</p>':'');
+  return h+'<div class="par-act"><button id="par-vt">Probe hören</button>'+(VCLIP&&vs.length?'<button id="par-vs">Browserstimme hören</button>':'')+'</div>'+(vs.some(function(v){ return !v.localService; })?'<p class="par-note">☁ = braucht Internet.</p>':'');
 }
 /* Übungsblatt: Die gerade wackligen Rechenaufgaben (Fach 0 bis 2, Stolperaufgaben zuerst) als Blatt zum Ausdrucken, für Üben mit Stift am Küchentisch. Reicht das nicht für ein Blatt, kommen die nächsten neuen Aufgaben dazu. */
 const SHEETN=16;
@@ -8892,8 +8951,14 @@ $('par-body').addEventListener('click',function(e){
   }
   if(e.target.closest('#par-errx')){ try{ localStorage.removeItem(ERRK); }catch(_){} parLoad(); return; }
   const vr=e.target.closest('[data-vr]'), vv=e.target.closest('[data-vv]');
-  if(vr||vv){ if(vr) VOICE.r=+vr.dataset.vr; else VOICE.v=vv.dataset.vv; voiceSave(); speak('Hallo! So klinge ich.'); parLoad(); return; }
-  if(e.target.closest('#par-vt')){ speak('Hallo! Wie viel ist drei plus vier?'); return; }
+  if(vr||vv){ if(vr) VOICE.r=+vr.dataset.vr; else VOICE.v=vv.dataset.vv; voiceSave(); if(vv){ speakStop(); synth('Hallo! So klinge ich.'); } else speak('Hallo! So klinge ich.'); parLoad(); return; }
+  if(e.target.closest('#par-vt')){ speak('Hallo! Wie viel ist 3 plus 4?'); return; }
+  if(e.target.closest('#par-vs')){ speakStop(); synth('Hallo! Wie viel ist 3 plus 4?'); return; }
+  if(e.target.closest('#par-vmc')){
+    let t=''; try{ t=JSON.parse(localStorage.getItem('lavaland-vmiss')||'[]').join('\n'); }catch(_){}
+    if(navigator.clipboard) navigator.clipboard.writeText(t).then(function(){ flash('par-vmc','ok'); },function(){});
+    return;
+  }
   if(e.target.closest('#par-sheet')){ sheetPrint(parStum); return; }
   if(e.target.closest('#par-bak')){ bakSave(); setTimeout(parLoad,1500); return; }
   if(e.target.closest('#par-sall')){ SCH.on=false; saveSchool(); parLoad(); return; }
