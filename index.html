@@ -141,6 +141,11 @@ body{
 .hole{display:inline-block;min-width:.9em;padding:0 .1em;border:3px dashed var(--ink);border-radius:10px;color:var(--lava);text-align:center}
 .objs{display:grid;grid-template-columns:repeat(5,36px);gap:4px}
 .objs svg{width:36px;height:36px}
+.zf{display:inline-grid;grid-template-columns:repeat(5,34px);gap:5px;padding:7px;border:3px solid var(--ink);border-radius:10px;background:#fff}
+.zf i{width:34px;height:34px;border-radius:50%;border:2.5px solid #c9ced6;box-sizing:border-box}
+.zf i.on{background:#e2423c;border-color:var(--ink)}
+.zf.blink{animation:zfhide .2s 1.5s forwards}
+@keyframes zfhide{to{opacity:0;visibility:hidden}}
 .dots{font-size:22px;line-height:1;letter-spacing:3px}
 .haus{display:inline-grid;grid-template-columns:1fr 1fr;width:170px;font-size:40px;font-weight:700;font-variant-numeric:tabular-nums}
 .haus .roof{grid-column:1/3;height:64px;line-height:78px;text-align:center;background:#e85d4a;color:#fff;clip-path:polygon(50% 0,100% 100%,0 100%)}
@@ -6385,6 +6390,8 @@ const STAGES=(function(){
   CASES.split('').forEach(function(c){ l[1].push('case:'+c); });
   /* Zahlzerlegung (Zahlenhaus): 4 und 5 zuerst, dann 6 bis 10. Die Zehnerfreunde sind die Grundlage für den Zehnerübergang. */
   for(let n=4;n<=10;n++) for(let a=1;a<n;a++) m[n<=5?0:1].push('zl:'+n+':'+a);
+  /* Blitzblick: Punkte im Zehnerfeld kurz sehen und ohne Abzählen erkennen (Kraft der 5). */
+  for(let n=2;n<=10;n++) m[n<=5?0:1].push('fb:'+n);
   return {m:m,l:l};
 })();
 let FS=null;
@@ -6497,6 +6504,7 @@ function fName(k){
   let m;
   if((m=/^(\d+)([+-])(\d+)$/.exec(k))) return m[1]+(m[2]==='+'?' plus ':' minus ')+m[3];
   if((m=/^count:(\d+)$/.exec(k))) return m[1]+' Sterne zählen';
+  if((m=/^fb:(\d+)$/.exec(k))) return m[1]+' Punkte auf einen Blick';
   if((m=/^zl:(\d+):(\d+)$/.exec(k))) return m[1]+' ist '+m[2]+' und '+(m[1]-m[2]);
   if((m=/^anlaut:(.+)$/.exec(k))) return 'der Anfang von '+m[1];
   if((m=/^syl:(.+)$/.exec(k))) return 'die Silben von '+m[1];
@@ -6533,6 +6541,13 @@ function mkQ(k){
     q.dots=add?'<div class="dots"><span class="da">'+dots(a)+'</span> <span class="db">'+dots(b)+'</span></div>':'<div class="dots"><span class="da">'+dots(r)+'</span><span class="dx">'+dots(b)+'</span></div>';
     q.html='<div class="eq">'+a+(add?' + ':' − ')+b+' = '+HOLE+'</div>'+(st<2?q.dots:'');
     q.say='Wie viel ist '+a+(add?' plus ':' minus ')+b+'?'; q.sol=add?solAdd(a,b):solSub(a,b);
+  }else if((m=/^fb:(\d+)$/.exec(k))){
+    const n=+m[1];
+    let f=''; for(let i=0;i<10;i++) f+='<i'+(i<n?' class="on"':'')+'></i>';
+    q.type='fb'; q.pad=true; q.ans=String(n);
+    q.html='<div class="zf blink">'+f+'</div><div class="eq">'+HOLE+'</div>';
+    q.dots='<div class="zf">'+f+'</div>';
+    q.say='Schau genau! Wie viele Punkte?'; q.sol=n>5?'Oben 5, unten '+(n-5)+'. Das sind '+n+'.':'Das sind '+n+' Punkte.';
   }else if((m=/^zl:(\d+):(\d+)$/.exec(k))){
     const n=+m[1], a=+m[2], b=n-a;
     q.type='zl'; q.pad=true; q.ans=String(b);
@@ -6632,6 +6647,7 @@ function padSubmit(){
     /* Erster Fehler am Ziffernblock: nochmal, denn oft ist es nur vertippt. */
     q.tries=1; q.inp=''; LOG.qTap(v,true); tone([300,240]);
     const h=$('q').querySelector('.hole'); if(h){ h.textContent='?'; h.classList.remove('bump'); void h.offsetWidth; h.classList.add('bump'); }
+    const z=$('q').querySelector('.zf.blink'); if(z){ z.classList.remove('blink'); void z.offsetWidth; z.classList.add('blink'); }
     speak('Noch einmal.');
     return;
   }
@@ -7398,7 +7414,7 @@ const LOG=(function(){
   };
 })();
 /* ---------- Elternansicht: 3 Sekunden auf eine freie Stelle im Menü drücken, dann eine Malaufgabe. Die Schranke wird nicht vorgelesen, sonst wäre sie nur ein weiteres Rätsel. ---------- */
-const QNAME={count:'Zählen',zl:'Zerlegen',syl:'Silben',rhy:'Reime',add:'Plus',sub:'Minus',seq:'Zahlenfolge',anlaut:'Anlaut',case:'Groß/klein',word:'Wort zum Bild'};
+const QNAME={count:'Zählen',fb:'Blitzblick',zl:'Zerlegen',syl:'Silben',rhy:'Reime',add:'Plus',sub:'Minus',seq:'Zahlenfolge',anlaut:'Anlaut',case:'Groß/klein',word:'Wort zum Bild'};
 const SNAME={quiz:'Rechnen/Buchstaben',pz:'Rätsel',play:'Sandbox',empty:'Sandbox, Akku leer',ui:'Menüs'};
 const SCOL={quiz:'#2f6fd6',pz:'#7b4fd6',play:'#58b548',empty:'#ff5a1f',ui:'#c4bca6'};
 const PMIN=20;
