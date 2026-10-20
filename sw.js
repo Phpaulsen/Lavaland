@@ -1,6 +1,6 @@
 /* Offline-Betrieb: Die Seite selbst kommt zuerst aus dem Netz (damit Updates ankommen), sonst aus dem Cache. Alles andere kommt aus dem Cache und wird bei Bedarf nachgeladen. */
-const CACHE='lavaland-v1';
-const CORE=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png','./apple-touch-icon.png'];
+const CACHE='lavaland-v3';
+const CORE=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png','./apple-touch-icon.png','./fonts/andika-400.woff2','./fonts/andika-700.woff2'];
 
 self.addEventListener('install',function(e){
   e.waitUntil(caches.open(CACHE).then(function(c){ return c.addAll(CORE); }).then(function(){ return self.skipWaiting(); }));
@@ -24,7 +24,8 @@ self.addEventListener('fetch',function(e){
   }
   e.respondWith(caches.match(rq).then(function(hit){
     const net=fetch(rq).then(function(r){
-      if(r.ok||r.type==='opaque'){ const cp=r.clone(); caches.open(CACHE).then(function(c){ c.put(rq,cp); }); }
+      /* Undurchsichtige Antworten (fremde Server ohne CORS) zählen im Speicher bis zu mehrere MB und könnten den Spielstand verdrängen. */
+      if(r.ok&&(r.type==='basic'||r.type==='cors')){ const cp=r.clone(); caches.open(CACHE).then(function(c){ c.put(rq,cp); }); }
       return r;
     });
     if(hit){ net.catch(function(){}); return hit; }
