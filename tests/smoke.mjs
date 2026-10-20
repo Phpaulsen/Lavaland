@@ -150,6 +150,34 @@ test('Elternansicht: Monster aus, ruhige Darstellung an', async ({ ev, page }) =
   await ev("OPT.mon=true; OPT.calm=false; reduced=reducedSys; document.body.classList.remove('calm'); optSave()");
 });
 
+test('Tastenkürzel: F öffnet Fahrzeuge, X steigt aus', async ({ ev, page }) => {
+  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk')");
+  await page.keyboard.press('f'); await page.waitForTimeout(200);
+  if (await ev("$('garage').hidden")) throw new Error('F öffnet die Garage nicht');
+  await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+  await ev("energy=MAXE; setMode('car')"); await page.keyboard.press('x'); await page.waitForTimeout(200);
+  if (await ev('P.mode') !== 'walk') throw new Error('X steigt nicht aus');
+});
+
+test('Absturzschutz: kaputtes Nebensystem friert das Spiel nicht ein', async ({ ev, page, errs }) => {
+  const n = errs.length;
+  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk'); for(const k in FX) FX[k]=0; teleport(1200); window.__keep=SIDE.slice(); SIDE.push(function testKaputt(){ throw new Error('Test: absichtlich kaputt'); })");
+  const x0 = await ev('P.x');
+  await page.keyboard.down('ArrowRight'); await page.waitForTimeout(1000); await page.keyboard.up('ArrowRight');
+  const moved = Math.abs(await ev('P.x') - x0);
+  const logged = await ev("errLoad().some(e=>/testKaputt \\(abgeschaltet\\)/.test(e.w))");
+  await ev('SIDE.length=0; window.__keep.forEach(f=>SIDE.push(f)); localStorage.removeItem(ERRK)');
+  errs.length = n;
+  if (moved < 20) throw new Error('Spiel steht nach Fehler still');
+  if (!logged) throw new Error('Fehler nicht im Protokoll');
+});
+
+test('Teilchen-Grenze hält, Ausrufe kommen trotzdem', async ({ ev }) => {
+  const r = await ev("(function(){ for(let i=0;i<3000;i++) spawn(6,P.x,P.y,0,-100,2,3,'#fff'); shout(P.x,P.y-50,'TEST'); return {n:parts.length,max:pmax(),last:parts[parts.length-1].c}; })()");
+  if (r.n > r.max) throw new Error('zu viele Teilchen: ' + r.n);
+  if (r.last !== 'TEST') throw new Error('Ausruf verdrängt');
+});
+
 test('Reise zum Mond und zurück', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; travel('moon')");
   await page.waitForTimeout(3500);
@@ -183,7 +211,7 @@ let failed = 0;
 for (const t of tests) {
   const n = errs.length;
   try {
-    await t.fn({ ev, page });
+    await t.fn({ ev, page, errs });
     if (errs.length > n) throw new Error('Seitenfehler: ' + errs.slice(n).join(' | '));
     console.log('ok   ' + t.name);
   } catch (e) {
