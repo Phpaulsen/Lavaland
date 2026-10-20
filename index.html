@@ -493,6 +493,9 @@ button.wt{cursor:pointer}
   .beam{top:84px}
   .post{top:88px;border-bottom-width:30px}
 }
+body.calm *,body.calm *::before,body.calm *::after{animation:none!important;transition:none!important}
+body.calm .pulse{outline:4px solid var(--lava);outline-offset:1px}
+body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
 @media (prefers-reduced-motion:reduce){
   .mk.go,.pzc.flash,.pzt.flash,#pz-body.win{animation:none}
   .beam,.pzc.pp svg,#fade{transition:none}
@@ -789,7 +792,11 @@ function errAdd(m,w){
 window.addEventListener('error',function(e){ if(e&&e.message) errAdd(e.message,(String(e.filename||'').split('/').pop()||'')+':'+(e.lineno|0)); });
 window.addEventListener('unhandledrejection',function(e){ const r=e&&e.reason; errAdd('Promise: '+(r&&r.message||r),''); });
 const cv=$('c'); let ctx=cv.getContext('2d');
-const reduced=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+/* Elternoptionen: Höhlenmonster an/aus, ruhige Darstellung (wie „Bewegung reduzieren“ im System). */
+let OPT={mon:true,calm:false}; try{ const o=JSON.parse(localStorage.getItem('lavaland-opt')||'{}')||{}; OPT.mon=o.mon!==false; OPT.calm=o.calm===true; }catch(_){}
+function optSave(){ try{ localStorage.setItem('lavaland-opt',JSON.stringify(OPT)); }catch(_){} }
+const reducedSys=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+let reduced=reducedSys||OPT.calm;
 const K='#1d2a3a';
 
 /* ---------- Bilder für die Tasten ---------- */
@@ -1883,14 +1890,16 @@ function demoTrack(){
 
 /* ---------- Teilchen ---------- */
 const parts=[];
+/* Teilchen-Obergrenze: Ist sie erreicht, werden neue Teilchen einfach weggelassen (kostet nichts). Nur Ausrufe wie „BUMM!“ verdrängen das älteste. Auf langsamen Geräten liegt die Grenze niedriger. */
+function pmax(){ return maxDpr<=1?240:460; }
 function spawn(type,x,y,vx,vy,lf,size,c,col){
-  if(parts.length>460) parts.shift();
+  if(parts.length>=pmax()){ if(type!==9) return; parts.shift(); }
   parts.push({type:type,x:x,y:y,vx:vx,vy:vy,life:lf,max:lf,size:size,c:c||0,col:col||'#fff'});
 }
 function smoke(x,y,n){ for(let i=0;i<n;i++) spawn(0,x+(Math.random()-.5)*20,y+(Math.random()-.5)*14,(Math.random()-.5)*60,-30-Math.random()*60,.8+Math.random(),6+Math.random()*7); }
 function dust(x,y){ for(let i=0;i<7;i++) spawn(3,x+(Math.random()-.5)*20,y-2,(Math.random()-.5)*140,-40-Math.random()*90,.5,3+Math.random()*3); }
 const CONF=['#e63946','#ffd23f','#3aa0e8','#58b548','#7b4fd6','#ff8a1f'];
-function confetti(x,y){ for(let i=0;i<70;i++) spawn(6,x+(Math.random()-.5)*30,y-30,(Math.random()-.5)*420,-180-Math.random()*380,1.4+Math.random(),3+Math.random()*2,CONF[i%6]); }
+function confetti(x,y){ for(let i=0,n=reduced?18:70;i<n;i++) spawn(6,x+(Math.random()-.5)*30,y-30,(Math.random()-.5)*420,-180-Math.random()*380,1.4+Math.random(),3+Math.random()*2,CONF[i%6]); }
 let shake=0, popG=0, popM=0, popT=0;
 function explode(x,y){
   const cx=Math.floor(x/CELL), r=colTop(cx,Math.floor((y-TOP)/CELL)-4);
@@ -2352,10 +2361,20 @@ function update(dt){
       volT=6+Math.random()*6;
       if(live) for(let i=0;i<10;i++) spawn(4,VOLC+(Math.random()-.5)*60,cy,(Math.random()-.5)*340,-380-Math.random()*220,2.4,4+Math.random()*3);
     }
+    /* Ab und zu ein großer Ausbruch: Es rumpelt, Lava spritzt hoch und ein paar glühende Lavabrocken landen am Hang. Wer sie aufhebt, bekommt Gold (wie Sternsteine). Dem Kind passiert nichts. */
+    eruT-=dt;
+    if(live&&eruT<=0&&Math.abs(P.x-VOLC)<900){
+      eruT=80+Math.random()*50; eruOn=3; blip(70,40,1.2,'sawtooth',.09); shout(VOLC,cy-120,'RUMMS!','#ff9a3c');
+      for(let i=0;i<3&&MROCKS.length<6;i++){ const d=(i%2?1:-1), tx=VOLC+d*(140+Math.random()*180), ty=ground(tx), tt=1.6, sy=cy-10;
+        METS.push({x:VOLC,y:sy,vx:(tx-VOLC)/tt,vy:(ty-sy-300*tt*tt)/tt,g:600,t:tt,land:true,tr:[]}); }
+    }
+    if(eruOn>0){ eruOn-=dt; for(let i=0;i<3;i++) spawn(4,VOLC+(Math.random()-.5)*40,cy,(Math.random()-.5)*260,-520-Math.random()*300,2.6,4+Math.random()*4); if(Math.random()<dt*20) spawn(0,VOLC+(Math.random()-.5)*60,cy-20,(Math.random()-.5)*30,-90,3,14+Math.random()*10); }
   }
-  for(let i=parts.length-1;i>=0;i--){
+  let pw=0;
+  for(let i=0;i<parts.length;i++){
     const p=parts[i]; p.life-=dt;
-    if(p.life<=0){ parts.splice(i,1); continue; }
+    if(p.life<=0) continue;
+    parts[pw++]=p;
     if(p.type===0||p.type===7){ p.vy-=20*dt; p.size+=9*dt; }
     else if(p.type===1) p.vy-=70*dt;
     else if(p.type===2) p.vy-=10*dt;
@@ -2366,6 +2385,7 @@ function update(dt){
     p.x+=p.vx*dt; p.y+=p.vy*dt;
     if(p.type===4&&p.vy>0&&solidW(p.x,p.y)) p.life=0;
   }
+  parts.length=pw;
   const vw=W/S, vh=H/S;
   /* Beim Schienenmalen schiebt der Finger am Bildrand die Kamera weiter, so lassen sich lange und hohe Bahnen in einem Zug malen. */
   const sp=strokeId!==null&&stroke?pointers.get(strokeId):null;
@@ -2966,7 +2986,7 @@ function restore(sv){
   SEED=sv.seed; shapeWorld(); loadCells(sv); life.fill(0); stamp.fill(0);
   parts.length=0; ghost=null; chest=null; stroke=null; strokeId=null; task=null; $('chip').hidden=true;
   trees.forEach(function(t,i){ t.state=(sv.trees&&sv.trees[i])|0; t.t=0; });
-  zips=Array.isArray(sv.zips)?sv.zips.filter(zipOk).slice(-ZIPMAX):[]; P.zip=null; MONS.length=0; METS=[]; MROCKS=[]; ARROWS.length=0;
+  zips=Array.isArray(sv.zips)?sv.zips.filter(zipOk).slice(-ZIPMAX):[]; P.zip=null; MONS.length=0; METS=[]; MROCKS=[]; FLIES=[]; ARROWS.length=0;
   tracks=[]; (sv.tracks||[]).forEach(function(t){ const T=makeTrack(t.raw,t.user); if(T){ if(t.rb) T.rb=true; tracks.push(T); } });
   hidden=sv.hidden||[]; props=sv.props||[]; bombs.length=0;
   for(const k in parked) parked[k]=(sv.parked&&sv.parked[k])||null; heliLoad='';
@@ -2988,7 +3008,7 @@ function newRealm(){
   shapeWorld(); planetGen();
   parts.length=0; ghost=null; chest=null; stroke=null; strokeId=null; task=null; $('chip').hidden=true;
   for(const tr of trees){ tr.state=0; tr.t=0; }
-  tracks=[]; zips=[]; P.zip=null; MONS.length=0; METS=[]; MROCKS=[]; ARROWS.length=0; props=[]; bombs.length=0; hidden=[]; guide=null;
+  tracks=[]; zips=[]; P.zip=null; MONS.length=0; METS=[]; MROCKS=[]; FLIES=[]; ARROWS.length=0; props=[]; bombs.length=0; hidden=[]; guide=null;
   for(const k in parked) parked[k]=null;
   P.x=LANDX; P.y=surfaceY(LANDX);
   scanMobile();
@@ -4311,6 +4331,7 @@ const ORBN=['Du bist auf dem Käsemond gelandet! Hier wohnen die Mäuse.','Ein P
 });
 const NIGHT_T=[10,14,44], NIGHT_B=[40,40,96], MD={st:[84,191,230],sb:[212,244,238],h1:'#9bd8c4',h2:'#74c493',nl:0,w1:'rgba(48,140,224,.74)',w2:'rgba(132,204,246,.8)'};
 const EGGSVG='<svg viewBox="0 0 24 24" aria-hidden="true">'+QI.egg+'</svg>';
+let eruT=40, eruOn=0;
 let skySay=0, ufo=null, ufoNext=20, skyRb=0, tkN=0, tkT=0, nightOn=false, nightA=0, discoT=0, beatT=0, keySeq='', dTaps=[], idleT=0, zT=0, skyBonk=0, bolt=null, mapPg=0, throws=[], trexT=0, slipWas=false;
 
 function fxSpeed(){ return (FX.slip>0?2.5:1)*(FX.hot>0?1.7:1)*(FX.sugar>0?1.8:1)*(FX.star>0?1.4:1)*(FX.rainbow>0?1.6:1)*(FX.big>0?1.2:1)*(FX.tiny>0?.8:1); }
@@ -4849,6 +4870,7 @@ function monSpawn(){
 }
 function monTick(dt){
   if(paused) return;
+  if(!OPT.mon){ if(MONS.length) MONS.length=0; return; }
   const under=monDepth()>140;
   monT-=dt;
   if(under&&monT<=0&&MONS.length<3){ monT=5+Math.random()*5; monSpawn(); }
@@ -4943,7 +4965,7 @@ function metTick(dt){
     METS.push({x:sx,y:sy,vx:(tx-sx)/tt,vy:(ty-sy)/tt,t:tt,land:land,tr:[]});
   }
   for(const m of METS.slice()){
-    m.t-=dt; m.x+=m.vx*dt; m.y+=m.vy*dt; m.tr.unshift([m.x,m.y]); if(m.tr.length>14) m.tr.pop();
+    m.t-=dt; if(m.g) m.vy+=m.g*dt; m.x+=m.vx*dt; m.y+=m.vy*dt; m.tr.unshift([m.x,m.y]); if(m.tr.length>14) m.tr.pop();
     if(m.t>0) continue;
     METS.splice(METS.indexOf(m),1);
     if(m.land){ const gy=ground(m.x); MROCKS.push({x:m.x,y:gy,t:0}); sfx('pop'); for(let i=0;i<14;i++) spawn(6,m.x,gy-4,(Math.random()-.5)*260,-120-Math.random()*220,.8,3,'#ffd23f'); if(Math.abs(m.x-P.x)<500) shout(m.x,gy-50,'BUMM!','#ffd23f'); }
@@ -5033,6 +5055,56 @@ function drawScope(x0,x1){
   ctx.save(); ctx.translate(x,gy-38); ctx.rotate(-.7);
   ctx.fillStyle=INK; ctx.fillRect(-20,-8,46,16); ctx.fillStyle='#3a4a8a'; ctx.fillRect(-18,-6,42,12); ctx.fillStyle='#ffd23f'; ctx.fillRect(16,-6,4,12); ctx.fillStyle='#9fd3ff'; ctx.fillRect(24,-5,2,10);
   ctx.restore();
+}
+/* Glühwürmchen: Nachts tanzen an den Bäumen Glühwürmchen. Wer eins berührt, nimmt es mit (höchstens fünf). Sie kreisen um den Kopf und machen es unter der Erde heller. Nach zwei Minuten fliegen sie wieder davon. Nichts wird gespeichert. */
+let FLIES=[], JAR=[];
+function flyTick(dt){
+  const night=nightA>.5&&!realm;
+  if(night&&FLIES.length<6&&P.y<400&&Math.random()<dt*1.5){
+    const tr=trees.filter(function(t){ return t.state===0&&Math.abs(t.x-P.x)<W/S*.6; });
+    if(tr.length){ const t=tr[Math.floor(Math.random()*tr.length)]; FLIES.push({hx:t.x+(Math.random()-.5)*60,hy:t.gy-30-Math.random()*70,x:t.x,y:t.gy-40,ph:Math.random()*9,t:0}); }
+  }
+  for(const f of FLIES.slice()){
+    f.t+=dt; f.x=f.hx+Math.sin(f.t*1.3+f.ph)*22; f.y=f.hy+Math.sin(f.t*1.9+f.ph*2)*12;
+    if((!night&&Math.random()<dt*.5)||Math.abs(f.x-P.x)>W/S*1.5){ FLIES.splice(FLIES.indexOf(f),1); continue; }
+    if(JAR.length<5&&Math.hypot(f.x-P.x,f.y-(P.y-20))<26){ FLIES.splice(FLIES.indexOf(f),1); JAR.push({t:120,a:Math.random()*TAU}); blip(900,1400,.12,'sine',.05); }
+  }
+  for(const j of JAR.slice()){ j.t-=dt; j.a+=dt*2.2; if(j.t<=0) JAR.splice(JAR.indexOf(j),1); }
+}
+function jarPos(j){ return [P.x+Math.cos(j.a)*24, P.y-34+Math.sin(j.a*1.7)*10]; }
+function drawFlies(){
+  const k=.6+.4*Math.sin(time*5);
+  for(const f of FLIES){ ctx.fillStyle='rgba(200,255,90,'+(.35*k)+')'; circle(f.x,f.y,10); ctx.fillStyle='#eaff8a'; circle(f.x,f.y,2.4); }
+  for(const j of JAR){ const p=jarPos(j), fade=Math.min(1,j.t/10); ctx.fillStyle='rgba(220,255,120,'+(.3*k*fade)+')'; circle(p[0],p[1],8); ctx.fillStyle='rgba(234,255,138,'+fade+')'; circle(p[0],p[1],2.6); }
+}
+/* Kristallharfe: In jedem Kristallgebirge stehen fünf singende Kristalle. Wer darüberläuft, spielt Töne. Einmal alle von klein nach groß gespielt, regnet es Funken und es gibt einmal pro Welt 3 Gold. Ein Spielzeug, keine Aufgabe. */
+const HARPN=[523,587,659,784,880], HARPC=['#ff7aa8','#ffb347','#ffe066','#7be0a8','#7ab8ff'];
+let HARPS=[], harpKey='';
+function harpTick(dt){
+  const k=realm+SEED+BIO.length;
+  if(k!==harpKey){ harpKey=k; HARPS=[]; for(const b of BIO) if(b.t===8){ const x0=24*Math.round(b.px/24)-68; HARPS.push({x0:x0,k:'hp'+(realm||'')+b.i,last:-1,seq:[],sh:[0,0,0,0,0]}); } }
+  for(const h of HARPS){
+    for(let i=0;i<5;i++) h.sh[i]=Math.max(0,h.sh[i]-dt*2);
+    if(P.x<h.x0-30||P.x>h.x0+166) { h.last=-1; continue; }
+    const i=Math.round((P.x-h.x0)/34);
+    if(i<0||i>4){ h.last=-1; continue; }
+    const cx=h.x0+i*34, gy=ground(cx);
+    if(Math.abs(P.x-cx)>12||P.y<gy-110||P.y>gy+20||i===h.last) continue;
+    h.last=i; h.sh[i]=1; tone([HARPN[i]],'sine'); spawn(6,cx,gy-30-i*10,(Math.random()-.5)*60,-80,.8,3,HARPC[i]);
+    h.seq.push(i); if(h.seq.length>5) h.seq.shift();
+    if(h.seq.join('')==='01234'){ h.seq=[]; confetti(cx,gy-60); tone([523,659,784,1046]); if(!orbGot[h.k]){ orbGot[h.k]=1; gold+=3; lootDirty=true; banner('🎶 +3'+COIN,2000); } }
+  }
+}
+function drawHarps(x0,x1){
+  for(const h of HARPS){
+    if(h.x0>x1+60||h.x0+170<x0-60) continue;
+    for(let i=0;i<5;i++){
+      const cx=h.x0+i*34, gy=ground(cx), ht=34+i*11, w=9, sh=h.sh[i]*Math.sin(time*40)*2;
+      ctx.fillStyle=INK; ctx.beginPath(); ctx.moveTo(cx+sh,gy-ht-4); ctx.lineTo(cx+w+2,gy-ht*.35); ctx.lineTo(cx+w,gy+2); ctx.lineTo(cx-w,gy+2); ctx.lineTo(cx-w-2,gy-ht*.35); ctx.closePath(); ctx.fill();
+      ctx.fillStyle=HARPC[i]; ctx.beginPath(); ctx.moveTo(cx+sh,gy-ht); ctx.lineTo(cx+w,gy-ht*.35); ctx.lineTo(cx+w-1,gy); ctx.lineTo(cx-w+1,gy); ctx.lineTo(cx-w,gy-ht*.35); ctx.closePath(); ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,'+(.35+.5*h.sh[i])+')'; ctx.beginPath(); ctx.moveTo(cx+sh-1,gy-ht+4); ctx.lineTo(cx-w+3,gy-ht*.35); ctx.lineTo(cx-3,gy-4); ctx.closePath(); ctx.fill();
+    }
+  }
 }
 function drawHandTool(){
   if(!HANDT[tool]||P.mode!=='walk'||P.zip) return;
@@ -6215,7 +6287,7 @@ function drawDark(){
     g.addColorStop(0,'rgba(0,0,0,'+k+')'); g.addColorStop(1,'rgba(0,0,0,0)');
     dkx.fillStyle=g; dkx.fillRect(sx-rd,sy-rd,2*rd,2*rd);
   };
-  hole(P.x,P.y-20,[135,195,275,400][hero.lp|0],1);
+  hole(P.x,P.y-20,[135,195,275,400][hero.lp|0]+JAR.length*32,1);
   const vw=W/S+200, vh=H/S+200;
   for(const m of MATS) if(!matGot[m.id]&&Math.abs(m.x-cam.x)<vw&&Math.abs(m.y-cam.y)<vh) hole(m.x,m.y,46,.75);
   for(const m of MACH) if(m.y===m.y&&Math.abs(m.x-cam.x)<vw&&Math.abs(m.y-cam.y)<vh) hole(m.x,m.y-30,90,.9);
@@ -7057,6 +7129,7 @@ $('story-cards').addEventListener('click',function(e){
 tap($('mis'),function(){ misTalk(false); });
 tap($('quest'),function(){ if(quest&&!quest.done){ const d=QDEF[quest.type]; speak(d.say(quest)); pulse(d.hint(quest)); } });
 /* Linkshänder: Laufen rechts, Springen und Aktion links. */
+document.body.classList.toggle('calm',OPT.calm);
 let lefty=false; try{ lefty=localStorage.getItem('lavaland-lefty')==='1'; }catch(_){}
 function syncHand(){ document.body.classList.toggle('lefty',lefty); $('hand').innerHTML='<span style="font-size:34px;display:inline-block;transform:scaleX('+(lefty?-1:1)+')" aria-hidden="true">🫲</span>'; $('hand').setAttribute('aria-pressed',String(lefty)); }
 $('hand').addEventListener('click',function(){ lefty=!lefty; try{ localStorage.setItem('lavaland-lefty',lefty?'1':'0'); }catch(_){} syncHand(); sfx('pop'); speak(lefty?'Steuerung gespiegelt: Laufen jetzt rechts.':'Steuerung wie vorher: Laufen links.'); });
@@ -7693,7 +7766,16 @@ window.addEventListener('keydown',function(e){
   const k=keymap[e.key];
   if(k){ if(!e.repeat) keyTap(k); keys[k]=true; e.preventDefault(); }
   else if(e.key===' '){ if(!e.repeat){ keys.a=true; doAction(); } e.preventDefault(); }
+  else if(!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey) keyShort(e.key.toLowerCase());
 });
+/* Tastenkürzel für Tablet-Tastatur und Laptop: dieselben Knöpfe wie oben in der Leiste. Fragezeichen zeigt die Liste. */
+const SHORT={f:'btn-veh',t:'btn-tool',k:'btn-map',e:'batt',b:'btn-story',m:'btn-menu'};
+function keyShort(k){
+  if(k==='x'){ if(P.mode!=='walk') setMode('walk'); else if(tool) setTool(null,true); return; }
+  if(k==='?'||k==='h'){ banner('⌨️ F Fahrzeuge · T Werkzeug · K Karte · E Aufgabe · B Buch · M Menü · X Aussteigen',4200); return; }
+  const el=SHORT[k]&&$(SHORT[k]);
+  if(el&&!el.hidden&&el.offsetParent) el.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}));
+}
 window.addEventListener('keyup',function(e){ const k=keymap[e.key]; if(k) keys[k]=false; if(e.key===' ') keys.a=false; });
 window.addEventListener('blur',function(){ keys.l=keys.r=keys.u=keys.d=keys.a=false; });
 document.addEventListener('contextmenu',function(e){ e.preventDefault(); });
@@ -8134,6 +8216,7 @@ function draw(){
   drawZips(x0,x1);
   drawMis(x0,x1);
   drawWrecks(x0,x1);
+  drawHarps(x0,x1);
   drawScope(x0,x1);
   drawGeys(x0,x1);
   drawMets();
@@ -8201,6 +8284,7 @@ function draw(){
 
   drawDark();
   drawMons(true);
+  drawFlies();
   if(bx1>=bx0){
     const cx0=Math.max(bx0,Math.floor(x0/CELL),1), cx1=Math.min(bx1,Math.floor(x1/CELL),GX-2);
     const cy0=Math.max(by0,Math.floor((y0-TOP)/CELL),1), cy1=Math.min(by1,Math.floor((y1-TOP)/CELL),GY-2);
@@ -8242,6 +8326,7 @@ function draw(){
   }
 
   for(const p of parts){
+    if(p.x<x0-60||p.x>x1+60||p.y<y0-60||p.y>y1+60) continue;
     const a=p.life/p.max; let col, r=p.size;
     if(p.type===9){
       ctx.globalAlpha=Math.min(1,a*2.5); ctx.font='700 '+p.size+'px system-ui,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -8566,16 +8651,20 @@ function parSchool(){
   dayLoad();
   h+='<h3>Spielzeit am Tag</h3><p>Heute bisher '+mins(DAY.t)+'. Ist die Zeit erreicht, kommt das Lagerfeuer mit Gute-Nacht-Ansage, danach alle 10 Minuten wieder. Das Spiel sperrt nicht.</p>';
   h+='<div class="par-tabs">'+LIMS.map(function(n){ return '<button data-lim="'+n+'"'+(LIM===n?' class="on"':'')+'>'+(n?n+' min':'aus')+'</button>'; }).join('')+'</div>';
+  h+='<h3>Spielwelt</h3><p>Höhlenmonster tief unter der Erde. Sie tun nichts, schubsen nur zurück und platzen bei einem Treffer zu Sternen.</p>';
+  h+='<div class="par-tabs"><button data-opt="mon1"'+(OPT.mon?' class="on"':'')+'>an</button><button data-opt="mon0"'+(OPT.mon?'':' class="on"')+'>aus</button></div>';
+  h+='<p>Ruhige Darstellung: kein Wackeln, kein Blinken, weniger Konfetti.'+(reducedSys?' Ist schon an, weil das Gerät „Bewegung reduzieren“ eingestellt hat.':'')+'</p>';
+  h+='<div class="par-tabs"><button data-opt="calm1"'+(reduced?' class="on"':'')+'>an</button><button data-opt="calm0"'+(reduced?'':' class="on"')+'>aus</button></div>';
   return h;
 }
 /* Was ist neu: kurze Liste für Eltern. Beim ersten Öffnen nach einem Update steht sie offen oben, danach zugeklappt. */
-const NEWS={v:3,t:'Planeten und Lernkern',items:[
-  'Mond, Eisplanet, Blubberplanet und vier kleine Planeten sind eigene Welten mit Unterwelt. Ganz unten liegt je ein Planetenkern.',
-  'Lernaufgaben nach Leitner: Rechnen mit Ziffernblock, Zahlenhaus, Blitzblick im Zehnerfeld, Nachbarzahlen, Silben klatschen, Reime, Anlaut.',
-  'Meistersteine für Aufgaben, die an mehreren Tagen sitzen. Der Bohrer ab Stufe 2 braucht sie. Die Rechentafel im Labor zeigt den Stand.',
-  'Wissenstüren in der Tiefe öffnen sich nach drei richtigen Aufgaben, jede zweite mit einem Rätsel. Sternbild und Waage bis 20 sind neue bzw. erweiterte Rätsel.',
-  'Lagerfeuer als Haltepunkt mit Tagesbilanz, optionales Tageslimit (hier unten), Erkundungskarte mit Nebel, Leuchtmarken unter der Erde.',
-  'Für Eltern: Schulstand, Stolperaufgaben mit Übungsblatt zum Drucken, Sicherungs-Erinnerung, Vorlesestimme und Tempo, Ton-Stufe „Nur Sprache“, Linkshänder-Steuerung im Menü, Datenschutz (hier unten).']};
+const NEWS={v:4,t:'Fahrzeuge, Missionen, Werkzeuge',items:[
+  'Neue Fahrzeuge: Heißluftballon, Hubschrauber mit Lastenhaken, Segelboot, Kletterkäfer. Dazu eine Seilrutsche zum Selberspannen.',
+  'Schaufel und Spitzhacke zum Graben zu Fuß, Pfeil und Bogen mit Schießstand. Höhlenmonster aus Glibber lassen sich besiegen und tun nichts Schlimmes (hier unten abschaltbar).',
+  'Missionsbrett mit Aufträgen: Küken retten, Paketdienst (Zahlen lesen), Schatzkarte (Plusaufgabe), Obstkorb (genau abzählen), Feuerwehr, Flaggen auf den Planetengipfeln.',
+  'Neues zum Entdecken: Geysire, Sternschnuppen mit Sternsteinen, Schiffswrack im Inselmeer, Sternwarte zum Sternezählen, Glühwürmchen in der Nacht, Kristallharfe, Vulkanausbruch.',
+  'Für Eltern: ruhige Darstellung ohne Wackeln und Blinken (hier unten), Sandbox-Zeit je Fahrzeug und Werkzeug, Tastenkürzel am Rechner (Taste ? zeigt sie).',
+  'Unter der Haube: Fehler in einem Teil des Spiels halten nicht mehr das ganze Spiel an, weniger Rechenlast bei vielen Funken.']};
 let newsOpen=null;
 function parNews(){
   if(newsOpen===null){ let seen=0; try{ seen=+localStorage.getItem('lavaland-news')||0; }catch(_){} newsOpen=seen<NEWS.v; if(newsOpen) try{ localStorage.setItem('lavaland-news',String(NEWS.v)); }catch(_){} }
@@ -8808,6 +8897,8 @@ $('par-body').addEventListener('click',function(e){
   if(e.target.closest('#par-sheet')){ sheetPrint(parStum); return; }
   if(e.target.closest('#par-bak')){ bakSave(); setTimeout(parLoad,1500); return; }
   if(e.target.closest('#par-sall')){ SCH.on=false; saveSchool(); parLoad(); return; }
+  const op=e.target.closest('[data-opt]');
+  if(op){ const k=op.dataset.opt; if(k==='mon1'||k==='mon0') OPT.mon=k==='mon1'; else { OPT.calm=k==='calm1'; reduced=reducedSys||OPT.calm; document.body.classList.toggle('calm',OPT.calm); } optSave(); parLoad(); return; }
   const lm=e.target.closest('[data-lim]');
   if(lm){ LIM=+lm.dataset.lim; try{ localStorage.setItem('lavaland-limit',String(LIM)); }catch(_){} dayLoad(); DAY.lim=0; daySave(); parLoad(); return; }
   if(e.target.closest('#par-exp')){
@@ -8830,25 +8921,38 @@ $('par-body').addEventListener('click',function(e){
 
 let last=0, accum=0, lastIcon='', drawN=0;
 function frame(t){
-  const raw=(t-last)/1000||0, dt=Math.min(.034,raw); last=t;
-  LOG.tick(raw);
-  if(ready&&!document.hidden){ const ls=LOG.state(); if(ls&&ls!=='idle') dayTick(Math.min(1,raw)); }
-  /* Solange ein Fenster offen ist, steht das Spiel still und der Akku läuft nicht leer. */
-  if(!(paused||uiOpen())){
-    accum+=dt; let n=0;
-    while(accum>=1/30&&n<2){ paintStep(); step(); accum-=1/30; n++; }
-    if(accum>.1) accum=0;
-    update(dt); arrowsTick(dt); monTick(dt); geyTick(dt); metTick(dt); wreckTick(dt); worldTick(dt); deepTick(dt); winterTick(dt); taskTick(dt); findsTick(dt); questTick(dt); misTick(dt); autosave(dt); drain(dt); fogTick(dt); mkTick();
-    /* Läuft es auf diesem Gerät zu langsam, sinkt die Auflösung in Stufen. */
-    if(raw<.2){ perfT+=raw; perfN++; }
-    if(perfN>=150){ if(perfT/perfN>.026&&maxDpr>1){ maxDpr=Math.max(1,maxDpr-.5); resize(); } perfT=0; perfN=0; }
-  }
-  /* Akku sparen: Hinter einem offenen Fenster steht die Welt still, dann reichen 6 Bilder pro Sekunde. Ohne Berührung reichen 30. */
-  drawN++;
-  const every=(paused||uiOpen())?10:LOG.state()==='idle'?2:1;
-  if(drawN>=every){ drawN=0; draw(); }
-  const ic=actIcon(); if(ic!==lastIcon){ actEl.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+AI[ic]+'</svg>'; lastIcon=ic; }
+  /* Der nächste Frame wird zuerst bestellt: Ein Fehler irgendwo darf das Spiel nicht einfrieren. */
   requestAnimationFrame(frame);
+  try{
+    const raw=(t-last)/1000||0, dt=Math.min(.034,raw); last=t;
+    LOG.tick(raw);
+    if(ready&&!document.hidden){ const ls=LOG.state(); if(ls&&ls!=='idle') dayTick(Math.min(1,raw)); }
+    /* Solange ein Fenster offen ist, steht das Spiel still und der Akku läuft nicht leer. */
+    if(!(paused||uiOpen())){
+      accum+=dt; let n=0;
+      while(accum>=1/30&&n<2){ paintStep(); step(); accum-=1/30; n++; }
+      if(accum>.1) accum=0;
+      update(dt); for(const f of SIDE) safe(f,dt);
+      /* Läuft es auf diesem Gerät zu langsam, sinkt die Auflösung in Stufen. */
+      if(raw<.2){ perfT+=raw; perfN++; }
+      if(perfN>=150){ if(perfT/perfN>.026&&maxDpr>1){ maxDpr=Math.max(1,maxDpr-.5); resize(); } perfT=0; perfN=0; }
+    }
+    /* Akku sparen: Hinter einem offenen Fenster steht die Welt still, dann reichen 6 Bilder pro Sekunde. Ohne Berührung reichen 30. */
+    drawN++;
+    const every=(paused||uiOpen())?10:LOG.state()==='idle'?2:1;
+    if(drawN>=every){ drawN=0; draw(); }
+    const ic=actIcon(); if(ic!==lastIcon){ actEl.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+AI[ic]+'</svg>'; lastIcon=ic; }
+  }catch(e){
+    errAdd((e&&e.message)||e,'frame'); console.error(e);
+    try{ if(ctx.reset) ctx.reset(); else ctx.setTransform(1,0,0,1,0,0); }catch(_){}
+  }
+}
+/* Absturzschutz für Nebensysteme: Wirft eins dreimal einen Fehler, wird es für diese Sitzung abgeschaltet und steht im Fehlerprotokoll. Der Rest läuft weiter. */
+const SIDE=[arrowsTick,monTick,geyTick,metTick,wreckTick,flyTick,harpTick,worldTick,deepTick,winterTick,taskTick,findsTick,questTick,misTick,autosave,drain,fogTick,mkTick];
+const SAFE=new Map();
+function safe(f,dt){
+  const n=SAFE.get(f)|0; if(n>=3) return;
+  try{ f(dt); }catch(e){ SAFE.set(f,n+1); errAdd((e&&e.message)||e,f.name+(n+1>=3?' (abgeschaltet)':'')); console.error(e); }
 }
 
 function start(){
