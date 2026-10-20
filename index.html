@@ -147,6 +147,12 @@ body.lefty #mark{left:auto;right:15px}
 .zf{display:inline-grid;grid-template-columns:repeat(5,34px);gap:5px;padding:7px;border:3px solid var(--ink);border-radius:10px;background:#fff}
 .zf i{width:34px;height:34px;border-radius:50%;border:2.5px solid #c9ced6;box-sizing:border-box}
 .zf i.on{background:#e2423c;border-color:var(--ink)}
+.zf.z20{grid-template-columns:repeat(10,22px);gap:3px;padding:5px}
+.zf.z20 i{width:22px;height:22px;border-width:2px}
+.zf.z20 i:nth-child(5n){margin-right:4px}
+.zf i.on2{background:#2f6fd6;border-color:var(--ink)}
+.zf i.off{background:#e2423c;border-color:var(--ink);opacity:.35;position:relative}
+.zf i.off::after{content:'';position:absolute;left:-2px;right:-2px;top:8px;height:3px;background:var(--ink);transform:rotate(-45deg)}
 .zf.blink{animation:zfhide .2s 1.5s forwards}
 @keyframes zfhide{to{opacity:0;visibility:hidden}}
 .dots{font-size:22px;line-height:1;letter-spacing:3px}
@@ -6366,6 +6372,12 @@ function numOpts(ans,n,max){
   return shuffle(o).map(String);
 }
 function dots(n){ return new Array(n+1).join('●'); }
+/* Zwanzigerfeld für Lösungen über die 10: erst die obere Reihe voll machen, dann weiter unten. Bei Minus werden die weggenommenen Punkte durchgestrichen. */
+function zw(a,b,sub){
+  let f='';
+  for(let i=0;i<20;i++){ let c=''; if(sub){ if(i<a-b) c='on'; else if(i<a) c='off'; } else { if(i<a) c='on'; else if(i<a+b) c='on2'; } f+='<i'+(c?' class="'+c+'"':'')+'></i>'; }
+  return '<div class="zf z20">'+f+'</div>';
+}
 const WORDS=[
   {w:'Auto',ic:'car',no:''},{w:'Flugzeug',ic:'plane',no:''},{w:'Bagger',ic:'bagger',no:''},{w:'Feuer',ic:'fire',no:'TNH'},
   {w:'Stern',ic:'star',no:''},{w:'Haus',ic:'haus',no:'MLR'},{w:'Mond',ic:'mond',no:'F'},{w:'Sonne',ic:'sonne',no:'TWN'},
@@ -6548,6 +6560,7 @@ function mkQ(k){
     const a=+m[1], b=+m[3], add=m[2]==='+', r=add?a+b:a-b;
     q.type=add?'add':'sub'; q.pad=true; q.ans=String(r);
     q.dots=add?'<div class="dots"><span class="da">'+dots(a)+'</span> <span class="db">'+dots(b)+'</span></div>':'<div class="dots"><span class="da">'+dots(r)+'</span><span class="dx">'+dots(b)+'</span></div>';
+    if((add?r:a)>10) q.dots=zw(a,b,!add);
     q.html='<div class="eq">'+a+(add?' + ':' − ')+b+' = '+HOLE+'</div>'+(st<2?q.dots:'');
     q.say='Wie viel ist '+a+(add?' plus ':' minus ')+b+'?'; q.sol=add?solAdd(a,b):solSub(a,b);
   }else if((m=/^fb:(\d+)$/.exec(k))){
