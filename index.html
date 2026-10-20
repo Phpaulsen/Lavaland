@@ -880,8 +880,10 @@ QI.egg='<path d="M12 2.500c4 0 7 6 7 10.800a7 7 0 0 1-14 0C5 8.500 8 2.500 12 2.
 QI.map='<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z" fill="#bfe6a8" '+S1+' stroke-width="1.6"/><path d="M9 4v14M15 6v14" '+S1+' stroke-width="1.4"/><circle cx="12" cy="10.500" r="2" fill="#e63946" '+S1+' stroke-width="1"/>';
 IC.balloon='<path d="M12 2a7.5 7.5 0 0 0-7.5 7.5c0 3.6 3 6 5.2 8h4.6c2.2-2 5.2-4.4 5.2-8A7.5 7.5 0 0 0 12 2z" fill="#e63946" '+S1+' stroke-width="1.5"/><path d="M12 2c-2 2-2.8 4.8-2.8 7.5 0 3.200 1 6 .5 8M12 2c2 2 2.800 4.800 2.800 7.500 0 3.200-1 6-.5 8" fill="#ffd23f" '+S1+' stroke-width="1.2"/><rect x="9" y="19" width="6" height="3.5" rx="1" fill="#a0632f" '+S1+' stroke-width="1.3"/>';
 IC.heli='<path d="M3 4.5h18M12 4.5v3" '+S1+' stroke-width="2.2"/><path d="M4 14c0-3.5 3-6.5 7.5-6.5S19 10 19 13.5V16H6.5C5 16 4 15.2 4 14z" fill="#58b548" '+S1+' stroke-width="1.5"/><path d="M13 9.5c2.5 0 4 1.500 4 3.500h-4z" fill="#bfe9f5" '+S1+' stroke-width="1.2"/><path d="M4.500 12H1.500M1.5 9.5v5M8 16v3.5M15 16v3.5M5.5 19.5h12" '+S1+' stroke-width="1.8"/>';
+IC.boat='<path d="M12 2v14" '+S1+' stroke-width="1.8"/><path d="M12.8 3c3.500 2.500 6 6.500 6.500 11H12.800z" fill="#fff8e6" '+S1+' stroke-width="1.4"/><path d="M11.2 6c-2.500 2-4 4.500-4.500 8h4.500z" fill="#e63946" '+S1+' stroke-width="1.4"/><path d="M2.5 16h19l-3 5.5H5.5z" fill="#a0632f" '+S1+' stroke-width="1.6"/>';
 IC.sub='<path d="M9 9V5.500h4" fill="none" '+S1+' stroke-width="2"/><rect x="2" y="9" width="18" height="10" rx="5" fill="#ffc21a" '+S1+' stroke-width="1.6"/><circle cx="13" cy="14" r="2.400" fill="#bfe9f5" '+S1+' stroke-width="1.3"/><circle cx="7" cy="14" r="1.500" fill="#bfe9f5" '+S1+' stroke-width="1.1"/><path d="M21.500 10.500v7" '+S1+' stroke-width="2.4"/>';
 AI.hook='<path d="M12 2v9" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><path d="M12 11a4.500 4.500 0 1 1-4.500 4.500" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M5 13.500l2.500 2 2-2.500" stroke="currentColor" stroke-width="2.400" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
+AI.horn='<path d="M3 9h4l8-5v16l-8-5H3z" fill="currentColor"/><path d="M18 8.5a5 5 0 0 1 0 7M20.500 6a8.500 8.500 0 0 1 0 12" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round"/>';
 AI.sonar='<circle cx="12" cy="12" r="2.600" fill="currentColor"/><path d="M6.500 6.500a8 8 0 0 0 0 11M17.500 6.500a8 8 0 0 1 0 11M3.500 3.500a12 12 0 0 0 0 17M20.500 3.500a12 12 0 0 1 0 17" stroke="currentColor" stroke-width="2.200" fill="none" stroke-linecap="round"/>';
 
 /* ---------- Welt ---------- */
@@ -1881,7 +1883,7 @@ function explode(x,y){
 /* ---------- Spielfigur ---------- */
 const P={mode:'walk',x:820,y:0,vx:0,vy:0,on:true,landed:false,gs:0,face:1,chute:false,air:0,run:0,ang:0,turbo:0,soot:0,hurt:0,track:null,s:0,v:0,arm:.75,load:0,digT:0,climb:0,lift:0,da:0,bed:0,ball:0,spin:0,rot:0,frost:0,jet:false,back:false,balT:0};
 function grav(){ return P.y<-1700?G*.3:G; }
-const parked={car:null,plane:null,rocket:null,bagger:null,loader:null,dumper:null,tbm:null,sub:null,balloon:null,heli:null};
+const parked={car:null,plane:null,rocket:null,bagger:null,loader:null,dumper:null,tbm:null,sub:null,balloon:null,heli:null,boat:null};
 let ghost=null, chest=null;
 const cam={x:820,y:-60}, pan={x:0,y:0};
 const keys={l:false,r:false,u:false,d:false,a:false};
@@ -2050,6 +2052,7 @@ function doAction(){
   else if(P.mode==='dragon'){ P.digT=0; }
   else if(P.mode==='sub') sonar();
   else if(P.mode==='heli'&&(!P.on||heliLoad)) heliHook();
+  else if(P.mode==='boat'&&boatWet()){ blip(220,210,.5,'sawtooth',.06); shout(P.x,P.y-90,'TUUT!'); }
   else setMode('walk');
 }
 function burn(){
@@ -2277,6 +2280,7 @@ function update(dt){
   else if(P.mode==='sub') updSub(dt,ix,u,d);
   else if(P.mode==='balloon') updBalloon(dt,ix,u,d);
   else if(P.mode==='heli') updHeli(dt,ix,u,d);
+  else if(P.mode==='boat') updBoat(dt,ix,u,d);
   else updCoaster(dt,ix);
 
   if(P.mode!=='coaster'&&P.mode!=='dragon'&&P.hurt<=0&&FX.star<=0){
@@ -4320,6 +4324,28 @@ function heliHook(){
   else{ tone([330,262],'triangle'); pulse('act'); }
 }
 function heliDrop(){ if(heliLoad&&parked[heliLoad]) parked[heliLoad].vy=0; heliLoad=''; sfx('pop'); }
+/* Segelboot: schwimmt auf jedem Wasser, auch auf selbst gemaltem. Der Wind hilft beim Segeln, an Land rutscht es nur mühsam. Hoch lässt es über Wellen hüpfen, die Aktionstaste tutet. */
+function boatWet(){ return cellAt(P.x,P.y+5)===WATER||cellAt(P.x-14,P.y+5)===WATER||cellAt(P.x+14,P.y+5)===WATER; }
+function updBoat(dt,ix,u,d){
+  if(ix) P.face=ix;
+  const wet=boatWet(), deep=cellAt(P.x,P.y-5)===WATER;
+  if(wet){
+    const wind=Math.sin(time*.05+P.x*.0003)*50;
+    P.vx+=(ix*210*(1+.15*hero.up.motor)+wind*(ix?1:.5)-P.vx)*Math.min(1,dt*1.2);
+    if(deep) P.vy+=(-140-P.vy)*Math.min(1,dt*5);
+    else{ P.vy+=(0-P.vy)*Math.min(1,dt*6); if(u&&P.balT<=0){ P.vy=-260; P.balT=.6; sfx('jump'); } }
+    if(Math.abs(P.vx)>60&&Math.random()<dt*14) spawn(7,P.x-P.face*26,P.y,-P.face*30,-30,.5,3);
+    P.soot=0;
+  }else{
+    P.vx+=(ix*45-P.vx)*Math.min(1,dt*3);
+    P.vy=Math.min(P.vy+grav()*dt,700);
+  }
+  if(P.balT>0) P.balT-=dt;
+  if(mover(dt,26,50,20,16)) P.vx*=-.25;
+  if(P.on){ if(P.landed&&P.vy>200) dust(P.x,P.y); P.vy=0; }
+  const ta=wet&&!P.on?(reduced?0:Math.sin(time*2.2)*.06):(P.on?Math.atan(P.gs):0);
+  P.ang+=(ta-P.ang)*Math.min(1,dt*4);
+}
 function sonar(){
   FX.sonar=7; blip(1500,1500,.5,'sine',.07);
   for(let i=0;i<16;i++){ const a=i/16*TAU; spawn(5,P.x+Math.cos(a)*14,P.y-16+Math.sin(a)*14,Math.cos(a)*160,Math.sin(a)*160,.6,2); }
@@ -4369,6 +4395,23 @@ function drawHeli(x,y,ang,face,occ,spin){
   if(occ) head(10,-28,5);
   ctx.fillStyle=INK; ctx.fillRect(0,-46,4,8);
   const w=40*Math.abs(Math.cos(spin)); ctx.fillRect(2-w-4,-48,2*w+8,3);
+  ctx.restore();
+}
+
+function drawBoat(x,y,ang,face,occ,wind){
+  ctx.save(); ctx.translate(x,y); ctx.rotate(ang); ctx.scale(face,1);
+  ctx.strokeStyle=INK; ctx.lineWidth=3; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(0,-8); ctx.lineTo(0,-74); ctx.stroke();
+  const b=1+.12*wind;
+  ctx.fillStyle=INK; ctx.beginPath(); ctx.moveTo(3,-72); ctx.quadraticCurveTo(26*b,-46,30*b,-14); ctx.lineTo(3,-14); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#fff8e6'; ctx.beginPath(); ctx.moveTo(5,-67); ctx.quadraticCurveTo(24*b,-45,27*b,-16); ctx.lineTo(5,-16); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#3aa0e8'; ctx.fillRect(5,-36,22*b,5);
+  ctx.fillStyle=INK; ctx.beginPath(); ctx.moveTo(-3,-60); ctx.quadraticCurveTo(-18,-38,-20,-14); ctx.lineTo(-3,-14); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#e63946'; ctx.beginPath(); ctx.moveTo(-5,-55); ctx.quadraticCurveTo(-16,-37,-17.5,-16); ctx.lineTo(-5,-16); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#ffd23f'; ctx.beginPath(); ctx.moveTo(0,-74); ctx.lineTo(-12,-70); ctx.lineTo(0,-66); ctx.closePath(); ctx.fill();
+  if(occ) head(-9,-17,5);
+  ctx.fillStyle=INK; ctx.beginPath(); ctx.moveTo(-34,-14); ctx.lineTo(36,-14); ctx.lineTo(24,2); ctx.lineTo(-24,2); ctx.closePath(); ctx.fill();
+  ctx.fillStyle=occ&&P.soot>0?'#5a4030':'#a0632f'; ctx.beginPath(); ctx.moveTo(-31,-12); ctx.lineTo(33,-12); ctx.lineTo(22.5,0); ctx.lineTo(-22.5,0); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#fff8e6'; ctx.fillRect(-26,-8,50,2.5);
   ctx.restore();
 }
 
@@ -6192,7 +6235,7 @@ function hiSudoku(st){
 function sySudoku(st){ return 'In jeder Reihe und in jeder Spalte darf jedes Bild nur einmal vorkommen.'+(st.n===4?' Auch in jedem der vier Kästchen.':'')+' Tippe auf ein leeres Feld, bis das richtige Bild da ist. Rot heißt: Das Bild gibt es dort schon.'; }
 
 /* ---------- Tasten ---------- */
-const VEH=[['walk','Laufen'],['ski','Ski fahren'],['car','Auto'],['plane','Flugzeug'],['rocket','Rakete'],['bagger','Bagger'],['loader','Radlader'],['dumper','Kipper'],['tbm','Tunnelbohrmaschine'],['sub','U-Boot'],['balloon','Heißluftballon'],['heli','Hubschrauber'],['coaster','Achterbahn fahren'],['dragon','Auf Mama Glut fliegen']];
+const VEH=[['walk','Laufen'],['ski','Ski fahren'],['car','Auto'],['plane','Flugzeug'],['rocket','Rakete'],['bagger','Bagger'],['loader','Radlader'],['dumper','Kipper'],['tbm','Tunnelbohrmaschine'],['sub','U-Boot'],['balloon','Heißluftballon'],['heli','Hubschrauber'],['boat','Segelboot'],['coaster','Achterbahn fahren'],['dragon','Auf Mama Glut fliegen']];
 const TOOLS=[['tnt','Bombe legen'],['lava','Lava malen'],['fire','Feuer malen'],['water','Wasser malen'],['ice','Eis malen'],['earth','Erde malen'],['blocks','Bauklötze setzen'],['track','Schiene malen'],['erase','Radierer'],['snow','Schnee malen'],['ball','Schneeball werfen'],['man','Schneemann bauen'],['fw','Feuerwerk zünden']];
 const MODES=VEH.map(function(v){return v[0];}), TOOLN=TOOLS.map(function(t){return t[0];});
 function svg24(inner){ return '<svg viewBox="0 0 24 24" aria-hidden="true">'+inner+'</svg>'; }
@@ -7384,6 +7427,7 @@ function draw(){
   o=parked.sub; if(o) drawSub(o.x,o.y,o.ang,o.face,false);
   o=parked.balloon; if(o) drawBalloon(o.x,o.y,o.ang,false,false);
   o=parked.heli; if(o) drawHeli(o.x,o.y,o.ang,o.face,false,0);
+  o=parked.boat; if(o) drawBoat(o.x,o.y,o.ang,o.face,false,0);
   if(ghost){
     if(ghost.kind==='rocket') drawRocket(ghost.x,ghost.y,Math.atan2(ghost.vx,-ghost.vy-200)*.5,false,false);
     else drawPlane(ghost.x,ghost.y,ghost.vx,ghost.vy,ghost.vx>=0?1:-1,false,0,false);
@@ -7402,6 +7446,7 @@ function draw(){
   else if(P.mode==='plane') drawPlane(P.x,P.y,P.vx,P.vy,P.face,P.on,P.ang,true);
   else if(P.mode==='sub') drawSub(P.x,P.y,P.ang,P.face,true);
   else if(P.mode==='balloon') drawBalloon(P.x,P.y,P.ang,true,keys.u&&!paused);
+  else if(P.mode==='boat') drawBoat(P.x,P.y,P.ang,P.face,true,boatWet()?Math.min(1,Math.abs(P.vx)/200):0);
   else if(P.mode==='heli') drawHeli(P.x,P.y,P.ang,P.face,true,reduced?.6:time*(P.on?6:22));
   else if(P.mode==='ski'){ if(P.ball>0) drawRoll(); else drawSkier(P.x,P.y,P.ang,P.face,keys.d&&P.on,!P.on); }
   else if(P.mode==='dragon'){ ctx.save(); ctx.translate(P.x,P.y); ctx.rotate(P.ang); drawDragon(0,0,1.9,P.face,1,reduced?0:Math.sin(time*(P.on?3:10)),true); ctx.restore(); }
@@ -7500,6 +7545,7 @@ function actIcon(){
   if(P.mode==='ski') return nearLift()?'lift':(P.on||P.ball>0?'jump':'spin');
   if(P.mode==='dragon') return 'flame';
   if(P.mode==='sub') return 'sonar';
+  if(P.mode==='boat') return boatWet()?'horn':'exit';
   if(P.mode==='heli') return P.on&&!heliLoad?'exit':'hook';
   if(P.mode==='car') return 'turbo';
   if(P.mode==='bagger') return (P.arm<-.15&&P.load>0)?'down':'dig';
