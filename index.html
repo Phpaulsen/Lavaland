@@ -3364,7 +3364,7 @@ function renderMis(){
   const d=misDef(), k=d?d.id+MS.cur.st:'';
   if(k===misShown) return; misShown=k;
   $('mis').hidden=!d;
-  if(d){ $('mis-e').textContent=d.e; $('mis-s').textContent=d.steps[MS.cur.st].ic; }
+  if(d){ const ic=d.steps[MS.cur.st].ic; $('mis-e').textContent=d.e; $('mis-s').textContent=typeof ic==='function'?ic(MS.cur):ic; }
 }
 function misTick(dt){
   const d=misDef();
@@ -3427,6 +3427,49 @@ MIS.push({id:'chick',e:'🐔',win:[30,1],
     if(m.st===0) emo('🐥',m.x,m.y-10,22); else emo('🐥',m.fx,m.fy-10,20);
   },
   end:'Danke! Mein Küken ist wieder da. Du bist ein echter Retter!'});
+
+/* Paketdienst: Fünf Briefkästen mit Nummern stehen hinter dem Schießstand. Auf jedem Paket steht eine Zahl, vorgelesen wird sie nicht: Die Zahl lesen ist die Aufgabe. Wer zweimal den falschen Kasten erwischt, bekommt die Zahl vorgesagt. */
+const BOXX=[1995,2105,2215,2325,2435];
+function postMax(){ return SCH.on&&SCH.zr<=1?10:20; }
+function postStep(k){
+  return {ic:function(m){ return '📦'+m.n[m.p[k]]; },
+    say:function(m){ return (k?'Super! Hier ist das nächste Paket. ':'')+'Bring das Paket zum Briefkasten mit derselben Zahl. Die Zahl steht auf dem Paket.'+(m.w>=2?' Es ist die '+m.n[m.p[k]]+'.':''); },
+    tgt:function(m){ return m.w>=2?[BOXX[m.p[k]],ground(BOXX[m.p[k]])-60]:[BOXX[2],ground(BOXX[2])-90]; },
+    tick:function(m){
+      if(P.mode!=='walk'||!P.on) return false;
+      let at=-1; for(let i=0;i<BOXX.length;i++) if(Math.abs(P.x-BOXX[i])<24&&Math.abs(P.y-ground(BOXX[i]))<40) at=i;
+      if(at<0){ m.last=-1; return false; }
+      if(at===m.p[k]){ m.w=0; m.last=-1; sfx('coin'); burst(BOXX[at],ground(BOXX[at])-40,'#ffd23f'); return true; }
+      if(at!==m.last){ m.last=at; m.w=(m.w|0)+1; tone([262,220],'triangle'); say('🐻','Das ist die '+m.n[at]+'. Auf dem Paket steht eine andere Zahl.'+(m.w>=2?' Auf dem Paket steht die '+m.n[m.p[k]]+'.':'')); misSave(); }
+      return false;
+    }};
+}
+MIS.push({id:'post',e:'🐻',win:[25,1],again:true,
+  hi:function(){ return 'Hallo, ich bin Bruno, der Postbär. Hilfst du mir? Hinter den Zielscheiben stehen Briefkästen.'; },
+  start:function(m){
+    const pool=[]; for(let i=1;i<=postMax();i++) pool.push(i); shuffle(pool);
+    m.n=pool.slice(0,5).sort(function(a,b){ return a-b; }); if(Math.random()<.5) m.n=shuffle(m.n);
+    m.p=shuffle([0,1,2,3,4]).slice(0,3); m.w=0; m.last=-1;
+  },
+  steps:[postStep(0),postStep(1),postStep(2)],
+  draw:function(m,x0,x1){
+    emo('🐻',MISX+40,ground(MISX)-18,30);
+    for(let i=0;i<BOXX.length;i++){
+      const x=BOXX[i]; if(x<x0-40||x>x1+40) continue;
+      const gy=ground(x);
+      ctx.fillStyle=INK; ctx.fillRect(x-3,gy-36,6,36); ctx.fillStyle='#a0632f'; ctx.fillRect(x-1.5,gy-35,3,35);
+      ctx.fillStyle=INK; rr(x-15,gy-60,30,26,6); ctx.fillStyle='#e63946'; rr(x-13,gy-58,26,22,5);
+      ctx.fillStyle='#fff8e6'; rr(x-10,gy-55,20,16,3);
+      ctx.fillStyle=INK; ctx.font='bold 14px Andika, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(String(m.n[i]),x,gy-46.5);
+    }
+    if(m.st<3){
+      const bx=P.x+P.face*17, by=P.y-22;
+      ctx.fillStyle=INK; rr(bx-13,by-11,26,22,3); ctx.fillStyle='#d9a066'; rr(bx-11,by-9,22,18,2);
+      ctx.fillStyle='#fff8e6'; rr(bx-8,by-6,16,12,2);
+      ctx.fillStyle=INK; ctx.font='bold 12px Andika, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(String(m.n[m.p[m.st]]),bx,by+.5);
+    }
+  },
+  end:'Alle Pakete sind angekommen! Danke, du bist der schnellste Briefträger der Welt.'});
 
 const OVS=Array.prototype.slice.call(document.querySelectorAll('.ov,#panel,#quiz,#pz'));
 function uiOpen(){ for(const o of OVS) if(!o.hidden) return true; return false; }
