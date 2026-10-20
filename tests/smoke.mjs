@@ -105,6 +105,18 @@ test('Schiffswrack: Truhe gibt einmal einen Schatz', async ({ ev, page }) => {
   await ev('teleport(1500)'); await page.waitForTimeout(500);
 });
 
+test('Fernrohr: Sterne zählen', async ({ ev, page }) => {
+  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk'); for(const k in FX) FX[k]=0; P.x=SCOPEX+10; P.y=surfaceY(P.x); P.on=true; P.vy=0");
+  await page.waitForTimeout(300);
+  if (await ev('actIcon()') !== 'scope') throw new Error('Fernrohr-Knopf fehlt: ' + await ev('actIcon()'));
+  await ev('doAction()'); await page.waitForTimeout(300);
+  if (await ev("$('scope').hidden")) throw new Error('Fernrohr nicht geöffnet');
+  const g = await ev('gold');
+  await ev("$('scope-b').querySelector('[data-sc=\"'+SCQ.n+'\"]').click()");
+  if (!(await ev('gold') > g)) throw new Error('richtige Zahl ohne Belohnung');
+  await ev("$('scope').hidden=true");
+});
+
 test('Reise zum Mond und zurück', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; travel('moon')");
   await page.waitForTimeout(3500);
