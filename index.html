@@ -3361,10 +3361,10 @@ function misTalk(intro){
   say(d.e,t);
 }
 function renderMis(){
-  const d=misDef(), k=d?d.id+MS.cur.st:'';
+  const d=misDef(), ic=d?d.steps[MS.cur.st].ic:'', t=typeof ic==='function'?ic(MS.cur):ic, k=d?d.id+MS.cur.st+t:'';
   if(k===misShown) return; misShown=k;
   $('mis').hidden=!d;
-  if(d){ const ic=d.steps[MS.cur.st].ic; $('mis-e').textContent=d.e; $('mis-s').textContent=typeof ic==='function'?ic(MS.cur):ic; }
+  if(d){ $('mis-e').textContent=d.e; $('mis-s').textContent=t; }
 }
 function misTick(dt){
   const d=misDef();
@@ -3546,6 +3546,41 @@ MIS.push({id:'apple',e:'👩‍🌾',win:[25,1],again:true,
     }
   },
   end:'Genau richtig! Jetzt kann ich backen. Danke schön!'});
+
+/* Feuerwehr: Ein Blitz hat Bäume angezündet. Löschen mit Wasser aus dem Werkzeugkasten oder mit Regen: eine Wolke über dem Baum antippen. Die Bäume brennen, bis man kommt, nichts brennt ab. */
+function fireOut(tr){
+  for(const c of clouds) if(c.rain>0&&Math.abs(c.x-tr.x)<70) return true;
+  const c0=Math.floor((tr.x-34)/CELL), c1=Math.floor((tr.x+34)/CELL), r0=Math.floor((tr.gy-tr.h-30-TOP)/CELL), r1=Math.floor((tr.gy-TOP)/CELL);
+  for(let cy=r0;cy<=r1;cy++) for(let cx=c0;cx<=c1;cx++) if(inGrid(cx,cy)&&grid[cy*GX+cx]===WATER) return true;
+  return false;
+}
+MIS.push({id:'fire',e:'🧑‍🚒',win:[35,2],again:true,
+  can:function(){ return fireTrees().length>=3; },
+  hi:function(){ return 'Alarm! Ein Blitz hat Bäume angezündet. Hilf mir löschen!'; },
+  start:function(m){ const t=fireTrees().slice(0,3); if(t.length<3) return false; m.t=t; m.o=[]; for(const i of t){ trees[i].state=1; trees[i].t=1e9; } },
+  steps:[{ic:function(m){ return '🔥'+(m.t.length-m.o.length); },
+    say:function(){ return 'Lösch die brennenden Bäume. Nimm Wasser aus dem Werkzeugkasten und male es auf die Flammen. Oder tippe auf eine Wolke über dem Baum, dann regnet es.'; },
+    tgt:function(m){
+      let b=null, bd=1e9; for(const i of m.t){ const tr=trees[i]; if(!tr||m.o.indexOf(i)>=0) continue; const d=Math.abs(tr.x-P.x); if(d<bd){ bd=d; b=tr; } }
+      return b?[b.x,b.gy-b.h-30]:null;
+    },
+    tick:function(m){
+      let left=0;
+      for(const i of m.t){
+        const tr=trees[i]; if(!tr||m.o.indexOf(i)>=0) continue;
+        tr.state=1; tr.t=1e9;
+        if(fireOut(tr)){ m.o.push(i); tr.state=0; tr.t=0; smoke(tr.x,tr.gy-tr.h,10); steam(Math.floor(tr.x/CELL),Math.floor((tr.gy-tr.h-TOP)/CELL)); shout(tr.x,tr.gy-tr.h-40,'ZISCH!','#bfe9f5'); sfx('pop'); misSave(); }
+        else left++;
+      }
+      return left===0;
+    }}],
+  draw:function(){ emo('🧑‍🚒',MISX+40,ground(MISX)-18,30); },
+  end:'Alle Feuer sind aus! Du bist eine richtige Feuerwehr.'});
+function fireTrees(){
+  const a=[];
+  for(let i=0;i<trees.length;i++){ const t=trees[i], d=Math.abs(t.x-MISX); if(t.state===0&&!t.fir&&d>250&&d<1800&&Math.abs(t.x-VOLC)>600) a.push(i); }
+  return a.sort(function(x,y){ return Math.abs(trees[x].x-MISX)-Math.abs(trees[y].x-MISX); });
+}
 
 const OVS=Array.prototype.slice.call(document.querySelectorAll('.ov,#panel,#quiz,#pz'));
 function uiOpen(){ for(const o of OVS) if(!o.hidden) return true; return false; }
