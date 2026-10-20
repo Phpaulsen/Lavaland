@@ -156,6 +156,7 @@ body.lefty #mark{left:auto;right:15px}
 .zf.blink{animation:zfhide .2s 1.5s forwards}
 @keyframes zfhide{to{opacity:0;visibility:hidden}}
 .dots{font-size:22px;line-height:1;letter-spacing:3px}
+.nbar{font-size:34px;line-height:1}
 .haus{display:inline-grid;grid-template-columns:1fr 1fr;width:170px;font-size:40px;font-weight:700;font-variant-numeric:tabular-nums}
 .haus .roof{grid-column:1/3;height:64px;line-height:78px;text-align:center;background:#e85d4a;color:#fff;clip-path:polygon(50% 0,100% 100%,0 100%)}
 .haus span.rm{display:grid;place-items:center;height:64px;border:3px solid var(--ink);background:#fff8e6}
@@ -6225,7 +6226,7 @@ function bakMake(){
   });
 }
 function bakDone(ok){
-  if(ok){ flash('exp','ok'); tone([660,880]); }
+  if(ok){ flash('exp','ok'); tone([660,880]); try{ localStorage.setItem('lavaland-bak-at',String(Date.now())); }catch(_){} }
   else { flash('exp','warn'); tone([170],'sawtooth'); }
 }
 function bakSave(){
@@ -6292,7 +6293,8 @@ function fsToggle(){
   $('fs').hidden=app||!can; fsSync();
   document.addEventListener('fullscreenchange',fsSync); document.addEventListener('webkitfullscreenchange',fsSync);
   /* Installiert bittet das Spiel darum, dass der Browser den Spielstand nicht von sich aus löscht. */
-  if(app&&navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(function(){});
+  /* Auch im Browser-Tab: Chrome entscheidet selbst, ob es zustimmt. Eine Frage an das Kind gibt es nicht. */
+  if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(function(){});
   if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){ try{ navigator.serviceWorker.register('sw.js').catch(function(){}); }catch(_){} }
 })();
 $('fs').addEventListener('click',fsToggle);
@@ -6413,6 +6415,8 @@ const STAGES=(function(){
   for(let n=4;n<=10;n++) for(let a=1;a<n;a++) m[n<=5?0:1].push('zl:'+n+':'+a);
   /* Blitzblick: Punkte im Zehnerfeld kurz sehen und ohne Abzählen erkennen (Kraft der 5). */
   for(let n=2;n<=10;n++) m[n<=5?0:1].push('fb:'+n);
+  /* Nachbarzahlen: Welche Zahl kommt davor oder danach? Bis 10, dann bis 20. */
+  for(let n=1;n<=19;n++){ m[n<10?1:2].push('nb:+:'+n); m[n<10?1:2].push('nb:-:'+(n+1)); }
   return {m:m,l:l};
 })();
 let FS=null;
@@ -6526,6 +6530,7 @@ function fName(k){
   if((m=/^(\d+)([+-])(\d+)$/.exec(k))) return m[1]+(m[2]==='+'?' plus ':' minus ')+m[3];
   if((m=/^count:(\d+)$/.exec(k))) return m[1]+' Sterne zählen';
   if((m=/^fb:(\d+)$/.exec(k))) return m[1]+' Punkte auf einen Blick';
+  if((m=/^nb:([+-]):(\d+)$/.exec(k))) return (m[1]==='+'?'die Zahl nach der ':'die Zahl vor der ')+m[2];
   if((m=/^zl:(\d+):(\d+)$/.exec(k))) return m[1]+' ist '+m[2]+' und '+(m[1]-m[2]);
   if((m=/^anlaut:(.+)$/.exec(k))) return 'der Anfang von '+m[1];
   if((m=/^syl:(.+)$/.exec(k))) return 'die Silben von '+m[1];
@@ -6570,6 +6575,12 @@ function mkQ(k){
     q.html='<div class="zf blink">'+f+'</div><div class="eq">'+HOLE+'</div>';
     q.dots='<div class="zf">'+f+'</div>';
     q.say='Schau genau! Wie viele Punkte?'; q.sol=n>5?'Oben 5, unten '+(n-5)+'. Das sind '+n+'.':'Das sind '+n+' Punkte.';
+  }else if((m=/^nb:([+-]):(\d+)$/.exec(k))){
+    const n=+m[2], up=m[1]==='+', r=up?n+1:n-1;
+    q.type='nb'; q.pad=true; q.ans=String(r);
+    q.html='<div class="eq">'+(up?n+' &nbsp; '+HOLE:HOLE+' &nbsp; '+n)+'</div><div class="nbar">'+(up?'➡️':'⬅️')+'</div>';
+    q.say=up?'Welche Zahl kommt nach der '+n+'?':'Welche Zahl kommt vor der '+n+'?'; q.sol=up?'Nach der '+n+' kommt die '+r+'.':'Vor der '+n+' kommt die '+r+'.';
+    q.dots='<div class="dots">'+(up?n+' → '+r:r+' ← '+n)+'</div>';
   }else if((m=/^zl:(\d+):(\d+)$/.exec(k))){
     const n=+m[1], a=+m[2], b=n-a;
     q.type='zl'; q.pad=true; q.ans=String(b);
@@ -7436,7 +7447,7 @@ const LOG=(function(){
   };
 })();
 /* ---------- Elternansicht: 3 Sekunden auf eine freie Stelle im Menü drücken, dann eine Malaufgabe. Die Schranke wird nicht vorgelesen, sonst wäre sie nur ein weiteres Rätsel. ---------- */
-const QNAME={count:'Zählen',fb:'Blitzblick',zl:'Zerlegen',syl:'Silben',rhy:'Reime',add:'Plus',sub:'Minus',seq:'Zahlenfolge',anlaut:'Anlaut',case:'Groß/klein',word:'Wort zum Bild'};
+const QNAME={count:'Zählen',fb:'Blitzblick',nb:'Nachbarzahl',zl:'Zerlegen',syl:'Silben',rhy:'Reime',add:'Plus',sub:'Minus',seq:'Zahlenfolge',anlaut:'Anlaut',case:'Groß/klein',word:'Wort zum Bild'};
 const SNAME={quiz:'Rechnen/Buchstaben',pz:'Rätsel',play:'Sandbox',empty:'Sandbox, Akku leer',ui:'Menüs'};
 const SCOL={quiz:'#2f6fd6',pz:'#7b4fd6',play:'#58b548',empty:'#ff5a1f',ui:'#c4bca6'};
 const PMIN=20;
@@ -7468,7 +7479,7 @@ $('pg-keys').addEventListener('click',function(e){
 $('pgate').querySelector('.xb').addEventListener('click',function(){ $('pgate').hidden=true; });
 $('par').querySelector('.xb').addEventListener('click',function(){ $('par').hidden=true; });
 function parOpen(){
-  parDel=false; $('par').hidden=false; $('par-body').innerHTML='<p>Lade …</p>';
+  parDel=false; parStoreInfo(); $('par').hidden=false; $('par-body').innerHTML='<p>Lade …</p>';
   LOG.flush();
   setTimeout(parLoad,150);
 }
@@ -7504,6 +7515,7 @@ function parRender(o){
   const act=sum.quiz+sum.pz+sum.play+sum.empty+sum.ui, learn=sum.quiz+sum.pz;
   let h='<div class="par-tabs">'+[1,7,30].map(function(n){ return '<button data-r="'+n+'"'+(n===parRange?' class="on"':'')+'>'+(n===1?'Heute':n+' Tage')+'</button>'; }).join('')+'</div>';
   h+=parSchool();
+  h+=parSafe();
   h+='<h3>Zeit</h3>';
   if(!act) h+='<p>Noch keine Spielzeit in diesem Zeitraum.</p>';
   else{
@@ -7557,6 +7569,24 @@ function parSchool(){
   h+='<div class="par-tabs">'+LIMS.map(function(n){ return '<button data-lim="'+n+'"'+(LIM===n?' class="on"':'')+'>'+(n?n+' min':'aus')+'</button>'; }).join('')+'</div>';
   return h;
 }
+/* Spielstand absichern: Der Stand liegt nur in diesem Browser. Wann zuletzt gesichert wurde und ob der Browser den Speicher schützt, steht hier. */
+let parStore='';
+function parSafe(){
+  let at=0; try{ at=+localStorage.getItem('lavaland-bak-at')||0; }catch(_){}
+  const d=at?Math.floor((Date.now()-at)/864e5):-1;
+  let h='<h3>Spielstand</h3>';
+  if(d<0||d>=14) h+='<p class="par-note">'+(d<0?'Noch nie als Datei gesichert.':'Letzte Sicherung vor '+d+' Tagen.')+' Wird der Browser-Speicher gelöscht, ist sonst alles weg.</p>';
+  else h+='<p>Zuletzt gesichert '+(d===0?'heute':d===1?'gestern':'vor '+d+' Tagen')+'.</p>';
+  if(parStore) h+='<p>'+parStore+'</p>';
+  return h+'<div class="par-act"><button id="par-bak">Jetzt sichern</button></div>';
+}
+function parStoreInfo(){
+  if(!(navigator.storage&&navigator.storage.persisted)) return;
+  Promise.all([navigator.storage.persisted(),navigator.storage.estimate?navigator.storage.estimate():Promise.resolve(null)]).then(function(r){
+    const t=(r[0]?'Der Browser schützt den Speicher vor automatischem Löschen.':'Der Browser darf den Speicher bei Platzmangel löschen. Installiert (Zum Startbildschirm) ist er meist geschützt.')+(r[1]&&r[1].usage?' Belegt: '+(r[1].usage/1048576).toFixed(1)+' MB.':'');
+    if(t!==parStore){ parStore=t; if(!$('par').hidden) parLoad(); }
+  }).catch(function(){});
+}
 /* Stolperaufgaben: Fakten, die im Zeitraum oft nicht auf Anhieb saßen, mit der häufigsten falschen Antwort. Daten aus der Sicherung gelten als fremd, darum wird alles maskiert. */
 function esc(t){ return String(t).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function fLabel(k){
@@ -7564,6 +7594,7 @@ function fLabel(k){
   if((m=/^(\d+)([+-])(\d+)$/.exec(k))) return m[1]+(m[2]==='+'?' + ':' − ')+m[3];
   if((m=/^zl:(\d+):(\d+)$/.exec(k))) return m[1]+' = '+m[2]+' + ?';
   if((m=/^fb:(\d+)$/.exec(k))) return m[1]+' Punkte (Blitzblick)';
+  if((m=/^nb:([+-]):(\d+)$/.exec(k))) return m[1]==='+'?m[2]+' → ?':'? ← '+m[2];
   if((m=/^count:(\d+)$/.exec(k))) return m[1]+' Sterne zählen';
   if((m=/^(anlaut|syl|rhy|word|case):(.+)$/.exec(k))) return ({anlaut:'Anlaut ',syl:'Silben ',rhy:'Reim auf ',word:'Wort ',case:'Klein zu '})[m[1]]+m[2];
   return k;
@@ -7697,6 +7728,7 @@ $('par-body').addEventListener('click',function(e){
     else{ const c=lt.dataset.lt; SCH.l=SCH.l.indexOf(c)>=0?SCH.l.replace(c,''):SCH.l+c; }
     saveSchool(); parLoad(); return;
   }
+  if(e.target.closest('#par-bak')){ bakSave(); setTimeout(parLoad,1500); return; }
   if(e.target.closest('#par-sall')){ SCH.on=false; saveSchool(); parLoad(); return; }
   const lm=e.target.closest('[data-lim]');
   if(lm){ LIM=+lm.dataset.lim; try{ localStorage.setItem('lavaland-limit',String(LIM)); }catch(_){} dayLoad(); DAY.lim=0; daySave(); parLoad(); return; }
