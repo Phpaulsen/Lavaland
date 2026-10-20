@@ -879,7 +879,9 @@ AI.flame='<path d="M13 2c0 4 6 6 6 13a7 7 0 0 1-14 0c0-3 2-5 3-8 1 2 2 3 3 3 1-2
 QI.egg='<path d="M12 2.500c4 0 7 6 7 10.800a7 7 0 0 1-14 0C5 8.500 8 2.500 12 2.500z" fill="#ffd23f" '+S1+' stroke-width="1.6"/><path d="M9 9.500c.500-1.800 1.500-3 2.800-3.600" stroke="#fff" stroke-width="1.800" stroke-linecap="round" fill="none"/>';
 QI.map='<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z" fill="#bfe6a8" '+S1+' stroke-width="1.6"/><path d="M9 4v14M15 6v14" '+S1+' stroke-width="1.4"/><circle cx="12" cy="10.500" r="2" fill="#e63946" '+S1+' stroke-width="1"/>';
 IC.balloon='<path d="M12 2a7.5 7.5 0 0 0-7.5 7.5c0 3.6 3 6 5.2 8h4.6c2.2-2 5.2-4.4 5.2-8A7.5 7.5 0 0 0 12 2z" fill="#e63946" '+S1+' stroke-width="1.5"/><path d="M12 2c-2 2-2.8 4.8-2.8 7.5 0 3.200 1 6 .5 8M12 2c2 2 2.800 4.800 2.800 7.500 0 3.200-1 6-.5 8" fill="#ffd23f" '+S1+' stroke-width="1.2"/><rect x="9" y="19" width="6" height="3.5" rx="1" fill="#a0632f" '+S1+' stroke-width="1.3"/>';
+IC.heli='<path d="M3 4.5h18M12 4.5v3" '+S1+' stroke-width="2.2"/><path d="M4 14c0-3.5 3-6.5 7.5-6.5S19 10 19 13.5V16H6.5C5 16 4 15.2 4 14z" fill="#58b548" '+S1+' stroke-width="1.5"/><path d="M13 9.5c2.5 0 4 1.500 4 3.500h-4z" fill="#bfe9f5" '+S1+' stroke-width="1.2"/><path d="M4.500 12H1.500M1.5 9.5v5M8 16v3.5M15 16v3.5M5.5 19.5h12" '+S1+' stroke-width="1.8"/>';
 IC.sub='<path d="M9 9V5.500h4" fill="none" '+S1+' stroke-width="2"/><rect x="2" y="9" width="18" height="10" rx="5" fill="#ffc21a" '+S1+' stroke-width="1.6"/><circle cx="13" cy="14" r="2.400" fill="#bfe9f5" '+S1+' stroke-width="1.3"/><circle cx="7" cy="14" r="1.500" fill="#bfe9f5" '+S1+' stroke-width="1.1"/><path d="M21.500 10.500v7" '+S1+' stroke-width="2.4"/>';
+AI.hook='<path d="M12 2v9" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><path d="M12 11a4.500 4.500 0 1 1-4.500 4.500" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M5 13.500l2.500 2 2-2.500" stroke="currentColor" stroke-width="2.400" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
 AI.sonar='<circle cx="12" cy="12" r="2.600" fill="currentColor"/><path d="M6.500 6.500a8 8 0 0 0 0 11M17.500 6.500a8 8 0 0 1 0 11M3.500 3.500a12 12 0 0 0 0 17M20.500 3.500a12 12 0 0 1 0 17" stroke="currentColor" stroke-width="2.200" fill="none" stroke-linecap="round"/>';
 
 /* ---------- Welt ---------- */
@@ -1879,7 +1881,7 @@ function explode(x,y){
 /* ---------- Spielfigur ---------- */
 const P={mode:'walk',x:820,y:0,vx:0,vy:0,on:true,landed:false,gs:0,face:1,chute:false,air:0,run:0,ang:0,turbo:0,soot:0,hurt:0,track:null,s:0,v:0,arm:.75,load:0,digT:0,climb:0,lift:0,da:0,bed:0,ball:0,spin:0,rot:0,frost:0,jet:false,back:false,balT:0};
 function grav(){ return P.y<-1700?G*.3:G; }
-const parked={car:null,plane:null,rocket:null,bagger:null,loader:null,dumper:null,tbm:null,sub:null,balloon:null};
+const parked={car:null,plane:null,rocket:null,bagger:null,loader:null,dumper:null,tbm:null,sub:null,balloon:null,heli:null};
 let ghost=null, chest=null;
 const cam={x:820,y:-60}, pan={x:0,y:0};
 const keys={l:false,r:false,u:false,d:false,a:false};
@@ -1889,6 +1891,7 @@ function park(){ return {x:P.x,y:P.y,vy:P.vy,ang:P.mode==='rocket'?0:P.ang,face:
 function leaveVehicle(){
   const m=P.mode;
   if(m==='walk'||m==='coaster'||m==='ski') return;
+  if(m==='heli'&&heliLoad) heliDrop();
   if(m==='dragon'){ smoke(P.x,P.y-40,10); return; }
   if((m==='plane'||m==='rocket')&&!P.on) ghost={kind:m,x:P.x,y:P.y,vx:m==='plane'?(Math.abs(P.vx)>120?P.vx:P.face*220):P.vx,vy:P.vy};
   else parked[m]=park();
@@ -2046,6 +2049,7 @@ function doAction(){
   else if(P.mode==='ski') skiAct();
   else if(P.mode==='dragon'){ P.digT=0; }
   else if(P.mode==='sub') sonar();
+  else if(P.mode==='heli'&&(!P.on||heliLoad)) heliHook();
   else setMode('walk');
 }
 function burn(){
@@ -2272,6 +2276,7 @@ function update(dt){
   else if(P.mode==='dragon') updDragon(dt,ix,u,d);
   else if(P.mode==='sub') updSub(dt,ix,u,d);
   else if(P.mode==='balloon') updBalloon(dt,ix,u,d);
+  else if(P.mode==='heli') updHeli(dt,ix,u,d);
   else updCoaster(dt,ix);
 
   if(P.mode!=='coaster'&&P.mode!=='dragon'&&P.hurt<=0&&FX.star<=0){
@@ -2290,7 +2295,7 @@ function update(dt){
     if(bm.t<=0){ bombs.splice(i,1); blast(bm.x,bm.y); }
   }
   if(hero.pet){ pet.x+=(P.x-P.face*30-pet.x)*Math.min(1,dt*4); pet.y+=(P.y-16-pet.y)*Math.min(1,dt*5); }
-  for(const k in parked) if(parked[k]) settle(parked[k],dt);
+  for(const k in parked) if(parked[k]&&!(k===heliLoad&&P.mode==='heli')) settle(parked[k],dt);
   if(parked.rocket) parked.rocket.ang=0;
   if(ghost){
     ghost.vy+=150*dt; ghost.x+=ghost.vx*dt; ghost.y+=ghost.vy*dt;
@@ -2924,7 +2929,7 @@ function restore(sv){
   trees.forEach(function(t,i){ t.state=(sv.trees&&sv.trees[i])|0; t.t=0; });
   tracks=[]; (sv.tracks||[]).forEach(function(t){ const T=makeTrack(t.raw,t.user); if(T){ if(t.rb) T.rb=true; tracks.push(T); } });
   hidden=sv.hidden||[]; props=sv.props||[]; bombs.length=0;
-  for(const k in parked) parked[k]=(sv.parked&&sv.parked[k])||null;
+  for(const k in parked) parked[k]=(sv.parked&&sv.parked[k])||null; heliLoad='';
   P.mode='walk'; P.x=sv.px; P.y=sv.py; P.vx=0; P.vy=0; P.on=false; P.face=1; P.chute=false; P.soot=0; P.hurt=0; P.turbo=0; P.track=null; P.load=0;
   P.ball=0; P.spin=0; P.rot=0; P.frost=0;
   deepRestore(sv);
@@ -4289,6 +4294,32 @@ function updBalloon(dt,ix,u,d){
   if(P.on){ if(P.landed&&P.vy>90) dust(P.x,P.y); P.vy=0; }
   P.ang+=(clamp(P.vx/600,-.12,.12)-P.ang)*Math.min(1,dt*3);
 }
+/* Hubschrauber: steht in der Luft still, wenn man nichts drückt. Mit der Aktionstaste hängt er ein geparktes Fahrzeug unter sich an den Haken und lässt es wieder los. So kommt das U-Boot zum Meer und der Bagger auf den Berg. */
+let heliLoad='';
+function updHeli(dt,ix,u,d){
+  if(ix) P.face=ix;
+  if(P.on){ P.vx-=P.vx*Math.min(1,dt*6); if(u){ P.on=false; P.y-=2; } }
+  else P.vx+=(ix*240-P.vx)*Math.min(1,dt*2);
+  let ty=(d-u)*190;
+  if(P.y<BALLOON_TOP&&ty<0){ ty=0; if(u&&P.balT<=0){ P.balT=4; say('','Höher kommt der Hubschrauber nicht. Für den Weltraum brauchst du die Rakete.'); } }
+  if(P.balT>0) P.balT-=dt;
+  if(!P.on) P.vy+=(ty-P.vy)*Math.min(1,dt*3); else P.vy=0;
+  if(!P.on&&(ix||u)&&Math.random()<dt*6) spawn(3,P.x+(Math.random()-.5)*60,P.y+4,(Math.random()-.5)*80,-20,.4,3);
+  if(mover(dt,30,46,16,18)) P.vx*=-.3;
+  if(P.on){ if(P.landed&&P.vy>120) dust(P.x,P.y); P.vy=0; }
+  P.ang+=((P.on?Math.atan(P.gs)*.5:clamp(P.vx/240,-1,1)*.22*P.face)-P.ang)*Math.min(1,dt*5);
+  const o=heliLoad&&parked[heliLoad];
+  if(o){ o.x=P.x; o.y=P.y+70; o.vy=0; o.ang=0; o.face=P.face; if(P.on||solidW(o.x,o.y+2)) heliDrop(); }
+  else heliLoad='';
+}
+function heliHook(){
+  if(heliLoad){ heliDrop(); return; }
+  let best='', bd=1e9;
+  for(const k in parked){ const o=parked[k]; if(!o||k==='heli') continue; const dx=Math.abs(o.x-P.x), dy=o.y-P.y; if(dx<70&&dy>-10&&dy<170&&dx+dy<bd){ bd=dx+dy; best=k; } }
+  if(best){ heliLoad=best; sfx('pop'); }
+  else{ tone([330,262],'triangle'); pulse('act'); }
+}
+function heliDrop(){ if(heliLoad&&parked[heliLoad]) parked[heliLoad].vy=0; heliLoad=''; sfx('pop'); }
 function sonar(){
   FX.sonar=7; blip(1500,1500,.5,'sine',.07);
   for(let i=0;i<16;i++){ const a=i/16*TAU; spawn(5,P.x+Math.cos(a)*14,P.y-16+Math.sin(a)*14,Math.cos(a)*160,Math.sin(a)*160,.6,2); }
@@ -4322,6 +4353,22 @@ function drawBalloon(x,y,ang,occ,heat){
   ctx.fillStyle=INK; rr(-15,-20,30,20,4); ctx.fillStyle='#a0632f'; rr(-13,-18,26,16,3);
   ctx.strokeStyle='#7a4a22'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(-13,-10); ctx.lineTo(13,-10); ctx.stroke();
   if(occ) head(2,-24,5.5);
+  ctx.restore();
+}
+
+function drawHeli(x,y,ang,face,occ,spin){
+  ctx.save(); ctx.translate(x,y); ctx.rotate(ang); ctx.scale(face,1);
+  if(occ&&heliLoad&&parked[heliLoad]){ ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(0,-6); ctx.lineTo(0,40); ctx.stroke(); }
+  ctx.strokeStyle=INK; ctx.lineWidth=3; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(-20,-2); ctx.lineTo(22,-2); ctx.moveTo(-12,-2); ctx.lineTo(-10,-10); ctx.moveTo(12,-2); ctx.lineTo(10,-10); ctx.stroke();
+  ctx.fillStyle=INK; rr(-46,-28,34,6,3); ctx.fillStyle='#3f8f3a'; rr(-45,-27,32,4,2);
+  ctx.save(); ctx.translate(-46,-25); ctx.rotate(spin*3); ctx.fillStyle=INK; ctx.fillRect(-1.5,-9,3,18); ctx.restore();
+  ctx.fillStyle=INK; ctx.beginPath(); ctx.ellipse(2,-25,24,16,0,0,TAU); ctx.fill();
+  ctx.fillStyle=occ&&P.soot>0?'#3d4a30':'#58b548'; ctx.beginPath(); ctx.ellipse(2,-25,22,14,0,0,TAU); ctx.fill();
+  ctx.fillStyle='#bfe9f5'; ctx.beginPath(); ctx.moveTo(6,-37); ctx.quadraticCurveTo(22,-36,23,-24); ctx.lineTo(6,-24); ctx.closePath(); ctx.fill();
+  if(occ) head(10,-28,5);
+  ctx.fillStyle=INK; ctx.fillRect(0,-46,4,8);
+  const w=40*Math.abs(Math.cos(spin)); ctx.fillRect(2-w-4,-48,2*w+8,3);
   ctx.restore();
 }
 
@@ -6145,7 +6192,7 @@ function hiSudoku(st){
 function sySudoku(st){ return 'In jeder Reihe und in jeder Spalte darf jedes Bild nur einmal vorkommen.'+(st.n===4?' Auch in jedem der vier Kästchen.':'')+' Tippe auf ein leeres Feld, bis das richtige Bild da ist. Rot heißt: Das Bild gibt es dort schon.'; }
 
 /* ---------- Tasten ---------- */
-const VEH=[['walk','Laufen'],['ski','Ski fahren'],['car','Auto'],['plane','Flugzeug'],['rocket','Rakete'],['bagger','Bagger'],['loader','Radlader'],['dumper','Kipper'],['tbm','Tunnelbohrmaschine'],['sub','U-Boot'],['balloon','Heißluftballon'],['coaster','Achterbahn fahren'],['dragon','Auf Mama Glut fliegen']];
+const VEH=[['walk','Laufen'],['ski','Ski fahren'],['car','Auto'],['plane','Flugzeug'],['rocket','Rakete'],['bagger','Bagger'],['loader','Radlader'],['dumper','Kipper'],['tbm','Tunnelbohrmaschine'],['sub','U-Boot'],['balloon','Heißluftballon'],['heli','Hubschrauber'],['coaster','Achterbahn fahren'],['dragon','Auf Mama Glut fliegen']];
 const TOOLS=[['tnt','Bombe legen'],['lava','Lava malen'],['fire','Feuer malen'],['water','Wasser malen'],['ice','Eis malen'],['earth','Erde malen'],['blocks','Bauklötze setzen'],['track','Schiene malen'],['erase','Radierer'],['snow','Schnee malen'],['ball','Schneeball werfen'],['man','Schneemann bauen'],['fw','Feuerwerk zünden']];
 const MODES=VEH.map(function(v){return v[0];}), TOOLN=TOOLS.map(function(t){return t[0];});
 function svg24(inner){ return '<svg viewBox="0 0 24 24" aria-hidden="true">'+inner+'</svg>'; }
@@ -7336,6 +7383,7 @@ function draw(){
   o=parked.bagger; if(o) drawBagger(o.x,o.y,o.ang,o.face,o.arm,o.load,false);
   o=parked.sub; if(o) drawSub(o.x,o.y,o.ang,o.face,false);
   o=parked.balloon; if(o) drawBalloon(o.x,o.y,o.ang,false,false);
+  o=parked.heli; if(o) drawHeli(o.x,o.y,o.ang,o.face,false,0);
   if(ghost){
     if(ghost.kind==='rocket') drawRocket(ghost.x,ghost.y,Math.atan2(ghost.vx,-ghost.vy-200)*.5,false,false);
     else drawPlane(ghost.x,ghost.y,ghost.vx,ghost.vy,ghost.vx>=0?1:-1,false,0,false);
@@ -7354,6 +7402,7 @@ function draw(){
   else if(P.mode==='plane') drawPlane(P.x,P.y,P.vx,P.vy,P.face,P.on,P.ang,true);
   else if(P.mode==='sub') drawSub(P.x,P.y,P.ang,P.face,true);
   else if(P.mode==='balloon') drawBalloon(P.x,P.y,P.ang,true,keys.u&&!paused);
+  else if(P.mode==='heli') drawHeli(P.x,P.y,P.ang,P.face,true,reduced?.6:time*(P.on?6:22));
   else if(P.mode==='ski'){ if(P.ball>0) drawRoll(); else drawSkier(P.x,P.y,P.ang,P.face,keys.d&&P.on,!P.on); }
   else if(P.mode==='dragon'){ ctx.save(); ctx.translate(P.x,P.y); ctx.rotate(P.ang); drawDragon(0,0,1.9,P.face,1,reduced?0:Math.sin(time*(P.on?3:10)),true); ctx.restore(); }
   else if(P.track.lift) drawGondola(P.x,P.y-46,true);
@@ -7451,6 +7500,7 @@ function actIcon(){
   if(P.mode==='ski') return nearLift()?'lift':(P.on||P.ball>0?'jump':'spin');
   if(P.mode==='dragon') return 'flame';
   if(P.mode==='sub') return 'sonar';
+  if(P.mode==='heli') return P.on&&!heliLoad?'exit':'hook';
   if(P.mode==='car') return 'turbo';
   if(P.mode==='bagger') return (P.arm<-.15&&P.load>0)?'down':'dig';
   if(P.mode==='loader') return (P.lift>18&&P.load>0)?'down':'dig';
@@ -7474,6 +7524,7 @@ function resetWorld(seed){
   tracks=[]; const d=demoTrack(); if(d) tracks.push(d);
   P.mode='walk'; P.x=820; P.y=surfaceY(820); P.vx=0; P.vy=0; P.on=true; P.face=1; P.chute=false; P.soot=0; P.hurt=0; P.turbo=0; P.track=null; P.load=0; P.arm=.75; P.ball=0; P.spin=0; P.rot=0; P.frost=0;
   for(const k in parked) parked[k]=null;
+  heliLoad='';
   parked.car={x:720,y:surfaceY(720),vy:0,ang:0,face:1,arm:0,load:0};
   parked.plane={x:630,y:surfaceY(630),vy:0,ang:0,face:1};
   parked.rocket={x:556,y:surfaceY(556),vy:0,ang:0,face:1,load:0};
