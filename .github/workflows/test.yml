@@ -20,3 +20,10 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Rauchtest
         run: node tests/smoke.mjs
+      - name: Offline-Test
+        run: node tests/offline.mjs
+      - name: Update-Test (Spielstand von main)
+        run: |
+          git fetch --depth=1 origin main
+          git show FETCH_HEAD:index.html > "$RUNNER_TEMP/old.html"
+          OLD="$RUNNER_TEMP/old.html" node tests/upgrade.mjs
