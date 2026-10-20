@@ -2956,7 +2956,7 @@ function restore(sv){
   SEED=sv.seed; shapeWorld(); loadCells(sv); life.fill(0); stamp.fill(0);
   parts.length=0; ghost=null; chest=null; stroke=null; strokeId=null; task=null; $('chip').hidden=true;
   trees.forEach(function(t,i){ t.state=(sv.trees&&sv.trees[i])|0; t.t=0; });
-  zips=Array.isArray(sv.zips)?sv.zips.filter(zipOk).slice(-ZIPMAX):[]; P.zip=null;
+  zips=Array.isArray(sv.zips)?sv.zips.filter(zipOk).slice(-ZIPMAX):[]; P.zip=null; MONS.length=0; ARROWS.length=0;
   tracks=[]; (sv.tracks||[]).forEach(function(t){ const T=makeTrack(t.raw,t.user); if(T){ if(t.rb) T.rb=true; tracks.push(T); } });
   hidden=sv.hidden||[]; props=sv.props||[]; bombs.length=0;
   for(const k in parked) parked[k]=(sv.parked&&sv.parked[k])||null; heliLoad='';
@@ -2978,7 +2978,7 @@ function newRealm(){
   shapeWorld(); planetGen();
   parts.length=0; ghost=null; chest=null; stroke=null; strokeId=null; task=null; $('chip').hidden=true;
   for(const tr of trees){ tr.state=0; tr.t=0; }
-  tracks=[]; zips=[]; P.zip=null; props=[]; bombs.length=0; hidden=[]; guide=null;
+  tracks=[]; zips=[]; P.zip=null; MONS.length=0; ARROWS.length=0; props=[]; bombs.length=0; hidden=[]; guide=null;
   for(const k in parked) parked[k]=null;
   P.x=LANDX; P.y=surfaceY(LANDX);
   scanMobile();
@@ -4539,6 +4539,7 @@ function handDig(wx,wy){
   handT=time+(sh?.14:.22); P.swing=1;
   if(wx===undefined){ if(keys.d){ wx=P.x; wy=P.y+9; } else{ wx=P.x+P.face*15; wy=P.y-20; } }
   else if(Math.abs(wx-P.x)>4) P.face=wx>P.x?1:-1;
+  if(monStrike(wx,wy,r)) return 0;
   const c0=Math.floor((wx-r)/CELL), c1=Math.floor((wx+r)/CELL), r0=Math.floor((wy-r*1.5-TOP)/CELL), r1=Math.floor((wy+r*1.5-TOP)/CELL);
   let n=0, hard=0;
   for(let cy=r0;cy<=r1;cy++) for(let cx=c0;cx<=c1;cx++){
@@ -4622,6 +4623,77 @@ function drawArrows(){
     const cs=['#1d2a3a','#fff8e6','#e63946','#fff8e6','#e63946','#ffd23f'], rs=[21,19,15,11,7,3.5];
     for(let k=0;k<cs.length;k++){ ctx.fillStyle=cs[k]; circle(0,0,rs[k]); }
     ctx.restore();
+  }
+}
+/* Höhlenmonster: Glibber hüpfen in den Höhlen unter der Erde herum, je tiefer, desto bunter und zäher. Berühren schubst das Kind nur weg, mehr passiert nicht. Besiegen: draufspringen, Pfeil oder ein Schlag mit Schaufel oder Spitzhacke. Dann zerplatzen sie zu Sternen und lassen Gold fallen. In Fahrzeugen lassen sie einen in Ruhe. */
+const MONS=[], MONC=[['#58b548','#2f8a3a'],['#3aa0e8','#1f6fb0'],['#9b5de5','#6a35b0'],['#ff5a1f','#b8360f']];
+let monT=4;
+function monDepth(){ return P.y-ground(P.x); }
+function monSpawn(){
+  const deep=monDepth();
+  for(let i=0;i<10;i++){
+    const x=P.x+(Math.random()<.5?-1:1)*ri(260,520);
+    for(let y=P.y-160;y<P.y+160;y+=6){
+      if(!solidW(x,y)&&!solidW(x,y-18)&&!solidW(x,y-30)&&solidW(x,y+3)&&y-ground(x)>110){
+        const lv=deep>1600?3:deep>1000?2:deep>500?1:0;
+        MONS.push({x:x,y:y,vx:0,vy:0,on:true,hp:2+(lv>1?1:0),lv:lv,t:.5+Math.random(),face:-1,sq:0,hit:0});
+        return;
+      }
+    }
+  }
+}
+function monTick(dt){
+  if(paused) return;
+  const under=monDepth()>140;
+  monT-=dt;
+  if(under&&monT<=0&&MONS.length<3){ monT=5+Math.random()*5; monSpawn(); }
+  for(let i=MONS.length-1;i>=0;i--){
+    const m=MONS[i];
+    if(Math.abs(m.x-P.x)>1100||Math.abs(m.y-P.y)>800){ MONS.splice(i,1); continue; }
+    if(m.hit>0) m.hit-=dt; if(m.sq>0) m.sq-=dt*4;
+    const dx=P.x-m.x, dy=P.y-m.y, near=Math.abs(dx)<420&&Math.abs(dy)<200;
+    m.t-=dt;
+    if(m.on&&m.t<=0){
+      m.face=near?(dx>0?1:-1):(Math.random()<.5?-1:1);
+      m.vx=m.face*(near?110+30*m.lv:60); m.vy=-200-Math.random()*90; m.on=false; m.t=.8+Math.random()*1.2; m.sq=1;
+    }
+    m.vy=Math.min(m.vy+G*.8*dt,600);
+    const nx=m.x+m.vx*dt;
+    if(solidW(nx+(m.vx>0?11:-11),m.y-8)||solidW(nx+(m.vx>0?11:-11),m.y-18)) m.vx=-m.vx*.3; else m.x=nx;
+    const ny=m.y+m.vy*dt;
+    if(m.vy<0&&solidW(m.x,ny-22)) m.vy=0;
+    else if(m.vy>=0&&solidW(m.x,ny)){ let k=0; m.y=ny; while(solidW(m.x,m.y-1)&&k++<20) m.y-=1; m.vy=0; if(!m.on) m.sq=1; m.on=true; m.vx=0; }
+    else m.y=ny;
+    if(P.mode==='walk'&&!P.zip&&Math.abs(dx)<20&&dy>-30&&dy<16){
+      if(P.vy>60&&P.y<m.y-6){ P.vy=-330; P.on=false; monHurt(m,9); }
+      else if(P.hurt<=0){ P.hurt=.8; P.vx=(dx>0?1:-1)*280; P.vy=-200; P.on=false; shout(m.x,m.y-34,'BLUBB!','#bff7b0'); sfx('jump'); }
+    }
+  }
+}
+function monHurt(m,n){
+  m.hp-=n; m.hit=.25; m.sq=1; sfx('pop');
+  if(m.hp>0){ m.vx=(m.x>P.x?1:-1)*160; m.vy=-160; m.on=false; return; }
+  const i=MONS.indexOf(m); if(i>=0) MONS.splice(i,1);
+  burst(m.x,m.y-12,MONC[m.lv][0]); for(let k=0;k<6;k++) spawn(5,m.x,m.y-12,(Math.random()-.5)*260,-90-Math.random()*160,.8,3);
+  const g=2+m.lv; gold+=g; popG+=g; lootDirty=true; sfx('coin');
+  if(m.lv>=2&&Math.random()<.3){ gems++; popM++; }
+  hero.mon=(hero.mon|0)+1; heroDirty=true;
+}
+function monHit(a){
+  for(const m of MONS) if(Math.abs(a.x-m.x)<16&&Math.abs(a.y-(m.y-12))<16){ monHurt(m,1); return true; }
+  return false;
+}
+function monStrike(wx,wy,r){ let hit=false; for(const m of MONS.slice()) if(Math.hypot(wx-m.x,wy-(m.y-12))<r+14){ monHurt(m,1); hit=true; } return hit; }
+function drawMons(glow){
+  for(const m of MONS){
+    const c=MONC[m.lv], s=1+(m.sq>0?.25*m.sq:0), w=13*s, h=17/s;
+    if(glow){ ctx.fillStyle='#fff8e6'; circle(m.x-4+m.face*2,m.y-11/s*1.1,2.6); circle(m.x+4+m.face*2,m.y-11/s*1.1,2.6); continue; }
+    ctx.fillStyle=INK; ctx.beginPath(); ctx.ellipse(m.x,m.y-h*.5,w+2,h*.5+2,0,0,TAU); ctx.fill();
+    ctx.fillStyle=m.hit>0?'#fff':c[0]; ctx.beginPath(); ctx.ellipse(m.x,m.y-h*.5,w,h*.5,0,0,TAU); ctx.fill();
+    ctx.fillStyle=c[1]; ctx.beginPath(); ctx.ellipse(m.x,m.y-2,w*.8,3,0,0,TAU); ctx.fill();
+    ctx.fillStyle='#fff'; circle(m.x-4+m.face*2,m.y-h*.62,3.6); circle(m.x+4+m.face*2,m.y-h*.62,3.6);
+    ctx.fillStyle=INK; circle(m.x-4+m.face*3,m.y-h*.62,1.7); circle(m.x+4+m.face*3,m.y-h*.62,1.7);
+    if(m.lv>=1){ ctx.fillStyle=c[1]; ctx.beginPath(); ctx.moveTo(m.x-5,m.y-h); ctx.lineTo(m.x,m.y-h-6-m.lv*2); ctx.lineTo(m.x+5,m.y-h); ctx.closePath(); ctx.fill(); }
   }
 }
 function drawHandTool(){
@@ -7724,6 +7796,7 @@ function draw(){
   drawZips(x0,x1);
   drawMis(x0,x1);
   drawArrows();
+  drawMons(false);
   if(tool==='track'){
     for(const T of tracks){ const a=T.pts[0], b=T.pts[T.pts.length-1]; knob(a[0],a[1],8); knob(b[0],b[1],11); }
   }
@@ -7785,6 +7858,7 @@ function draw(){
   drawWorldFront();
 
   drawDark();
+  drawMons(true);
   if(bx1>=bx0){
     const cx0=Math.max(bx0,Math.floor(x0/CELL),1), cx1=Math.min(bx1,Math.floor(x1/CELL),GX-2);
     const cy0=Math.max(by0,Math.floor((y0-TOP)/CELL),1), cy1=Math.min(by1,Math.floor((y1-TOP)/CELL),GY-2);
@@ -8422,7 +8496,7 @@ function frame(t){
     accum+=dt; let n=0;
     while(accum>=1/30&&n<2){ paintStep(); step(); accum-=1/30; n++; }
     if(accum>.1) accum=0;
-    update(dt); arrowsTick(dt); worldTick(dt); deepTick(dt); winterTick(dt); taskTick(dt); findsTick(dt); questTick(dt); misTick(dt); autosave(dt); drain(dt); fogTick(dt); mkTick();
+    update(dt); arrowsTick(dt); monTick(dt); worldTick(dt); deepTick(dt); winterTick(dt); taskTick(dt); findsTick(dt); questTick(dt); misTick(dt); autosave(dt); drain(dt); fogTick(dt); mkTick();
     /* Läuft es auf diesem Gerät zu langsam, sinkt die Auflösung in Stufen. */
     if(raw<.2){ perfT+=raw; perfN++; }
     if(perfN>=150){ if(perfT/perfN>.026&&maxDpr>1){ maxDpr=Math.max(1,maxDpr-.5); resize(); } perfT=0; perfN=0; }
