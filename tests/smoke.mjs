@@ -83,6 +83,46 @@ test('Schaufel gräbt zu Fuß ohne Akku', async ({ ev, page }) => {
   if (!(await ev("$('quiz').hidden"))) throw new Error('Schaufel hat die Lernaufgabe verlangt');
 });
 
+// Ein Hohlraum mitten im Fels, weit weg von allem anderen, damit nur Fels um den Helden ist.
+const ROCKBOX = (x, extra) => `OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; hero.dr=0; OPT.mon=false; tool=null; syncUI(); ${extra || ''};
+  const X=${x}, Y=ground(X)+900, c0=Math.floor((X-260)/CELL), c1=Math.floor((X+260)/CELL);
+  for(let r=Math.floor((Y-500-TOP)/CELL);r<=Math.floor((Y+200-TOP)/CELL);r++) for(let c=c0;c<=c1;c++) grid[r*GX+c]=ROCK;
+  for(let r=Math.floor((Y-60-TOP)/CELL);r<Math.floor((Y-TOP)/CELL);r++) for(let c=Math.floor((X-30)/CELL);c<=Math.floor((X+30)/CELL);c++) grid[r*GX+c]=0;
+  P.x=X; P.y=Y; P.vx=0; P.vy=0; P.on=false; P.face=1; P.da=0; 1`;
+const hold = async (ev, page, k, ms) => { await ev(k.map(x => 'keys.' + x + '=true').join(';')); await page.waitForTimeout(ms); await ev('keys.l=keys.r=keys.u=keys.d=keys.a=false; OPT.mon=true'); };
+
+test('Unter der Erde gräbt Drücken nach oben, unten und zur Seite, ohne Akku', async ({ ev, page }) => {
+  for (const [k, ax, sg] of [[['u'], 1, -1], [['d'], 1, 1], [['r'], 0, 1]]) {
+    await ev("setMode('walk'); " + ROCKBOX(20000, 'energy=0'));
+    await page.waitForTimeout(300);
+    const a = await ev('[P.x,P.y]');
+    await hold(ev, page, k, 2500);
+    const b = await ev('[P.x,P.y]');
+    if (!((b[ax] - a[ax]) * sg > 120)) throw new Error('Drücken ' + k + ' gräbt nicht: ' + Math.round(b[ax] - a[ax]));
+    if (!(await ev("$('quiz').hidden"))) throw new Error('Graben zu Fuß hat die Lernaufgabe verlangt');
+  }
+});
+
+test('Tunnelbohrer bohrt senkrecht nach oben und hält sich im Schacht', async ({ ev, page }) => {
+  await ev("setMode('tbm'); " + ROCKBOX(21000));
+  await page.waitForTimeout(300);
+  const y0 = await ev('P.y');
+  await hold(ev, page, ['u'], 3500);
+  const y1 = await ev('P.y');
+  if (!(y0 - y1 > 120)) throw new Error('Bohrer kommt nicht nach oben: ' + Math.round(y0 - y1));
+  await page.waitForTimeout(800);
+  if (!(Math.abs(await ev('P.y') - y1) < 8)) throw new Error('Bohrer rutscht im Schacht zurück');
+  await ev("setMode('walk')");
+});
+
+test('Harte Schicht hält auch beim Graben nach oben ohne Bohrer', async ({ ev, page }) => {
+  await ev("setMode('walk'); " + ROCKBOX(22000, '') + "; const c=Math.floor(P.x/CELL), rr=Math.floor((P.y-100-TOP)/CELL); for(let r=rr-3;r<=rr;r++) for(let x=c-10;x<=c+10;x++) grid[r*GX+x]=SHELL; 1");
+  await page.waitForTimeout(300);
+  const y0 = await ev('P.y');
+  await hold(ev, page, ['u'], 2000);
+  if (!(y0 - await ev('P.y') < 90)) throw new Error('Held gräbt durch die harte Schicht');
+});
+
 test('Sternschnuppe landet und gibt Gold', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk'); P.x=1500; P.y=ground(1500); P.on=true; METS=[]; MROCKS=[]; nightOn=true; nightA=1; METS.push({x:P.x-300,y:P.y-400,vx:0,vy:0,t:.05,land:true,tr:[]})");
   await page.waitForTimeout(400);

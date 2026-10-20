@@ -2221,22 +2221,32 @@ function updDumper(dt,ix,u,d){
   P.bed=Math.max(0,P.bed-dt*1.6);
   if(keys.a){ P.digT-=dt; if(P.digT<=0){ dumperAct(); P.digT=.14; } }
 }
-/* Tunnelbohrmaschine: bohrt beim Fahren ein rundes Loch in Fahrtrichtung, auch durch Fels. ▲/▼ kippt den Bohrkopf. */
+/* Tunnelbohrmaschine: bohrt beim Fahren ein rundes Loch in Fahrtrichtung, auch durch Fels. ▲/▼ kippt den Bohrkopf, bis senkrecht nach oben oder unten. Ganz gekippt bohrt ▲ oder ▼ allein weiter.
+   Steil nach oben fährt sie dem Bohrkopf nach statt waagerecht, und im Schacht hält sie sich fest, statt zurückzurutschen. */
 function updTbm(dt,ix,u,d){
-  P.da=clamp(P.da+(d-u)*1.3*dt,-1.1,1.25);
-  const go=ix||(keys.a?P.face:0);
+  P.da=clamp(P.da+(d-u)*1.3*dt,-1.5,1.5);
+  let go=ix||(keys.a?P.face:0), cutN=0;
+  if(!go&&((u&&P.da<=-1.45)||(d&&P.da>=1.45))) go=P.face;
+  const up=P.da<-.6, shaft=solidW(P.x-30,P.y-20)||solidW(P.x+30,P.y-20);
   if(go){
     P.face=go;
     const hd=drillHead();
-    let cutN=bore(hd[0],hd[1],27);
-    if(P.da>.2) cutN+=bore(P.x+go*14,P.y-27,27);
+    cutN=bore(hd[0],hd[1],27);
+    if(up) cutN+=bore(P.x,P.y-27,27);
+    else if(P.da>.2) cutN+=bore(P.x+go*14,P.y-27,27);
     if(cutN){
       shake=Math.max(shake,.04); sfx('dig');
       if(Math.random()<dt*16) spawn(3,hd[0]+(Math.random()-.5)*30,hd[1]+(Math.random()-.5)*40,-go*(40+Math.random()*120),-40-Math.random()*90,.6,3+Math.random()*3);
     }
     if(chest&&!chest.open&&Math.hypot(hd[0]-chest.x,hd[1]-chest.y)<46) chest.open=true;
   }
-  drive(dt,go,P.da>0?85*Math.max(.3,Math.cos(P.da)):95,24,46,14,170+60*hero.up.dig);
+  if(up&&go&&(cutN||shaft)){
+    const sp=80*(1+.15*hero.up.dig);
+    P.vx=go*sp*Math.cos(P.da); P.vy=sp*Math.sin(P.da); P.on=false; P.climb=0;
+    mover(dt,24,46,32,14);
+    P.ang-=P.ang*Math.min(1,dt*10);
+  }else if(up&&!go&&shaft&&!P.on){ P.vx=0; P.vy=0; }
+  else drive(dt,go,P.da>0?85*Math.max(.3,Math.cos(P.da)):95,24,46,14,170+60*hero.up.dig);
 }
 /* Rakete: ▲ zündet das Triebwerk, ◀ ▶ steuert in der Luft. Ohne Schub sinkt sie langsam. */
 function updRocket(dt,ix,u,d){
@@ -2310,6 +2320,7 @@ function update(dt){
   }
   if(P.swing>0) P.swing=Math.max(0,P.swing-dt*5);
   if(keys.a&&DIGT[tool]&&P.mode==='walk'&&!paused&&!nearBoard()&&!zipNear()&&!deepIcon()) handDig();
+  else if(P.mode==='walk'&&!paused&&(ix||u||d)) pushDig(ix,u,d);
   if(P.zip) zipRide(dt);
   else if(P.mode==='walk') updWalk(dt,ix,u,d);
   else if(P.mode==='car') updCar(dt,ix,u,d);
@@ -4824,14 +4835,19 @@ function drawZips(x0,x1){
   if(P.zip){ ctx.fillStyle=INK; circle(P.x,P.y-46,4.5); ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(P.x,P.y-46); ctx.lineTo(P.x,P.y-40); ctx.stroke(); }
   pointers.forEach(function(p){ if(tool==='rope'&&p.rs){ const w=toWorld(p.x,p.y); ctx.strokeStyle='#a0632f'; ctx.lineWidth=4; ctx.setLineDash([10,9]); ctx.beginPath(); ctx.moveTo(p.rs[0],p.rs[1]); ctx.lineTo(w[0],w[1]); ctx.stroke(); ctx.setLineDash([]); } });
 }
-/* Schaufel und Spitzhacke: zu Fuß graben, ohne Akku. Die Schaufel ist schnell, schafft aber nur Erde, Sand und Schnee. Die Spitzhacke schafft auch Fels und Eis, nur langsamer. Harte Schichten bleiben wie beim Bagger dem Bohrer vorbehalten. Aktionstaste gräbt nach vorn, mit Runter nach unten. */
+/* Schaufel und Spitzhacke: zu Fuß graben, ohne Akku. Die Schaufel ist schnell, schafft aber nur Erde, Sand und Schnee. Die Spitzhacke schafft auch Fels und Eis, nur langsamer. Harte Schichten bleiben wie beim Bagger dem Bohrer vorbehalten. Aktionstaste gräbt in die Richtung, die man drückt: nach vorn, oben, unten oder schräg. */
 const HANDT={shovel:1,pick:1,bow:1}, DIGT={shovel:1,pick:1}, SOFT={4:1,14:1};
 let handT=0, handHint=0;
 function handDig(wx,wy){
   if(P.mode!=='walk'||P.zip||time<handT) return 0;
   const sh=tool==='shovel', r=(sh?15:12)*(1+.12*hero.up.dig);
   handT=time+(sh?.14:.22); P.swing=1;
-  if(wx===undefined){ if(keys.d){ wx=P.x; wy=P.y+9; } else{ wx=P.x+P.face*15; wy=P.y-20; } }
+  if(wx===undefined){
+    const hx=(keys.r?1:0)-(keys.l?1:0);
+    if(keys.u){ wx=P.x+hx*13; wy=P.y-(hx?36:40); }
+    else if(keys.d){ wx=P.x+hx*13; wy=P.y+(hx?4:9); }
+    else{ wx=P.x+P.face*15; wy=P.y-17; }
+  }
   else if(Math.abs(wx-P.x)>4) P.face=wx>P.x?1:-1;
   if(monStrike(wx,wy,r)) return 0;
   const c0=Math.floor((wx-r)/CELL), c1=Math.floor((wx+r)/CELL), r0=Math.floor((wy-r*1.5-TOP)/CELL), r1=Math.floor((wy+r*1.5-TOP)/CELL);
@@ -4854,6 +4870,12 @@ function handDig(wx,wy){
     if(time>handHint){ handHint=time+60; say('','Tock! Das ist zu hart für die Schaufel. Nimm die Spitzhacke.'); pulse('tool-pick'); }
   }
   return n;
+}
+/* Unter der Erde gräbt man sich frei, indem man einfach dagegen drückt, auch ohne Werkzeug: gegen eine Wand, nach oben gegen die Decke oder im Stehen nach unten. Das geht so schnell wie mit der Spitzhacke, mit der Schaufel nur durch weiche Erde. An der Oberfläche passiert nichts, damit das Laufen dort bleibt, wie es ist. */
+function pushDig(ix,u,d){
+  if(P.zip||P.y<-3000||P.y<ground(P.x)+24) return;
+  const ex=P.x+ix*10;
+  if((ix&&(solidW(ex,P.y-16)||solidW(ex,P.y-28)))||(u&&(solidW(P.x,P.y-34)||solidW(P.x-4,P.y-34)||solidW(P.x+4,P.y-34)))||(d&&P.on)) handDig();
 }
 /* Pfeil und Bogen: Antippen schießt dorthin, die Aktionstaste schießt nach vorn. Pfeile fliegen im Bogen und bleiben kurz stecken. Tieren tun sie nichts. Am Schießstand hinter dem Missionsbrett stehen drei Zielscheiben. */
 const ARROWS=[], TGT=[{x:1640,h:46},{x:1790,h:78},{x:1930,h:58}];
@@ -4919,7 +4941,7 @@ function drawArrows(){
     ctx.restore();
   }
 }
-/* Höhlenmonster: Glibber hüpfen in den Höhlen unter der Erde herum, je tiefer, desto bunter und zäher. Berühren schubst das Kind nur weg, mehr passiert nicht. Besiegen: draufspringen, Pfeil oder ein Schlag mit Schaufel oder Spitzhacke. Dann zerplatzen sie zu Sternen und lassen Gold fallen. In Fahrzeugen lassen sie einen in Ruhe. */
+/* Höhlenmonster: Glibber hüpfen in den Höhlen unter der Erde herum, je tiefer, desto bunter und zäher. Berühren schubst das Kind nur weg, mehr passiert nicht. Besiegen: draufspringen, Pfeil oder ein Schlag mit Schaufel oder Spitzhacke. Dann zerplatzen sie zu Sternen und lassen Gold fallen. In Fahrzeugen lassen sie einen in Ruhe. Im engen Gang schubsen sie nur zur Seite, damit man nicht gegen die Decke geworfen wird. */
 const MONS=[], MONC=[['#58b548','#2f8a3a'],['#3aa0e8','#1f6fb0'],['#9b5de5','#6a35b0'],['#ff5a1f','#b8360f']];
 let monT=4;
 function monDepth(){ return P.y-ground(P.x); }
@@ -4961,7 +4983,7 @@ function monTick(dt){
     else m.y=ny;
     if(P.mode==='walk'&&!P.zip&&Math.abs(dx)<20&&dy>-30&&dy<16){
       if(P.vy>60&&P.y<m.y-6){ P.vy=-330; P.on=false; monHurt(m,9); }
-      else if(P.hurt<=0){ P.hurt=.8; P.vx=(dx>0?1:-1)*280; P.vy=-200; P.on=false; shout(m.x,m.y-34,'BLUBB!','#bff7b0'); sfx('jump'); }
+      else if(P.hurt<=0){ const low=solidW(P.x,P.y-44); P.hurt=.8; P.vx=(dx>0?1:-1)*(low?160:280); P.vy=low?0:-200; P.on=low&&P.on; shout(m.x,m.y-34,'BLUBB!','#bff7b0'); sfx('jump'); }
     }
   }
 }
