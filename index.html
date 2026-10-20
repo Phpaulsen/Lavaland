@@ -3333,8 +3333,8 @@ function questPoint(){
 }
 /* ---------- Missionen: kleine Geschichten mit mehreren Schritten. Am Missionsbrett neben dem Aufzug holt man sich die nächste. Immer nur eine auf einmal, nichts läuft ab, man kann jederzeit etwas anderes machen. ---------- */
 const MISX=1262, MISK='lavaland-mis';
-let MS={done:{},cur:null}, misShown='';
-try{ const o=JSON.parse(localStorage.getItem(MISK)||'null'); if(o&&typeof o==='object'){ if(o.done&&typeof o.done==='object'&&!Array.isArray(o.done)) MS.done=o.done; if(o.cur&&typeof o.cur==='object'&&typeof o.cur.id==='string'&&(o.cur.st|0)===o.cur.st) MS.cur=o.cur; } }catch(_){}
+let MS={done:{},cur:null,fl:{}}, misShown='';
+try{ const o=JSON.parse(localStorage.getItem(MISK)||'null'); if(o&&typeof o==='object'){ if(o.done&&typeof o.done==='object'&&!Array.isArray(o.done)) MS.done=o.done; if(o.cur&&typeof o.cur==='object'&&typeof o.cur.id==='string'&&(o.cur.st|0)===o.cur.st) MS.cur=o.cur; if(o.fl&&typeof o.fl==='object'&&!Array.isArray(o.fl)) MS.fl=o.fl; } }catch(_){}
 function misSave(){ if(frozen) return; try{ localStorage.setItem(MISK,JSON.stringify(MS)); }catch(_){} }
 /* Eine Mission: e = wer sie gibt, start(m) richtet sie ein (false = gerade nicht möglich), steps mit Bild, Ansage, Ziel und Prüfung, win = Gold und Edelsteine. */
 const MIS=[];
@@ -3344,7 +3344,7 @@ function misNext(){
   const ag=MIS.filter(function(d){ return d.again&&(!d.can||d.can()); });
   return ag.length?ag[ri(0,ag.length-1)]:null;
 }
-function misHere(d){ return (d.realm||'')===realm; }
+function misHere(d){ if(!d||!MS.cur) return false; const st=d.steps[MS.cur.st]; return ((st&&st.realm)||d.realm||'')===realm; }
 function nearBoard(){ return !realm&&P.mode==='walk'&&P.on&&Math.abs(P.x-MISX)<44&&Math.abs(P.y-ground(MISX))<60; }
 function misBoard(){
   const d=misDef();
@@ -3383,8 +3383,9 @@ function misTick(dt){
 }
 function misPoint(){
   const d=misDef(); if(!d) return null;
-  if(!misHere(d)) return null;
-  return d.steps[MS.cur.st].tgt(MS.cur);
+  const st=d.steps[MS.cur.st];
+  if(!misHere(d)) return st.away&&!realm?st.away(MS.cur):null;
+  return st.tgt(MS.cur);
 }
 function drawMis(x0,x1){
   if(!realm&&MISX>x0-60&&MISX<x1+60){
@@ -3397,6 +3398,15 @@ function drawMis(x0,x1){
     else if(cur) emo(cur.e,MISX,gy-110,24);
   }
   const d=misDef(); if(d&&misHere(d)&&d.draw) d.draw(MS.cur,x0,x1);
+  const fx=realm&&MS.fl&&MS.fl[realm];
+  if(typeof fx==='number'&&fx>x0-60&&fx<x1+60) drawFlag(fx,ground(fx));
+}
+function drawFlag(x,y){
+  ctx.fillStyle=INK; ctx.fillRect(x-2.5,y-70,5,70);
+  ctx.fillStyle=INK; ctx.beginPath(); ctx.moveTo(x+1,y-70); ctx.lineTo(x+40,y-61); ctx.lineTo(x+1,y-46); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#e63946'; ctx.beginPath(); ctx.moveTo(x+2.5,y-67); ctx.lineTo(x+35,y-60.5); ctx.lineTo(x+2.5,y-49); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#ffd23f'; star4(x+14,y-59,5);
+  ctx.fillStyle='#ffd23f'; circle(x,y-72,3.5);
 }
 function misFollow(m,dt){ const tx=P.x-P.face*26, ty=P.y-4; m.fx+=(tx-m.fx)*Math.min(1,dt*4); m.fy+=(ty-m.fy)*Math.min(1,dt*5); }
 function misSpot(lo,hi){
@@ -3581,6 +3591,37 @@ function fireTrees(){
   for(let i=0;i<trees.length;i++){ const t=trees[i], d=Math.abs(t.x-MISX); if(t.state===0&&!t.fir&&d>250&&d<1800&&Math.abs(t.x-VOLC)>600) a.push(i); }
   return a.sort(function(x,y){ return Math.abs(trees[x].x-MISX)-Math.abs(trees[y].x-MISX); });
 }
+
+/* Flaggen: Auf jedem großen Planeten den höchsten Berg finden und eine Flagge hineinstecken. Die Flagge bleibt für immer stehen. Den Gipfel findet ein Blick auf die Höhe der ganzen Welt. */
+function summitX(){
+  let bx=RX0, by=1e9;
+  for(let x=RX0+200;x<RX0+RW-200;x+=24){ const g=ground(x); if(g<by){ by=g; bx=x; } }
+  return bx;
+}
+const PLN={moon:'den Mond',ice:'den Eisplaneten',jun:'den Blubberplaneten'};
+function flagStep(id){
+  return {realm:id,ic:'🚩'+RLM[id].e,
+    say:function(){ return id==='moon'?'Flieg mit der Rakete zum Mond. Dort zeigt dir der Pfeil den höchsten Berg. Stell dich ganz oben hin.':'Flieg mit der Rakete auf '+PLN[id]+' und stell dich auf den höchsten Berg.'; },
+    away:function(){ const o=orbsOf(id)[0]; return o?[o.x,o.y-o.r-26]:null; },
+    tgt:function(m){ if(!m.sx) m.sx={}; if(typeof m.sx[id]!=='number') m.sx[id]=summitX(); return [m.sx[id],ground(m.sx[id])-60]; },
+    tick:function(m){
+      if(!m.sx||typeof m.sx[id]!=='number') return false;
+      const x=m.sx[id];
+      if(P.mode==='walk'&&P.on&&Math.abs(P.x-x)<60&&P.y<ground(x)+30){ MS.fl[id]=x; confetti(x,ground(x)-40); jingle(); shout(x,ground(x)-90,'GIPFEL!','#ffd23f'); return true; }
+      return false;
+    }};
+}
+MIS.push({id:'flag1',e:'👩‍🚀',win:[40,3],
+  hi:function(){ return 'Hallo, ich bin Astronautin Ada. Weißt du, wo auf dem Mond der höchste Berg ist? Dort soll unsere Flagge stehen.'; },
+  start:function(){},
+  steps:[flagStep('moon')],
+  end:'Unsere Flagge weht auf dem Mondgipfel! Das sieht man bestimmt bis zur Erde.'});
+MIS.push({id:'flag2',e:'👩‍🚀',win:[80,5],
+  can:function(){ return (hero.rk|0)>=2; },
+  hi:function(){ return 'Deine Rakete fliegt jetzt bis zu den fernen Planeten. Stellst du auch dort unsere Flaggen auf?'; },
+  start:function(){},
+  steps:[flagStep('ice'),flagStep('jun')],
+  end:'Flaggen auf dem Eisplaneten und dem Blubberplaneten! Du hast das ganze Weltall erkundet!'});
 
 const OVS=Array.prototype.slice.call(document.querySelectorAll('.ov,#panel,#quiz,#pz'));
 function uiOpen(){ for(const o of OVS) if(!o.hidden) return true; return false; }
@@ -8117,7 +8158,7 @@ function resetWorld(seed){
   parts.length=0; ghost=null; chest=null; stroke=null; strokeId=null; task=null; $('chip').hidden=true;
   for(const tr of trees){ tr.state=0; tr.t=0; }
   tracks=[]; zips=[]; P.zip=null; const d=demoTrack(); if(d) tracks.push(d);
-  if(MS.cur){ MS.cur=null; misSave(); }
+  if(MS.cur||Object.keys(MS.fl).length){ MS.cur=null; MS.fl={}; misSave(); }
   P.mode='walk'; P.x=820; P.y=surfaceY(820); P.vx=0; P.vy=0; P.on=true; P.face=1; P.chute=false; P.soot=0; P.hurt=0; P.turbo=0; P.track=null; P.load=0; P.arm=.75; P.ball=0; P.spin=0; P.rot=0; P.frost=0;
   for(const k in parked) parked[k]=null;
   heliLoad='';
