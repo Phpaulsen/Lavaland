@@ -2352,6 +2352,14 @@ function update(dt){
       volT=6+Math.random()*6;
       if(live) for(let i=0;i<10;i++) spawn(4,VOLC+(Math.random()-.5)*60,cy,(Math.random()-.5)*340,-380-Math.random()*220,2.4,4+Math.random()*3);
     }
+    /* Ab und zu ein großer Ausbruch: Es rumpelt, Lava spritzt hoch und ein paar glühende Lavabrocken landen am Hang. Wer sie aufhebt, bekommt Gold (wie Sternsteine). Dem Kind passiert nichts. */
+    eruT-=dt;
+    if(live&&eruT<=0&&Math.abs(P.x-VOLC)<900){
+      eruT=80+Math.random()*50; eruOn=3; blip(70,40,1.2,'sawtooth',.09); shout(VOLC,cy-120,'RUMMS!','#ff9a3c');
+      for(let i=0;i<3&&MROCKS.length<6;i++){ const d=(i%2?1:-1), tx=VOLC+d*(140+Math.random()*180), ty=ground(tx), tt=1.6, sy=cy-10;
+        METS.push({x:VOLC,y:sy,vx:(tx-VOLC)/tt,vy:(ty-sy-300*tt*tt)/tt,g:600,t:tt,land:true,tr:[]}); }
+    }
+    if(eruOn>0){ eruOn-=dt; for(let i=0;i<3;i++) spawn(4,VOLC+(Math.random()-.5)*40,cy,(Math.random()-.5)*260,-520-Math.random()*300,2.6,4+Math.random()*4); if(Math.random()<dt*20) spawn(0,VOLC+(Math.random()-.5)*60,cy-20,(Math.random()-.5)*30,-90,3,14+Math.random()*10); }
   }
   for(let i=parts.length-1;i>=0;i--){
     const p=parts[i]; p.life-=dt;
@@ -4311,6 +4319,7 @@ const ORBN=['Du bist auf dem Käsemond gelandet! Hier wohnen die Mäuse.','Ein P
 });
 const NIGHT_T=[10,14,44], NIGHT_B=[40,40,96], MD={st:[84,191,230],sb:[212,244,238],h1:'#9bd8c4',h2:'#74c493',nl:0,w1:'rgba(48,140,224,.74)',w2:'rgba(132,204,246,.8)'};
 const EGGSVG='<svg viewBox="0 0 24 24" aria-hidden="true">'+QI.egg+'</svg>';
+let eruT=40, eruOn=0;
 let skySay=0, ufo=null, ufoNext=20, skyRb=0, tkN=0, tkT=0, nightOn=false, nightA=0, discoT=0, beatT=0, keySeq='', dTaps=[], idleT=0, zT=0, skyBonk=0, bolt=null, mapPg=0, throws=[], trexT=0, slipWas=false;
 
 function fxSpeed(){ return (FX.slip>0?2.5:1)*(FX.hot>0?1.7:1)*(FX.sugar>0?1.8:1)*(FX.star>0?1.4:1)*(FX.rainbow>0?1.6:1)*(FX.big>0?1.2:1)*(FX.tiny>0?.8:1); }
@@ -4943,7 +4952,7 @@ function metTick(dt){
     METS.push({x:sx,y:sy,vx:(tx-sx)/tt,vy:(ty-sy)/tt,t:tt,land:land,tr:[]});
   }
   for(const m of METS.slice()){
-    m.t-=dt; m.x+=m.vx*dt; m.y+=m.vy*dt; m.tr.unshift([m.x,m.y]); if(m.tr.length>14) m.tr.pop();
+    m.t-=dt; if(m.g) m.vy+=m.g*dt; m.x+=m.vx*dt; m.y+=m.vy*dt; m.tr.unshift([m.x,m.y]); if(m.tr.length>14) m.tr.pop();
     if(m.t>0) continue;
     METS.splice(METS.indexOf(m),1);
     if(m.land){ const gy=ground(m.x); MROCKS.push({x:m.x,y:gy,t:0}); sfx('pop'); for(let i=0;i<14;i++) spawn(6,m.x,gy-4,(Math.random()-.5)*260,-120-Math.random()*220,.8,3,'#ffd23f'); if(Math.abs(m.x-P.x)<500) shout(m.x,gy-50,'BUMM!','#ffd23f'); }

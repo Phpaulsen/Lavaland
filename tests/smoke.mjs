@@ -133,6 +133,13 @@ test('Kristallharfe von klein nach groß', async ({ ev, page }) => {
   await ev('teleport(1500)'); await page.waitForTimeout(500);
 });
 
+test('Vulkanausbruch wirft Lavabrocken', async ({ ev, page }) => {
+  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk'); METS=[]; MROCKS=[]; P.x=2380; P.y=surfaceY(P.x); P.vy=0; eruT=0");
+  await page.waitForTimeout(2400);
+  if (!(await ev('MROCKS.length') >= 1)) throw new Error('kein Lavabrocken gelandet');
+  await ev('MROCKS=[]; METS=[]; teleport(1500)'); await page.waitForTimeout(500);
+});
+
 test('Reise zum Mond und zurück', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; travel('moon')");
   await page.waitForTimeout(3500);
