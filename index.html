@@ -196,6 +196,9 @@ body.lefty #mark{left:auto;right:15px}
 
 /* Auswahl-Fenster für Fahrzeuge, Werkzeuge und Funde */
 .ov{position:fixed;inset:0;z-index:5;display:grid;place-items:center;padding:16px;background:rgba(29,42,58,.55)}
+/* Fenster, die höher sind als der Bildschirm (Querformat, kleine Handys), lassen sich senkrecht wischen. margin:auto zentriert, solange Platz ist, und lässt das Fenster sonst oben anfangen, damit nichts oberhalb unerreichbar wird. */
+.ov,#panel,#quiz,#pz{overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;place-items:stretch}
+.ov>*,#panel>*,#quiz>*,#pz>*{margin:auto}
 .xb{
   position:absolute;right:-8px;top:-12px;width:42px;height:42px;padding:0;border-radius:50%;cursor:pointer;z-index:2;
   display:grid;place-items:center;background:var(--lava);color:var(--paper);border:3px solid var(--ink);box-shadow:0 3px 0 var(--ink);
@@ -567,8 +570,11 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
 .pgs{max-width:300px;display:flex;flex-direction:column;align-items:center;gap:12px}
 #pg-q{font:700 34px/1.2 var(--font-learn);font-variant-numeric:tabular-nums}
 .pg-keys{display:grid;grid-template-columns:repeat(3,58px);gap:8px}
-.pars{max-width:640px;max-height:calc(100vh - 32px);overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch;user-select:text;-webkit-user-select:text;font:14px/1.45 system-ui,sans-serif}
+.pars{max-width:640px;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow:auto;touch-action:pan-x pan-y;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;user-select:text;-webkit-user-select:text;font:14px/1.45 system-ui,sans-serif}
 .pars h2{margin:0 0 8px;font:700 20px/1.2 var(--font-ui)}
+/* Die Elternansicht scrollt in sich; das Schließen-Kreuz bleibt dabei oben rechts sichtbar. */
+.pars .xb{position:sticky;float:right;top:0;right:auto;margin:-8px -8px 0 8px}
+@media (max-width:420px){.pars{padding:12px 10px}.pars td,.pars th{padding:4px 3px;font-size:12.5px}.pars th{font-size:11px}}
 .pars h3{margin:16px 0 6px;font:700 16px/1.2 var(--font-ui)}
 .pars p{margin:6px 0}
 .pars table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
@@ -7838,7 +7844,18 @@ function keyShort(k){
 window.addEventListener('keyup',function(e){ const k=keymap[e.key]; if(k) keys[k]=false; if(e.key===' ') keys.a=false; });
 window.addEventListener('blur',function(){ keys.l=keys.r=keys.u=keys.d=keys.a=false; });
 document.addEventListener('contextmenu',function(e){ e.preventDefault(); });
-document.addEventListener('touchmove',function(e){ e.preventDefault(); },{passive:false});
+// Wischen bleibt gesperrt, damit die Seite beim Spielen nicht wackelt. Ausnahme: ein Fenster hat mehr Inhalt als Platz (Elternansicht, Rechentafel, Karte, Fenster im Querformat).
+function canScroll(n){
+  for(;n&&n.nodeType===1&&n!==document.body;n=n.parentElement){
+    if(n.scrollHeight>n.clientHeight+1||n.scrollWidth>n.clientWidth+1){
+      const cs=getComputedStyle(n);
+      if(n.scrollHeight>n.clientHeight+1&&/auto|scroll/.test(cs.overflowY)) return true;
+      if(n.scrollWidth>n.clientWidth+1&&/auto|scroll/.test(cs.overflowX)) return true;
+    }
+  }
+  return false;
+}
+document.addEventListener('touchmove',function(e){ if(!canScroll(e.target)) e.preventDefault(); },{passive:false});
 document.addEventListener('gesturestart',function(e){ e.preventDefault(); });
 
 /* ---------- Zeichnen ---------- */
