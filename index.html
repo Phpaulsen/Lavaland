@@ -4494,11 +4494,13 @@ function drawWorldFront(){
 function renderMap(){
   const R=rlm(), L=R?[{e:R.e,x:LANDX,n:'zum Landeplatz',k:-2}]:[{e:'🏠',x:820,n:'nach Hause',k:-2},{e:'⛷️',x:5700,n:'zum Schneeberg',k:-1}], per=11;
   for(const b of BIO) if(seen[b.i]) L.push({e:BT[b.t].e,x:b.x0+240,n:BT[b.t].to,k:b.i,num:b.n+1});
+  /* Leuchtmarken sind Reiseziele: Dort war man schon, also umgeht das keinen Bohrer. */
+  marks().forEach(function(m,i){ L.push({e:'🔆',x:m[0],y:m[1],n:'zur Leuchtmarke',k:'m'+i,num:i+1}); });
   const pages=Math.max(1,Math.ceil(L.length/per)); if(mapPg>=pages) mapPg=0;
   const here=bix[clamp(Math.floor(P.x/CELL),0,GX-1)]-1, cur=here>=0?here:(P.x>5600&&!R?-1:-2);
   let h='';
   L.slice(mapPg*per,mapPg*per+per).forEach(function(q){
-    h+='<button class="card place'+(q.k===cur?' cur':'')+'" data-go="'+q.x+'" data-say="'+q.n+'" aria-label="Reise '+q.n+'"><span aria-hidden="true">'+q.e+'</span>'+(q.num>1?'<small>'+q.num+'</small>':'')+'</button>';
+    h+='<button class="card place'+(q.k===cur?' cur':'')+'" data-go="'+q.x+'"'+(q.y!=null?' data-gy="'+q.y+'"':'')+' data-say="'+q.n+'" aria-label="Reise '+q.n+'"><span aria-hidden="true">'+q.e+'</span>'+(q.num>1?'<small>'+q.num+'</small>':'')+'</button>';
   });
   if(pages>1) h+='<button class="card place" data-go="next" aria-label="Weitere Orte zeigen"><span aria-hidden="true">➡️</span></button>';
   else if(nextLand()) h+='<button class="card place shut" data-go="" aria-label="Noch nicht entdeckt"><span aria-hidden="true">❓</span></button>';
@@ -4574,7 +4576,9 @@ function mapClick(e){
   const go=b.dataset.go;
   if(go==='next'){ mapPg++; renderMap(); return; }
   if(go===''){ speak('Weiter rechts liegen noch mehr Länder. Die musst du erst entdecken.'); return; }
-  $('map').hidden=true; teleport(+go); speak('Auf '+b.dataset.say+'!');
+  $('map').hidden=true;
+  if(b.dataset.gy){ if(P.mode!=='walk') setMode('walk'); grow(+go+3200); P.x=+go; P.y=+b.dataset.gy-2; P.vx=0; P.vy=0; cam.x=P.x; cam.y=P.y-80; smoke(P.x,P.y-20,6); speak('Zur Leuchtmarke!'); return; }
+  teleport(+go); speak('Auf '+b.dataset.say+'!');
 }
 function renderEggs(){
   $('eggs').innerHTML='<span class="eggn">'+EGGSVG+'<b>'+(hero.eggs|0)+'</b></span>'+WEAR.map(function(q){
