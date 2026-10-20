@@ -117,6 +117,13 @@ test('Fernrohr: Sterne zählen', async ({ ev, page }) => {
   await ev("$('scope').hidden=true");
 });
 
+test('Glühwürmchen fangen', async ({ ev, page }) => {
+  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk'); JAR=[]; FLIES=[{hx:P.x,hy:P.y-20,x:P.x,y:P.y-20,ph:0,t:0}]; nightOn=true; nightA=1");
+  await page.waitForTimeout(300);
+  if (await ev('JAR.length') !== 1) throw new Error('Glühwürmchen nicht gefangen');
+  await ev('nightOn=false; nightA=0; JAR=[]; FLIES=[]');
+});
+
 test('Reise zum Mond und zurück', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; travel('moon')");
   await page.waitForTimeout(3500);

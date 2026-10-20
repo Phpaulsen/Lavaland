@@ -2966,7 +2966,7 @@ function restore(sv){
   SEED=sv.seed; shapeWorld(); loadCells(sv); life.fill(0); stamp.fill(0);
   parts.length=0; ghost=null; chest=null; stroke=null; strokeId=null; task=null; $('chip').hidden=true;
   trees.forEach(function(t,i){ t.state=(sv.trees&&sv.trees[i])|0; t.t=0; });
-  zips=Array.isArray(sv.zips)?sv.zips.filter(zipOk).slice(-ZIPMAX):[]; P.zip=null; MONS.length=0; METS=[]; MROCKS=[]; ARROWS.length=0;
+  zips=Array.isArray(sv.zips)?sv.zips.filter(zipOk).slice(-ZIPMAX):[]; P.zip=null; MONS.length=0; METS=[]; MROCKS=[]; FLIES=[]; ARROWS.length=0;
   tracks=[]; (sv.tracks||[]).forEach(function(t){ const T=makeTrack(t.raw,t.user); if(T){ if(t.rb) T.rb=true; tracks.push(T); } });
   hidden=sv.hidden||[]; props=sv.props||[]; bombs.length=0;
   for(const k in parked) parked[k]=(sv.parked&&sv.parked[k])||null; heliLoad='';
@@ -2988,7 +2988,7 @@ function newRealm(){
   shapeWorld(); planetGen();
   parts.length=0; ghost=null; chest=null; stroke=null; strokeId=null; task=null; $('chip').hidden=true;
   for(const tr of trees){ tr.state=0; tr.t=0; }
-  tracks=[]; zips=[]; P.zip=null; MONS.length=0; METS=[]; MROCKS=[]; ARROWS.length=0; props=[]; bombs.length=0; hidden=[]; guide=null;
+  tracks=[]; zips=[]; P.zip=null; MONS.length=0; METS=[]; MROCKS=[]; FLIES=[]; ARROWS.length=0; props=[]; bombs.length=0; hidden=[]; guide=null;
   for(const k in parked) parked[k]=null;
   P.x=LANDX; P.y=surfaceY(LANDX);
   scanMobile();
@@ -5034,6 +5034,27 @@ function drawScope(x0,x1){
   ctx.fillStyle=INK; ctx.fillRect(-20,-8,46,16); ctx.fillStyle='#3a4a8a'; ctx.fillRect(-18,-6,42,12); ctx.fillStyle='#ffd23f'; ctx.fillRect(16,-6,4,12); ctx.fillStyle='#9fd3ff'; ctx.fillRect(24,-5,2,10);
   ctx.restore();
 }
+/* Glühwürmchen: Nachts tanzen an den Bäumen Glühwürmchen. Wer eins berührt, nimmt es mit (höchstens fünf). Sie kreisen um den Kopf und machen es unter der Erde heller. Nach zwei Minuten fliegen sie wieder davon. Nichts wird gespeichert. */
+let FLIES=[], JAR=[];
+function flyTick(dt){
+  const night=nightA>.5&&!realm;
+  if(night&&FLIES.length<6&&P.y<400&&Math.random()<dt*1.5){
+    const tr=trees.filter(function(t){ return t.state===0&&Math.abs(t.x-P.x)<W/S*.6; });
+    if(tr.length){ const t=tr[Math.floor(Math.random()*tr.length)]; FLIES.push({hx:t.x+(Math.random()-.5)*60,hy:t.gy-30-Math.random()*70,x:t.x,y:t.gy-40,ph:Math.random()*9,t:0}); }
+  }
+  for(const f of FLIES.slice()){
+    f.t+=dt; f.x=f.hx+Math.sin(f.t*1.3+f.ph)*22; f.y=f.hy+Math.sin(f.t*1.9+f.ph*2)*12;
+    if((!night&&Math.random()<dt*.5)||Math.abs(f.x-P.x)>W/S*1.5){ FLIES.splice(FLIES.indexOf(f),1); continue; }
+    if(JAR.length<5&&Math.hypot(f.x-P.x,f.y-(P.y-20))<26){ FLIES.splice(FLIES.indexOf(f),1); JAR.push({t:120,a:Math.random()*TAU}); blip(900,1400,.12,'sine',.05); }
+  }
+  for(const j of JAR.slice()){ j.t-=dt; j.a+=dt*2.2; if(j.t<=0) JAR.splice(JAR.indexOf(j),1); }
+}
+function jarPos(j){ return [P.x+Math.cos(j.a)*24, P.y-34+Math.sin(j.a*1.7)*10]; }
+function drawFlies(){
+  const k=.6+.4*Math.sin(time*5);
+  for(const f of FLIES){ ctx.fillStyle='rgba(200,255,90,'+(.35*k)+')'; circle(f.x,f.y,10); ctx.fillStyle='#eaff8a'; circle(f.x,f.y,2.4); }
+  for(const j of JAR){ const p=jarPos(j), fade=Math.min(1,j.t/10); ctx.fillStyle='rgba(220,255,120,'+(.3*k*fade)+')'; circle(p[0],p[1],8); ctx.fillStyle='rgba(234,255,138,'+fade+')'; circle(p[0],p[1],2.6); }
+}
 function drawHandTool(){
   if(!HANDT[tool]||P.mode!=='walk'||P.zip) return;
   const ks=kidScale(), sw=P.swing||0, dn=keys.d;
@@ -6215,7 +6236,7 @@ function drawDark(){
     g.addColorStop(0,'rgba(0,0,0,'+k+')'); g.addColorStop(1,'rgba(0,0,0,0)');
     dkx.fillStyle=g; dkx.fillRect(sx-rd,sy-rd,2*rd,2*rd);
   };
-  hole(P.x,P.y-20,[135,195,275,400][hero.lp|0],1);
+  hole(P.x,P.y-20,[135,195,275,400][hero.lp|0]+JAR.length*32,1);
   const vw=W/S+200, vh=H/S+200;
   for(const m of MATS) if(!matGot[m.id]&&Math.abs(m.x-cam.x)<vw&&Math.abs(m.y-cam.y)<vh) hole(m.x,m.y,46,.75);
   for(const m of MACH) if(m.y===m.y&&Math.abs(m.x-cam.x)<vw&&Math.abs(m.y-cam.y)<vh) hole(m.x,m.y-30,90,.9);
@@ -8201,6 +8222,7 @@ function draw(){
 
   drawDark();
   drawMons(true);
+  drawFlies();
   if(bx1>=bx0){
     const cx0=Math.max(bx0,Math.floor(x0/CELL),1), cx1=Math.min(bx1,Math.floor(x1/CELL),GX-2);
     const cy0=Math.max(by0,Math.floor((y0-TOP)/CELL),1), cy1=Math.min(by1,Math.floor((y1-TOP)/CELL),GY-2);
@@ -8838,7 +8860,7 @@ function frame(t){
     accum+=dt; let n=0;
     while(accum>=1/30&&n<2){ paintStep(); step(); accum-=1/30; n++; }
     if(accum>.1) accum=0;
-    update(dt); arrowsTick(dt); monTick(dt); geyTick(dt); metTick(dt); wreckTick(dt); worldTick(dt); deepTick(dt); winterTick(dt); taskTick(dt); findsTick(dt); questTick(dt); misTick(dt); autosave(dt); drain(dt); fogTick(dt); mkTick();
+    update(dt); arrowsTick(dt); monTick(dt); geyTick(dt); metTick(dt); wreckTick(dt); flyTick(dt); worldTick(dt); deepTick(dt); winterTick(dt); taskTick(dt); findsTick(dt); questTick(dt); misTick(dt); autosave(dt); drain(dt); fogTick(dt); mkTick();
     /* Läuft es auf diesem Gerät zu langsam, sinkt die Auflösung in Stufen. */
     if(raw<.2){ perfT+=raw; perfN++; }
     if(perfN>=150){ if(perfT/perfN>.026&&maxDpr>1){ maxDpr=Math.max(1,maxDpr-.5); resize(); } perfT=0; perfN=0; }
