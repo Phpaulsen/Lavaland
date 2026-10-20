@@ -860,6 +860,7 @@ QI.imp='<path d="M3 13v8h18v-8" fill="#f2b632" '+S1+' stroke-width="1.6"/><path 
 
 IC.shovel='<path d="M17 3l4 4M19 5l-8.500 8.500" '+S1+' stroke-width="2.600"/><path d="M10.500 9.500l4 4-4.500 4.500c-2 2-5.500 2.500-7.500 2.500 0-2 .5-5.500 2.500-7.500z" fill="#9aa7b4" '+S1+' stroke-width="1.500"/>';
 IC.pick='<path d="M4 21L15 10" stroke="#a0632f" stroke-width="3.2" stroke-linecap="round"/><path d="M4 21L15 10" '+S1+' stroke-width="1" fill="none"/><path d="M8 4.500c4-2 9-1.500 12.500 1.500l-1 1c-3-1.500-6-1.500-8.500 0zM20.500 6c2 4 1.500 8.500-1 12l-1-1c1.500-2.500 1.500-6 0-9z" fill="#9aa7b4" '+S1+' stroke-width="1.400"/><path d="M13 8l3 3" '+S1+' stroke-width="3.200"/>';
+IC.bow='<path d="M6 3c8 2 13 7 15 15" stroke="#a0632f" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M6 3c8 2 13 7 15 15" '+S1+' stroke-width="1" fill="none"/><path d="M6 3l15 15" stroke="'+K+'" stroke-width="1.200"/><path d="M3 21L17 7" '+S1+' stroke-width="2"/><path d="M17 7l1-4 3 3z" fill="#9aa7b4" '+S1+' stroke-width="1.200"/><path d="M3 21l1-3.500M3 21l3.500-1" stroke="#e63946" stroke-width="2.200" stroke-linecap="round"/>';
 IC.tnt='<circle cx="10.5" cy="14.5" r="7.5" fill="#3a3438" '+S1+' stroke-width="1.6"/><path d="M15.5 9l3-3" '+S1+' stroke-width="2.4"/><path d="M18.5 6l.8-3M18.5 6l3-.6M18.5 6l2.4 1.800" stroke="#ff8a1f" stroke-width="1.8" stroke-linecap="round"/><path d="M7 12a4 4 0 0 1 3-2" stroke="#fff" stroke-width="1.6" stroke-linecap="round" fill="none"/>';
 AI.shop='<path d="M5 9h14l-1.5 11.5h-11z" fill="currentColor"/><path d="M9 9V7a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round"/>';
 
@@ -893,6 +894,7 @@ IC.sub='<path d="M9 9V5.500h4" fill="none" '+S1+' stroke-width="2"/><rect x="2" 
 AI.hook='<path d="M12 2v9" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><path d="M12 11a4.500 4.500 0 1 1-4.500 4.500" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M5 13.500l2.500 2 2-2.500" stroke="currentColor" stroke-width="2.400" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
 AI.horn='<path d="M3 9h4l8-5v16l-8-5H3z" fill="currentColor"/><path d="M18 8.5a5 5 0 0 1 0 7M20.500 6a8.500 8.500 0 0 1 0 12" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round"/>';
 AI.mis='<path d="M12 2v3" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><rect x="3" y="5" width="18" height="13" rx="2.500" fill="currentColor"/><path d="M12 18v4" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>';
+AI.bow='<path d="M5 3c9 1.500 14 6.500 16 16" stroke="currentColor" stroke-width="2.800" fill="none" stroke-linecap="round"/><path d="M5 3l16 16M2 12h13" stroke="currentColor" stroke-width="1.800" stroke-linecap="round"/><path d="M15 9l5 3-5 3z" fill="currentColor"/>';
 AI.sonar='<circle cx="12" cy="12" r="2.600" fill="currentColor"/><path d="M6.500 6.500a8 8 0 0 0 0 11M17.500 6.500a8 8 0 0 1 0 11M3.500 3.500a12 12 0 0 0 0 17M20.500 3.500a12 12 0 0 1 0 17" stroke="currentColor" stroke-width="2.200" fill="none" stroke-linecap="round"/>';
 
 /* ---------- Welt ---------- */
@@ -1890,7 +1892,7 @@ function explode(x,y){
 }
 
 /* ---------- Spielfigur ---------- */
-const P={mode:'walk',x:820,y:0,vx:0,vy:0,on:true,landed:false,gs:0,face:1,chute:false,air:0,run:0,ang:0,turbo:0,soot:0,hurt:0,track:null,s:0,v:0,arm:.75,load:0,digT:0,climb:0,lift:0,da:0,bed:0,ball:0,spin:0,rot:0,frost:0,jet:false,back:false,balT:0,wall:false,zip:null,swing:0};
+const P={mode:'walk',x:820,y:0,vx:0,vy:0,on:true,landed:false,gs:0,face:1,chute:false,air:0,run:0,ang:0,turbo:0,soot:0,hurt:0,track:null,s:0,v:0,arm:.75,load:0,digT:0,climb:0,lift:0,da:0,bed:0,ball:0,spin:0,rot:0,frost:0,jet:false,back:false,balT:0,wall:false,zip:null,swing:0,aim:0};
 function grav(){ return P.y<-1700?G*.3:G; }
 const parked={car:null,plane:null,rocket:null,bagger:null,loader:null,dumper:null,tbm:null,sub:null,balloon:null,heli:null,boat:null,bug:null};
 let ghost=null, chest=null;
@@ -2052,7 +2054,8 @@ function doAction(){
     if(deepAct()) return;
     if(nearStall()){ openMarket(); return; }
     if(nearLift()){ rideLift(); return; }
-    if(HANDT[tool]){ handDig(); return; }
+    if(tool==='bow'){ shoot(); return; }
+    if(DIGT[tool]){ handDig(); return; }
     if(P.on){ P.vy=-400*(FX.sugar>0?1.3:1)*(FX.tiny>0?.8:1); P.on=false; P.air=0; sfx('jump'); }
     else P.chute=!P.chute;
   }else if(P.mode==='car'){
@@ -2281,7 +2284,7 @@ function update(dt){
     popG=0; popM=0; popT=.4;
   }
   if(P.swing>0) P.swing=Math.max(0,P.swing-dt*5);
-  if(keys.a&&HANDT[tool]&&P.mode==='walk'&&!paused&&!nearBoard()&&!zipNear()&&!deepIcon()) handDig();
+  if(keys.a&&DIGT[tool]&&P.mode==='walk'&&!paused&&!nearBoard()&&!zipNear()&&!deepIcon()) handDig();
   if(P.zip) zipRide(dt);
   else if(P.mode==='walk') updWalk(dt,ix,u,d);
   else if(P.mode==='car') updCar(dt,ix,u,d);
@@ -2419,6 +2422,7 @@ function paintAt(wx,wy){
 }
 function paintStep(){
   if(!tool||tool==='track'||tool==='rope') return;
+  if(tool==='bow'){ pointers.forEach(function(p){ if(!p.has){ p.has=true; const w=toWorld(p.x,p.y); shoot(w[0],w[1]); } }); return; }
   if(HANDT[tool]){ pointers.forEach(function(p){ const w=toWorld(p.x,p.y); if(Math.hypot(w[0]-P.x,w[1]-P.y+20)<95) handDig(w[0],w[1]); }); return; }
   pointers.forEach(function(p){
     const w=toWorld(p.x,p.y);
@@ -4527,7 +4531,7 @@ function drawZips(x0,x1){
   pointers.forEach(function(p){ if(tool==='rope'&&p.rs){ const w=toWorld(p.x,p.y); ctx.strokeStyle='#a0632f'; ctx.lineWidth=4; ctx.setLineDash([10,9]); ctx.beginPath(); ctx.moveTo(p.rs[0],p.rs[1]); ctx.lineTo(w[0],w[1]); ctx.stroke(); ctx.setLineDash([]); } });
 }
 /* Schaufel und Spitzhacke: zu Fuß graben, ohne Akku. Die Schaufel ist schnell, schafft aber nur Erde, Sand und Schnee. Die Spitzhacke schafft auch Fels und Eis, nur langsamer. Harte Schichten bleiben wie beim Bagger dem Bohrer vorbehalten. Aktionstaste gräbt nach vorn, mit Runter nach unten. */
-const HANDT={shovel:1,pick:1}, SOFT={4:1,14:1};
+const HANDT={shovel:1,pick:1,bow:1}, DIGT={shovel:1,pick:1}, SOFT={4:1,14:1};
 let handT=0, handHint=0;
 function handDig(wx,wy){
   if(P.mode!=='walk'||P.zip||time<handT) return 0;
@@ -4556,10 +4560,81 @@ function handDig(wx,wy){
   }
   return n;
 }
+/* Pfeil und Bogen: Antippen schießt dorthin, die Aktionstaste schießt nach vorn. Pfeile fliegen im Bogen und bleiben kurz stecken. Tieren tun sie nichts. Am Schießstand hinter dem Missionsbrett stehen drei Zielscheiben. */
+const ARROWS=[], TGT=[{x:1640,h:46},{x:1790,h:78},{x:1930,h:58}];
+let tgtT=0, bowT=0;
+function shoot(wx,wy){
+  if(P.mode!=='walk'||P.zip||time<bowT) return;
+  bowT=time+.32;
+  const sx=P.x+P.face*6, sy=P.y-26;
+  let a;
+  if(wx===undefined){ a=P.face>0?-.18:Math.PI+.18; if(keys.u) a=P.face>0?-.7:Math.PI+.7; if(keys.d) a=P.face>0?.5:Math.PI-.5; }
+  else{ a=Math.atan2(wy-sy,wx-sx); P.face=Math.cos(a)>=0?1:-1; }
+  P.aim=P.face>0?a:Math.PI-a; if(P.aim>Math.PI) P.aim-=2*Math.PI;
+  const v=760;
+  ARROWS.push({x:sx,y:sy,vx:Math.cos(a)*v,vy:Math.sin(a)*v,t:0,stuck:0});
+  if(ARROWS.length>14) ARROWS.shift();
+  P.swing=1; blip(520,180,.12,'triangle',.06);
+}
+function tgtY(t){ return ground(t.x)-t.h; }
+function arrowsTick(dt){
+  for(let i=ARROWS.length-1;i>=0;i--){
+    const a=ARROWS[i];
+    if(a.stuck){ a.stuck-=dt; if(a.stuck<=0) ARROWS.splice(i,1); continue; }
+    a.t+=dt; a.vy+=G*.45*dt;
+    const n=3;
+    for(let k=0;k<n;k++){
+      a.x+=a.vx*dt/n; a.y+=a.vy*dt/n;
+      if(arrowHit(a)){ ARROWS.splice(i,1); break; }
+      if(solidW(a.x,a.y)){ a.stuck=2.5; sfx('tick'); break; }
+    }
+    if(a.t>4&&ARROWS[i]===a) ARROWS.splice(i,1);
+  }
+  if(tgtT>0){ tgtT-=dt; if(tgtT<=0) for(const t of TGT) t.hit=0; }
+}
+function arrowHit(a){
+  if(!realm) for(const t of TGT){
+    if(t.hit) continue;
+    const ty=tgtY(t), d=Math.hypot(a.x-t.x,a.y-ty);
+    if(d<20){
+      t.hit=1; const bull=d<7;
+      shout(t.x,ty-30,bull?'MITTE!':'TREFFER!',bull?'#ffd23f':'#fff8e6'); sfx('coin'); burst(t.x,ty,bull?'#ffd23f':'#e63946');
+      if(TGT.every(function(q){ return q.hit; })){ tgtT=12; gold+=5; lootDirty=true; confetti(t.x,ty); jingle(); banner('🎯 +5'+COIN,2000); }
+      return true;
+    }
+  }
+  return typeof monHit==='function'&&monHit(a);
+}
+function drawArrows(){
+  for(const a of ARROWS){
+    const ang=Math.atan2(a.vy,a.vx);
+    ctx.save(); ctx.translate(a.x,a.y); ctx.rotate(ang); if(a.stuck<1&&a.stuck>0) ctx.globalAlpha=a.stuck;
+    ctx.strokeStyle=INK; ctx.lineWidth=2.4; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(-22,0); ctx.lineTo(0,0); ctx.stroke();
+    ctx.fillStyle='#9aa7b4'; ctx.beginPath(); ctx.moveTo(4,0); ctx.lineTo(-3,-3.5); ctx.lineTo(-3,3.5); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#e63946'; ctx.beginPath(); ctx.moveTo(-22,0); ctx.lineTo(-27,-4); ctx.lineTo(-18,0); ctx.lineTo(-27,4); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  if(!realm) for(const t of TGT){
+    if(t.x<cam.x-W/S||t.x>cam.x+W/S) continue;
+    const gy=ground(t.x), ty=gy-t.h;
+    ctx.fillStyle=INK; ctx.fillRect(t.x-3,ty,6,t.h); ctx.fillStyle='#a0632f'; ctx.fillRect(t.x-1.5,ty,3,t.h);
+    ctx.save(); ctx.translate(t.x,ty); if(t.hit) ctx.scale(.25,1);
+    const cs=['#1d2a3a','#fff8e6','#e63946','#fff8e6','#e63946','#ffd23f'], rs=[21,19,15,11,7,3.5];
+    for(let k=0;k<cs.length;k++){ ctx.fillStyle=cs[k]; circle(0,0,rs[k]); }
+    ctx.restore();
+  }
+}
 function drawHandTool(){
   if(!HANDT[tool]||P.mode!=='walk'||P.zip) return;
   const ks=kidScale(), sw=P.swing||0, dn=keys.d;
   ctx.save(); ctx.translate(P.x+P.face*5*ks,P.y-22*ks); ctx.scale(P.face*ks,ks);
+  if(tool==='bow'){
+    ctx.rotate(P.aim);
+    ctx.strokeStyle=INK; ctx.lineWidth=4.5; ctx.lineCap='round'; ctx.beginPath(); ctx.arc(-2,0,15,-1.25,1.25); ctx.stroke();
+    ctx.strokeStyle='#a0632f'; ctx.lineWidth=2.6; ctx.stroke();
+    const pull=sw*7; ctx.strokeStyle=INK; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(-2+15*Math.cos(1.25),-15*Math.sin(1.25)); ctx.lineTo(-pull+.5,0); ctx.lineTo(-2+15*Math.cos(1.25),15*Math.sin(1.25)); ctx.stroke();
+    ctx.restore(); return;
+  }
   ctx.rotate((dn?1.3:.2)-sw*1.4);
   ctx.strokeStyle=INK; ctx.lineWidth=4.5; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(22,0); ctx.stroke();
   ctx.strokeStyle='#a0632f'; ctx.lineWidth=2.6; ctx.stroke();
@@ -6472,7 +6547,7 @@ function sySudoku(st){ return 'In jeder Reihe und in jeder Spalte darf jedes Bil
 
 /* ---------- Tasten ---------- */
 const VEH=[['walk','Laufen'],['ski','Ski fahren'],['car','Auto'],['plane','Flugzeug'],['rocket','Rakete'],['bagger','Bagger'],['loader','Radlader'],['dumper','Kipper'],['tbm','Tunnelbohrmaschine'],['sub','U-Boot'],['balloon','Heißluftballon'],['heli','Hubschrauber'],['boat','Segelboot'],['bug','Kletterkäfer'],['coaster','Achterbahn fahren'],['dragon','Auf Mama Glut fliegen']];
-const TOOLS=[['tnt','Bombe legen'],['lava','Lava malen'],['fire','Feuer malen'],['water','Wasser malen'],['ice','Eis malen'],['earth','Erde malen'],['blocks','Bauklötze setzen'],['track','Schiene malen'],['erase','Radierer'],['snow','Schnee malen'],['ball','Schneeball werfen'],['man','Schneemann bauen'],['fw','Feuerwerk zünden'],['rope','Seilrutsche spannen'],['shovel','Schaufel'],['pick','Spitzhacke']];
+const TOOLS=[['tnt','Bombe legen'],['lava','Lava malen'],['fire','Feuer malen'],['water','Wasser malen'],['ice','Eis malen'],['earth','Erde malen'],['blocks','Bauklötze setzen'],['track','Schiene malen'],['erase','Radierer'],['snow','Schnee malen'],['ball','Schneeball werfen'],['man','Schneemann bauen'],['fw','Feuerwerk zünden'],['rope','Seilrutsche spannen'],['shovel','Schaufel'],['pick','Spitzhacke'],['bow','Pfeil und Bogen']];
 const MODES=VEH.map(function(v){return v[0];}), TOOLN=TOOLS.map(function(t){return t[0];});
 function svg24(inner){ return '<svg viewBox="0 0 24 24" aria-hidden="true">'+inner+'</svg>'; }
 const LOCK='<span class="lock">'+svg24(QI.lock)+'</span>';
@@ -7648,6 +7723,7 @@ function draw(){
   }
   drawZips(x0,x1);
   drawMis(x0,x1);
+  drawArrows();
   if(tool==='track'){
     for(const T of tracks){ const a=T.pts[0], b=T.pts[T.pts.length-1]; knob(a[0],a[1],8); knob(b[0],b[1],11); }
   }
@@ -7786,7 +7862,7 @@ function draw(){
 function actIcon(){
   if(P.zip) return 'jump';
   if(P.mode==='walk'){ if(zipNear()) return 'hook'; if(nearBoard()) return 'mis'; const da=deepIcon(); if(da) return da; }
-  if(P.mode==='walk') return nearStall()?'shop':nearLift()?'lift':HANDT[tool]?'dig':(P.chute?'down':(P.on||P.air<.15?'jump':'chute'));
+  if(P.mode==='walk') return nearStall()?'shop':nearLift()?'lift':tool==='bow'?'bow':DIGT[tool]?'dig':(P.chute?'down':(P.on||P.air<.15?'jump':'chute'));
   if(P.mode==='ski') return nearLift()?'lift':(P.on||P.ball>0?'jump':'spin');
   if(P.mode==='dragon') return 'flame';
   if(P.mode==='sub') return 'sonar';
@@ -8346,7 +8422,7 @@ function frame(t){
     accum+=dt; let n=0;
     while(accum>=1/30&&n<2){ paintStep(); step(); accum-=1/30; n++; }
     if(accum>.1) accum=0;
-    update(dt); worldTick(dt); deepTick(dt); winterTick(dt); taskTick(dt); findsTick(dt); questTick(dt); misTick(dt); autosave(dt); drain(dt); fogTick(dt); mkTick();
+    update(dt); arrowsTick(dt); worldTick(dt); deepTick(dt); winterTick(dt); taskTick(dt); findsTick(dt); questTick(dt); misTick(dt); autosave(dt); drain(dt); fogTick(dt); mkTick();
     /* Läuft es auf diesem Gerät zu langsam, sinkt die Auflösung in Stufen. */
     if(raw<.2){ perfT+=raw; perfN++; }
     if(perfN>=150){ if(perfT/perfN>.026&&maxDpr>1){ maxDpr=Math.max(1,maxDpr-.5); resize(); } perfT=0; perfN=0; }
