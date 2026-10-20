@@ -8,6 +8,9 @@ export const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..'
 const ANCHOR = "document.addEventListener('visibilitychange',function(){ if(document.hidden) saveGame(false); });";
 const TYPES = { '.html': 'text/html', '.json': 'application/json', '.js': 'text/javascript', '.png': 'image/png', '.woff2': 'font/woff2', '.ogg': 'audio/ogg' };
 
+// Schalter für Netzprobleme im Test: html verzögert (ms) oder Statuscode statt der Seite.
+export const net = { delay: 0, status: 0 };
+
 // extra: zusätzliche Pfade, z. B. { '/old/index.html': '/pfad/zur/alten/index.html' }
 export function serve(extra = {}) {
   return new Promise(res => {
@@ -18,13 +21,14 @@ export function serve(extra = {}) {
       const f = extra[p] || path.join(ROOT, path.normalize(p));
       if (!(extra[p] || f.startsWith(ROOT)) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); r.end(); return; }
       let b = fs.readFileSync(f);
+      if (p.endsWith('/index.html') && net.status) { r.writeHead(net.status); r.end(); return; }
       if (p.endsWith('/index.html')) {
         const s = b.toString();
         if (!s.includes(ANCHOR)) throw new Error('Testanker in index.html fehlt');
         b = Buffer.from(s.replace(ANCHOR, 'window.__ev=function(s){return eval(s);};\n' + ANCHOR));
       }
-      r.writeHead(200, { 'content-type': TYPES[path.extname(f)] || 'application/octet-stream' });
-      r.end(b);
+      const send = () => { r.writeHead(200, { 'content-type': TYPES[path.extname(f)] || 'application/octet-stream' }); r.end(b); };
+      if (p.endsWith('/index.html') && net.delay) setTimeout(send, net.delay); else send();
     });
     srv.listen(0, '127.0.0.1', () => res(srv));
   });

@@ -1,7 +1,7 @@
-// Offline-Test: Nach dem ersten Besuch muss das Spiel ohne Netz starten (installierte App im Funkloch).
+// Offline-Test: Nach dem ersten Besuch muss das Spiel ohne Netz, bei sehr langsamem Netz und bei Serverfehlern starten (installierte App im Funkloch).
 // Aufruf: node tests/offline.mjs
 import { createRequire } from 'module';
-import { serve } from './server.mjs';
+import { serve, net } from './server.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium, devices } = require('playwright');
@@ -31,8 +31,25 @@ try {
     const font = await page.evaluate(() => document.fonts.load('700 20px Andika').then(f => f.length > 0));
     if (!font) fail = 'Lernschrift offline nicht verfügbar';
   }
+  // Funkloch mit Netz: Die Seite kommt nur sehr langsam. Dann muss nach wenigen Sekunden die gespeicherte starten.
+  if (!fail) {
+    await ctx.setOffline(false);
+    net.delay = 20000;
+    const t0 = Date.now();
+    await page.reload({ waitUntil: 'commit', timeout: 15000 }).catch(e => { fail = 'Langsames Netz: Seite kam nicht: ' + e.message; });
+    if (!fail) await ready().catch(() => { fail = 'Langsames Netz: Spiel startet nicht'; });
+    net.delay = 0;
+    if (!fail && Date.now() - t0 > 9000) fail = 'Langsames Netz: Start dauerte ' + (Date.now() - t0) + ' ms';
+  }
+  // Server meldet einen Fehler (GitHub gestört): Auch dann startet die gespeicherte Seite statt einer Fehlerseite.
+  if (!fail) {
+    net.status = 503;
+    await page.reload();
+    await ready().catch(() => { fail = 'Serverfehler: Spiel startet nicht'; });
+    net.status = 0;
+  }
   if (!fail && errs.length) fail = 'Seitenfehler: ' + errs.join(' | ');
 } catch (e) { fail = e.message || String(e); }
 await browser.close(); srv.close();
-console.log(fail ? 'FAIL offline: ' + fail : 'ok   Spiel startet offline mit Spielstand und Schrift');
+console.log(fail ? 'FAIL offline: ' + fail : 'ok   Spiel startet offline, bei langsamem Netz und bei Serverfehler mit Spielstand und Schrift');
 process.exit(fail ? 1 : 0);

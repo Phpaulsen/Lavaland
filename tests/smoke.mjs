@@ -201,6 +201,28 @@ test('Vorlesen nimmt die Aufnahmen, fehlende Sätze die Browserstimme', async ({
   if (await ev("synthText('Hier fehlt die 8. 21 und 100 – 🐻')") !== 'Hier fehlt die acht. einundzwanzig und einhundert,') throw new Error('Zahlwörter falsch: ' + await ev("synthText('Hier fehlt die 8. 21 und 100 – 🐻')"));
 });
 
+test('Rätsel statt Aufgabe: Abbrechen mit Ladung erledigt den Auftrag, ohne Ladung nicht', async ({ ev }) => {
+  const r = await ev(`(function(){
+    OVS.forEach(o=>o.hidden=true); paused=false; pzClose(); let n=0;
+    energy=0; openQuiz(function(){ n++; }); $('quiz-pz').click(); energy=SEG; pzClose();
+    const a=n, p1=pending;
+    energy=0; openQuiz(function(){ n++; }); $('quiz-pz').click(); pzClose();
+    const b=n, p2=pending; energy=SEG; closeQuiz();
+    return {a, b, p1, p2, c:n};
+  })()`);
+  if (r.a !== 1) throw new Error('Auftrag nach Rätselabbruch mit Ladung nicht ausgeführt');
+  if (r.p1 || r.p2 || r.c !== 1) throw new Error('Auftrag bleibt liegen und kommt später aus dem Nichts');
+});
+
+test('Waage hält sich an den Schulstand', async ({ ev }) => {
+  const max = await ev(`(function(){
+    const o=Object.assign({},SCH); SCH.on=true; let m=[0,0,0,0];
+    for(let zr=0;zr<4;zr++){ SCH.zr=zr; for(let lv=0;lv<10;lv++) for(let i=0;i<30;i++){ const st=mkWaage(lv); const t=st.L.reduce((s,v)=>s+(v<0?st.box:v),0); m[zr]=Math.max(m[zr],t); } }
+    Object.assign(SCH,o); return m;
+  })()`);
+  if (max[0] > 5 || max[1] > 10 || max[2] > 20 || max[3] > 20) throw new Error('Zahlen zu groß je Zahlenraum: ' + max.join(', '));
+});
+
 test('Spielstand übersteht Neuladen', async ({ ev, page }) => {
   await ev('OVS.forEach(o=>o.hidden=true); paused=false; gold=4321; saveFinds(); saveGame(false)');
   await page.waitForTimeout(1500);
@@ -260,7 +282,14 @@ const ev = s => page.evaluate(s => window.__ev(s), s);
 await page.goto(url);
 await page.waitForFunction(() => window.__ev && window.__ev('ready'), null, { timeout: 20000 });
 
+// Zum Schluss: Fehler, die das Spiel selbst abgefangen hat, stehen nur im Fehlerprotokoll. Auch die zählen.
+test('Fehlerprotokoll ist leer', async ({ ev }) => {
+  const e = await ev("errLoad().map(e=>e.m+' ('+e.w+')')");
+  if (e.length) throw new Error(e.join(' | '));
+});
+
 let failed = 0;
+await ev('localStorage.removeItem(ERRK)');
 for (const t of tests) {
   const n = errs.length;
   try {

@@ -1,4 +1,4 @@
-// Statischer Test ohne Browser: Syntax aller Skripte, Größenbudget, jede $('id') hat ein Element.
+// Statischer Test ohne Browser: Syntax aller Skripte, Größenbudget, jede $('id') hat ein Element, IDs einmalig, Speicherschlüssel, Offline-Dateien.
 // Aufruf: node tests/static.mjs
 import fs from 'fs';
 import vm from 'vm';
@@ -39,6 +39,28 @@ check('Jede $(\'id\') im Code hat ein Element', () => {
 check('Keine fremden Skripte', () => {
   const ext = [...html.matchAll(/<script[^>]*\bsrc="([^"]+)"/g)].map(m => m[1]).filter(s => /^https?:/.test(s));
   if (ext.length) throw new Error(ext.join(', '));
+});
+
+check('Keine doppelten IDs', () => {
+  const ids = [...html.matchAll(/\sid="([\w-]+)"/g)].map(m => m[1]), seen = new Set(), dup = new Set();
+  for (const id of ids) (seen.has(id) ? dup : seen).add(id);
+  if (dup.size) throw new Error([...dup].join(', '));
+});
+
+// „Spielstand sichern“ nimmt nur Schlüssel mit, die mit lavaland anfangen. Ein anderer Name ginge beim Umzug verloren.
+check('Jeder localStorage-Schlüssel beginnt mit lavaland', () => {
+  const lit = [...html.matchAll(/localStorage\.(?:setItem|getItem|removeItem)\('([^']*)'/g)].map(m => m[1]);
+  const con = [...html.matchAll(/[\s,](\w+)='([^']*)'/g)].reduce((o, m) => (o[m[1]] = m[2], o), {});
+  const named = [...html.matchAll(/localStorage\.(?:setItem|getItem|removeItem)\(([A-Z]\w*)[,)]/g)].map(m => con[m[1]] ?? '?' + m[1]);
+  const bad = lit.concat(named).filter(k => k.indexOf('lavaland') !== 0);
+  if (bad.length) throw new Error(bad.join(', '));
+});
+
+check('Alle Dateien im Offline-Speicher gibt es', () => {
+  const sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
+  const core = JSON.parse(sw.match(/const CORE=(\[[^\]]*\])/)[1].replace(/'/g, '"'));
+  const miss = core.filter(f => f !== './' && !fs.existsSync(path.join(ROOT, f)));
+  if (miss.length) throw new Error(miss.join(', '));
 });
 
 console.log(failed ? failed + ' Prüfungen fehlgeschlagen' : 'alle statischen Prüfungen ok');

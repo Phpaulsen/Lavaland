@@ -3,18 +3,24 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Jede Nacht ein langer Lauf mit neuen Zufallswerten. Scheitert er, kommt eine Mail von GitHub; der Startwert im Log macht den Fehler nachspielbar.
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
+    env:
+      LONG: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Statische Prüfung (Syntax, Größe, IDs)
+      - name: Statische Prüfung (Syntax, Größe, IDs, Speicherschlüssel)
         run: node tests/static.mjs
       - name: Playwright installieren
         run: |
@@ -22,12 +28,21 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Rauchtest
         run: node tests/smoke.mjs
-      - name: Offline-Test
+      - name: Spielstand-Test (Rettung, Datenbankstörung, Sichern/Laden)
+        run: node tests/save.mjs
+      - name: Offline-Test (kein Netz, langsames Netz, Serverfehler)
         run: node tests/offline.mjs
       - name: Zufallstest
-        run: FUZZ_SEC=45 node tests/fuzz.mjs
+        run: FUZZ_SEC=$([ "$LONG" = true ] && echo 600 || echo 45) node tests/fuzz.mjs
+      - name: Knopftest (alle Fenster, alle Rätselstufen)
+        run: CRAWL_N=$([ "$LONG" = true ] && echo 4000 || echo 300) node tests/crawl.mjs
       - name: Update-Test (Spielstand von main)
+        if: github.event_name == 'pull_request'
         run: |
           git fetch --depth=1 origin main
           git show FETCH_HEAD:index.html > "$RUNNER_TEMP/old.html"
           OLD="$RUNNER_TEMP/old.html" node tests/upgrade.mjs
+      - name: Vorlesetexte haben Aufnahmen
+        run: |
+          node tools/voice/collect.mjs > "$RUNNER_TEMP/texts.json"
+          node tests/voice.mjs "$RUNNER_TEMP/texts.json"
