@@ -75,6 +75,14 @@ test('Mission am Brett: Küken retten', async ({ ev, page }) => {
   if (await ev("!MS.done.chick")) throw new Error('Mission nicht abgeschlossen');
 });
 
+test('Schaufel gräbt zu Fuß ohne Akku', async ({ ev, page }) => {
+  await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=0; setMode('walk'); P.x=1500; P.y=ground(1500); P.on=true; $('tool-cards').querySelector('[data-tool=shovel]').click()");
+  const y0 = await ev('P.y');
+  await ev('keys.d=true; keys.a=true'); await page.waitForTimeout(1500); await ev('keys.a=false; keys.d=false; setTool(null,true)');
+  if (!(await ev('P.y') > y0 + 30)) throw new Error('nicht nach unten gegraben');
+  if (!(await ev("$('quiz').hidden"))) throw new Error('Schaufel hat die Lernaufgabe verlangt');
+});
+
 test('Reise zum Mond und zurück', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; travel('moon')");
   await page.waitForTimeout(3500);

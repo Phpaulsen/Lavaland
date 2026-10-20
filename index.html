@@ -858,6 +858,8 @@ QI.fsx='<path d="M9 3v6H3M21 9h-6V3M15 21v-6h6M3 15h6v6" fill="none" '+S1+' stro
 QI.exp='<path d="M3 13v8h18v-8" fill="#f2b632" '+S1+' stroke-width="1.6"/><path d="M12 15V3M7 7.5L12 3l5 4.5" fill="none" stroke="#2f8f4a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
 QI.imp='<path d="M3 13v8h18v-8" fill="#f2b632" '+S1+' stroke-width="1.6"/><path d="M12 3v12M7 10.5L12 15l5-4.5" fill="none" stroke="#2f6fd6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
 
+IC.shovel='<path d="M17 3l4 4M19 5l-8.500 8.500" '+S1+' stroke-width="2.600"/><path d="M10.500 9.500l4 4-4.500 4.500c-2 2-5.500 2.500-7.500 2.500 0-2 .5-5.500 2.500-7.500z" fill="#9aa7b4" '+S1+' stroke-width="1.500"/>';
+IC.pick='<path d="M4 21L15 10" stroke="#a0632f" stroke-width="3.2" stroke-linecap="round"/><path d="M4 21L15 10" '+S1+' stroke-width="1" fill="none"/><path d="M8 4.500c4-2 9-1.500 12.500 1.500l-1 1c-3-1.500-6-1.500-8.500 0zM20.500 6c2 4 1.500 8.500-1 12l-1-1c1.500-2.500 1.500-6 0-9z" fill="#9aa7b4" '+S1+' stroke-width="1.400"/><path d="M13 8l3 3" '+S1+' stroke-width="3.200"/>';
 IC.tnt='<circle cx="10.5" cy="14.5" r="7.5" fill="#3a3438" '+S1+' stroke-width="1.6"/><path d="M15.5 9l3-3" '+S1+' stroke-width="2.4"/><path d="M18.5 6l.8-3M18.5 6l3-.6M18.5 6l2.4 1.800" stroke="#ff8a1f" stroke-width="1.8" stroke-linecap="round"/><path d="M7 12a4 4 0 0 1 3-2" stroke="#fff" stroke-width="1.6" stroke-linecap="round" fill="none"/>';
 AI.shop='<path d="M5 9h14l-1.5 11.5h-11z" fill="currentColor"/><path d="M9 9V7a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round"/>';
 
@@ -1888,7 +1890,7 @@ function explode(x,y){
 }
 
 /* ---------- Spielfigur ---------- */
-const P={mode:'walk',x:820,y:0,vx:0,vy:0,on:true,landed:false,gs:0,face:1,chute:false,air:0,run:0,ang:0,turbo:0,soot:0,hurt:0,track:null,s:0,v:0,arm:.75,load:0,digT:0,climb:0,lift:0,da:0,bed:0,ball:0,spin:0,rot:0,frost:0,jet:false,back:false,balT:0,wall:false,zip:null};
+const P={mode:'walk',x:820,y:0,vx:0,vy:0,on:true,landed:false,gs:0,face:1,chute:false,air:0,run:0,ang:0,turbo:0,soot:0,hurt:0,track:null,s:0,v:0,arm:.75,load:0,digT:0,climb:0,lift:0,da:0,bed:0,ball:0,spin:0,rot:0,frost:0,jet:false,back:false,balT:0,wall:false,zip:null,swing:0};
 function grav(){ return P.y<-1700?G*.3:G; }
 const parked={car:null,plane:null,rocket:null,bagger:null,loader:null,dumper:null,tbm:null,sub:null,balloon:null,heli:null,boat:null,bug:null};
 let ghost=null, chest=null;
@@ -2050,6 +2052,7 @@ function doAction(){
     if(deepAct()) return;
     if(nearStall()){ openMarket(); return; }
     if(nearLift()){ rideLift(); return; }
+    if(HANDT[tool]){ handDig(); return; }
     if(P.on){ P.vy=-400*(FX.sugar>0?1.3:1)*(FX.tiny>0?.8:1); P.on=false; P.air=0; sfx('jump'); }
     else P.chute=!P.chute;
   }else if(P.mode==='car'){
@@ -2277,6 +2280,8 @@ function update(dt){
     if(popM) spawn(9,P.x+16,P.y-74,0,-55,.9,17,'+'+popM,'#7fe3f0');
     popG=0; popM=0; popT=.4;
   }
+  if(P.swing>0) P.swing=Math.max(0,P.swing-dt*5);
+  if(keys.a&&HANDT[tool]&&P.mode==='walk'&&!paused&&!nearBoard()&&!zipNear()&&!deepIcon()) handDig();
   if(P.zip) zipRide(dt);
   else if(P.mode==='walk') updWalk(dt,ix,u,d);
   else if(P.mode==='car') updCar(dt,ix,u,d);
@@ -2414,6 +2419,7 @@ function paintAt(wx,wy){
 }
 function paintStep(){
   if(!tool||tool==='track'||tool==='rope') return;
+  if(HANDT[tool]){ pointers.forEach(function(p){ const w=toWorld(p.x,p.y); if(Math.hypot(w[0]-P.x,w[1]-P.y+20)<95) handDig(w[0],w[1]); }); return; }
   pointers.forEach(function(p){
     const w=toWorld(p.x,p.y);
     if(tool==='tnt'){ if(!p.has){ p.has=true; dropBomb(w[0],w[1]); } return; }
@@ -4520,6 +4526,48 @@ function drawZips(x0,x1){
   if(P.zip){ ctx.fillStyle=INK; circle(P.x,P.y-46,4.5); ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(P.x,P.y-46); ctx.lineTo(P.x,P.y-40); ctx.stroke(); }
   pointers.forEach(function(p){ if(tool==='rope'&&p.rs){ const w=toWorld(p.x,p.y); ctx.strokeStyle='#a0632f'; ctx.lineWidth=4; ctx.setLineDash([10,9]); ctx.beginPath(); ctx.moveTo(p.rs[0],p.rs[1]); ctx.lineTo(w[0],w[1]); ctx.stroke(); ctx.setLineDash([]); } });
 }
+/* Schaufel und Spitzhacke: zu Fuß graben, ohne Akku. Die Schaufel ist schnell, schafft aber nur Erde, Sand und Schnee. Die Spitzhacke schafft auch Fels und Eis, nur langsamer. Harte Schichten bleiben wie beim Bagger dem Bohrer vorbehalten. Aktionstaste gräbt nach vorn, mit Runter nach unten. */
+const HANDT={shovel:1,pick:1}, SOFT={4:1,14:1};
+let handT=0, handHint=0;
+function handDig(wx,wy){
+  if(P.mode!=='walk'||P.zip||time<handT) return 0;
+  const sh=tool==='shovel', r=(sh?15:12)*(1+.12*hero.up.dig);
+  handT=time+(sh?.14:.22); P.swing=1;
+  if(wx===undefined){ if(keys.d){ wx=P.x; wy=P.y+9; } else{ wx=P.x+P.face*15; wy=P.y-20; } }
+  else if(Math.abs(wx-P.x)>4) P.face=wx>P.x?1:-1;
+  const c0=Math.floor((wx-r)/CELL), c1=Math.floor((wx+r)/CELL), r0=Math.floor((wy-r*1.5-TOP)/CELL), r1=Math.floor((wy+r*1.5-TOP)/CELL);
+  let n=0, hard=0;
+  for(let cy=r0;cy<=r1;cy++) for(let cx=c0;cx<=c1;cx++){
+    if(!inGrid(cx,cy)) continue;
+    const dx=(cx+.5)*CELL-wx, dy=(TOP+(cy+.5)*CELL-wy)/1.5;
+    if(dx*dx+dy*dy>r*r) continue;
+    const i=cy*GX+cx, m=grid[i];
+    if(m<4) continue;
+    if(sh&&!SOFT[m]){ if(m!==BED&&m!==CORE&&m!==SHELL) hard++; continue; }
+    n+=take(i);
+  }
+  if(n){
+    sfx('dig');
+    for(let k=0;k<4;k++) spawn(3,wx+(Math.random()-.5)*16,wy+(Math.random()-.5)*16,(Math.random()-.5)*140-P.face*40,-60-Math.random()*100,.5,2.5+Math.random()*2);
+    if(chest&&!chest.open&&Math.hypot(wx-chest.x,wy-chest.y)<40) chest.open=true;
+  }else if(hard){
+    sfx('tick'); for(let k=0;k<3;k++) spawn(5,wx,wy,(Math.random()-.5)*160,-50-Math.random()*90,.4,2);
+    if(time>handHint){ handHint=time+60; say('','Tock! Das ist zu hart für die Schaufel. Nimm die Spitzhacke.'); pulse('tool-pick'); }
+  }
+  return n;
+}
+function drawHandTool(){
+  if(!HANDT[tool]||P.mode!=='walk'||P.zip) return;
+  const ks=kidScale(), sw=P.swing||0, dn=keys.d;
+  ctx.save(); ctx.translate(P.x+P.face*5*ks,P.y-22*ks); ctx.scale(P.face*ks,ks);
+  ctx.rotate((dn?1.3:.2)-sw*1.4);
+  ctx.strokeStyle=INK; ctx.lineWidth=4.5; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(22,0); ctx.stroke();
+  ctx.strokeStyle='#a0632f'; ctx.lineWidth=2.6; ctx.stroke();
+  ctx.fillStyle=INK;
+  if(tool==='shovel'){ ctx.beginPath(); ctx.moveTo(20,-6); ctx.lineTo(33,-5); ctx.quadraticCurveTo(38,0,33,5); ctx.lineTo(20,6); ctx.closePath(); ctx.fill(); ctx.fillStyle='#b9c4cf'; ctx.beginPath(); ctx.moveTo(21.5,-4.5); ctx.lineTo(32,-3.5); ctx.quadraticCurveTo(35.5,0,32,3.5); ctx.lineTo(21.5,4.5); ctx.closePath(); ctx.fill(); }
+  else{ ctx.beginPath(); ctx.moveTo(21,-14); ctx.quadraticCurveTo(28,-4,21,0); ctx.quadraticCurveTo(28,4,21,14); ctx.lineTo(25,0); ctx.closePath(); ctx.fill(); ctx.lineWidth=5; ctx.strokeStyle=INK; ctx.beginPath(); ctx.moveTo(22,-13); ctx.quadraticCurveTo(29,0,22,13); ctx.stroke(); ctx.lineWidth=2.6; ctx.strokeStyle='#b9c4cf'; ctx.stroke(); }
+  ctx.restore();
+}
 function sonar(){
   FX.sonar=7; blip(1500,1500,.5,'sine',.07);
   for(let i=0;i<16;i++){ const a=i/16*TAU; spawn(5,P.x+Math.cos(a)*14,P.y-16+Math.sin(a)*14,Math.cos(a)*160,Math.sin(a)*160,.6,2); }
@@ -6424,7 +6472,7 @@ function sySudoku(st){ return 'In jeder Reihe und in jeder Spalte darf jedes Bil
 
 /* ---------- Tasten ---------- */
 const VEH=[['walk','Laufen'],['ski','Ski fahren'],['car','Auto'],['plane','Flugzeug'],['rocket','Rakete'],['bagger','Bagger'],['loader','Radlader'],['dumper','Kipper'],['tbm','Tunnelbohrmaschine'],['sub','U-Boot'],['balloon','Heißluftballon'],['heli','Hubschrauber'],['boat','Segelboot'],['bug','Kletterkäfer'],['coaster','Achterbahn fahren'],['dragon','Auf Mama Glut fliegen']];
-const TOOLS=[['tnt','Bombe legen'],['lava','Lava malen'],['fire','Feuer malen'],['water','Wasser malen'],['ice','Eis malen'],['earth','Erde malen'],['blocks','Bauklötze setzen'],['track','Schiene malen'],['erase','Radierer'],['snow','Schnee malen'],['ball','Schneeball werfen'],['man','Schneemann bauen'],['fw','Feuerwerk zünden'],['rope','Seilrutsche spannen']];
+const TOOLS=[['tnt','Bombe legen'],['lava','Lava malen'],['fire','Feuer malen'],['water','Wasser malen'],['ice','Eis malen'],['earth','Erde malen'],['blocks','Bauklötze setzen'],['track','Schiene malen'],['erase','Radierer'],['snow','Schnee malen'],['ball','Schneeball werfen'],['man','Schneemann bauen'],['fw','Feuerwerk zünden'],['rope','Seilrutsche spannen'],['shovel','Schaufel'],['pick','Spitzhacke']];
 const MODES=VEH.map(function(v){return v[0];}), TOOLN=TOOLS.map(function(t){return t[0];});
 function svg24(inner){ return '<svg viewBox="0 0 24 24" aria-hidden="true">'+inner+'</svg>'; }
 const LOCK='<span class="lock">'+svg24(QI.lock)+'</span>';
@@ -6445,7 +6493,8 @@ $('garage-cards').innerHTML=VEH.map(function(v){
   return '<button class="card pick'+(cool?' cool':'')+'" id="mode-'+v[0]+'" data-mode="'+v[0]+'" aria-label="'+v[1]+'" aria-pressed="false">'+svg24(IC[v[0]])+(cool?LOCK:'')+'</button>';
 }).join('');
 $('tool-cards').innerHTML=TOOLS.map(function(t){
-  return '<button class="card pick cool" id="tool-'+t[0]+'" data-tool="'+t[0]+'" aria-label="'+t[1]+'" aria-pressed="false">'+svg24(IC[t[0]])+LOCK+(t[0]==='tnt'?'<span class="badge" id="tnt-n" hidden>0</span>':'')+'</button>';
+  const cool=!HANDT[t[0]];
+  return '<button class="card pick'+(cool?' cool':'')+'" id="tool-'+t[0]+'" data-tool="'+t[0]+'" aria-label="'+t[1]+'" aria-pressed="false">'+svg24(IC[t[0]])+(cool?LOCK:'')+(t[0]==='tnt'?'<span class="badge" id="tnt-n" hidden>0</span>':'')+'</button>';
 }).join('');
 $('cards').innerHTML=TASKS.map(function(t){
   return '<button class="card" data-task="'+t.id+'" aria-label="'+t.name+'"><svg class="pic" viewBox="0 0 48 48" aria-hidden="true">'+PIC[t.id]+'</svg><svg class="got" viewBox="0 0 24 24" aria-hidden="true" hidden>'+IC.star+'</svg></button>';
@@ -6475,6 +6524,7 @@ document.querySelectorAll('[data-mode]').forEach(function(b){ b.addEventListener
 document.querySelectorAll('[data-tool]').forEach(function(b){ b.addEventListener('click',function(){
   $('toolbox').hidden=true;
   if(b.dataset.tool==='tnt'&&hero.tnt<=0){ openMarket(); return; }
+  if(HANDT[b.dataset.tool]){ if(P.mode!=='walk') setMode('walk'); setTool(b.dataset.tool); return; }
   need(function(){ setTool(b.dataset.tool); });
 }); });
 tap($('btn-veh'),function(){ $('garage').hidden=false; });
@@ -6746,10 +6796,10 @@ function closeQuiz(){
   try{ if(window.speechSynthesis) window.speechSynthesis.cancel(); }catch(_){}
   const f=pending; pending=null;
   if(energy>0){ if(f) f(); }
-  else{ setTool(null,true); if(P.mode!=='walk'){ const air=!P.on; setMode('walk'); if(air){ P.chute=true; P.vy=Math.min(P.vy,0); } } pulse('batt'); }
+  else{ if(!HANDT[tool]) setTool(null,true); if(P.mode!=='walk'){ const air=!P.on; setMode('walk'); if(air){ P.chute=true; P.vy=Math.min(P.vy,0); } } pulse('batt'); }
 }
 function drain(dt){
-  if(P.mode!=='walk'||tool){
+  if(P.mode!=='walk'||(tool&&!HANDT[tool])){
     energy-=dt;
     if(energy<=0){ energy=0; battLow=false; $('batt').classList.remove('low'); renderBatt(); openQuiz(null); return; }
     /* Kurz vor leer blinkt der Akku und tickt, damit die Lernaufgabe nicht aus dem Nichts kommt. */
@@ -7628,6 +7678,7 @@ function draw(){
   if(P.mode==='walk'){
     if(P.chute) drawChute(P.x,P.y);
     drawKid(P.x,P.y,P.face,P.on?P.run:1.1,!!P.zip||P.chute||(!P.on&&P.vy>220));
+    drawHandTool();
   }
   else if(P.mode==='car') drawCar(P.x,P.y,P.ang,P.face,true,P.turbo>0);
   else if(P.mode==='bagger') drawBagger(P.x,P.y,P.ang,P.face,P.arm,P.load,true);
@@ -7735,7 +7786,7 @@ function draw(){
 function actIcon(){
   if(P.zip) return 'jump';
   if(P.mode==='walk'){ if(zipNear()) return 'hook'; if(nearBoard()) return 'mis'; const da=deepIcon(); if(da) return da; }
-  if(P.mode==='walk') return nearStall()?'shop':nearLift()?'lift':(P.chute?'down':(P.on||P.air<.15?'jump':'chute'));
+  if(P.mode==='walk') return nearStall()?'shop':nearLift()?'lift':HANDT[tool]?'dig':(P.chute?'down':(P.on||P.air<.15?'jump':'chute'));
   if(P.mode==='ski') return nearLift()?'lift':(P.on||P.ball>0?'jump':'spin');
   if(P.mode==='dragon') return 'flame';
   if(P.mode==='sub') return 'sonar';
