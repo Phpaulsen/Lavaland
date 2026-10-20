@@ -12,6 +12,9 @@ Graben, bauen, entdecken. Laufen ist immer frei. Was mächtig ist (Bohrer, Raket
 - **Planeten**: Mond, Eisplanet, Blubberplanet und kleine Planeten sind eigene Welten mit Unterwelt. Ganz unten liegt ein Planetenkern.
 - **Karte und Leuchtmarken**: Die Karte zeigt nur, was schon erkundet ist. Leuchtmarken markieren Orte unter der Erde, auf der Karte kann man zu ihnen springen.
 - **Lagerfeuer**: Nach einem geschafften Abschnitt kommt ein Haltepunkt mit Tagesbilanz. Weiterspielen geht immer.
+- **Fahrzeuge und Werkzeuge**: Heißluftballon, Hubschrauber mit Lastenhaken, Segelboot, Kletterkäfer, Seilrutsche. Schaufel und Spitzhacke graben zu Fuß, Pfeil und Bogen treffen Zielscheiben und Glibbermonster in Höhlen.
+- **Missionen** am Missionsbrett: Küken retten, Pakete nach Zahlen ausliefern, Schatzkarte mit Plusaufgabe, Obstkorb abzählen, Feuerwehr, Flaggen auf Planetengipfeln.
+- **Entdecken**: Geysire, Sternschnuppen, Schiffswrack, Sternwarte (Sterne zählen), Glühwürmchen, Kristallharfe, Vulkanausbruch.
 
 Bewusst nicht drin: Serienbelohnungen, Lootboxen, Wartezeiten, Sperren.
 
@@ -43,6 +46,9 @@ In der Elternansicht lässt sich außerdem einstellen:
 - **Spielzeit am Tag**: Ist sie erreicht, kommt das Lagerfeuer mit Gute-Nacht-Ansage, danach alle 10 Minuten wieder. Das Spiel sperrt nicht.
 - **Spielstand sichern**: Erinnerung, wenn lange nicht gesichert wurde.
 - **Stolperaufgaben**: Welche Aufgaben oft falsch sind.
+- **Spielwelt**: Höhlenmonster aus, ruhige Darstellung (kein Wackeln, Blinken, weniger Funken). Die ruhige Darstellung gilt auch, wenn das Gerät „Bewegung reduzieren“ eingestellt hat.
+
+Am Rechner gibt es Tastenkürzel: Pfeile/WASD laufen, F Fahrzeuge, T Werkzeug, K Karte, E Aufgabe, B Buch, M Menü, X Aussteigen, ? zeigt die Liste.
 
 ## Datenschutz
 
@@ -55,7 +61,8 @@ In der Elternansicht lässt sich außerdem einstellen:
 
 Alles steckt in `index.html` (Spiel, Grafik, Töne), dazu `sw.js` für den Offline-Betrieb. Kein Build-Schritt: Datei öffnen genügt.
 
-- **Tests**: `tests/smoke.mjs` startet das Spiel in einem Handy-Browser und prüft Start, Laufen, eine Lernaufgabe, Elternansicht, Planetenreise und Neuladen. Lokal: `npm i --no-save playwright && npx playwright install chromium && node tests/smoke.mjs`. `tests/offline.mjs` prüft, dass die App nach dem ersten Besuch ohne Netz startet, `tests/upgrade.mjs`, dass ein Spielstand der Live-Version (main) nach dem Update weiterläuft. Alles läuft automatisch bei jedem PR.
+- **Tests**: `tests/smoke.mjs` startet das Spiel in einem Handy-Browser und prüft Start, Laufen, eine Lernaufgabe, Elternansicht, Planetenreise und Neuladen. Lokal: `npm i --no-save playwright && npx playwright install chromium && node tests/smoke.mjs`. `tests/offline.mjs` prüft, dass die App nach dem ersten Besuch ohne Netz startet, `tests/upgrade.mjs`, dass ein Spielstand der Live-Version (main) nach dem Update weiterläuft. `tests/static.mjs` prüft ohne Browser Syntax, Größenbudget, Element-IDs und dass keine fremden Skripte geladen werden. `tests/fuzz.mjs` spielt zufällig (Startwert `FUZZ_SEED`, Dauer `FUZZ_SEC`) und schlägt bei jedem Seitenfehler an. Alles läuft automatisch bei jedem PR.
+- **Absturzschutz**: Ein Fehler in einem Nebensystem (Monster, Geysire, Missionen …) hält das Spiel nicht an. Nach drei Fehlern wird nur dieses System abgeschaltet und in `lavaland-err` vermerkt.
 - **Jeder Merge auf `main` geht sofort live** (GitHub Pages). Deshalb nur über PRs mit grünem Test.
 - **Spielstand nie brechen**: Speicherformate nur rückwärtskompatibel ändern. Neue Daten bekommen neue Schlüssel, alte Schlüssel bleiben lesbar. Weltgenerierung neuer Dinge mit eigenem Zufallsstrom, damit bestehende Welten gleich bleiben.
 - **Service Worker**: Bei Änderungen an der Dateiliste in `sw.js` die Versionsnummer `CACHE` hochzählen. Die Seite selbst lädt immer zuerst aus dem Netz.
@@ -73,6 +80,7 @@ Gespeicherte Daten (alles nur auf dem Gerät):
 | localStorage `lavaland-realm`, `-fog*`, `-marks*` | aktuelle Welt, Karte, Leuchtmarken |
 | localStorage `lavaland-mute`, `-lefty`, `-psst`, `-news`, `-bak-at` | Einstellungen und Hinweise |
 | localStorage `lavaland-voice` | Vorlesestimme und Tempo |
+| localStorage `lavaland-opt` | Höhlenmonster an/aus, ruhige Darstellung |
 | localStorage `lavaland-err` | die letzten 20 technischen Fehler (Elternansicht) |
 
 ## Lizenz

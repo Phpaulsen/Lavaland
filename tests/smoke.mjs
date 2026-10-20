@@ -124,6 +124,60 @@ test('Glühwürmchen fangen', async ({ ev, page }) => {
   await ev('nightOn=false; nightA=0; JAR=[]; FLIES=[]');
 });
 
+test('Kristallharfe von klein nach groß', async ({ ev, page }) => {
+  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk'); for(const k in FX) FX[k]=0; teleport(HARPS[0].x0-80)");
+  await page.waitForTimeout(800);
+  const g = await ev('gold');
+  for (let i = 0; i < 5; i++) { await ev('OVS.forEach(o=>o.hidden=true); P.x=HARPS[0].x0+' + i + '*34; P.y=ground(P.x); P.vy=0'); await page.waitForTimeout(150); }
+  if (!(await ev('gold') > g) || !(await ev('orbGot[HARPS[0].k]'))) throw new Error('Tonleiter nicht erkannt');
+  await ev('teleport(1500)'); await page.waitForTimeout(500);
+});
+
+test('Vulkanausbruch wirft Lavabrocken', async ({ ev, page }) => {
+  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk'); METS=[]; MROCKS=[]; P.x=2380; P.y=surfaceY(P.x); P.vy=0; eruT=0");
+  await page.waitForTimeout(2400);
+  if (!(await ev('MROCKS.length') >= 1)) throw new Error('kein Lavabrocken gelandet');
+  await ev('MROCKS=[]; METS=[]; teleport(1500)'); await page.waitForTimeout(500);
+});
+
+test('Elternansicht: Monster aus, ruhige Darstellung an', async ({ ev, page }) => {
+  await ev("OVS.forEach(o=>o.hidden=true); paused=false; parOpen()"); await page.waitForTimeout(1500);
+  await ev("$('par-body').querySelector('[data-opt=mon0]').click()"); await page.waitForTimeout(800);
+  await ev("$('par-body').querySelector('[data-opt=calm1]').click()"); await page.waitForTimeout(800);
+  if (await ev('OPT.mon') || !(await ev('OPT.calm && reduced && document.body.classList.contains("calm")'))) throw new Error('Optionen nicht übernommen');
+  await ev("$('par').hidden=true; MONS.push({x:P.x,y:P.y,lv:0,face:1,hp:1,hit:0,sq:0,vx:0,vy:0,t:0}); paused=false"); await page.waitForTimeout(300);
+  if (await ev('MONS.length')) throw new Error('Monster trotz aus');
+  await ev("OPT.mon=true; OPT.calm=false; reduced=reducedSys; document.body.classList.remove('calm'); optSave()");
+});
+
+test('Tastenkürzel: F öffnet Fahrzeuge, X steigt aus', async ({ ev, page }) => {
+  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk')");
+  await page.keyboard.press('f'); await page.waitForTimeout(200);
+  if (await ev("$('garage').hidden")) throw new Error('F öffnet die Garage nicht');
+  await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+  await ev("energy=MAXE; setMode('car')"); await page.keyboard.press('x'); await page.waitForTimeout(200);
+  if (await ev('P.mode') !== 'walk') throw new Error('X steigt nicht aus');
+});
+
+test('Absturzschutz: kaputtes Nebensystem friert das Spiel nicht ein', async ({ ev, page, errs }) => {
+  const n = errs.length;
+  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk'); for(const k in FX) FX[k]=0; teleport(1200); window.__keep=SIDE.slice(); SIDE.push(function testKaputt(){ throw new Error('Test: absichtlich kaputt'); })");
+  const x0 = await ev('P.x');
+  await page.keyboard.down('ArrowRight'); await page.waitForTimeout(1000); await page.keyboard.up('ArrowRight');
+  const moved = Math.abs(await ev('P.x') - x0);
+  const logged = await ev("errLoad().some(e=>/testKaputt \\(abgeschaltet\\)/.test(e.w))");
+  await ev('SIDE.length=0; window.__keep.forEach(f=>SIDE.push(f)); localStorage.removeItem(ERRK)');
+  errs.length = n;
+  if (moved < 20) throw new Error('Spiel steht nach Fehler still');
+  if (!logged) throw new Error('Fehler nicht im Protokoll');
+});
+
+test('Teilchen-Grenze hält, Ausrufe kommen trotzdem', async ({ ev }) => {
+  const r = await ev("(function(){ for(let i=0;i<3000;i++) spawn(6,P.x,P.y,0,-100,2,3,'#fff'); shout(P.x,P.y-50,'TEST'); return {n:parts.length,max:pmax(),last:parts[parts.length-1].c}; })()");
+  if (r.n > r.max) throw new Error('zu viele Teilchen: ' + r.n);
+  if (r.last !== 'TEST') throw new Error('Ausruf verdrängt');
+});
+
 test('Reise zum Mond und zurück', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; travel('moon')");
   await page.waitForTimeout(3500);
@@ -157,7 +211,7 @@ let failed = 0;
 for (const t of tests) {
   const n = errs.length;
   try {
-    await t.fn({ ev, page });
+    await t.fn({ ev, page, errs });
     if (errs.length > n) throw new Error('Seitenfehler: ' + errs.slice(n).join(' | '));
     console.log('ok   ' + t.name);
   } catch (e) {
