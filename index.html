@@ -7761,7 +7761,16 @@ window.addEventListener('keydown',function(e){
   const k=keymap[e.key];
   if(k){ if(!e.repeat) keyTap(k); keys[k]=true; e.preventDefault(); }
   else if(e.key===' '){ if(!e.repeat){ keys.a=true; doAction(); } e.preventDefault(); }
+  else if(!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey) keyShort(e.key.toLowerCase());
 });
+/* Tastenkürzel für Tablet-Tastatur und Laptop: dieselben Knöpfe wie oben in der Leiste. Fragezeichen zeigt die Liste. */
+const SHORT={f:'btn-veh',t:'btn-tool',k:'btn-map',e:'batt',b:'btn-story',m:'btn-menu'};
+function keyShort(k){
+  if(k==='x'){ if(P.mode!=='walk') setMode('walk'); else if(tool) setTool(null,true); return; }
+  if(k==='?'||k==='h'){ banner('⌨️ F Fahrzeuge · T Werkzeug · K Karte · E Aufgabe · B Buch · M Menü · X Aussteigen',4200); return; }
+  const el=SHORT[k]&&$(SHORT[k]);
+  if(el&&!el.hidden&&el.offsetParent) el.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}));
+}
 window.addEventListener('keyup',function(e){ const k=keymap[e.key]; if(k) keys[k]=false; if(e.key===' ') keys.a=false; });
 window.addEventListener('blur',function(){ keys.l=keys.r=keys.u=keys.d=keys.a=false; });
 document.addEventListener('contextmenu',function(e){ e.preventDefault(); });

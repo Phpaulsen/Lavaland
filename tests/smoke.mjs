@@ -150,6 +150,15 @@ test('Elternansicht: Monster aus, ruhige Darstellung an', async ({ ev, page }) =
   await ev("OPT.mon=true; OPT.calm=false; reduced=reducedSys; document.body.classList.remove('calm'); optSave()");
 });
 
+test('Tastenkürzel: F öffnet Fahrzeuge, X steigt aus', async ({ ev, page }) => {
+  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk')");
+  await page.keyboard.press('f'); await page.waitForTimeout(200);
+  if (await ev("$('garage').hidden")) throw new Error('F öffnet die Garage nicht');
+  await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+  await ev("energy=MAXE; setMode('car')"); await page.keyboard.press('x'); await page.waitForTimeout(200);
+  if (await ev('P.mode') !== 'walk') throw new Error('X steigt nicht aus');
+});
+
 test('Reise zum Mond und zurück', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; travel('moon')");
   await page.waitForTimeout(3500);
