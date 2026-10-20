@@ -83,6 +83,16 @@ test('Schaufel gräbt zu Fuß ohne Akku', async ({ ev, page }) => {
   if (!(await ev("$('quiz').hidden"))) throw new Error('Schaufel hat die Lernaufgabe verlangt');
 });
 
+test('Sternschnuppe landet und gibt Gold', async ({ ev, page }) => {
+  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk'); P.x=1500; P.y=ground(1500); P.on=true; METS=[]; MROCKS=[]; nightOn=true; nightA=1; METS.push({x:P.x-300,y:P.y-400,vx:0,vy:0,t:.05,land:true,tr:[]})");
+  await page.waitForTimeout(400);
+  if (await ev('MROCKS.length') !== 1) throw new Error('kein Sternstein gelandet');
+  const g = await ev('gold');
+  await ev('P.x=MROCKS[0].x; P.y=ground(P.x); P.vy=0'); await page.waitForTimeout(400);
+  if (await ev('MROCKS.length') || !(await ev('gold') > g)) throw new Error('Sternstein nicht aufgehoben');
+  await ev('nightOn=false; nightA=0; metNext=time+999');
+});
+
 test('Reise zum Mond und zurück', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; travel('moon')");
   await page.waitForTimeout(3500);
