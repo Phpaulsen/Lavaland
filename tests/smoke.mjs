@@ -114,6 +114,20 @@ test('Reise zum Mond und zurück', async ({ ev, page }) => {
   if (await ev('realm') !== '') throw new Error('Nicht zurück auf der Erde');
 });
 
+test('Vorlesen nimmt die Aufnahmen, fehlende Sätze die Browserstimme', async ({ ev, page }) => {
+  await page.waitForFunction(() => window.__ev('VCLIP!==null'), null, { timeout: 5000 });
+  const r = await ev(`(function(){ talkLock=0; localStorage.removeItem('lavaland-vmiss');
+    const u=speak('Hallo! Wie viel ist 3 plus 4?'), ids=speakSplit('Hallo! Wie viel ist 3 plus 4?').map(s=>VCLIP[s]);
+    speak('Diesen Satz gibt es nicht als Aufnahme.');
+    return {clip:!!u&&!('text' in u), ids:ids, miss:localStorage.getItem('lavaland-vmiss')};
+  })()`);
+  if (!r.clip || r.ids.length !== 2 || !r.ids.every(Boolean)) throw new Error('Keine Aufnahme benutzt: ' + JSON.stringify(r));
+  if (!/Diesen Satz/.test(r.miss || '')) throw new Error('Fehlender Satz nicht gemerkt');
+  const ok = await page.evaluate(id => window.__ev(`clipGet('${id}').then(u=>!!u)`), r.ids[1]);
+  if (!ok) throw new Error('Aufnahme nicht ladbar');
+  if (await ev("synthText('Hier fehlt die 8. 21 und 100 – 🐻')") !== 'Hier fehlt die acht. einundzwanzig und einhundert,') throw new Error('Zahlwörter falsch: ' + await ev("synthText('Hier fehlt die 8. 21 und 100 – 🐻')"));
+});
+
 test('Spielstand übersteht Neuladen', async ({ ev, page }) => {
   await ev('OVS.forEach(o=>o.hidden=true); paused=false; gold=4321; saveFinds(); saveGame(false)');
   await page.waitForTimeout(1500);
