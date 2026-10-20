@@ -2451,12 +2451,21 @@ function jingle(){
     });
   }catch(_){}
 }
+/* Vorlesestimme: Eltern können in der Elternansicht Stimme und Tempo wählen. Ohne Wahl nimmt der Browser seine deutsche Standardstimme. */
+const VRATES=[.75,.95,1.1];
+let VOICE={v:'',r:.95};
+try{ const o=JSON.parse(localStorage.getItem('lavaland-voice')||'null'); if(o&&typeof o==='object'){ if(typeof o.v==='string') VOICE.v=o.v.slice(0,120); if(VRATES.indexOf(o.r)>=0) VOICE.r=o.r; } }catch(_){}
+function voicesDe(){ try{ return speechSynthesis.getVoices().filter(function(v){ return /^de([-_]|$)/i.test(v.lang); }); }catch(_){ return []; } }
+function voiceGet(){ if(!VOICE.v) return null; return voicesDe().find(function(v){ return v.name===VOICE.v; })||null; }
+try{ if('speechSynthesis' in window) speechSynthesis.addEventListener('voiceschanged',function(){ if(typeof parLoad==='function'&&!$('par').hidden) parLoad(); }); }catch(_){}
+function voiceSave(){ try{ localStorage.setItem('lavaland-voice',JSON.stringify(VOICE)); }catch(_){} }
 function speak(text){
   try{
     if(performance.now()<talkLock&&performance.now()-tapT>450) return;
     if(muted||!('speechSynthesis' in window)) return;
     const u=new SpeechSynthesisUtterance(text);
-    u.lang='de-DE'; u.rate=.95; u.pitch=1.1;
+    u.lang='de-DE'; u.rate=VOICE.r; u.pitch=1.1;
+    const vo=voiceGet(); if(vo) u.voice=vo;
     window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
     return u;
   }catch(_){}
@@ -7543,6 +7552,7 @@ function parRender(o){
   h=parNews()+h;
   h+=parSchool();
   h+=parSafe();
+  h+=parVoice();
   h+='<h3>Zeit</h3>';
   if(!act) h+='<p>Noch keine Spielzeit in diesem Zeitraum.</p>';
   else{
@@ -7635,6 +7645,17 @@ function parErr(){
   let h='<h3>Technische Fehler</h3><p>Diese Fehler sind im Spiel aufgetreten. Für eine Fehlermeldung kopieren und weitergeben, es stehen keine persönlichen Daten darin.</p><table class="par-err">';
   a.slice().reverse().forEach(function(e){ h+='<tr><td>'+new Date(e.t).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</td><td>'+esc(e.m)+(e.w?' <small>('+esc(e.w)+')</small>':'')+(e.n>1?' ×'+(e.n|0):'')+'</td></tr>'; });
   return h+'</table><div class="par-act"><button id="par-errc">Kopieren</button><button id="par-errx">Löschen</button></div>';
+}
+function parVoice(){
+  if(!('speechSynthesis' in window)) return '';
+  const vs=voicesDe();
+  let h='<h3>Vorlesen</h3><p>Tempo der Vorlesestimme:</p><div class="par-tabs">'+VRATES.map(function(r,i){ return '<button data-vr="'+r+'"'+(VOICE.r===r?' class="on"':'')+'>'+['langsam','normal','schnell'][i]+'</button>'; }).join('')+'</div>';
+  if(vs.length>1){
+    h+='<p>Stimme:</p><div class="par-tabs par-voices"><button data-vv=""'+(!VOICE.v?' class="on"':'')+'>Standard</button>';
+    vs.forEach(function(v){ h+='<button data-vv="'+esc(v.name)+'"'+(VOICE.v===v.name?' class="on"':'')+'>'+esc(v.name.replace(/^(Google|Microsoft)\s*/,'').replace(/\s*\(.*\)$/,'').slice(0,28))+(v.localService?'':' ☁')+'</button>'; });
+    h+='</div>';
+  }
+  return h+'<div class="par-act"><button id="par-vt">Probe hören</button></div>'+(vs.some(function(v){ return !v.localService; })?'<p class="par-note">☁ = braucht Internet.</p>':'');
 }
 /* Stolperaufgaben: Fakten, die im Zeitraum oft nicht auf Anhieb saßen, mit der häufigsten falschen Antwort. Daten aus der Sicherung gelten als fremd, darum wird alles maskiert. */
 function esc(t){ return String(t).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
@@ -7783,6 +7804,9 @@ $('par-body').addEventListener('click',function(e){
     return;
   }
   if(e.target.closest('#par-errx')){ try{ localStorage.removeItem(ERRK); }catch(_){} parLoad(); return; }
+  const vr=e.target.closest('[data-vr]'), vv=e.target.closest('[data-vv]');
+  if(vr||vv){ if(vr) VOICE.r=+vr.dataset.vr; else VOICE.v=vv.dataset.vv; voiceSave(); speak('Hallo! So klinge ich.'); parLoad(); return; }
+  if(e.target.closest('#par-vt')){ speak('Hallo! Wie viel ist drei plus vier?'); return; }
   if(e.target.closest('#par-bak')){ bakSave(); setTimeout(parLoad,1500); return; }
   if(e.target.closest('#par-sall')){ SCH.on=false; saveSchool(); parLoad(); return; }
   const lm=e.target.closest('[data-lim]');
