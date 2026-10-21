@@ -310,6 +310,19 @@ test('Zu hohe Fenster im Querformat lassen sich wischen, die Welt nicht', async 
   } finally { await page.setViewportSize(vp); await ev("OVS.forEach(o=>o.hidden=true); paused=false"); }
 });
 
+test('Dreimal am Tag falsch: Fakt ruht bis morgen', async ({ ev }) => {
+  const r = await ev(`(function(){
+    var bak=JSON.stringify(FS), k='rhy:Tanne', n=0, seen=0;
+    for(var i=0;i<3;i++) factDone({f:k},'miss');
+    for(var j=0;j<300;j++){ var f=pickFact(); lastF=f; if(f===k) seen++; }
+    var due=FS.f[k][1]-dayNo();
+    FS=JSON.parse(bak); retry.length=0; saveFacts();
+    return [seen,due];
+  })()`);
+  if (r[0]) throw new Error('Geparkter Fakt kam noch ' + r[0] + '× dran');
+  if (r[1] !== 1) throw new Error('Geparkter Fakt nicht morgen fällig: ' + r[1]);
+});
+
 test('Rätsel aus der Welt bleibt nach dem Antippen offen (kein Geister-Klick)', async ({ ev, page }) => {
   // Die Kamera schaut tiefer, damit die Maschine oben im Bild über dem Rätselblatt steht. Dort trifft der Klick nach dem Loslassen den Hintergrund, der das Fenster schließt.
   await ev("OVS.forEach(o=>o.hidden=true); paused=false; setTool(null,true); setMode('walk'); var m=MACH.find(m=>m.y===m.y); P.x=m.x+20; P.y=m.y; P.vx=P.vy=0; window.__m=m; window.__po=0; if(!window.__pzO){ window.__pzO=pzOpen; pzOpen=function(x){ __po++; return __pzO(x); }; } window.__pan=setInterval(function(){ pan.y=380; },10)");

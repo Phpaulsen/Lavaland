@@ -863,7 +863,7 @@ const QI={
   hose:'<path d="M6 3h12l1.500 18h-5L12 10l-2.500 11h-5z" fill="#3b6fd1" '+S1+' stroke-width="1.500"/><path d="M6 6h12" '+S1+' stroke-width="1.200"/>',
   rose:'<path d="M12 13v9" stroke="#2f8a3e" stroke-width="2" stroke-linecap="round"/><path d="M12 18c2-2 4-2 5-1-1 2-3 2-5 1z" fill="#3fa34d"/><circle cx="12" cy="8.500" r="5" fill="#e2423c" '+S1+' stroke-width="1.500"/><path d="M10 8.500c1-2 3-2 4 0-1 1.500-3 1.500-4 0z" fill="#b8312c"/>',
   tanne:'<path d="M12 2l6 8h-3l5 7H4l5-7H6z" fill="#2f8a4a" '+S1+' stroke-width="1.500"/><rect x="10.500" y="17" width="3" height="4.500" fill="#7a4a2c" '+S1+' stroke-width="1.200"/>',
-  kanne:'<path d="M6 8h9v12H6z" fill="#e5a33a" '+S1+' stroke-width="1.500"/><path d="M15 10l6-4M15 13l6-7" '+S1+' stroke-width="1.600"/><path d="M6 10c-3 0-3 6 0 6" '+S1+' stroke-width="1.600" fill="none"/>',
+  kanne:'<path d="M6 13.500L2 9.500" '+S1+' stroke-width="2.600"/><path d="M19 11.500c3.500 0 3.500 6 0 6" '+S1+' stroke-width="1.800" fill="none"/><path d="M5 12.500c0-2.500 3-4 7-4s7 1.500 7 4V16c0 3-3 4.500-7 4.500S5 19 5 16z" fill="#e5a33a" '+S1+' stroke-width="1.500"/><path d="M8 8.500c0-2.500 8-2.500 8 0z" fill="#f2c26b" '+S1+' stroke-width="1.400"/><circle cx="12" cy="5" r="1.300" fill="#f2c26b" '+S1+' stroke-width="1.200"/>',
   lock:'<path d="M8 10.5V7.500a4 4 0 0 1 8 0v3" fill="none" '+S1+' stroke-width="2.6"/><rect x="5" y="10.5" width="14" height="10.5" rx="2.5" fill="#ffd23f" '+S1+' stroke-width="1.6"/>'
 };
 
@@ -7515,7 +7515,7 @@ function qpic(key){ return '<svg class="qpic" viewBox="0 0 24 24" aria-hidden="t
 /* ---------- Lernkern: Jede Aufgabe ist ein eigener Fakt (7+5, Anlaut von Maus) mit einem Fach nach Leitner.
    Fach 1 kommt in derselben Runde wieder, Fach 2 morgen, dann nach 2, 4 und 8 Tagen. Fach 5 heißt: sitzt.
    Neue Fakten kommen in Schulbuch-Reihenfolge: bis 5, bis 10, bis 20 ohne und dann mit Zehnerübergang. ---------- */
-const BOXD=[0,0,1,2,4,8], NEWDAY=12, FASTMS=3000;
+const BOXD=[0,0,1,2,4,8], NEWDAY=12, FASTMS=3000, DAYMISS=3;
 function dayNo(t){ const d=t?new Date(t):new Date(); return Math.floor((d.getTime()-d.getTimezoneOffset()*6e4)/864e5); }
 const STAGES=(function(){
   const m=[[],[],[],[]], l=[[],[],[]];
@@ -7550,6 +7550,7 @@ function loadFacts(){
   if(!FS.nn||typeof FS.nn!=='object') FS.nn={m:0,l:0};
   if(!FS.ft||typeof FS.ft!=='object') FS.ft={m:0,l:0};
   ['m','l'].forEach(function(d){ FS.u[d]=clamp(FS.u[d]|0,0,STAGES[d].length-1); FS.nn[d]=FS.nn[d]|0; FS.ft[d]=FS.ft[d]|0; });
+  if(!FS.dm||typeof FS.dm!=='object'||!FS.dm.c||typeof FS.dm.c!=='object') delete FS.dm;
   for(const k in FS.f){ const r=FS.f[k]; if(!Array.isArray(r)||!(r[0]>=0)||!isFinite(r[1])) delete FS.f[k]; else r[0]=clamp(r[0]|0,0,5); }
 }
 function saveFacts(){ if(frozen) return; try{ localStorage.setItem('lavaland-facts',JSON.stringify(FS)); }catch(_){} }
@@ -7623,10 +7624,11 @@ function pickFact0(){
     }
   }
   /* Nichts fällig und nichts Neues: früh wiederholen, ohne dass das Fach steigt. */
-  const any=Object.keys(FS.f).filter(function(k){ return k!==lastF; });
+  const any=Object.keys(FS.f).filter(function(k){ return k!==lastF&&!fParked(k,today); });
   if(any.length){ any.sort(function(a,b){ return FS.f[a][1]-FS.f[b][1]; }); return any[ri(0,Math.min(4,any.length-1))]; }
   return STAGES.m[0][ri(0,STAGES.m[0].length-1)];
 }
+function fParked(k,today){ return !!FS.dm&&FS.dm.d===today&&FS.dm.c[k]>=DAYMISS; }
 /* how: 'ok' beim ersten Versuch, 'ok2' beim zweiten Versuch am Ziffernblock, 'miss' falsch. */
 function factDone(q,how,fast){
   const k=q.f, d=fDom(k), today=dayNo();
@@ -7636,7 +7638,11 @@ function factDone(q,how,fast){
   const wasDue=r[1]<=today;
   if(how==='miss'){
     r[0]=1; r[1]=today; FS.ft[d]=0;
-    retry.push({k:k,n:ri(2,3)});
+    /* Dreimal am selben Tag falsch: Der Fakt ruht bis morgen. Sonst kommt er immer wieder, und aus Üben wird Frust (Reim auf Tanne: 8 Fehler an einem Nachmittag). */
+    if(!FS.dm||FS.dm.d!==today) FS.dm={d:today,c:{}};
+    FS.dm.c[k]=(FS.dm.c[k]|0)+1;
+    if(fParked(k,today)){ r[1]=today+1; for(let i=retry.length-1;i>=0;i--) if(retry[i].k===k) retry.splice(i,1); }
+    else retry.push({k:k,n:ri(2,3)});
   }else if(how==='ok2'){
     r[0]=Math.max(1,r[0]); r[1]=today+1; FS.ft[d]=0;
   }else if(isNew&&fast){
