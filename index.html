@@ -144,7 +144,7 @@ body.lefty #mark{left:auto;right:15px}
 .eq{font-size:46px;font-weight:700;line-height:1.15;letter-spacing:.02em;font-variant-numeric:tabular-nums;white-space:nowrap}
 .eq.big{font-size:64px}
 .hole{display:inline-block;min-width:.9em;padding:0 .1em;border:3px dashed var(--ink);border-radius:10px;color:var(--lava);text-align:center}
-.objs{display:grid;grid-template-columns:repeat(5,36px);gap:4px}
+.objs{--ob:36px;display:grid;grid-template-columns:repeat(5,var(--ob));justify-content:center;gap:4px}
 .objs svg{width:36px;height:36px}
 .zf{display:inline-grid;grid-template-columns:repeat(5,34px);gap:5px;padding:7px;border:3px solid var(--ink);border-radius:10px;background:#fff}
 .zf i{width:34px;height:34px;border-radius:50%;border:2.5px solid #c9ced6;box-sizing:border-box}
@@ -550,7 +550,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
   .eq{font-size:38px}
   .eq.big{font-size:52px}
   .qpic{width:70px;height:70px}
-  .objs{grid-template-columns:repeat(5,30px)}
+  .objs{--ob:30px}
   .objs svg{width:30px;height:30px}
   .opt{height:54px}
   .opt.key{height:44px;font-size:26px}
@@ -7699,7 +7699,8 @@ function mkQ(k){
   let m;
   if((m=/^count:(\d+)$/.exec(k))){
     const n=+m[1]; q.type='count'; q.pad=true; q.ans=String(n);
-    q.html='<div class="objs">'+new Array(n+1).join('<svg viewBox="0 0 24 24" aria-hidden="true">'+IC.star+'</svg>')+'</div><div class="eq">'+HOLE+'</div>';
+    /* Höchstens fünf je Reihe (Kraft der 5), aber nie mehr Spalten als Sterne: Ein einzelner Stern steht sonst links am Rand und sieht nach Verzierung aus statt nach Aufgabe. */
+    q.html='<div class="objs" style="grid-template-columns:repeat('+Math.min(n,5)+',var(--ob))">'+new Array(n+1).join('<svg viewBox="0 0 24 24" aria-hidden="true">'+IC.star+'</svg>')+'</div><div class="eq">'+HOLE+'</div>';
     q.say='Wie viele Sterne sind das?'; q.sol=n===1?'Das ist ein Stern.':'Das sind '+n+' Sterne.';
   }else if((m=/^(\d+)([+-])(\d+)$/.exec(k))){
     const a=+m[1], b=+m[3], add=m[2]==='+', r=add?a+b:a-b;
