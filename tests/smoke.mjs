@@ -323,6 +323,25 @@ test('Dreimal am Tag falsch: Fakt ruht bis morgen', async ({ ev }) => {
   if (r[1] !== 1) throw new Error('Geparkter Fakt nicht morgen fällig: ' + r[1]);
 });
 
+test('Rätsel aus der Welt bleibt nach dem Antippen offen (kein Geister-Klick)', async ({ ev, page }) => {
+  // Die Kamera schaut tiefer, damit die Maschine oben im Bild über dem Rätselblatt steht. Dort trifft der Klick nach dem Loslassen den Hintergrund, der das Fenster schließt.
+  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setTool(null,true); setMode('walk'); var m=MACH.find(m=>m.y===m.y); P.x=m.x+20; P.y=m.y; P.vx=P.vy=0; window.__m=m; window.__po=0; if(!window.__pzO){ window.__pzO=pzOpen; pzOpen=function(x){ __po++; return __pzO(x); }; } window.__pan=setInterval(function(){ pan.y=380; },10)");
+  try {
+    await page.waitForTimeout(1500);
+    const pt = await ev(`(function(){
+      __pzO(__m); var r=$('pz-sheet').getBoundingClientRect(); pzClose();
+      for(var dy=6;dy>=-72;dy-=6){ var x=W/2+(__m.x-cam.x)*S, y=H/2+(__m.y+dy-cam.y)*S; if(y<r.top-8&&document.elementFromPoint(x,y)===$('c')) return [x,y]; }
+      return null; })()`);
+    if (!pt) throw new Error('Kein freier Punkt der Maschine über dem Rätselblatt');
+    await page.waitForTimeout(300);
+    const n = await ev('__po');
+    await page.touchscreen.tap(pt[0], pt[1]);
+    await page.waitForTimeout(500);
+    if (await ev('__po') === n) throw new Error('Antippen hat die Maschine nicht getroffen');
+    if (await ev("$('pz').hidden")) throw new Error('Rätsel nach dem Antippen sofort wieder zu ' + await ev('JSON.stringify(window.__dbg)'));
+  } finally { await ev("clearInterval(__pan); pzClose(); pzOpen=__pzO; OVS.forEach(o=>o.hidden=true); paused=false"); }
+});
+
 const srv = await serve();
 const url = 'http://127.0.0.1:' + srv.address().port + '/';
 const browser = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
