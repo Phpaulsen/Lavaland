@@ -8556,16 +8556,28 @@ const LOG=(function(){
     });
   }
   function open(){
-    if(!dbp){ dbp=op(0); dbp.catch(function(){ dbp=null; }); }
+    if(!dbp){ dbp=op(0).then(function(db){ db.onclose=function(){ dbp=null; }; return db; }); dbp.catch(function(){ dbp=null; }); }
     return dbp;
+  }
+  /* Android kann eine offene Datenbankverbindung jederzeit schließen (Speicherdruck, Hintergrund). Bisher blieb dann die tote Verbindung gemerkt:
+     Das Protokoll schrieb nichts mehr und die Elternansicht meldete „nicht lesbar“ bis zum Neustart. Jetzt wird einmal neu geöffnet. */
+  function trx(stores,mode){
+    return open().then(function(db){
+      try{ return db.transaction(stores,mode); }
+      catch(e){
+        dbp=null; try{ db.close(); }catch(_){}
+        errAdd('Protokoll-Datenbank neu geöffnet: '+((e&&e.name)||e),'log');
+        return open().then(function(d){ return d.transaction(stores,mode); });
+      }
+    });
   }
   function push(e){ if(frozen) return; e.d=day(e.t); buf.push(e); }
   function flush(){
     if(frozen||(!buf.length&&!accDay)) return;
     const evs=buf.splice(0), d=accDay, sec=Object.assign({},acc), ss=acc.$s|0;
     for(const k in acc) delete acc[k]; accDay='';
-    open().then(function(db){
-      const tx=db.transaction(['ev','day'],'readwrite'), es=tx.objectStore('ev');
+    trx(['ev','day'],'readwrite').then(function(tx){
+      const es=tx.objectStore('ev');
       evs.forEach(function(e){ es.add(e); });
       if(d){
         const ds=tx.objectStore('day'), g=ds.get(d);
@@ -8580,8 +8592,8 @@ const LOG=(function(){
   /* Rohereignisse nach 90 Tagen weg, die Tagesbilanzen bleiben. */
   function prune(){
     const cut=day(Date.now()-KEEP*864e5);
-    open().then(function(db){
-      const c=db.transaction('ev','readwrite').objectStore('ev').index('d').openCursor(IDBKeyRange.upperBound(cut,true));
+    trx('ev','readwrite').then(function(tx){
+      const c=tx.objectStore('ev').index('d').openCursor(IDBKeyRange.upperBound(cut,true));
       c.onsuccess=function(){ const k=c.result; if(k){ k.delete(); k.continue(); } };
     }).catch(function(){});
   }
@@ -8626,7 +8638,7 @@ const LOG=(function(){
   document.addEventListener('visibilitychange',function(){ if(document.hidden){ flush(); if(ready) aliveW(1); } else beatSkip=true; });
   window.addEventListener('pagehide',function(){ flush(); if(ready) aliveW(1); });
   return {
-    open:open, day:day, flush:flush, state:state,
+    open:open, trx:trx, day:day, flush:flush, state:state,
     start:function(){ try{ crashCheck(); beat0=Date.now(); aliveW(0); }catch(_){} try{ prune(); acc.$s=(acc.$s|0)+1; accDay=day(); push({k:'s',t:Date.now()}); flush(); }catch(_){} },
     beat:function(raw){
       try{
@@ -8706,9 +8718,9 @@ function parOpen(){
   setTimeout(parLoad,150);
 }
 function parGet(){
-  return LOG.open().then(function(db){
+  return LOG.trx(['ev','day'],'readonly').then(function(tx){
     return new Promise(function(res,rej){
-      const tx=db.transaction(['ev','day'],'readonly'), o={ev:[],day:[]};
+      const o={ev:[],day:[]};
       tx.objectStore('ev').getAll().onsuccess=function(e){ o.ev=e.target.result; };
       tx.objectStore('day').getAll().onsuccess=function(e){ o.day=e.target.result; };
       tx.oncomplete=function(){ res(o); }; tx.onerror=function(){ rej(tx.error); };
@@ -9076,8 +9088,8 @@ $('par-body').addEventListener('click',function(e){
   }
   if(e.target.closest('#par-del')){
     if(!parDel){ parDel=true; e.target.closest('#par-del').textContent='Wirklich löschen?'; return; }
-    LOG.open().then(function(db){
-      const tx=db.transaction(['ev','day'],'readwrite'); tx.objectStore('ev').clear(); tx.objectStore('day').clear();
+    LOG.trx(['ev','day'],'readwrite').then(function(tx){
+      tx.objectStore('ev').clear(); tx.objectStore('day').clear();
       tx.oncomplete=function(){ parDel=false; parLoad(); };
     }).catch(function(){});
   }
