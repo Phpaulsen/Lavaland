@@ -31,6 +31,10 @@ In `target.md` gewählt (offen für Einwände):
 12. **Testzugang** über einen `__TEST__`-Zweig in einem eigenen Testbuild statt Text-Anker; langfristig benannte Test-API statt `eval`.
 13. **Systemschnittstelle** `{ name, init, tick, draw(ctx, layer) }`, abgeleitet aus `SIDE`, gleiche Reihenfolge, gleicher Fehlerschutz, `name` = heutiger Funktionsname.
 
+Vom Maintainer am 5.11.2026 entschieden:
+
+14. **Streichen vor PR 16.** Die Streich-PRs aus `plan-vereinfachung.md` laufen nach PR 15 und vor dem Umzug der Systeme, als eigene verhaltensändernde PRs außerhalb der Migration (`migration-plan.md` Abschnitt 3).
+
 ## Verworfene Alternativen
 
 - **Klassische `<script src>`-Dateien ohne Build** (so stand es in `plan-vereinfachung.md` 4b): kein Build-Schritt, aber weiter ein gemeinsamer globaler Scope (nur auf Dateien verteilt), keine Importgrenzen, keine Prüfung von Abhängigkeiten. Bricht außerdem `file://`/Artefakt als eine Datei. Verworfen durch Entscheidung 1 und 2.

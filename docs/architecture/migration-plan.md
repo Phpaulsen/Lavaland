@@ -23,9 +23,8 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 
 `plan-vereinfachung.md` (Stand 20.10.) sieht vor, Markt, Missionen, Winter-Nebensysteme, Kristall-Echo, Bilder-Sudoku und das Glücks-Upgrade zu streichen. Das betrifft rund 1 000 Zeilen (`S16` teilweise, `S18`, `S19`–`S27`, `S52`, `S54`), umgesetzt ist davon nichts. Diese Teile umzuziehen und danach zu löschen ist doppelte Arbeit und doppelte Prüfung.
 
-Vorschlag: PR 1–15 sind davon unabhängig. **Vor PR 16** laufen die Streich-PRs aus dem Vereinfachungsplan als eigene, ausdrücklich verhaltensändernde PRs (nicht Teil der Migration, eigene Freigabe). Danach geht die Migration mit weniger Code weiter. Golden-Master: Erzeugen die gestrichenen Systeme Dinge in der Welt, wird vorher geprüft, ob sie einen eigenen Zufallsstrom haben; teilen sie ihn mit anderem, verschiebt das Streichen alles danach, und das ist dann eine Entscheidung, keine Nebenwirkung.
+**Entschieden 5.11.2026 (Maintainer): Streichen vor PR 16.** PR 1–15 sind davon unabhängig. **Vor PR 16** laufen die Streich-PRs aus dem Vereinfachungsplan als eigene, ausdrücklich verhaltensändernde PRs (nicht Teil der Migration, eigene Freigabe). Danach geht die Migration mit weniger Code weiter. Golden-Master: Erzeugen die gestrichenen Systeme Dinge in der Welt, wird vorher geprüft, ob sie einen eigenen Zufallsstrom haben; teilen sie ihn mit anderem, verschiebt das Streichen alles danach, und das ist dann eine Entscheidung, keine Nebenwirkung.
 
-Ohne diese Weiche gilt die Liste unverändert, nur länger.
 
 ## 4. PR-Liste
 
@@ -65,7 +64,7 @@ Ohne diese Weiche gilt die Liste unverändert, nur länger.
 
 - **Bewegt:** `mkMuster`, `mkStern`, `mkSpiegel`, `mkRobo`, `mkWaage`, `mkEcho`, `mkRohre`, `mkSudoku` mit ihren Datentabellen → `core/puzzles/*.js`. `dr…`, `ac…`, `hi…`, `sy…` bleiben in `legacy.js`.
 - **Risiken:** `PZT` (`index.html:6453`) hält die Funktionen als Werte; die Rätsel lesen Schulstand (`SCH`) und `FS`. **Absicherung:** Generator-Golden-Master, Knopftest (`crawl.mjs`) spielt jede Stufe.
-- Abhängig von der Weiche: Echo und Sudoku entfallen, wenn vorher gestrichen.
+- Echo und Sudoku ziehen hier noch mit um, weil die Streich-PRs erst vor PR 16 laufen.
 
 ### PR 6: Lernkern ohne Oberfläche
 
@@ -172,4 +171,4 @@ Je PR: `tick` und `draw(ctx, layer)` ins System, Zeichenaufruf in `draw()` an de
 
 - **PR 7 und 14** fassen die meisten Stellen an (Codemod). Wenn der Codemod nicht sauber trennt, werden sie geteilt, nicht vergrößert.
 - **PR 23** (`draw`) hat keinen Golden-Master außer dem Bildvergleich. Fehler sind dort sichtbar, aber nur in den drei Szenen.
-- Schätzung ohne Weiche: 31 PRs. Mit Weiche fallen PR 20 großteils und Teile von 5, 24, 26 weg.
+- Schätzung: 31 PRs ohne Streichen. Weil vor PR 16 gestrichen wird, fallen PR 20 großteils und Teile von 24 und 26 weg. PR 5 läuft vorher und zieht Echo und Sudoku noch mit um.
