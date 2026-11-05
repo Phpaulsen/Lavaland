@@ -89,6 +89,33 @@ test('Sichern und Laden bringt alles zurück', async () => {
   if (!(ev0 > 0)) throw new Error('Protokoll nicht zurück');
 });
 
+test('Absturz wird beim nächsten Start erkannt, normales Neuladen nicht', async () => {
+  await page.goto(url); await ready();
+  await ev("localStorage.removeItem(ERRK); OVS.forEach(o=>o.hidden=true); paused=false; setMode('sub')");
+  await page.waitForTimeout(2600);
+  // Normales Neuladen ist kein Absturz.
+  await page.reload(); await ready(); await page.waitForTimeout(300);
+  if (await ev("errLoad().some(e=>e.w==='Absturz')")) throw new Error('Neuladen als Absturz gezählt');
+  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('sub')");
+  await page.waitForTimeout(2600);
+  // Absturz: Der Tab stirbt ohne pagehide, wie wenn Android ihn wegen Speichermangel beendet.
+  const p2 = await ctx.newPage();
+  const cdp = await ctx.newCDPSession(page);
+  cdp.send('Page.crash').catch(() => {});
+  await page.waitForEvent('crash', { timeout: 5000 }).catch(() => {});
+  p2.on('pageerror', e => errs.push(e.message));
+  await p2.goto(url); await p2.waitForFunction(() => window.__ev && window.__ev('ready'), null, { timeout: 20000 });
+  await p2.waitForTimeout(500);
+  const e2 = s => p2.evaluate(s => window.__ev(s), s);
+  const m = await e2("(errLoad().find(e=>e.w==='Absturz')||{}).m");
+  if (!m || !/sub/.test(m)) throw new Error('Absturz nicht im Fehlerprotokoll: ' + m);
+  await e2('LOG.flush()'); await p2.waitForTimeout(500);
+  const c = await p2.evaluate(() => window.__ev('parGet()').then(o => o.ev.filter(e => e.k === 'c')));
+  if (c.length !== 1 || c[0].m !== 'sub') throw new Error('Absturz nicht im Protokoll: ' + JSON.stringify(c));
+  await e2('localStorage.removeItem(ERRK)');
+  await p2.close();
+});
+
 let failed = 0;
 for (const t of tests) {
   const n = errs.length;
