@@ -82,6 +82,8 @@ Vorgehen in drei Stufen, damit kein PR alles anfasst:
    - Heiße Schleifen (Zellautomat `step`, `draw`) greifen nicht über Getter zu, sondern auf die Felder direkt oder über lokale Kopien am Funktionsanfang. Grund: Getter pro Zelle kosten auf dem Handy messbar.
 3. **Einengen:** Je System wird aus `G.x` ein Parameter oder ein Aufruf einer benannten Mutation (`addGold(n)` statt `gold+=n; lootDirty=true`). Das passiert erst, wenn das System selbst umzieht, nicht vorher. `G` ist leer und gelöscht, wenn `legacy.js` gelöscht ist.
 
+Hinweis (PR 1): Der Name `G` ist im Spiel schon vergeben (Schwerkraft, `index.html:924`). Der Arbeitstitel `G` in diesen Dokumenten meint die Fassade; im Code bekommt sie in PR 7 einen freien Namen.
+
 Regel: Die Fassade ist eine Brücke, kein Ziel. Neue Module bekommen ihren Zustand als Parameter oder importieren ihn aus `state/`; `G` dürfen nur `legacy.js`, `testing/` und noch nicht eingeengte Systeme benutzen. `deps.mjs` zählt die Importe von `facade.js` und gibt die Zahl aus, damit sie sichtbar sinkt.
 
 ## 5. Systeme
@@ -101,11 +103,12 @@ Heute gibt es schon eine Liste: `SIDE` (`index.html:9127`), 18 Tick-Funktionen, 
 
 `tools/build.mjs`:
 
-- esbuild `bundle: true`, `format: 'iife'`, `target: 'es2020'`, `minify: false`, `keepNames: true`, `charset: 'utf8'`, `legalComments: 'none'`, `metafile: true`.
-- `keepNames`, weil `safe()` `f.name` ins Fehlerprotokoll schreibt. Ohne kann esbuild bei Namensgleichheit zwischen Modulen umbenennen (`draw2`).
+- esbuild `bundle: true`, `format: 'iife'`, `target: 'es2020'`, `minify: false`, `charset: 'utf8'`, `legalComments: 'none'`, `metafile: true`.
+- **Kein `keepNames`** (geändert in PR 1, vorher geplant). Gemessen: esbuild benennt im Bundle nur lokale Namen um, die einen äußeren verdecken (`last` → `last2`, 38 Namen). Die Top-Level-Namen der IIFE, darunter alle Funktionen in `SIDE`, deren `f.name` ins Fehlerprotokoll geht, bleiben gleich; `tools/arch/samecode.mjs` prüft genau das. `keepNames` hätte jede Funktion in `__name(…)` gewickelt und den AST-Vergleich mit dem alten Stand unmöglich gemacht. Ab PR 16 trägt jedes System seinen Namen ohnehin als Feld.
 - Kein Minify: 572 KB liegen unter dem Budget von 800 KB, und lesbarer Code im Bundle hält Fehlerzeilen in `lavaland-err` und Diffs nachvollziehbar.
-- Das Bundle darf `</script` nicht enthalten (Build bricht ab).
-- `--test` baut zusätzlich `dist/index.test.html` mit `define: { __TEST__: 'true' }` (Abschnitt 8). Im normalen Build ist `__TEST__` `false`, esbuild entfernt den Zweig.
+- Das Bundle darf `</script` nicht enthalten (Build bricht ab). Jede esbuild-Warnung bricht ab, außer direktem `eval` im Testbuild.
+- Der Build schreibt immer beide Dateien: `index.html` und den Testbuild `dist/index.test.html`. Sie unterscheiden sich nur an der Marke `/*@test-hook*/` in `src/legacy.js`, die im Testbuild zum Testzugang wird (Abschnitt 8). Im Produktionsbuild bleibt nur der Kommentar, und esbuild lässt Kommentare weg. Geändert in PR 1: Ein `__TEST__`-Zweig per `define` bliebe ohne Minify als `if (false)` im Bundle stehen, samt `eval`.
+- Größe: Die Einrückung von esbuild macht das Bundle 703 KB statt 572 KB, gzip aber 183 statt 190 KB. Das Budget von 800 KB bleibt.
 
 ### Entscheidung: gebaute `index.html` wird committet (Variante a)
 
@@ -141,7 +144,7 @@ Nach der Migration neu bewerten (eigenes ADR). Dann sind die Moves vorbei und de
 
 ## 7. Lokale Entwicklung
 
-- `npm ci` einmal, danach `npm run dev`: esbuild im Watch-Modus baut `index.html` und `dist/index.test.html` bei jeder Änderung neu, `tests/server.mjs` liefert das Repo auf `http://127.0.0.1:8080` aus.
+- `npm ci` einmal, danach `npm run dev`: baut `index.html` und `dist/index.test.html` bei jeder Änderung in `src/` neu. Ausliefern mit einem beliebigen lokalen Server aus dem Repo-Wurzelverzeichnis (z. B. `npx http-server`, nicht im Repo).
 - ES-Module laden unter `file://` nicht. Das betrifft nur die Quellen; das Bundle ist ein klassisches Skript und läuft weiter per Doppelklick.
 - `npm test` führt `static`, `tsc`, `deps` und die Browser-Tests in der Reihenfolge der CI aus.
 - `package.json` mit `devDependencies` und **festen Versionen**, `package-lock.json` im Repo. Laufzeitabhängigkeiten: keine.
@@ -152,7 +155,7 @@ Heute: Text-Anker plus `eval` im IIFE-Scope (`current.md` Abschnitt 8). Das bric
 
 Ziel:
 
-1. `src/testing/hook.js` enthält `if (__TEST__) window.__ev = function (s) { return eval(s); };` und wird in `legacy.js` an der Stelle des heutigen Ankers eingebunden. Direktes `eval` in `legacy.js` sieht weiter alles, was in `legacy.js` steht oder importiert ist. esbuild warnt bei direktem `eval` und benennt dann im betroffenen Scope nichts um; das ist hier erwünscht.
+1. In `src/legacy.js` steht an der Stelle des alten Ankers die Marke `/*@test-hook*/`. Der Testbuild ersetzt sie durch `window.__ev=function(s){return eval(s);};`. Direktes `eval` in `legacy.js` sieht weiter alles, was in `legacy.js` steht oder importiert ist. esbuild warnt bei direktem `eval` und benennt dann im betroffenen Scope nichts um; das ist hier erwünscht.
 2. Wandert ein Name, den ein Test benutzt (132 Stück, `current.md` Abschnitt 8), aus `legacy.js` heraus, kommt er im selben PR in `G` und der Test wird von `gold=500` auf `G.gold=500` umgestellt. Die Liste in `current.md` ist die Checkliste dafür.
 3. Am Ende gibt es kein `eval` mehr: `testing/` exportiert eine benannte Test-API (`window.__lv = { G, saveGame, travel, … }`), die Tests rufen nur diese.
 

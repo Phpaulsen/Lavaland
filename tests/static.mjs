@@ -1,5 +1,7 @@
 // Statischer Test ohne Browser: Syntax aller Skripte, Größenbudget, jede $('id') hat ein Element, IDs einmalig, Speicherschlüssel, Offline-Dateien.
 // Aufruf: node tests/static.mjs
+// Was ausgeliefert wird (Syntax, Größe, fremde Skripte, IDs im Markup), prüft er an der gebauten index.html.
+// Was am Quelltext hängt ($('id') und localStorage-Schlüssel in einfachen Anführungszeichen), prüft er an src/: esbuild schreibt Strings mit doppelten.
 import fs from 'fs';
 import vm from 'vm';
 import zlib from 'zlib';
@@ -7,12 +9,16 @@ import path from 'path';
 import { ROOT } from './server.mjs';
 
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+const walk = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]);
+const SRCJS = walk(path.join(ROOT, 'src')).filter(f => f.endsWith('.js')).sort();
+const markup = fs.readFileSync(path.join(ROOT, 'src', 'index.html'), 'utf8');
+const src = markup + '\n' + SRCJS.map(f => fs.readFileSync(f, 'utf8')).join('\n');
 let failed = 0;
 const check = (name, fn) => { try { fn(); console.log('ok   ' + name); } catch (e) { failed++; console.log('FAIL ' + name + '\n     ' + (e.message || e)); } };
 
 const scripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]);
 
-check('Skripte in index.html sind gültiges JavaScript', () => {
+check('Skripte in der gebauten index.html sind gültiges JavaScript', () => {
   if (!scripts.length) throw new Error('kein Skript gefunden');
   scripts.forEach((s, i) => { try { new vm.Script(s, { filename: 'index.html#script' + i }); } catch (e) { throw new Error('Skript ' + i + ': ' + e.message); } });
 });
@@ -28,11 +34,11 @@ check('Größenbudget index.html', () => {
   if (gz > MAX_GZ) throw new Error('index.html gzip zu groß: ' + gz);
 });
 
-check('Jede $(\'id\') im Code hat ein Element', () => {
-  const used = new Set([...html.matchAll(/\$\('([\w-]+)'\)/g)].map(m => m[1]));
+check('Jede $(\'id\') in src/ hat ein Element', () => {
+  const used = new Set([...src.matchAll(/\$\('([\w-]+)'\)/g)].map(m => m[1]));
   // Erzeugte Knöpfe wie id="mode-'+v[0]+'" zählen über ihr Präfix.
-  const made = id => { const pre = id.replace(/[^-]+$/, ''); return pre && html.includes('id="' + pre + "'+"); };
-  const missing = [...used].filter(id => !html.includes('id="' + id + '"') && !html.includes("id='" + id + "'") && !made(id));
+  const made = id => { const pre = id.replace(/[^-]+$/, ''); return pre && src.includes('id="' + pre + "'+"); };
+  const missing = [...used].filter(id => !src.includes('id="' + id + '"') && !src.includes("id='" + id + "'") && !made(id));
   if (missing.length) throw new Error('fehlt: ' + missing.join(', '));
 });
 
@@ -41,17 +47,17 @@ check('Keine fremden Skripte', () => {
   if (ext.length) throw new Error(ext.join(', '));
 });
 
-check('Keine doppelten IDs', () => {
-  const ids = [...html.matchAll(/\sid="([\w-]+)"/g)].map(m => m[1]), seen = new Set(), dup = new Set();
+check('Keine doppelten IDs in src/', () => {
+  const ids = [...src.matchAll(/\sid="([\w-]+)"/g)].map(m => m[1]), seen = new Set(), dup = new Set();
   for (const id of ids) (seen.has(id) ? dup : seen).add(id);
   if (dup.size) throw new Error([...dup].join(', '));
 });
 
 // „Spielstand sichern“ nimmt nur Schlüssel mit, die mit lavaland anfangen. Ein anderer Name ginge beim Umzug verloren.
 check('Jeder localStorage-Schlüssel beginnt mit lavaland', () => {
-  const lit = [...html.matchAll(/localStorage\.(?:setItem|getItem|removeItem)\('([^']*)'/g)].map(m => m[1]);
-  const con = [...html.matchAll(/[\s,](\w+)='([^']*)'/g)].reduce((o, m) => (o[m[1]] = m[2], o), {});
-  const named = [...html.matchAll(/localStorage\.(?:setItem|getItem|removeItem)\(([A-Z]\w*)[,)]/g)].map(m => con[m[1]] ?? '?' + m[1]);
+  const lit = [...src.matchAll(/localStorage\.(?:setItem|getItem|removeItem)\('([^']*)'/g)].map(m => m[1]);
+  const con = [...src.matchAll(/[\s,](\w+)='([^']*)'/g)].reduce((o, m) => (o[m[1]] = m[2], o), {});
+  const named = [...src.matchAll(/localStorage\.(?:setItem|getItem|removeItem)\(([A-Z]\w*)[,)]/g)].map(m => con[m[1]] ?? '?' + m[1]);
   const bad = lit.concat(named).filter(k => k.indexOf('lavaland') !== 0);
   if (bad.length) throw new Error(bad.join(', '));
 });

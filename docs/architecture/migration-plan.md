@@ -31,12 +31,12 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 ### PR 1: Gerüst ohne Verhaltensänderung
 
 - **Ziel:** esbuild-Build, Quellen in `src/`, Tests auf das Bundle.
-- **Bewegt:** `index.html` Zeilen 3–615 → `src/styles.css`; Zeilen 1–2 und 616–784 plus `<!-- @css -->`/`<!-- @js -->` → `src/index.html`; Skript 786–9214 **unverändert** → `src/legacy.js`; `src/main.js` mit `import './legacy.js'`. Einzige Codeänderung: Direkt vor dem heutigen Testanker (`index.html:9210`) steht `if (__TEST__) window.__ev = function (s) { return eval(s); };` (`target.md` Abschnitt 8). Im Produktionsbuild entfernt esbuild die Zeile.
-- **Neu:** `package.json` (esbuild, playwright, acorn fest gepinnt), `package-lock.json`, `tools/build.mjs`, `.gitattributes`, `dist/` in `.gitignore`. CI: `npm ci`, Build, „Bundle aktuell“.
-- **Tests umstellen:** `server.mjs` liefert `dist/index.test.html` als `/index.html` aus; der Text-Anker bleibt nur für `/old/` (Altstand in `upgrade.mjs`). `static.mjs`: Bundle-Prüfungen auf `index.html`, Quellprüfungen (`$('id')`, `localStorage`) auf `src/`. `collect.mjs` liest `src/**/*.js`.
-- **Nachweis gleich:** `tools/arch/samecode.mjs` parst das Skript von `main` und das Skript im neuen Bundle mit acorn, entfernt Positionen, Kommentare und `raw`, packt die esbuild-Hülle aus und vergleicht die ASTs. Erwartete Unterschiede (nur der `__TEST__`-Zweig, im Produktionsbuild entfernt) stehen als Liste im Skript; jede weitere Abweichung lässt es scheitern. Ergebnis im PR-Text. Zusätzlich: alle Tests grün, `upgrade.mjs` grün (alter Stand von `main` läuft im Bundle weiter), ein Rauchtest gegen das **Produktions**bundle (ohne `__TEST__`): Seite startet ohne Seitenfehler.
-- **`tsc`:** `tsconfig.json` mit `checkJs`, `include: src/**/*.js`, `exclude: src/legacy.js`. Läuft, prüft vorerst nichts.
-- **Risiken:** esbuild schreibt etwas anders als erwartet (`'use strict'` in IIFE, Zahlenliterale, `</script` in Strings); CSP unverändert, aber Inline-Skript ist jetzt Bundle-Ausgabe; Größe steigt durch `keepNames`-Helfer. **Absicherung:** AST-Vergleich, Größenbudget, `</script`-Prüfung im Build, Upgrade-Test. `sw.js` bleibt unverändert (Dateiliste gleich, `CACHE` bleibt `lavaland-v4`).
+- **Bewegt:** `index.html` Zeilen 4–614 → `src/styles.css`; Zeilen 1–3 und 615–785 sowie 9215–9217 mit den Marken `<!-- @css -->` und `<!-- @js -->` → `src/index.html`; Skript 786–9214 **unverändert** → `src/legacy.js`, davor `// @ts-nocheck`; `src/main.js` mit `import './legacy.js'`. Einzige Ergänzung im Code: die Kommentarmarke `/*@test-hook*/` direkt vor dem alten Testanker (`index.html:9210`).
+- **Neu:** `package.json` (acorn 8.19.0, esbuild 0.28.2, playwright 1.56.1, typescript 6.0.3), `package-lock.json`, `tools/build.mjs`, `tsconfig.json`, `.gitattributes`, `dist/` in `.gitignore`, `tests/prod.mjs` (Produktionsbundle mit echter CSP), `tools/arch/samecode.mjs`. CI: `npm ci`, „Bundle aktuell“, Build, `tsc`, `prod.mjs`.
+- **Tests umstellen:** `server.mjs` liefert `dist/index.test.html` als `/index.html` aus; der Text-Anker bleibt nur für `/old/` (Altstand in `upgrade.mjs`). `static.mjs`: Syntax, Größe, fremde Skripte an `index.html`; `$('id')`, doppelte IDs und `localStorage` an `src/`. `collect.mjs` liest `src/**/*.js`.
+- **Nachweis gleich:** `tools/arch/samecode.mjs` vergleicht das Skript von `main` mit dem im Bundle als AST. Außerhalb des Skripts byte-gleich. Erlaubte Umschreibungen stehen einzeln begründet im Skript: Kurzschreibweise `{m}`, `void 0`, einzelner Befehl in `{ }`, Verbinden von String-Literalen, verdeckende lokale Namen mit Ziffer. Top-Level- und Eigenschaftsnamen müssen gleich sein. Für den Testbuild zusätzlich: genau eine Zusatzanweisung, der Testzugang.
+- **`tsc`:** prüft `src/**/*.js` außer `legacy.js`, vorerst nur `main.js`.
+- **Risiken:** esbuild schreibt mehr um als gelistet; Testbuild und Produktion weichen ab. **Absicherung:** AST-Vergleich für beide Builds, `prod.mjs` mit echter CSP, Upgrade-Test, Vorlesesätze identisch mit `tools/voice/texts.json`. `sw.js` bleibt unverändert (Dateiliste gleich, `CACHE` bleibt `lavaland-v4`).
 
 ### PR 2: Charakterisierungstests
 
@@ -169,6 +169,7 @@ Je PR: `tick` und `draw(ctx, layer)` ins System, Zeichenaufruf in `draw()` an de
 
 ## 5. Größter Aufwand und Unsicherheit
 
+- Die Fassade heißt nicht `G`: `G` ist im Spiel schon die Schwerkraft (`index.html:924`). Name wird in PR 7 festgelegt (Vorschlag `ST`, vorher auf Kollision prüfen).
 - **PR 7 und 14** fassen die meisten Stellen an (Codemod). Wenn der Codemod nicht sauber trennt, werden sie geteilt, nicht vergrößert.
 - **PR 23** (`draw`) hat keinen Golden-Master außer dem Bildvergleich. Fehler sind dort sichtbar, aber nur in den drei Szenen.
 - Schätzung: 31 PRs ohne Streichen. Weil vor PR 16 gestrichen wird, fallen PR 20 großteils und Teile von 24 und 26 weg. PR 5 läuft vorher und zieht Echo und Sudoku noch mit um.
