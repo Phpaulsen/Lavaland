@@ -8836,7 +8836,8 @@ function parSafe(){
   if(parStore) h+='<p>'+parStore+'</p>';
   /* Welche Spielversion läuft: Datum, an dem GitHub Pages die geladene Seite veröffentlicht hat (kommt auch aus dem Offline-Speicher mit). */
   const lm=new Date(document.lastModified);
-  if(!isNaN(lm)) h+='<p>Spielversion vom '+lm.toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})+'.</p>';
+  /* Ohne Last-Modified-Kopf meldet der Browser die Ladezeit; die wäre keine Version. */
+  if(!isNaN(lm)&&Math.abs(lm-(performance.timeOrigin||0))>5000) h+='<p>Spielversion vom '+lm.toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})+'.</p>';
   return h+'<div class="par-act"><button id="par-bak">Jetzt sichern</button></div>';
 }
 function parStoreInfo(){
