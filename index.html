@@ -7334,7 +7334,7 @@ function bakMake(){
   saveFinds(); saveHero();
   return fresh.then(function(){ return Promise.all(BAK_DBS.map(dbDump)); }).then(function(rs){
     const ls={}, db={};
-    try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.indexOf('lavaland')===0) ls[k]=localStorage.getItem(k); } }catch(_){}
+    try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.indexOf('lavaland')===0&&k!=='lavaland-alive') ls[k]=localStorage.getItem(k); } }catch(_){}
     BAK_DBS.forEach(function(n,i){ if(rs[i]) db[n]=enc(rs[i]); });
     return {app:'lavaland',bak:1,at:new Date().toISOString(),ls:ls,db:db};
   });
@@ -8603,11 +8603,40 @@ const LOG=(function(){
     push({k:'p',t:g.t,id:c.T.id,lv:c.lv,src:c.m.quiz?'akku':'welt',ms:Math.round(performance.now()-g.p0),fails:c.fails,hint:c.hint,fph:g.fph,end:how});
   }
   ['pointerdown','keydown'].forEach(function(n){ document.addEventListener(n,function(){ lastIn=performance.now(); },true); });
-  document.addEventListener('visibilitychange',function(){ if(document.hidden) flush(); });
-  window.addEventListener('pagehide',flush);
+  /* Absturzerkennung: Solange das Spiel sichtbar läuft, steht alle 2 s ein kurzer Zwischenstand im localStorage (geht auch bei einem Absturz nicht verloren).
+     Wird das Spiel ordentlich verlassen (in den Hintergrund, Neuladen), steht dort ok:1. Steht beim nächsten Start ok:0, wurde es mitten im Spiel beendet:
+     vom Betriebssystem (meist Speichermangel) oder weil es hing. Dann kommt ein Eintrag ins Protokoll und ins Fehlerprotokoll, mit dem, was zuletzt lief. */
+  const ALK='lavaland-alive';
+  let beatT=0, beatJ=0, beat0=Date.now(), beatSkip=false;
+  function aliveW(ok){
+    try{
+      const o={t:Date.now(),ok:ok,up:Math.round((Date.now()-beat0)/1000),s:state()||'',m:P.mode,tl:tool||'',rl:realm,y:Math.round((P.y-TOP)/CELL),w:waterCount,l:lavaCount,f:fireCount,pa:parts.length,j:Math.round(beatJ)};
+      const pm=performance.memory; if(pm&&pm.usedJSHeapSize) o.mb=Math.round(pm.usedJSHeapSize/1048576);
+      localStorage.setItem(ALK,JSON.stringify(o)); beatJ=0;
+    }catch(_){}
+  }
+  function crashCheck(){
+    let a=null; try{ a=JSON.parse(localStorage.getItem(ALK)||'null'); }catch(_){}
+    if(!a||a.ok!==0||!(a.t>0)) return;
+    const e={k:'c',t:a.t,up:a.up|0,s:String(a.s||''),m:String(a.m||''),tl:String(a.tl||''),rl:String(a.rl||''),y:a.y|0,w:a.w|0,l:a.l|0,f:a.f|0,pa:a.pa|0,j:a.j|0};
+    if(a.mb) e.mb=a.mb|0;
+    push(e);
+    errAdd('Spiel unerwartet beendet nach '+e.up+' s: '+e.m+(e.tl?' + '+e.tl:'')+(e.rl?' auf '+e.rl:'')+', Zeile '+e.y+', Wasser '+e.w+', Lava '+e.l+', Teilchen '+e.pa+', längster Frame '+e.j+' ms'+(e.mb?', JS '+e.mb+' MB':''),'Absturz');
+  }
+  document.addEventListener('visibilitychange',function(){ if(document.hidden){ flush(); if(ready) aliveW(1); } else beatSkip=true; });
+  window.addEventListener('pagehide',function(){ flush(); if(ready) aliveW(1); });
   return {
     open:open, day:day, flush:flush, state:state,
-    start:function(){ try{ prune(); acc.$s=(acc.$s|0)+1; accDay=day(); push({k:'s',t:Date.now()}); flush(); }catch(_){} },
+    start:function(){ try{ crashCheck(); beat0=Date.now(); aliveW(0); }catch(_){} try{ prune(); acc.$s=(acc.$s|0)+1; accDay=day(); push({k:'s',t:Date.now()}); flush(); }catch(_){} },
+    beat:function(raw){
+      try{
+        if(document.hidden||!ready) return;
+        /* Der erste Frame nach dem Zurückholen aus dem Hintergrund zählt nicht als Hänger. */
+        if(beatSkip){ beatSkip=false; aliveW(0); return; }
+        beatJ=Math.max(beatJ,raw*1000); beatT+=Math.min(raw,2);
+        if(beatT>=2){ beatT=0; aliveW(0); }
+      }catch(_){}
+    },
     tick:function(raw){
       try{
         if(document.hidden) return;
@@ -9034,7 +9063,7 @@ $('par-body').addEventListener('click',function(e){
   if(lm){ LIM=+lm.dataset.lim; try{ localStorage.setItem('lavaland-limit',String(LIM)); }catch(_){} dayLoad(); DAY.lim=0; daySave(); parLoad(); return; }
   if(e.target.closest('#par-exp')){
     parGet().then(function(o){
-      const b=new Blob([JSON.stringify({app:'lavaland-log',at:new Date().toISOString(),ev:o.ev,day:o.day})],{type:'application/json'});
+      const b=new Blob([JSON.stringify({app:'lavaland-log',at:new Date().toISOString(),ev:o.ev,day:o.day,err:errLoad(),dev:{ua:navigator.userAgent,mem:navigator.deviceMemory||null,w:innerWidth,h:innerHeight,dpr:devicePixelRatio}})],{type:'application/json'});
       const a=document.createElement('a'), u=URL.createObjectURL(b);
       a.href=u; a.download='lavaland-protokoll-'+LOG.day()+'.json'; document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function(){ URL.revokeObjectURL(u); },4000);
@@ -9056,7 +9085,7 @@ function frame(t){
   requestAnimationFrame(frame);
   try{
     const raw=(t-last)/1000||0, dt=Math.min(.034,raw); last=t;
-    LOG.tick(raw);
+    LOG.tick(raw); LOG.beat(raw);
     if(ready&&!document.hidden){ const ls=LOG.state(); if(ls&&ls!=='idle') dayTick(Math.min(1,raw)); }
     /* Solange ein Fenster offen ist, steht das Spiel still und der Akku läuft nicht leer. */
     if(!(paused||uiOpen())){
