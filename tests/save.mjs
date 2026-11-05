@@ -89,6 +89,16 @@ test('Sichern und Laden bringt alles zurück', async () => {
   if (!(ev0 > 0)) throw new Error('Protokoll nicht zurück');
 });
 
+test('Geschlossene Protokoll-Datenbank wird neu geöffnet', async () => {
+  await page.goto(url); await ready();
+  // Wie auf Android: Die gemerkte Verbindung ist plötzlich zu.
+  await page.evaluate(() => window.__ev('LOG.open().then(db => db.close())'));
+  await ev('LOG.qOpen(); LOG.flush()'); await page.waitForTimeout(500);
+  const n = await page.evaluate(() => window.__ev('parGet().then(o => o.ev.length, () => -1)'));
+  if (!(n > 0)) throw new Error('Protokoll nach geschlossener Verbindung nicht lesbar: ' + n);
+  await ev('localStorage.removeItem(ERRK)');
+});
+
 test('Absturz wird beim nächsten Start erkannt, normales Neuladen nicht', async () => {
   await page.goto(url); await ready();
   await ev("localStorage.removeItem(ERRK); OVS.forEach(o=>o.hidden=true); paused=false; setMode('sub')");
