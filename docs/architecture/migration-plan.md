@@ -61,8 +61,10 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 
 ### PR 4: Konstanten der Welt
 
-- **Bewegt:** `S02` Welt (62 Namen, keine ausgehende Kante) und die Konstanten aus `S04` → `core/world/const.js`. Typed Arrays `grid`, `life`, `stamp` noch **nicht**.
-- **Risiken:** `S02` hat auch `const`-Objekte, die später verändert werden. **Absicherung:** `analyze.mjs --json` zeigt je Name die schreibenden Sektionen; was geschrieben wird, bleibt in `legacy.js` bis PR 7.
+- **Bewegt:** 53 Namen → `src/core/world/const.js`, Text unverändert (nur `export` und JSDoc-Typen): aus `S02` die Maße (`CELL`, `GX`, `GY`, `TOP`, `G` …), die Materialien (`LAVA` … `SHELL`), `MAX_*`, `SKY*`, `MOON`, `SITE`, `FLAT`, `clamp`, `baseG`, `bump`, `siteY` samt seiner Schleife, `rawH`; aus `S04` `B0`, `EXT_X`, `EXC`, `HOME_END`, `WL`, `WLR`. Typed Arrays `grid`, `LIFE` (seit #92 statt `life`), `stamp` noch **nicht**.
+- **Bleibt in `legacy.js`, obwohl in `S02`:** `g0` und damit `ground` (die Weltgenerierung überschreibt `g0`, `S05`), `zS1`…`zS3`, `z4`, `grow0`, `rA`…`rC` (ebenfalls von `S05` beschrieben), `lifeS`. Sie ziehen mit PR 7/8 um. Die Sektionsüberschriften bleiben in `legacy.js`, damit `analyze.mjs` die Sektionen weiter erkennt.
+- **Beobachtet:** esbuild gibt Modul-`const` im Bundle als `var` aus. Für korrekten Code ohne Wirkung (niemand schreibt diese Namen, `analyze.mjs` zeigt keine Schreiber); im Test über `eval` bleiben alle Namen erreichbar. Die Konstanten werden jetzt vor dem Fehlerprotokoll-Vorspann ausgewertet statt danach; sie haben keine Seiteneffekte.
+- **Risiken:** `S02` hat auch `const`-Objekte, die später verändert werden. **Absicherung:** `analyze.mjs --json` zeigt je Name die schreibenden Sektionen; bewegt wurde nur, was außerhalb der eigenen Initialisierung niemand schreibt oder verändert (`MOON` und `SITE` werden gelesen, nie geschrieben). Move-Nachweis, Golden Master.
 
 ### PR 5: Rätselgeneratoren
 

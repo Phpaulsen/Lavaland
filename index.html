@@ -811,6 +811,80 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     return a;
   }
 
+  // src/core/world/const.js
+  var HOME_W = 7200;
+  var HOME_GX = 1200;
+  var WORLD_W0 = 57600;
+  var WORLD_W = 115200;
+  var CELL = 6;
+  var GX = WORLD_W / CELL;
+  var GY = 2048;
+  var GY0 = 686;
+  var KEEPR = 626;
+  var WINW = 420;
+  var SW = 2 * WINW + 9;
+  var ROWW = 320;
+  var SH = 14;
+  var TOP = -912;
+  var VOLC = 2700;
+  var G = 900;
+  var TAU = 6.2832;
+  var LAVA = 1;
+  var FIRE = 2;
+  var WATER = 3;
+  var EARTH = 4;
+  var ROCK = 5;
+  var ICE = 6;
+  var WOOD = 7;
+  var BED = 8;
+  var DEEP = 9;
+  var HOT = 10;
+  var CORE = 11;
+  var GOLD = 12;
+  var GEM = 13;
+  var SNOW = 14;
+  var SHELL = 15;
+  var MAX_LAVA = 7e3;
+  var MAX_WATER = 3e4;
+  var MAX_FIRE = 1400;
+  var SKYL = [-5600, -12e3, -22e3, -32e3];
+  var MOON = { x: 3600, y: -4400, r: 250 };
+  var STALL_X = 905;
+  var SITE = { build: 3700, smash: 4090, fire: 4470, pond: 4960, volb: 5580, chest: 6300 };
+  var FLAT = ["build", "smash", "fire", "pond", "volb"];
+  function clamp(v, a, b) {
+    return v < a ? a : v > b ? b : v;
+  }
+  function baseG(x) {
+    return 55 * Math.sin(x * 21e-4 + 1) + 30 * Math.sin(x * 57e-4 + 2.2) + 10 * Math.sin(x * 0.013);
+  }
+  function bump(x) {
+    const d = x - VOLC;
+    return -430 * Math.exp(-(d * d) / 144400) + 125 * Math.exp(-(d * d) / 4900);
+  }
+  var siteY = {};
+  for (const k of FLAT) siteY[k] = TOP + 24 * Math.round((baseG(SITE[k]) - TOP) / 24);
+  function rawH(x) {
+    let g = baseG(x) + bump(x);
+    for (const k of FLAT) {
+      const d = Math.abs(x - SITE[k]);
+      if (d < 230) {
+        let w = d < 140 ? 1 : 1 - (d - 140) / 90;
+        w = w * w * (3 - 2 * w);
+        g += (siteY[k] - g) * w;
+      }
+    }
+    const dp = x - SITE.pond;
+    g += 62 * Math.exp(-(dp * dp) / 1e4);
+    return g;
+  }
+  var B0 = 8760;
+  var EXT_X = B0 - 220;
+  var EXC = Math.floor(EXT_X / CELL);
+  var HOME_END = 1400;
+  var WL = 14;
+  var WLR = Math.floor((WL - TOP) / CELL);
+
   // src/legacy.js
   (function() {
     "use strict";
@@ -975,38 +1049,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     AI.scope = '<path d="M3 13l13-7 3 5-13 7z" fill="currentColor"/><path d="M10 15l-3 7M10 15l3 7" stroke="currentColor" stroke-width="2.400" stroke-linecap="round"/><circle cx="20" cy="5" r="1.600" fill="currentColor"/>';
     AI.bow = '<path d="M5 3c9 1.500 14 6.500 16 16" stroke="currentColor" stroke-width="2.800" fill="none" stroke-linecap="round"/><path d="M5 3l16 16M2 12h13" stroke="currentColor" stroke-width="1.800" stroke-linecap="round"/><path d="M15 9l5 3-5 3z" fill="currentColor"/>';
     AI.sonar = '<circle cx="12" cy="12" r="2.600" fill="currentColor"/><path d="M6.500 6.500a8 8 0 0 0 0 11M17.500 6.500a8 8 0 0 1 0 11M3.500 3.500a12 12 0 0 0 0 17M20.500 3.500a12 12 0 0 1 0 17" stroke="currentColor" stroke-width="2.200" fill="none" stroke-linecap="round"/>';
-    const HOME_W = 7200, HOME_GX = 1200, WORLD_W0 = 57600, WORLD_W = 115200, CELL = 6, GX = WORLD_W / CELL, GY = 2048, GY0 = 686, KEEPR = 626, WINW = 420, SW = 2 * WINW + 9, ROWW = 320, SH = 14, TOP = -912, VOLC = 2700, G = 900, TAU = 6.2832;
-    const LAVA = 1, FIRE = 2, WATER = 3, EARTH = 4, ROCK = 5, ICE = 6, WOOD = 7, BED = 8, DEEP = 9, HOT = 10, CORE = 11, GOLD = 12, GEM = 13, SNOW = 14, SHELL = 15;
-    const MAX_LAVA = 7e3, MAX_WATER = 3e4, MAX_FIRE = 1400;
-    const SKY_TOP = -5600, SKYL = [-5600, -12e3, -22e3, -32e3], SKY_END = -32e3, MOON = { x: 3600, y: -4400, r: 250 }, STALL_X = 905;
-    const SITE = { build: 3700, smash: 4090, fire: 4470, pond: 4960, volb: 5580, chest: 6300 };
-    const FLAT = ["build", "smash", "fire", "pond", "volb"];
-    function clamp(v, a, b) {
-      return v < a ? a : v > b ? b : v;
-    }
-    function baseG(x) {
-      return 55 * Math.sin(x * 21e-4 + 1) + 30 * Math.sin(x * 57e-4 + 2.2) + 10 * Math.sin(x * 0.013);
-    }
-    function bump(x) {
-      const d = x - VOLC;
-      return -430 * Math.exp(-(d * d) / 144400) + 125 * Math.exp(-(d * d) / 4900);
-    }
-    const siteY = {};
-    for (const k of FLAT) siteY[k] = TOP + 24 * Math.round((baseG(SITE[k]) - TOP) / 24);
-    function rawH(x) {
-      let g = baseG(x) + bump(x);
-      for (const k of FLAT) {
-        const d = Math.abs(x - SITE[k]);
-        if (d < 230) {
-          let w = d < 140 ? 1 : 1 - (d - 140) / 90;
-          w = w * w * (3 - 2 * w);
-          g += (siteY[k] - g) * w;
-        }
-      }
-      const dp = x - SITE.pond;
-      g += 62 * Math.exp(-(dp * dp) / 1e4);
-      return g;
-    }
     const g0 = new Float32Array(GX + 2);
     for (let i = 0; i < GX + 2; i++) g0[i] = rawH(i * CELL);
     function ground(x) {
@@ -1184,7 +1226,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         for (let cy = g; cy < g + Math.ceil(down / CELL); cy++) if (inGrid(cx, cy) && grid[cy * GX + cx] < 4) grid[cy * GX + cx] = EARTH;
       }
     }
-    const B0 = 8760, EXT_X = B0 - 220, EXC = Math.floor(EXT_X / CELL), HOME_END = 1400, WL = 14, WLR = Math.floor((WL - TOP) / CELL);
     const bio = new Uint8Array(GX), bio2 = new Uint8Array(GX), bmx = new Uint8Array(GX), bix = new Uint8Array(GX), noCave = new Uint8Array(GX), liqM = new Uint8Array(GX), liqY = new Int16Array(GX), ORBS = [MOON];
     let BIO = [], STR = [], CRE = [], PICKS = [], PADS = [], DECO = [], EGGS = [], LOOT = [], DROPS = [], genF = 0, stI = 0, winC = -9999, NT0 = 0, NC0 = 0;
     let seen = {}, eggGot = {}, lootGot = {}, orbGot = {};
