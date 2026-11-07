@@ -1699,6 +1699,30 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     };
   }
 
+  // src/state/world.js
+  var g0 = new Float32Array(GX + 2);
+  var grid = new Uint8Array(GX * GY);
+  var stamp = new Uint8Array(SW * GY);
+  var LIFE = /* @__PURE__ */ new Map();
+  var zS1 = new Int16Array(GX);
+  var z4 = new Int16Array(GX);
+  var zS2 = new Int16Array(GX);
+  var zS3 = new Int16Array(GX);
+  var grow0 = new Int16Array(GX);
+  var rA = new Int16Array(GX);
+  var rB = new Int16Array(GX);
+  var rD = new Int16Array(GX);
+  var rH = new Int16Array(GX);
+  var rC = new Int16Array(GX);
+  var mtop = new Int16Array(GX);
+  var bio = new Uint8Array(GX);
+  var bio2 = new Uint8Array(GX);
+  var bmx = new Uint8Array(GX);
+  var bix = new Uint8Array(GX);
+  var noCave = new Uint8Array(GX);
+  var liqM = new Uint8Array(GX);
+  var liqY = new Int16Array(GX);
+
   // src/legacy.js
   (function() {
     "use strict";
@@ -1863,14 +1887,11 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     AI.scope = '<path d="M3 13l13-7 3 5-13 7z" fill="currentColor"/><path d="M10 15l-3 7M10 15l3 7" stroke="currentColor" stroke-width="2.400" stroke-linecap="round"/><circle cx="20" cy="5" r="1.600" fill="currentColor"/>';
     AI.bow = '<path d="M5 3c9 1.500 14 6.500 16 16" stroke="currentColor" stroke-width="2.800" fill="none" stroke-linecap="round"/><path d="M5 3l16 16M2 12h13" stroke="currentColor" stroke-width="1.800" stroke-linecap="round"/><path d="M15 9l5 3-5 3z" fill="currentColor"/>';
     AI.sonar = '<circle cx="12" cy="12" r="2.600" fill="currentColor"/><path d="M6.500 6.500a8 8 0 0 0 0 11M17.500 6.500a8 8 0 0 1 0 11M3.500 3.500a12 12 0 0 0 0 17M20.500 3.500a12 12 0 0 1 0 17" stroke="currentColor" stroke-width="2.200" fill="none" stroke-linecap="round"/>';
-    const g0 = new Float32Array(GX + 2);
     for (let i = 0; i < GX + 2; i++) g0[i] = rawH(i * CELL);
     function ground(x) {
       const f = clamp(x / CELL, 0, GX), i = Math.floor(f);
       return g0[i] + (g0[i + 1] - g0[i]) * (f - i);
     }
-    const grid = new Uint8Array(GX * GY), stamp = new Uint8Array(SW * GY);
-    const LIFE = /* @__PURE__ */ new Map();
     function lifeS(i, v) {
       if (v > 0) {
         LIFE.set(i, v);
@@ -1879,14 +1900,12 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         }
       } else LIFE.delete(i);
     }
-    const zS1 = new Int16Array(GX), z4 = new Int16Array(GX), zS2 = new Int16Array(GX), zS3 = new Int16Array(GX);
     for (let cx = 0; cx < GX; cx++) {
       zS1[cx] = 630 + Math.round(3 * Math.sin(cx * 0.027 + 1));
       z4[cx] = 960 + Math.round(10 * Math.sin(cx * 0.013 + 2));
       zS2[cx] = 1290 + Math.round(4 * Math.sin(cx * 0.022));
       zS3[cx] = 1640 + Math.round(4 * Math.sin(cx * 0.019 + 4));
     }
-    const grow0 = new Int16Array(GX), rA = new Int16Array(GX), rB = new Int16Array(GX), rD = new Int16Array(GX), rH = new Int16Array(GX), rC = new Int16Array(GX);
     for (let cx = 0; cx < GX; cx++) {
       const x = (cx + 0.5) * CELL;
       grow0[cx] = Math.ceil((rawH(x) - TOP) / CELL - 0.5);
@@ -1905,7 +1924,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       const h = MH * t * t * (3 - 2 * t) + 44 * Math.exp(-Math.pow((x - 6185) / 40, 2)) + 52 * Math.exp(-Math.pow((x - 6510) / 44, 2)) + 46 * Math.exp(-Math.pow((x - 7790) / 42, 2));
       return Math.max(TOP + 90, Math.min(rawH(x), rawH(x) * (1 - ww) + SNB * ww - h));
     }
-    const mtop = new Int16Array(GX);
     for (let cx = 0; cx < GX; cx++) mtop[cx] = cx < SNC0 || cx > SNC1 ? grow0[cx] : Math.min(grow0[cx], Math.ceil((msurf((cx + 0.5) * CELL) - TOP) / CELL - 0.5));
     function winterCol(cx) {
       const x = (cx + 0.5) * CELL, mt = mtop[cx], g = grow0[cx], s3 = SEED % 389 * 7.77;
@@ -2040,7 +2058,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         for (let cy = g; cy < g + Math.ceil(down / CELL); cy++) if (inGrid(cx, cy) && grid[cy * GX + cx] < 4) grid[cy * GX + cx] = EARTH;
       }
     }
-    const bio = new Uint8Array(GX), bio2 = new Uint8Array(GX), bmx = new Uint8Array(GX), bix = new Uint8Array(GX), noCave = new Uint8Array(GX), liqM = new Uint8Array(GX), liqY = new Int16Array(GX), ORBS = [MOON];
+    const ORBS = [MOON];
     let BIO = [], STR = [], CRE = [], PICKS = [], PADS = [], DECO = [], EGGS = [], LOOT = [], DROPS = [], genF = 0, stI = 0, winC = -9999, NT0 = 0, NC0 = 0;
     let seen = {}, eggGot = {}, lootGot = {}, orbGot = {};
     const PX0 = 9600, PM = 960, PMC = PM / CELL, LANDX = PX0 + 700, PADH = -20;
