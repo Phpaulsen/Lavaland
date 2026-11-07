@@ -3,9 +3,12 @@
 Stand: `main` @ 76ae808 (5.11.2026, nach #91). Die Tabellen zwischen den `arch:`-Marken erzeugt `tools/arch/analyze.mjs`, der Text drumherum ist von Hand. Neu erzeugen:
 
 ```
-npm i --no-save --no-package-lock acorn@8.19.0
-node tools/arch/analyze.mjs --write docs/architecture/current.md
+npm ci
+git show 76ae808:index.html > /tmp/alt.html
+node tools/arch/analyze.mjs --html /tmp/alt.html --write docs/architecture/current.md
 ```
+
+Seit PR 1 steht der Spielcode in `src/legacy.js`. Ohne `--html` analysiert das Skript diese Datei (Zeilen dann relativ zu `src/legacy.js`: Zeile in `index.html` alt minus 784).
 
 ## 1. Aufbau der Datei
 

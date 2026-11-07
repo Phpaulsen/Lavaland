@@ -1,5 +1,6 @@
 // Ist-Analyse von index.html: Sektionen, Top-Level-Namen, wer welchen Namen liest/schreibt/aufruft, Zyklen, große Funktionen, DOM/Canvas/Speicher-Mischung, Zugriffe der Tests auf Interna.
-// Aufruf: npm i --no-save --no-package-lock acorn@8.19.0 && node tools/arch/analyze.mjs [--json out.json] [--write docs/architecture/current.md]
+// Aufruf: npm ci && node tools/arch/analyze.mjs [--html alte-index.html] [--json out.json] [--write docs/architecture/current.md]
+// Ohne --html: analysiert src/legacy.js, Zeilen beziehen sich dann auf diese Datei.
 // Mit --write werden die Abschnitte zwischen <!-- arch:NAME --> und <!-- /arch:NAME --> in der Datei ersetzt; alles andere bleibt.
 // Verfahren: acorn parst das eine Skript, eigene Gültigkeitsbereiche (var/let/const/function/class/catch/Parameter) lösen jeden Namen auf.
 // Ein Name zählt als Top-Level, wenn er direkt im Rumpf der umschließenden IIFE deklariert ist. Zuordnung zu Sektionen über die Kommentare /* ---------- Titel ---------- */.
@@ -13,10 +14,12 @@ const acorn = require('acorn');
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const arg = k => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };
 
-const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+// Ab PR 1 steht das Spiel in src/legacy.js; die gebaute index.html ist umformatiert. --html datei analysiert eine alte index.html (z. B. git show 76ae808:index.html).
+const HTMLF = arg('--html');
+const html = HTMLF ? fs.readFileSync(HTMLF, 'utf8') : fs.readFileSync(path.join(ROOT, 'src', 'legacy.js'), 'utf8');
 const lines = html.split('\n');
-const m = html.match(/<script>([\s\S]*?)<\/script>/);
-const scriptStart = html.slice(0, m.index + '<script>'.length).split('\n').length; // Zeile, in der der Skripttext beginnt
+const m = HTMLF ? html.match(/<script>([\s\S]*?)<\/script>/) : { index: 0, 1: html, 0: html };
+const scriptStart = HTMLF ? html.slice(0, m.index + '<script>'.length).split('\n').length : 1; // Zeile, in der der Skripttext beginnt
 const src = m[1];
 const L = n => n + scriptStart - 1; // Skriptzeile -> Zeile in index.html
 
@@ -315,7 +318,7 @@ body.forEach((st, i) => {
 const fmtSecs = set => [...set].sort((a, b) => a - b).map(i => SEC[i].label).join(' ');
 const out = {};
 out.summary = [
-  `Gemessen an \`index.html\` (${lines.length} Zeilen, ${Math.round(Buffer.byteLength(html) / 1024)} KB). Skript: Zeilen ${L(iife.loc.start.line)}–${L(iife.loc.end.line)}, eine IIFE mit \`'use strict'\`.`,
+  `Gemessen an \`${HTMLF ? 'index.html' : 'src/legacy.js'}\` (${lines.length} Zeilen, ${Math.round(Buffer.byteLength(html) / 1024)} KB). Skript: Zeilen ${L(iife.loc.start.line)}–${L(iife.loc.end.line)}, eine IIFE mit \`'use strict'\`.`,
   '',
   `| Größe | Wert |`, `|---|---|`,
   `| Sektionen (Kommentarmarken) | ${SEC.length} |`,

@@ -20,14 +20,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Abhängigkeiten (feste Versionen aus package-lock.json)
+        run: npm ci
+      - name: Bundle aktuell (index.html ist aus src/ gebaut)
+        run: node tools/build.mjs --check
+      - name: Bauen (index.html und Testbuild dist/index.test.html)
+        run: node tools/build.mjs
       - name: Statische Prüfung (Syntax, Größe, IDs, Speicherschlüssel)
         run: node tests/static.mjs
-      - name: Playwright installieren
-        run: |
-          npm install --no-save --no-package-lock playwright@1.56.1
-          npx playwright install --with-deps chromium
+      - name: Typprüfung (neue Module, legacy.js ausgenommen)
+        run: npx tsc -p .
+      - name: Browser installieren
+        run: npx playwright install --with-deps chromium
       - name: Rauchtest
         run: node tests/smoke.mjs
+      - name: Produktionsbundle (echte CSP, kein Testzugang)
+        run: node tests/prod.mjs
       - name: Spielstand-Test (Rettung, Datenbankstörung, Sichern/Laden)
         run: node tests/save.mjs
       - name: Offline-Test (kein Netz, langsames Netz, Serverfehler)

@@ -27,8 +27,8 @@ In `target.md` gewählt (offen für Einwände):
 8. **Durchsetzung mit eigenem Skript** `tools/arch/deps.mjs` auf dem esbuild-Metafile statt dependency-cruiser.
 9. **Übergangsfassade `G`** für neu zugewiesene globale Namen; Konstanten und Typed Arrays ziehen direkt um; heiße Schleifen ohne Getter.
 10. **`core` bekommt Zufall als Parameter.** Im Spiel weiter `Math.random`, im Test ein fester Strom.
-11. **esbuild ohne Minify, mit `keepNames`**, damit Funktionsnamen im Fehlerprotokoll gleich bleiben.
-12. **Testzugang** über einen `__TEST__`-Zweig in einem eigenen Testbuild statt Text-Anker; langfristig benannte Test-API statt `eval`.
+11. **esbuild ohne Minify.** Ursprünglich mit `keepNames`; in PR 1 verworfen, weil esbuild nur verdeckende lokale Namen umbenennt und die Top-Level-Namen (auch für das Fehlerprotokoll) gleich bleiben, geprüft durch `tools/arch/samecode.mjs`.
+12. **Testzugang** über eine Marke `/*@test-hook*/`, die nur der Testbuild ersetzt, statt Text-Anker; langfristig benannte Test-API statt `eval`.
 13. **Systemschnittstelle** `{ name, init, tick, draw(ctx, layer) }`, abgeleitet aus `SIDE`, gleiche Reihenfolge, gleicher Fehlerschutz, `name` = heutiger Funktionsname.
 
 Vom Maintainer am 5.11.2026 entschieden:

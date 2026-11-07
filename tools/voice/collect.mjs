@@ -15,7 +15,9 @@ const out = new Set();
 const add = t => { for (const s of split(t)) if (/[a-zäöüß]/.test(s) && !/[<>{}=]|\\/.test(s)) out.add(s); };
 
 // 1. Feste Sätze: jedes String-Literal, davon nur vollständige Sätze (Anfang mit Großbuchstabe, Ende mit Satzzeichen).
-const src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+// Aus den Quellen in src/, nicht aus der gebauten index.html: esbuild schreibt Strings mit doppelten Anführungszeichen.
+const walk = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]);
+const src = walk(path.join(ROOT, 'src')).filter(f => f.endsWith('.js')).sort().map(f => fs.readFileSync(f, 'utf8')).join('\n');
 for (const m of src.matchAll(/'((?:[^'\\\n]|\\.)*)'/g)) {
   const lit = m[1];
   if (!/^[A-ZÄÖÜ]/.test(lit)) continue;

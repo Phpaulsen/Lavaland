@@ -1,0 +1,18 @@
+{
+  "name": "lavaland",
+  "private": true,
+  "license": "MIT",
+  "description": "Quellen und Werkzeuge. Ausgeliefert wird nur die gebaute index.html (node tools/build.mjs).",
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "dev": "node tools/build.mjs --watch",
+    "check": "node tools/build.mjs --check && node tests/static.mjs && tsc -p ."
+  },
+  "devDependencies": {
+    "acorn": "8.19.0",
+    "esbuild": "0.28.2",
+    "playwright": "1.56.1",
+    "typescript": "6.0.3"
+  }
+}
