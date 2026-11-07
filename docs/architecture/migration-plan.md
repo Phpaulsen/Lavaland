@@ -53,9 +53,11 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 ### PR 3: Werkzeuge und das erste Modul
 
 - **Ziel:** Abhängigkeitsprüfung scharf für neue Module; erstes Blatt.
-- **Bewegt:** `rng`, `hash2` (`S06`, `S03`) → `src/core/rng.js`. `ri`, `shuffle` (`S58`) → `core/rng.js` mit Zufallsquelle als Parameter; in `legacy.js` bleiben `ri`/`shuffle` als Einzeiler, die `Math.random` übergeben.
-- **Neu:** `tools/arch/deps.mjs`, `tools/arch/movecheck.mjs`, `tools/arch/codemod.mjs` (Umschreiben `x` → `G.x` über den AST). CI-Schritte für `deps` und `tsc`.
-- **Risiken:** gering. `rng` hat keine Abhängigkeit (`current.md` Abschnitt 7). **Absicherung:** Golden-Master.
+- **Bewegt:** `rng`, `hash2` (`S06`, `S03`) → `src/core/rng.js`, Körper unverändert. `ri`, `shuffle` (`S58`) → `core/rng.js` als `riWith(rand,a,b)` und `shuffleWith(rand,a)`; in `legacy.js` bleiben `ri`/`shuffle` als Einzeiler, die `Math.random` übergeben. Gleich viele `Math.random`-Aufrufe in gleicher Reihenfolge.
+- **Neu:** `tools/arch/deps.mjs`, `tools/arch/movecheck.mjs` mit `tools/arch/moves.json` (je PR neu: Umbenennungen, Parameter, Fassade, bewusst geänderte Namen), `tools/arch/codemod.mjs` (Umschreiben `x` → `F.x` über den AST, mit Gültigkeitsbereichen). Alle drei mit `--selftest`. CI-Schritte für `deps`, Selbsttests und Move-Nachweis (nur in PRs, gegen die Spitze von main); `tsc` lief schon seit PR 1.
+- **Abweichungen:** Die Namen in `core/` heißen `riWith`/`shuffleWith` statt `ri`/`shuffle`. Bei gleichem Namen benennt esbuild einen der beiden um (`ri2`), im Produktionsbuild ausgerechnet den in `legacy.js`; das ändert Namen im Fehlerprotokoll (ADR 0001 Punkt 11). `analyze.mjs` liest `legacy.js` jetzt als Modul und zählt importierte Namen als deklariert; `current.md` bleibt unverändert (wird aus 76ae808 erzeugt). `deps.mjs` erlaubt Importe innerhalb derselben Schicht (die Tabelle in `target.md` nennt sie nicht ausdrücklich), Zyklen bleiben verboten.
+- **Move-Nachweis braucht einen aktuellen Branch:** Er vergleicht mit der Spitze von main. Ist main weiter, zeigt er die fremden Änderungen als Abweichung; dann main in den Branch mergen (wie beim Bundle-Konflikt).
+- **Risiken:** gering. `rng` hat keine Abhängigkeit (`current.md` Abschnitt 7). **Absicherung:** Golden-Master, Move-Nachweis, `perf.mjs` (eine Aufrufebene mehr in `ri`).
 
 ### PR 4: Konstanten der Welt
 

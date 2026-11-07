@@ -24,7 +24,8 @@ const src = m[1];
 const L = n => n + scriptStart - 1; // Skriptzeile -> Zeile in index.html
 
 const comments = [];
-const ast = acorn.parse(src, { ecmaVersion: 'latest', sourceType: 'script', locations: true, onComment: (block, text, s, e, ls) => { if (block) comments.push({ text, line: L(ls.line) }); } });
+// src/legacy.js ist ab PR 3 ein Modul (importiert aus core/), die alte index.html ein Skript.
+const ast = acorn.parse(src, { ecmaVersion: 'latest', sourceType: HTMLF ? 'script' : 'module', locations: true, onComment: (block, text, s, e, ls) => { if (block) comments.push({ text, line: L(ls.line) }); } });
 
 // Die IIFE finden: (function(){ 'use strict'; ... })();
 const iife = ast.body.find(s => s.type === 'ExpressionStatement' && s.expression.type === 'CallExpression');
@@ -268,7 +269,9 @@ for (const f of TESTFILES) {
   for (const s of strs) for (const id of s.match(/[A-Za-z_$][\w$]*/g) || []) if (TOP.has(id)) { if (!testUse.has(id)) testUse.set(id, new Set()); testUse.get(id).add(path.basename(f)); }
 }
 const BROWSER = new Set(Object.getOwnPropertyNames(globalThis).concat(['window', 'document', 'navigator', 'localStorage', 'sessionStorage', 'indexedDB', 'IDBKeyRange', 'location', 'history', 'screen', 'performance', 'requestAnimationFrame', 'cancelAnimationFrame', 'matchMedia', 'getComputedStyle', 'innerWidth', 'innerHeight', 'devicePixelRatio', 'speechSynthesis', 'SpeechSynthesisUtterance', 'AudioContext', 'webkitAudioContext', 'Image', 'Audio', 'Blob', 'File', 'FileReader', 'URL', 'Event', 'CustomEvent', 'HTMLElement', 'caches', 'alert', 'confirm', 'prompt', 'open', 'close', 'fetch', 'Response', 'Request', 'Headers', 'OffscreenCanvas', 'ImageData', 'Path2D', 'DOMException', 'visualViewport', 'scrollTo', 'onerror', 'self', 'top', 'parent', 'frames', 'name', 'origin', 'crypto', 'TextEncoder', 'TextDecoder', 'CompressionStream', 'DecompressionStream', 'ResizeObserver', 'MutationObserver', 'IntersectionObserver', 'Notification', 'outerWidth', 'outerHeight', 'screenX', 'screenY', 'pageXOffset', 'pageYOffset', 'scrollX', 'scrollY', 'atob', 'btoa', 'MediaRecorder', 'createImageBitmap', 'PointerEvent', 'TouchEvent', 'KeyboardEvent', 'MouseEvent', 'AbortController', 'Worker', 'BroadcastChannel', 'MessageChannel', 'structuredClone', 'queueMicrotask', 'isSecureContext']));
-const undecl = [...UNDECL.entries()].filter(([k]) => !BROWSER.has(k)).sort((a, b) => b[1].n - a[1].n);
+// Aus Modulen importierte Namen sind deklariert, nur nicht in legacy.js.
+const IMPORTED = new Set(ast.body.filter(s => s.type === 'ImportDeclaration').flatMap(s => s.specifiers.map(x => x.local.name)));
+const undecl = [...UNDECL.entries()].filter(([k]) => !BROWSER.has(k) && !IMPORTED.has(k)).sort((a, b) => b[1].n - a[1].n);
 const unused = [...TOP.values()].filter(t => !USE.some(u => u.name === t.name && !(u.line >= t.line && u.line <= t.end)) && !testUse.has(t.name));
 
 // ---- Weltgenerierung: Welche Top-Level-Funktionen sind von den Erzeugern aus erreichbar, und wo ruft eine davon Math.random()?

@@ -1,0 +1,8 @@
+{
+  "pr": 3,
+  "renames": { "riWith": "ri", "shuffleWith": "shuffle" },
+  "params": { "riWith": "rand", "shuffleWith": "rand" },
+  "changed": ["ri", "shuffle"],
+  "added": [],
+  "removed": []
+}
