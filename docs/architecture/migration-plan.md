@@ -77,8 +77,12 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 
 ### PR 6: Lernkern ohne Oberfläche
 
-- **Bewegt:** `STAGES`, Silben- und Wortlisten (`SYL`, `RHYW`, `WORDS`, `CASES`), `mkQ`, die Leitner-Rechnung (`BOXD` `index.html:7518`, `MBOX` `7660`, Fachwechsel `7649`–`7652`) und die reine Auswahl aus `pickFact0`/`pickFact` (`index.html:7594`) → `core/learn/`. `nextQ` bleibt (84 Funktionen in der Hülle, DOM und Speichern).
-- **Risiken:** `pickFact` mischt Auswahl und Zustand (`lastF`). **Absicherung:** Generator-Golden-Master über `mkQ`, Rauchtest „Lernaufgabe“.
+- **Bewegt:** 29 Namen → `core/learn/`. `facts.js`: `WORDS`, `SYL`, `CLAP`, `RHY`, `RHYW` samt seiner Füllschleife, `LETTERS`, `CASES`, `STAGES`, `fDom`, `fStage`, `fKind`, `fName`. `leitner.js`: `BOXD`, `NEWDAY`, `FASTMS`, `DAYMISS`, dazu `schoolOkWith(SCH, …)`, `fUnlockWith(FS, …)`, `mixPreferWith(rand, kindHist, …)`, `fParkedWith(FS, …)`. `tasks.js`: `mkQWith(rand, IC, QI, k)`, `mkSeqWith(rand, FS)`, `qpicWith(IC, QI, …)`, `lettersForWith(rand, …)`, `dots`, `zw`, `HOLE`, `solAdd`, `solSub`. In `legacy.js` bleibt je Funktion mit Zustand ein Einzeiler (`mkQ`, `mkSeq`, `schoolOk`, `fUnlock`, `mixPrefer`, `fParked`); `qpic` und `lettersFor` rief nur `mkQ`, sie fallen dort weg.
+- **Abweichung vom Plan:** Fachwechsel (`factDone`) und Auswahl (`pickFact0`) bleiben in `legacy.js`. Sie sind keine eigenen Funktionen, sondern Teile von Funktionen, die zugleich `FS`, `retry`, `lastF`, `dayNo()` (Uhr), `masterGive` und `saveFacts` anfassen. Sie herauszulösen ist ein Umbau, kein Move, und `movecheck.mjs` könnte ihn nicht nachweisen. Sie ziehen mit dem Spielzustand (PR 14) um, wenn `FS` und `retry` ein eigenes Modul haben. `dayNo` bleibt, weil es die Uhr liest.
+- **`MBOX` bleibt in `legacy.js`:** Der Nachtrag der Meistersteine beim Laden liest `MBOX` vor seiner Deklaration (`findings.md` F1). In `core/` wäre `MBOX` beim Laden schon gesetzt, der Startabbruch verschwände, und alte Stände bekämen nachträglich Meistersteine. Das wäre ein Bugfix im Move. Zieht mit, wenn F1 gesondert behoben ist.
+- **Bilder als Parameter:** `mkQ` baut HTML und liest dafür `IC.star` und die Wortbilder aus `IC`/`QI`. Die Tabellen gehören zur Oberfläche und werden über die ganze Datei befüllt; sie kommen deshalb als Parameter, nicht als Import. Die Trennung „Aufgabe als Daten, HTML in `ui/`“ ist ein Umbau für PR 24–27.
+- **Typen:** `FactStore`, `School`, `Question`, `Word`, `Domain` als JSDoc-Typen. `let m` in `mkQ` (Treffer je Muster) ist ausdrücklich `any`.
+- **Absicherung:** Move-Nachweis (29 bewegt, 6 Einzeiler), Generator-Golden-Master über `mkQ` je Fakt und Speicher-Golden-Master über `factDone`, Rauchtest „Lernaufgabe“, einmaliger Differenztest alt gegen neu (siehe PR).
 
 ### PR 7: Welt-Felder in ein Modul
 
