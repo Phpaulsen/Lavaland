@@ -38,6 +38,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Rauchtest
         run: node tests/smoke.mjs
+      - name: Golden Master (Welt, Speicherformat, Generatoren unverändert)
+        run: node tests/golden.mjs
       - name: Produktionsbundle (echte CSP, kein Testzugang)
         run: node tests/prod.mjs
       - name: Spielstand-Test (Rettung, Datenbankstörung, Sichern/Laden)
