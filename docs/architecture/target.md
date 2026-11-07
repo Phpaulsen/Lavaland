@@ -62,7 +62,7 @@ src/
 | `main.js` | alles |
 | `legacy.js` | alles (Übergang) |
 
-Dazu: keine Zyklen zwischen Dateien, auch nicht innerhalb einer Schicht. Nichts außer `main.js`, `legacy.js` und `testing/` importiert `legacy.js` (es exportiert nichts).
+Importe innerhalb derselben Schicht sind erlaubt. Dazu: keine Zyklen zwischen Dateien, auch nicht innerhalb einer Schicht. Nichts außer `main.js`, `legacy.js` und `testing/` importiert `legacy.js` (es exportiert nichts).
 
 `ui`, `render` und `systems` rufen Speichern und Protokoll **nicht** direkt auf. Heute ruft z. B. `buy()` (`index.html:3236`) `saveHero()` direkt. Ziel: `main.js` übergibt beim Initialisieren Ports (`{ saveHero, saveGame, log }`), die Module rufen den Port. Das Verhalten bleibt gleich (gleicher Zeitpunkt, gleiche Reihenfolge), nur die Importkante fällt weg. Ein Umbau auf „dirty-Flag und später speichern“ wäre eine Verhaltensänderung und ist ausgeschlossen.
 
