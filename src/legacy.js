@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { rng, hash2, riWith, shuffleWith } from './core/rng.js';
+import { HOME_W, HOME_GX, WORLD_W0, WORLD_W, CELL, GX, GY, GY0, KEEPR, WINW, SW, ROWW, SH, TOP, VOLC, G, TAU, LAVA, FIRE, WATER, EARTH, ROCK, ICE, WOOD, BED, DEEP, HOT, CORE, GOLD, GEM, SNOW, SHELL, MAX_LAVA, MAX_WATER, MAX_FIRE, SKY_TOP, SKYL, SKY_END, MOON, STALL_X, SITE, FLAT, clamp, baseG, bump, siteY, rawH, B0, EXT_X, EXC, HOME_END, WL, WLR } from './core/world/const.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -137,29 +138,6 @@ AI.bow='<path d="M5 3c9 1.500 14 6.500 16 16" stroke="currentColor" stroke-width
 AI.sonar='<circle cx="12" cy="12" r="2.600" fill="currentColor"/><path d="M6.500 6.500a8 8 0 0 0 0 11M17.500 6.500a8 8 0 0 1 0 11M3.500 3.500a12 12 0 0 0 0 17M20.500 3.500a12 12 0 0 1 0 17" stroke="currentColor" stroke-width="2.200" fill="none" stroke-linecap="round"/>';
 
 /* ---------- Welt ---------- */
-/* Die Heimat ist 7200 breit. Dahinter liegen die fremden Länder. Nach unten reicht die Welt dreimal so tief wie früher. */
-const HOME_W=7200, HOME_GX=1200, WORLD_W0=57600, WORLD_W=115200, CELL=6, GX=WORLD_W/CELL, GY=2048, GY0=686, KEEPR=626, WINW=420, SW=2*WINW+9, ROWW=320, SH=14, TOP=-912, VOLC=2700, G=900, TAU=6.2832;
-/* Schichten nach unten: Erde, Fels, Tiefengestein, heißes Gestein, Erdkern. Gold und Edelsteine stecken im Gestein. */
-const LAVA=1, FIRE=2, WATER=3, EARTH=4, ROCK=5, ICE=6, WOOD=7, BED=8, DEEP=9, HOT=10, CORE=11, GOLD=12, GEM=13, SNOW=14, SHELL=15;
-const MAX_LAVA=7000, MAX_WATER=30000, MAX_FIRE=1400;
-const SKY_TOP=-5600, SKYL=[-5600,-12000,-22000,-32000], SKY_END=-32000, MOON={x:3600,y:-4400,r:250}, STALL_X=905;
-const SITE={build:3700, smash:4090, fire:4470, pond:4960, volb:5580, chest:6300};
-const FLAT=['build','smash','fire','pond','volb'];
-
-function clamp(v,a,b){return v<a?a:v>b?b:v}
-function baseG(x){return 55*Math.sin(x*0.0021+1)+30*Math.sin(x*0.0057+2.2)+10*Math.sin(x*0.013)}
-function bump(x){const d=x-VOLC;return -430*Math.exp(-(d*d)/144400)+125*Math.exp(-(d*d)/4900)}
-const siteY={};
-for(const k of FLAT) siteY[k]=TOP+24*Math.round((baseG(SITE[k])-TOP)/24);
-function rawH(x){
-  let g=baseG(x)+bump(x);
-  for(const k of FLAT){
-    const d=Math.abs(x-SITE[k]);
-    if(d<230){ let w=d<140?1:1-(d-140)/90; w=w*w*(3-2*w); g+=(siteY[k]-g)*w; }
-  }
-  const dp=x-SITE.pond; g+=62*Math.exp(-(dp*dp)/10000);
-  return g;
-}
 const g0=new Float32Array(GX+2);
 for(let i=0;i<GX+2;i++) g0[i]=rawH(i*CELL);
 function ground(x){ const f=clamp(x/CELL,0,GX), i=Math.floor(f); return g0[i]+(g0[i+1]-g0[i])*(f-i); }
@@ -303,7 +281,6 @@ function restoreSite(xc,hw,up,down){
 }
 /* ---------- Große Welt: Hinter dem Schneeberg folgen Länder, die aus der Welt-Nummer berechnet werden.
    Ihre Spalten entstehen erst, wenn der Held in die Nähe kommt. Flüssigkeiten rechnen nur rund um die Kamera. ---------- */
-const B0=8760, EXT_X=B0-220, EXC=Math.floor(EXT_X/CELL), HOME_END=1400, WL=14, WLR=Math.floor((WL-TOP)/CELL);
 const bio=new Uint8Array(GX), bio2=new Uint8Array(GX), bmx=new Uint8Array(GX), bix=new Uint8Array(GX), noCave=new Uint8Array(GX), liqM=new Uint8Array(GX), liqY=new Int16Array(GX), ORBS=[MOON];
 let BIO=[], STR=[], CRE=[], PICKS=[], PADS=[], DECO=[], EGGS=[], LOOT=[], DROPS=[], genF=0, stI=0, winC=-9999, NT0=0, NC0=0;
 let seen={}, eggGot={}, lootGot={}, orbGot={};
