@@ -35,6 +35,10 @@ Vom Maintainer am 5.11.2026 entschieden:
 
 14. **Streichen vor PR 16.** Die Streich-PRs aus `plan-vereinfachung.md` laufen nach PR 15 und vor dem Umzug der Systeme, als eigene verhaltensändernde PRs außerhalb der Migration (`migration-plan.md` Abschnitt 3).
 
+Vom Maintainer am 7.11.2026 entschieden:
+
+15. **Regeln für Pakete.** Keine Laufzeitabhängigkeiten. Neue Werkzeugpakete nur mit Begründung in einem ADR, ohne eigenen Abhängigkeitsbaum, in einer mindestens zwei Wochen alten Version. Feste Versionen, Prüfsummen im Lockfile, nur `registry.npmjs.org`, Install-Skripte aus. Die CI führt `npm audit` und `npm audit signatures` aus, auch im Nachtlauf. `tests/static.mjs` prüft die Regeln mechanisch.
+
 ## Verworfene Alternativen
 
 - **Klassische `<script src>`-Dateien ohne Build** (so stand es in `plan-vereinfachung.md` 4b): kein Build-Schritt, aber weiter ein gemeinsamer globaler Scope (nur auf Dateien verteilt), keine Importgrenzen, keine Prüfung von Abhängigkeiten. Bricht außerdem `file://`/Artefakt als eine Datei. Verworfen durch Entscheidung 1 und 2.

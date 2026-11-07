@@ -20,8 +20,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Abhängigkeiten (feste Versionen aus package-lock.json)
-        run: npm ci
+      - name: Abhängigkeiten (feste Versionen aus package-lock.json, ohne Install-Skripte)
+        run: npm ci --ignore-scripts
+      - name: Bekannte Schwachstellen (ab mittel) und Registry-Signaturen
+        run: |
+          npm audit --audit-level=moderate
+          npm audit signatures
       - name: Bundle aktuell (index.html ist aus src/ gebaut)
         run: node tools/build.mjs --check
       - name: Bauen (index.html und Testbuild dist/index.test.html)

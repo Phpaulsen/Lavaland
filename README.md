@@ -67,6 +67,8 @@ node tools/build.mjs      # baut index.html und den Testbuild dist/index.test.ht
 npm run dev               # baut bei jeder Änderung neu
 ```
 
+Pakete: keine Laufzeitabhängigkeiten, nur Werkzeuge für Bauen und Testen (esbuild, TypeScript, Playwright, acorn). Versionen fest, aus der npm-Registry mit Prüfsumme im Lockfile, Install-Skripte aus (`.npmrc`). Die CI prüft bei jedem PR und jede Nacht auf bekannte Schwachstellen (`npm audit`) und Registry-Signaturen. Ein neues Paket nur mit Begründung in `docs/architecture/adr/`, nur ohne eigenen Abhängigkeitsbaum, und nur in einer Version, die mindestens zwei Wochen alt ist.
+
 Die CI scheitert, wenn `index.html` nicht zu `src/` passt. Bei einem Konflikt in `index.html` nicht von Hand lösen, sondern neu bauen. Plan und Regeln der Umstellung: `docs/architecture/`.
 
 
