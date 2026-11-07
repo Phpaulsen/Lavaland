@@ -1,15 +1,15 @@
 {
-  "pr": 5,
+  "pr": 6,
   "renames": {
-    "mkMusterWith": "mkMuster", "mkSternWith": "mkStern", "mkSpiegelWith": "mkSpiegel", "mkRoboWith": "mkRobo",
-    "mkWaageWith": "mkWaage", "mkEchoWith": "mkEcho", "mkRohreWith": "mkRohre", "mkSudokuWith": "mkSudoku"
+    "qpicWith": "qpic", "lettersForWith": "lettersFor", "mkQWith": "mkQ", "mkSeqWith": "mkSeq",
+    "schoolOkWith": "schoolOk", "fUnlockWith": "fUnlock", "mixPreferWith": "mixPrefer", "fParkedWith": "fParked"
   },
   "params": {
-    "mkMusterWith": "rand", "mkSternWith": ["rand=Math.random", "FS"], "mkSpiegelWith": "rand", "mkRoboWith": "rand",
-    "mkWaageWith": ["rand=Math.random", "SCH"], "mkEchoWith": "rand", "mkRohreWith": "rand", "mkSudokuWith": "rand"
+    "qpicWith": ["IC", "QI"], "lettersForWith": "rand", "mkQWith": ["rand=Math.random", "IC", "QI"], "mkSeqWith": ["rand=Math.random", "FS"],
+    "schoolOkWith": ["SCH"], "fUnlockWith": ["FS"], "mixPreferWith": ["rand=Math.random", "kindHist"], "fParkedWith": ["FS"]
   },
   "wrappers": { "ri": "riWith", "shuffle": "shuffleWith" },
-  "changed": ["mkMuster", "mkStern", "mkSpiegel", "mkRobo", "mkWaage", "mkEcho", "mkRohre", "mkSudoku"],
+  "changed": ["mkQ", "mkSeq", "schoolOk", "fUnlock", "mixPrefer", "fParked"],
   "added": [],
   "removed": []
 }

@@ -10,6 +10,9 @@ import { mkWaageWith } from './core/puzzles/waage.js';
 import { mkEchoWith } from './core/puzzles/echo.js';
 import { rhFlow, rhDone, mkRohreWith } from './core/puzzles/rohre.js';
 import { sdOk, mkSudokuWith } from './core/puzzles/sudoku.js';
+import { WORDS, SYL, RHYW, CASES, STAGES, fDom, fStage, fKind, fName } from './core/learn/facts.js';
+import { BOXD, NEWDAY, FASTMS, schoolOkWith, fUnlockWith, mixPreferWith, fParkedWith } from './core/learn/leitner.js';
+import { mkQWith, mkSeqWith } from './core/learn/tasks.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -6474,55 +6477,10 @@ function numOpts(ans,n,max){
   while(o.length<n&&guard++<80){ const v=ans+ri(-3,3); if(v>=0&&v<=max&&o.indexOf(v)<0) o.push(v); }
   return shuffle(o).map(String);
 }
-function dots(n){ return new Array(n+1).join('●'); }
-/* Zwanzigerfeld für Lösungen über die 10: erst die obere Reihe voll machen, dann weiter unten. Bei Minus werden die weggenommenen Punkte durchgestrichen. */
-function zw(a,b,sub){
-  let f='';
-  for(let i=0;i<20;i++){ let c=''; if(sub){ if(i<a-b) c='on'; else if(i<a) c='off'; } else { if(i<a) c='on'; else if(i<a+b) c='on2'; } f+='<i'+(c?' class="'+c+'"':'')+'></i>'; }
-  return '<div class="zf z20">'+f+'</div>';
-}
-const WORDS=[
-  {w:'Auto',ic:'car',no:''},{w:'Flugzeug',ic:'plane',no:''},{w:'Bagger',ic:'bagger',no:''},{w:'Feuer',ic:'fire',no:'TNH'},
-  {w:'Stern',ic:'star',no:''},{w:'Haus',ic:'haus',no:'MLR'},{w:'Mond',ic:'mond',no:'F'},{w:'Sonne',ic:'sonne',no:'TWN'},
-  {w:'Baum',ic:'baum',no:'RS'},{w:'Wolke',ic:'wolke',no:''},{w:'Apfel',ic:'apfel',no:''},{w:'Ball',ic:'ball',no:'FHW'},{w:'Fisch',ic:'fisch',no:'TW'},
-  /* Dazu die Bilder aus Silben und Reimen. Reimpaare (Maus/Haus, Tanne/Kanne) schließen sich gegenseitig als Ablenker aus, sonst wäre beides richtig. */
-  {w:'Maus',ic:'maus',no:'HLR'},{w:'Tisch',ic:'tisch',no:'FW'},{w:'Tonne',ic:'tonne',no:'SW'},{w:'Hose',ic:'hose',no:'RDL'},{w:'Rose',ic:'rose',no:'HDL'},
-  {w:'Tanne',ic:'tanne',no:'KWP'},{w:'Kanne',ic:'kanne',no:'TWP'},{w:'Banane',ic:'banane',no:''},{w:'Tomate',ic:'tomate',no:''}
-];
-/* Silben klatschen: Bild ansehen, Wort hören, mitklatschen. Die Silben stehen farbig darunter, wie im Silbenlesen in der Schule. */
-const SYL=[['Auto','car','Au-to'],['Flugzeug','plane','Flug-zeug'],['Bagger','bagger','Bag-ger'],['Feuer','fire','Feu-er'],['Stern','star','Stern'],['Haus','haus','Haus'],['Mond','mond','Mond'],
-  ['Sonne','sonne','Son-ne'],['Baum','baum','Baum'],['Wolke','wolke','Wol-ke'],['Apfel','apfel','Ap-fel'],['Ball','ball','Ball'],['Fisch','fisch','Fisch'],
-  ['Rakete','rocket','Ra-ke-te'],['Feuerwerk','fw','Feu-er-werk'],['Banane','banane','Ba-na-ne'],['Tomate','tomate','To-ma-te']];
-const CLAP=['👏','👏👏','👏👏👏'];
-/* Reime: zu einem Bild das passende Reimbild finden. */
-const RHY=[['Haus','haus','Maus','maus'],['Fisch','fisch','Tisch','tisch'],['Sonne','sonne','Tonne','tonne'],['Hose','hose','Rose','rose'],['Tanne','tanne','Kanne','kanne']];
-const RHYW={}; RHY.forEach(function(r){ RHYW[r[0]]={ic:r[1],to:r[2]}; RHYW[r[2]]={ic:r[3],to:r[0]}; });
-const LETTERS='AEIOUMLRSTNFBHWKDP', CASES='ABDEFGHLMNRT';
-function qpic(key){ return '<svg class="qpic" viewBox="0 0 24 24" aria-hidden="true">'+(IC[key]||QI[key])+'</svg>'; }
 /* ---------- Lernkern: Jede Aufgabe ist ein eigener Fakt (7+5, Anlaut von Maus) mit einem Fach nach Leitner.
    Fach 1 kommt in derselben Runde wieder, Fach 2 morgen, dann nach 2, 4 und 8 Tagen. Fach 5 heißt: sitzt.
    Neue Fakten kommen in Schulbuch-Reihenfolge: bis 5, bis 10, bis 20 ohne und dann mit Zehnerübergang. ---------- */
-const BOXD=[0,0,1,2,4,8], NEWDAY=12, FASTMS=3000, DAYMISS=3;
 function dayNo(t){ const d=t?new Date(t):new Date(); return Math.floor((d.getTime()-d.getTimezoneOffset()*6e4)/864e5); }
-const STAGES=(function(){
-  const m=[[],[],[],[]], l=[[],[],[]];
-  for(let n=1;n<=10;n++) m[n<=6?0:1].push('count:'+n);
-  for(let a=1;a<=9;a++) for(let b=1;b<=9;b++){ const s=a+b; if(s<=5) m[0].push(a+'+'+b); else if(s<=10) m[1].push(a+'+'+b); else m[3].push(a+'+'+b); }
-  for(let a=2;a<=10;a++) for(let b=1;b<a;b++) m[a<=5?0:1].push(a+'-'+b);
-  for(let a=10;a<=19;a++) for(let b=1;b<=9;b++){ if(a%10+b<=9) m[2].push(a+'+'+b); }
-  for(let a=11;a<=19;a++) for(let b=1;b<=9;b++){ if(b<=a%10) m[2].push(a+'-'+b); else if(a-b>=2&&a<=18) m[3].push(a+'-'+b); }
-  SYL.forEach(function(x){ l[0].push('syl:'+x[0]); });
-  Object.keys(RHYW).forEach(function(w){ l[0].push('rhy:'+w); });
-  WORDS.forEach(function(wd){ l[0].push('anlaut:'+wd.w); l[2].push('word:'+wd.w); });
-  CASES.split('').forEach(function(c){ l[1].push('case:'+c); });
-  /* Zahlzerlegung (Zahlenhaus): 4 und 5 zuerst, dann 6 bis 10. Die Zehnerfreunde sind die Grundlage für den Zehnerübergang. */
-  for(let n=4;n<=10;n++) for(let a=1;a<n;a++) m[n<=5?0:1].push('zl:'+n+':'+a);
-  /* Blitzblick: Punkte im Zehnerfeld kurz sehen und ohne Abzählen erkennen (Kraft der 5). */
-  for(let n=2;n<=10;n++) m[n<=5?0:1].push('fb:'+n);
-  /* Nachbarzahlen: Welche Zahl kommt davor oder danach? Bis 10, dann bis 20. */
-  for(let n=1;n<=19;n++){ m[n<10?1:2].push('nb:+:'+n); m[n<10?1:2].push('nb:-:'+(n+1)); }
-  return {m:m,l:l};
-})();
 let FS=null;
 function loadFacts(){
   try{ FS=JSON.parse(localStorage.getItem('lavaland-facts')||'null'); }catch(_){ FS=null; }
@@ -6550,34 +6508,13 @@ const ZRN=['bis 5','bis 10','bis 20 ohne Zehnerübergang','bis 20 mit Zehnerübe
 let SCH={on:false,zr:3,l:'',at:0};
 try{ const o=JSON.parse(localStorage.getItem('lavaland-school')||'null'); if(o&&typeof o==='object'){ SCH.on=!!o.on; SCH.zr=clamp(o.zr|0,0,3); SCH.l=String(o.l||'').replace(/[^A-Z]/g,''); SCH.at=+o.at||0; } }catch(_){}
 function saveSchool(){ SCH.at=Date.now(); try{ localStorage.setItem('lavaland-school',JSON.stringify(SCH)); }catch(_){} }
-function schoolOk(k,s){
-  if(!SCH.on) return true;
-  if(fDom(k)==='m') return s<=SCH.zr;
-  if(k.indexOf('syl:')===0||k.indexOf('rhy:')===0) return true;
-  const v=k.slice(k.indexOf(':')+1).toUpperCase();
-  if(k.indexOf('word:')===0) return v.split('').every(function(c){ return SCH.l.indexOf(c)>=0; });
-  return SCH.l.indexOf(v.charAt(0))>=0;
-}
-function fDom(k){ return /^(anlaut|case|word|syl|rhy):/.test(k)?'l':'m'; }
-function fStage(k){ const d=fDom(k), S=STAGES[d]; for(let i=0;i<S.length;i++) if(S[i].indexOf(k)>=0) return i; return 0; }
-/* Eine Stufe öffnet die nächste, wenn 60 % ihrer Fakten mindestens in Fach 2 sind, oder sofort, wenn die letzten vier neuen Fakten alle auf Anhieb und schnell saßen (Einstufung). */
-function fUnlock(d){
-  const S=STAGES[d], top=FS.u[d];
-  if(top>=S.length-1) return;
-  const st=S[top]; let n=0;
-  st.forEach(function(k){ const r=FS.f[k]; if(r&&r[0]>=2) n++; });
-  if(n>=st.length*.6||FS.ft[d]>=4){ FS.u[d]=top+1; FS.ft[d]=0; }
-}
+function schoolOk(k,s){ return schoolOkWith(SCH,k,s); }
+function fUnlock(d){ return fUnlockWith(FS,d); }
 const retry=[];
 let lastF='', lastDom='';
 /* Abwechslung: Aufgabenart (Plus, Minus, Zahlenhaus, Silben …). Gemischtes Üben hält wach und trainiert, die passende Strategie zu erkennen (Interleaving). Kommt dieselbe Art zweimal hintereinander, wird beim dritten Mal eine andere bevorzugt, wenn es eine gibt. */
 let kindHist=[];
-function fKind(k){ const i=k.indexOf(':'); return i>0?k.slice(0,i):k.indexOf('+')>0?'add':'sub'; }
-function mixPrefer(a){
-  if(kindHist.length<2||kindHist[0]!==kindHist[1]) { const o=a.filter(function(k){ return fKind(k)!==kindHist[0]; }); return o.length&&Math.random()<.5?o:a; }
-  const o=a.filter(function(k){ return fKind(k)!==kindHist[0]; });
-  return o.length?o:a;
-}
+function mixPrefer(a){ return mixPreferWith(Math.random,kindHist,a); }
 function pickFact(){ const k=pickFact0(); kindHist.unshift(fKind(k)); kindHist.length=Math.min(kindHist.length,2); return k; }
 function pickFact0(){
   const today=dayNo();
@@ -6615,7 +6552,7 @@ function pickFact0(){
   if(any.length){ any.sort(function(a,b){ return FS.f[a][1]-FS.f[b][1]; }); return any[ri(0,Math.min(4,any.length-1))]; }
   return STAGES.m[0][ri(0,STAGES.m[0].length-1)];
 }
-function fParked(k,today){ return !!FS.dm&&FS.dm.d===today&&FS.dm.c[k]>=DAYMISS; }
+function fParked(k,today){ return fParkedWith(FS,k,today); }
 /* how: 'ok' beim ersten Versuch, 'ok2' beim zweiten Versuch am Ziffernblock, 'miss' falsch. */
 function factDone(q,how,fast){
   const k=q.f, d=fDom(k), today=dayNo();
@@ -6652,105 +6589,8 @@ function masterGive(k){
   labBadge(true);
   return true;
 }
-function fName(k){
-  let m;
-  if((m=/^(\d+)([+-])(\d+)$/.exec(k))) return m[1]+(m[2]==='+'?' plus ':' minus ')+m[3];
-  if((m=/^count:(\d+)$/.exec(k))) return m[1]+' Sterne zählen';
-  if((m=/^fb:(\d+)$/.exec(k))) return m[1]+' Punkte auf einen Blick';
-  if((m=/^nb:([+-]):(\d+)$/.exec(k))) return (m[1]==='+'?'die Zahl nach der ':'die Zahl vor der ')+m[2];
-  if((m=/^zl:(\d+):(\d+)$/.exec(k))) return m[1]+' ist '+m[2]+' und '+(m[1]-m[2]);
-  if((m=/^anlaut:(.+)$/.exec(k))) return 'der Anfang von '+m[1];
-  if((m=/^syl:(.+)$/.exec(k))) return 'die Silben von '+m[1];
-  if((m=/^rhy:(.+)$/.exec(k))) return 'der Reim auf '+m[1];
-  if((m=/^case:(.)$/.exec(k))) return 'das kleine '+m[1].toLowerCase();
-  return 'das Wort '+k.slice(5);
-}
-function lettersFor(wd,n){
-  const c=wd.w.charAt(0);
-  return shuffle([c].concat(shuffle(LETTERS.split('').filter(function(ch){ return ch!==c&&wd.no.indexOf(ch)<0; })).slice(0,n-1)));
-}
-const HOLE='<span class="hole">?</span>';
-/* Zehnerübergang wird in zwei Schritten erklärt: erst bis zur 10, dann der Rest. */
-function solAdd(a,b){
-  const s=a+b;
-  if(a<10&&s>10){ const t=10-a; return a+' plus '+t+' ist 10. Dann noch '+(b-t)+' dazu, das ist '+s+'.'; }
-  return a+' plus '+b+' ist '+s+'.';
-}
-function solSub(a,b){
-  const s=a-b;
-  if(a>10&&s<10&&b>a%10){ const t=a%10; return a+' minus '+t+' ist 10. Dann noch '+(b-t)+' weg, das ist '+s+'.'; }
-  return a+' minus '+b+' ist '+s+'.';
-}
-function mkQ(k){
-  const st=fStage(k), q={L:st,f:k,ans:'',opts:[],html:'',say:'',word:false,pad:false,inp:'',tries:0,miss:false,lock:false};
-  let m;
-  if((m=/^count:(\d+)$/.exec(k))){
-    const n=+m[1]; q.type='count'; q.pad=true; q.ans=String(n);
-    /* Höchstens fünf je Reihe (Kraft der 5), aber nie mehr Spalten als Sterne: Ein einzelner Stern steht sonst links am Rand und sieht nach Verzierung aus statt nach Aufgabe. */
-    q.html='<div class="objs" style="grid-template-columns:repeat('+Math.min(n,5)+',var(--ob))">'+new Array(n+1).join('<svg viewBox="0 0 24 24" aria-hidden="true">'+IC.star+'</svg>')+'</div><div class="eq">'+HOLE+'</div>';
-    q.say='Wie viele Sterne sind das?'; q.sol=n===1?'Das ist ein Stern.':'Das sind '+n+' Sterne.';
-  }else if((m=/^(\d+)([+-])(\d+)$/.exec(k))){
-    const a=+m[1], b=+m[3], add=m[2]==='+', r=add?a+b:a-b;
-    q.type=add?'add':'sub'; q.pad=true; q.ans=String(r);
-    q.dots=add?'<div class="dots"><span class="da">'+dots(a)+'</span> <span class="db">'+dots(b)+'</span></div>':'<div class="dots"><span class="da">'+dots(r)+'</span><span class="dx">'+dots(b)+'</span></div>';
-    if((add?r:a)>10) q.dots=zw(a,b,!add);
-    q.html='<div class="eq">'+a+(add?' + ':' − ')+b+' = '+HOLE+'</div>'+(st<2?q.dots:'');
-    q.say='Wie viel ist '+a+(add?' plus ':' minus ')+b+'?'; q.sol=add?solAdd(a,b):solSub(a,b);
-  }else if((m=/^fb:(\d+)$/.exec(k))){
-    const n=+m[1];
-    let f=''; for(let i=0;i<10;i++) f+='<i'+(i<n?' class="on"':'')+'></i>';
-    q.type='fb'; q.pad=true; q.ans=String(n);
-    q.html='<div class="zf blink">'+f+'</div><div class="eq">'+HOLE+'</div>';
-    q.dots='<div class="zf">'+f+'</div>';
-    q.say='Schau genau! Wie viele Punkte?'; q.sol=n>5?'Oben 5, unten '+(n-5)+'. Das sind '+n+'.':'Das sind '+n+' Punkte.';
-  }else if((m=/^nb:([+-]):(\d+)$/.exec(k))){
-    const n=+m[2], up=m[1]==='+', r=up?n+1:n-1;
-    q.type='nb'; q.pad=true; q.ans=String(r);
-    q.html='<div class="eq">'+(up?n+' &nbsp; '+HOLE:HOLE+' &nbsp; '+n)+'</div><div class="nbar">'+(up?'➡️':'⬅️')+'</div>';
-    q.say=up?'Welche Zahl kommt nach der '+n+'?':'Welche Zahl kommt vor der '+n+'?'; q.sol=up?'Nach der '+n+' kommt die '+r+'.':'Vor der '+n+' kommt die '+r+'.';
-    q.dots='<div class="dots">'+(up?n+' → '+r:r+' ← '+n)+'</div>';
-  }else if((m=/^zl:(\d+):(\d+)$/.exec(k))){
-    const n=+m[1], a=+m[2], b=n-a;
-    q.type='zl'; q.pad=true; q.ans=String(b);
-    q.dots='<div class="dots"><span class="da">'+dots(a)+'</span><span class="db">'+dots(b)+'</span></div>';
-    q.html='<div class="haus"><div class="roof">'+n+'</div><span class="rm">'+a+'</span><span class="rm">'+HOLE+'</span></div>'+(st<1?'<div class="dots"><span class="da">'+dots(n)+'</span></div>':'');
-    q.say=n+' ist '+a+' und wie viel?'; q.sol=n+' ist '+a+' und '+b+'.'+(n===10?' Das sind Zehnerfreunde.':'');
-  }else if((m=/^syl:(.+)$/.exec(k))){
-    const x=SYL.find(function(y){ return y[0]===m[1]; })||SYL[0], sy=x[2].split('-'), n=sy.length;
-    q.type='syl'; q.ans=CLAP[n-1]; q.opts=CLAP.slice(); q.nofast=true;
-    q.html=qpic(x[1])+'<div class="syl">'+sy.map(function(t,i){ return '<b class="s'+(i%2)+'">'+t+'</b>'; }).join('')+'</div><div class="eq">'+HOLE+'</div>';
-    q.say='Klatsch mit: '+x[0]+'. Wie oft hast du geklatscht?'; q.sol=sy.join(' – ')+'. '+x[0]+' hat '+(n===1?'eine Silbe':n+' Silben')+'.';
-  }else if((m=/^rhy:(.+)$/.exec(k))){
-    const w=RHYW[m[1]]?m[1]:'Haus', x=RHYW[w], others=shuffle(Object.keys(RHYW).filter(function(v){ return v!==w&&v!==x.to; })).slice(0,2);
-    q.type='rhy'; q.ans=x.to; q.opts=shuffle([x.to].concat(others)); q.pics=true; q.nofast=true;
-    q.html=qpic(x.ic)+'<div class="syl">'+w+'</div>';
-    q.say='Was reimt sich auf '+w+'?'; q.sol=w+' und '+x.to+', das reimt sich.';
-  }else if((m=/^anlaut:(.+)$/.exec(k))){
-    const wd=WORDS.find(function(w){ return w.w===m[1]; })||WORDS[0], c=wd.w.charAt(0);
-    q.type='anlaut'; q.ans=c; q.opts=lettersFor(wd,6);
-    q.html=qpic(wd.ic)+'<div class="eq">'+HOLE+wd.w.slice(1)+'</div>';
-    q.say='Womit fängt '+wd.w+' an?'; q.sol=wd.w+' fängt mit '+c+' an.';
-  }else if((m=/^case:(.)$/.exec(k))){
-    const c=m[1], lc=c.toLowerCase();
-    q.type='case'; q.ans=lc; q.opts=shuffle([lc].concat(shuffle('abdefghklmnrtu'.split('').filter(function(ch){ return ch!==lc; })).slice(0,5)));
-    q.html='<div class="eq big">'+c+' → '+HOLE+'</div>';
-    q.say='Welcher kleine Buchstabe gehört zum großen '+c+'?'; q.sol='Zum großen '+c+' gehört das kleine '+lc+'.';
-  }else{
-    const w=k.slice(5), wd=WORDS.find(function(x){ return x.w===w; })||WORDS[0];
-    q.type='word'; q.word=true; q.ans=wd.w;
-    q.opts=shuffle([wd.w].concat(shuffle(WORDS.filter(function(x){ return x!==wd; })).slice(0,3).map(function(x){ return x.w; })));
-    q.html=qpic(wd.ic);
-    q.say='Welches Wort passt zum Bild?'; q.sol='Hier steht '+q.ans+'.';
-  }
-  return q;
-}
-/* Zahlenfolgen bleiben als Abwechslung dabei, ohne Fach. */
-function mkSeq(){
-  const big=FS.u.m>=2, st=big?ri(1,2):1, max=big?20:10, a=ri(1,max-2*st), gap=ri(1,2), seq=[a,a+st,a+2*st];
-  return {L:FS.u.m,type:'seq',pad:true,inp:'',tries:0,ans:String(seq[gap]),opts:[],word:false,miss:false,lock:false,free:true,
-    html:'<div class="eq">'+seq.map(function(v,i){ return i===gap?HOLE:String(v); }).join(' &nbsp; ')+'</div>',
-    say:'Welche Zahl fehlt?',sol:'Hier fehlt die '+seq[gap]+'.',f:'seq:'+seq.map(function(v,i){ return i===gap?'_':v; }).join(',')};
-}
+function mkQ(k){ return mkQWith(Math.random,IC,QI,k); }
+function mkSeq(){ return mkSeqWith(Math.random,FS); }
 function genQ(){
   if(Math.random()<.1&&lastF.indexOf('seq:')!==0){ const q=mkSeq(); lastF=q.f; lastDom='m'; return q; }
   const k=pickFact(), q=mkQ(k), r=FS.f[k];
