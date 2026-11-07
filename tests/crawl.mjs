@@ -1,11 +1,9 @@
 // Knopftest: tippt zufällig auf alles, was gerade sichtbar und tippbar ist (Fenster, Rätsel, Elternansicht),
 // und spielt jedes Rätsel auf jeder Stufe einmal durch. Jeder Seitenfehler und jeder neue Eintrag im Fehlerprotokoll lässt ihn scheitern.
 // Aufruf: node tests/crawl.mjs   (CRAWL_N=Schritte, CRAWL_SEED=Startwert)
-import { createRequire } from 'module';
 import { serve } from './server.mjs';
+import { launch, phone } from './browser.mjs';
 
-const require = createRequire(import.meta.url);
-const { chromium, devices } = require('playwright');
 const N = +process.env.CRAWL_N || 600;
 let seed = +process.env.CRAWL_SEED || Date.now() % 100000;
 console.log('Startwert ' + seed + ', ' + N + ' Schritte');
@@ -13,8 +11,8 @@ const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147
 
 const srv = await serve();
 const url = 'http://127.0.0.1:' + srv.address().port + '/';
-const browser = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
-const ctx = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block', bypassCSP: true });
+const browser = await launch();
+const ctx = await browser.newContext({ ...phone(), serviceWorkers: 'block', bypassCSP: true });
 const page = await ctx.newPage();
 const errs = [];
 page.on('pageerror', e => errs.push(e.message + '\n' + (e.stack || '').split('\n').slice(1, 3).join('\n')));

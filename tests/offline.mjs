@@ -1,15 +1,13 @@
 // Offline-Test: Nach dem ersten Besuch muss das Spiel ohne Netz, bei sehr langsamem Netz und bei Serverfehlern starten (installierte App im Funkloch).
 // Aufruf: node tests/offline.mjs
-import { createRequire } from 'module';
 import { serve, net } from './server.mjs';
+import { launch, phone } from './browser.mjs';
 
-const require = createRequire(import.meta.url);
-const { chromium, devices } = require('playwright');
 
 const srv = await serve();
 const url = 'http://127.0.0.1:' + srv.address().port + '/';
-const browser = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
-const ctx = await browser.newContext({ ...devices['Pixel 7'], bypassCSP: true });
+const browser = await launch();
+const ctx = await browser.newContext({ ...phone(), bypassCSP: true });
 const page = await ctx.newPage();
 const errs = [];
 page.on('pageerror', e => errs.push(e.message));
