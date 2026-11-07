@@ -1,10 +1,8 @@
 // Zufallstest: drückt Tasten, tippt auf die Spielwelt, wechselt Fahrzeuge, Werkzeuge und Welten. Jeder Seitenfehler lässt den Test scheitern.
 // Aufruf: node tests/fuzz.mjs   (FUZZ_SEC=Sekunden, FUZZ_SEED=Startwert)
-import { createRequire } from 'module';
 import { serve } from './server.mjs';
+import { launch, phone } from './browser.mjs';
 
-const require = createRequire(import.meta.url);
-const { chromium, devices } = require('playwright');
 const SEC = +process.env.FUZZ_SEC || 40;
 let seed = +process.env.FUZZ_SEED || Date.now() % 100000;
 console.log('Startwert ' + seed + ', ' + SEC + ' s');
@@ -13,8 +11,8 @@ const pick = a => a[Math.floor(rnd() * a.length)];
 
 const srv = await serve();
 const url = 'http://127.0.0.1:' + srv.address().port + '/';
-const browser = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
-const ctx = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block', bypassCSP: true });
+const browser = await launch();
+const ctx = await browser.newContext({ ...phone(), serviceWorkers: 'block', bypassCSP: true });
 const page = await ctx.newPage();
 const errs = [];
 page.on('pageerror', e => errs.push(e.message + '\n' + (e.stack || '').split('\n').slice(0, 3).join('\n')));
