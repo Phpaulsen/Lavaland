@@ -1,0 +1,40 @@
+name: Firefox
+# Das Kind spielt die aus Firefox (Android) installierte App. Die Haupttests laufen in Chromium, dieser Lauf prüft dasselbe Spiel in Firefox.
+# Ohne Golden Master (Gleitkomma kann je Browser anders runden), Update- und Leistungstest. Tests, die das Chrome-Protokoll brauchen, überspringen sich selbst.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '47 2 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  firefox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BROWSER: firefox
+      LONG: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Abhängigkeiten (feste Versionen aus package-lock.json, ohne Install-Skripte)
+        run: npm ci --ignore-scripts
+      - name: Bauen (index.html und Testbuild dist/index.test.html)
+        run: node tools/build.mjs
+      - name: Browser installieren
+        run: npx playwright install --with-deps firefox
+      - name: Rauchtest
+        run: node tests/smoke.mjs
+      - name: Spielstand-Test (Rettung, Datenbankstörung, Sichern/Laden)
+        run: node tests/save.mjs
+      - name: Offline-Test (kein Netz, langsames Netz, Serverfehler)
+        run: node tests/offline.mjs
+      - name: Zufallstest
+        run: FUZZ_SEC=$([ "$LONG" = true ] && echo 600 || echo 45) node tests/fuzz.mjs
+      - name: Knopftest (alle Fenster, alle Rätselstufen)
+        run: CRAWL_N=$([ "$LONG" = true ] && echo 4000 || echo 300) node tests/crawl.mjs

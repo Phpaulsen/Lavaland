@@ -3,16 +3,14 @@
 // 2. Ist die Datenbank beim Start nicht lesbar, schreibt das Spiel nichts hinein; beim nächsten Start ist der alte Stand wieder da.
 // 3. Sichern und Laden über die Datei bringt alles zurück (Welt, Held, Lernstand, Protokoll, Karte).
 // Aufruf: node tests/save.mjs
-import { createRequire } from 'module';
 import { serve } from './server.mjs';
+import { launch, phone, FIREFOX } from './browser.mjs';
 
-const require = createRequire(import.meta.url);
-const { chromium, devices } = require('playwright');
 
 const srv = await serve();
 const url = 'http://127.0.0.1:' + srv.address().port + '/';
-const browser = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
-const ctx = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block', bypassCSP: true });
+const browser = await launch();
+const ctx = await browser.newContext({ ...phone(), serviceWorkers: 'block', bypassCSP: true });
 // Schalter für Teil 2: Bis zu dieser Uhrzeit lässt sich keine Datenbank öffnen, danach wieder (kurze Störung wie auf Android bei vollem Speicher).
 await ctx.addInitScript(() => {
   const open = indexedDB.open.bind(indexedDB);
@@ -33,6 +31,8 @@ const keys = () => page.evaluate(() => new Promise(res => { const rq = indexedDB
 
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
+// Braucht das Chrome-Protokoll (CDP), das es in Firefox nicht gibt.
+const testCdp = (name, fn) => tests.push({ name, fn, cdp: true });
 
 test('Nicht ladbarer Spielstand wird gerettet, nicht überschrieben', async () => {
   await page.goto(url); await ready();
@@ -99,7 +99,7 @@ test('Geschlossene Protokoll-Datenbank wird neu geöffnet', async () => {
   await ev('localStorage.removeItem(ERRK)');
 });
 
-test('Absturz wird beim nächsten Start erkannt, normales Neuladen nicht', async () => {
+testCdp('Absturz wird beim nächsten Start erkannt, normales Neuladen nicht', async () => {
   await page.goto(url); await ready();
   await ev("localStorage.removeItem(ERRK); OVS.forEach(o=>o.hidden=true); paused=false; setMode('sub')");
   await page.waitForTimeout(2600);
@@ -128,6 +128,7 @@ test('Absturz wird beim nächsten Start erkannt, normales Neuladen nicht', async
 
 let failed = 0;
 for (const t of tests) {
+  if (t.cdp && FIREFOX) { console.log('skip ' + t.name + ' (nur Chromium)'); continue; }
   const n = errs.length;
   try {
     await t.fn();

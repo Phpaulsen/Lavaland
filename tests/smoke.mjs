@@ -1,14 +1,14 @@
 // Rauchtest: startet das Spiel in einem Handy-Browser und prüft die wichtigsten Abläufe.
 // Aufruf: node tests/smoke.mjs   (braucht das npm-Paket playwright und einen Chromium)
 // Optional: CHROMIUM=/pfad/zu/chrome
-import { createRequire } from 'module';
 import { serve } from './server.mjs';
+import { launch, phone, FIREFOX } from './browser.mjs';
 
-const require = createRequire(import.meta.url);
-const { chromium, devices } = require('playwright');
 
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
+// Braucht das Chrome-Protokoll (CDP), das es in Firefox nicht gibt.
+const testCdp = (name, fn) => tests.push({ name, fn, cdp: true });
 
 test('Start ohne Fehler, Welt erzeugt', async ({ ev }) => {
   const s = await ev('({ready, w:GX, x:P.x, mode:P.mode})');
@@ -281,7 +281,7 @@ async function swipeUp(page, x, y) {
   await cdp.detach();
 }
 
-test('Elternansicht lässt sich bis unten wischen', async ({ ev, page }) => {
+testCdp('Elternansicht lässt sich bis unten wischen', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); paused=false; parOpen()");
   await page.waitForTimeout(1500);
   const r = await page.evaluate(() => { const b = document.querySelector('.pars').getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height * 0.7 }; });
@@ -292,7 +292,7 @@ test('Elternansicht lässt sich bis unten wischen', async ({ ev, page }) => {
   if (!(top > 50)) throw new Error('Elternansicht scrollt nicht: ' + top);
 });
 
-test('Zu hohe Fenster im Querformat lassen sich wischen, die Welt nicht', async ({ ev, page }) => {
+testCdp('Zu hohe Fenster im Querformat lassen sich wischen, die Welt nicht', async ({ ev, page }) => {
   const vp = page.viewportSize();
   await page.setViewportSize({ width: 640, height: 360 });
   try {
@@ -344,8 +344,8 @@ test('Rätsel aus der Welt bleibt nach dem Antippen offen (kein Geister-Klick)',
 
 const srv = await serve();
 const url = 'http://127.0.0.1:' + srv.address().port + '/';
-const browser = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
-const ctx = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block', bypassCSP: true });
+const browser = await launch();
+const ctx = await browser.newContext({ ...phone(), serviceWorkers: 'block', bypassCSP: true });
 const page = await ctx.newPage();
 const errs = [];
 page.on('pageerror', e => errs.push(e.message));
@@ -363,6 +363,7 @@ test('Fehlerprotokoll ist leer', async ({ ev }) => {
 let failed = 0;
 await ev('localStorage.removeItem(ERRK)');
 for (const t of tests) {
+  if (t.cdp && FIREFOX) { console.log('skip ' + t.name + ' (nur Chromium)'); continue; }
   const n = errs.length;
   try {
     await t.fn({ ev, page, errs });
