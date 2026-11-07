@@ -42,6 +42,8 @@ async function bundle(test) {
     metafile: true,
     logLevel: 'silent',
     plugins: [hookPlugin(test)],
+    // tsconfig.json gilt nur für tsc. Sonst liest esbuild daraus „strict“ und setzt ein zusätzliches "use strict" vor das Bundle.
+    tsconfigRaw: {},
   });
   // Direktes eval im Testbuild ist gewollt. Jede andere Warnung bricht ab.
   const warn = r.warnings.filter(w => !(test && /direct-eval|Using direct eval/.test(w.id + ' ' + w.text)));

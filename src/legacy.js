@@ -163,7 +163,14 @@ const g0=new Float32Array(GX+2);
 for(let i=0;i<GX+2;i++) g0[i]=rawH(i*CELL);
 function ground(x){ const f=clamp(x/CELL,0,GX), i=Math.floor(f); return g0[i]+(g0[i+1]-g0[i])*(f-i); }
 
-const grid=new Uint8Array(GX*GY), life=new Uint8Array(GX*GY), stamp=new Uint8Array(SW*GY);
+const grid=new Uint8Array(GX*GY), stamp=new Uint8Array(SW*GY);
+/* Brenndauer nur für Feuerzellen (höchstens MAX_FIRE). Früher ein Byte für jede der 39 Mio. Zellen (39 MB); auf Handys hat Firefox das Spiel wegen Speichermangel beendet.
+   255 = brennt dauerhaft (Lagerfeuer). Fehlt eine Zelle, ist ihr Wert 0. Einträge für Zellen, die längst kein Feuer mehr sind, räumt lifeS gelegentlich weg. */
+const LIFE=new Map();
+function lifeS(i,v){
+  if(v>0){ LIFE.set(i,v); if(LIFE.size>4*MAX_FIRE+4000) for(const k of LIFE.keys()) if(grid[k]!==FIRE) LIFE.delete(k); }
+  else LIFE.delete(i);
+}
 /* Harte Schichten und Zonen in der Tiefe: Oberkante je Spalte. zS1, zS2, zS3 sind die harten Schichten, z4 trennt Pilzgrotten und Urzeit-Höhlen. */
 const zS1=new Int16Array(GX), z4=new Int16Array(GX), zS2=new Int16Array(GX), zS3=new Int16Array(GX);
 for(let cx=0;cx<GX;cx++){ zS1[cx]=630+Math.round(3*Math.sin(cx*.027+1)); z4[cx]=960+Math.round(10*Math.sin(cx*.013+2)); zS2[cx]=1290+Math.round(4*Math.sin(cx*.022)); zS3[cx]=1640+Math.round(4*Math.sin(cx*.019+4)); }
@@ -196,7 +203,7 @@ function winterCol(cx){
   for(let cy=mt;cy<g;cy++){
     const i=cy*GX+cx, m=grid[i], d=cy-mt;
     if(m>=4&&m!==EARTH) continue;
-    grid[i]=d<9?SNOW:(d>18&&vnoise(x/30+s3,(TOP+cy*CELL)/30)>.87?GEM:ROCK); life[i]=0;
+    grid[i]=d<9?SNOW:(d>18&&vnoise(x/30+s3,(TOP+cy*CELL)/30)>.87?GEM:ROCK); if(LIFE.size) LIFE.delete(i);
   }
   if(mt>=g-1&&(x<SL0+60||x>BEND-90)){
     const r=colTop(cx,2);
@@ -238,7 +245,7 @@ function ext(cx,cy){
   if(cx<rx0[cy])rx0[cy]=cx; if(cx>rx1[cy])rx1[cy]=cx; if(cx<qx0[cy])qx0[cy]=cx; if(cx>qx1[cy])qx1[cy]=cx;
 }
 function extI(i){ const y=(i/GX)|0; ext(i-y*GX,y); }
-function setCell(cx,cy,m,lf){ if(!inGrid(cx,cy)) return; const i=cy*GX+cx; grid[i]=m; life[i]=lf||0; if(m>0&&m<4) ext(cx,cy); }
+function setCell(cx,cy,m,lf){ if(!inGrid(cx,cy)) return; const i=cy*GX+cx; grid[i]=m; lifeS(i,lf||0); if(m>0&&m<4) ext(cx,cy); }
 function carveCircle(x,y,r){
   const c0=Math.floor((x-r)/CELL), c1=Math.floor((x+r)/CELL), r0=Math.floor((y-r-TOP)/CELL), r1=Math.floor((y+r-TOP)/CELL);
   for(let cy=r0;cy<=r1;cy++) for(let cx=c0;cx<=c1;cx++){
@@ -290,7 +297,7 @@ function blockFilled(bx,by){
 function restoreSite(xc,hw,up,down){
   for(let cx=Math.floor((xc-hw)/CELL);cx<=Math.floor((xc+hw)/CELL);cx++){
     const g=grow0[cx];
-    for(let cy=g-Math.ceil(up/CELL);cy<g;cy++) if(inGrid(cx,cy)){ grid[cy*GX+cx]=0; life[cy*GX+cx]=0; }
+    for(let cy=g-Math.ceil(up/CELL);cy<g;cy++) if(inGrid(cx,cy)){ grid[cy*GX+cx]=0; lifeS(cy*GX+cx,0); }
     for(let cy=g;cy<g+Math.ceil(down/CELL);cy++) if(inGrid(cx,cy)&&grid[cy*GX+cx]<4) grid[cy*GX+cx]=EARTH;
   }
 }
@@ -724,8 +731,8 @@ function build(s){
       const i=cy*GX+cx, m=grid[i];
       if(m===BED||m===SHELL||m===CORE) return;
       const dx=((cx+.5)*CELL-s.x)/s.rx, dy=(wy-s.y)/s.ry, inn=dx*dx+dy*dy<=1;
-      if(!lk){ if(cy<fr){ grid[i]=0; life[i]=0; } else if(m<4) grid[i]=ROCK; }
-      else if(inn){ grid[i]=wy>s.y+s.ry*.15?s.m:0; life[i]=0; }
+      if(!lk){ if(cy<fr){ grid[i]=0; lifeS(i,0); } else if(m<4) grid[i]=ROCK; }
+      else if(inn){ grid[i]=wy>s.y+s.ry*.15?s.m:0; lifeS(i,0); }
       else if(m<4&&wy>s.y-6) grid[i]=ROCK;
     });
     if(s.hw){
@@ -737,9 +744,9 @@ function build(s){
     const v=s.v, fr=vFloor(v);
     ellipse(v.x,v.y,v.rx+14,v.ry+14,function(cx,cy,wy){
       const i=cy*GX+cx, dx=((cx+.5)*CELL-v.x)/v.rx, dy=(wy-v.y)/v.ry;
-      if(dx*dx+dy*dy<=1&&cy<fr){ grid[i]=0; life[i]=0; } else grid[i]=BED;
+      if(dx*dx+dy*dy<=1&&cy<fr){ grid[i]=0; lifeS(i,0); } else grid[i]=BED;
     });
-    for(let cx=Math.floor((v.x-v.rx-64)/CELL);cx<Math.floor((v.x-v.rx-16)/CELL);cx++) for(let cy=fr-9;cy<fr;cy++) if(inGrid(cx,cy)){ const m=grid[cy*GX+cx]; if(m!==BED&&m!==SHELL&&m!==CORE){ grid[cy*GX+cx]=0; life[cy*GX+cx]=0; } }
+    for(let cx=Math.floor((v.x-v.rx-64)/CELL);cx<Math.floor((v.x-v.rx-16)/CELL);cx++) for(let cy=fr-9;cy<fr;cy++) if(inGrid(cx,cy)){ const m=grid[cy*GX+cx]; if(m!==BED&&m!==SHELL&&m!==CORE){ grid[cy*GX+cx]=0; lifeS(cy*GX+cx,0); } }
   }else if(k==='rb'){
     const raw=[];
     for(let n=0;n<=24;n++){ const t=n/24; raw.push([s.x+(s.x2-s.x)*t,s.y+(s.y2-s.y)*t*t-70*Math.sin(Math.PI*t)*(1-t)]); }
@@ -807,7 +814,7 @@ function genCol(cx,from){
 }
 /* Die Heimat entsteht sofort, der Rest der Welt wächst beim Reisen. */
 function gen(){
-  grid.fill(0); life.fill(0); stamp.fill(0);
+  grid.fill(0); LIFE.clear(); stamp.fill(0);
   for(let cx=0;cx<HOME_END;cx++) genCol(cx);
   genF=HOME_END; stI=0;
   /* Höhle beim Start, mit See */
@@ -832,7 +839,7 @@ function gen(){
 }
 /* Eine fremde Welt zum ersten Mal: Sie entsteht rund um den Landeplatz und wächst beim Reisen. */
 function planetGen(){
-  grid.fill(0); life.fill(0); stamp.fill(0); genF=0; stI=0;
+  grid.fill(0); LIFE.clear(); stamp.fill(0); genF=0; stI=0;
   grow(LANDX+3200);
 }
 function grow(toX){
@@ -905,7 +912,7 @@ function put(cx,cy,t){
   if(t===LAVA){ if(lavaCount>=MAX_LAVA) return false; lavaCount++; }
   else if(t===WATER){ if(waterCount>=MAX_WATER) return false; waterCount++; }
   else { if(fireCount>=MAX_FIRE) return false; fireCount++; }
-  grid[i]=t; life[i]=t===FIRE?130+(Math.random()*90|0):0; ext(cx,cy);
+  grid[i]=t; lifeS(i,t===FIRE?130+(Math.random()*90|0):0); ext(cx,cy);
   return true;
 }
 function putUp(cx,cy,t){
@@ -953,7 +960,7 @@ function react(i,p){
   for(let k=0;k<4;k++){
     const n=k===0?i-GX:k===1?i+GX:k===2?i-1:i+1, m=grid[n];
     if(m===ICE){ if(Math.random()<p*1.6){ grid[n]=WATER; extI(n); } }
-    else if(m===WOOD){ if(Math.random()<p){ grid[n]=FIRE; life[n]=150+(Math.random()*70|0); extI(n); } }
+    else if(m===WOOD){ if(Math.random()<p){ grid[n]=FIRE; lifeS(n,150+(Math.random()*70|0)); extI(n); } }
     else if(m===SNOW){ if(Math.random()<p*1.4){ grid[n]=(waterCount<MAX_WATER-300&&Math.random()<.22)?WATER:0; extI(n); } }
   }
 }
@@ -994,7 +1001,7 @@ function step(){
             const up=grid[i-GX], l=grid[i-1], r=grid[i+1];
             if(up===WATER||dn===WATER||l===WATER||r===WATER){
               if(t===LAVA){ grid[up===WATER?i-GX:dn===WATER?i+GX:l===WATER?i-1:i+1]=0; grid[i]=ROCK; }
-              else{ grid[i]=0; life[i]=0; }
+              else{ grid[i]=0; lifeS(i,0); }
               steam(x,y); continue;
             }
             if(up>5||dn>5||l>5||r>5) react(i,t===LAVA?.12:.07);
@@ -1009,12 +1016,12 @@ function step(){
                 else if(Math.random()<.6){ if(grid[i+d]===0) j=i+d; else if(grid[i-d]===0) j=i-d; }
               }
             }else{
-              if(life[i]!==255){ if(ltr&&life[i]>0) life[i]--; if(life[i]===0){ grid[i]=0; continue; } }
+              let lv=LIFE.get(i)|0; if(lv!==255){ if(ltr&&lv>0) lifeS(i,--lv); if(lv===0){ grid[i]=0; continue; } }
               fc++;
               if(dn===0) j=i+GX;
             }
           }
-          if(j!==i){ grid[j]=t; life[j]=life[i]; grid[i]=0; life[i]=0; const dj=j-i; stamp[dj>9?si+SW+dj-GX:si+dj]=tick; }
+          if(j!==i){ grid[j]=t; grid[i]=0; if(t===FIRE){ lifeS(j,LIFE.get(i)|0); LIFE.delete(i); } const dj=j-i; stamp[dj>9?si+SW+dj-GX:si+dj]=tick; }
         }
         const ty=(j/GX)|0, tx=j-ty*GX;
         if(tx<nx0)nx0=tx; if(tx>nx1)nx1=tx; if(ty<ny0)ny0=ty; if(ty>ny1)ny1=ty;
@@ -1643,7 +1650,7 @@ function disc(cx,cy,r,m){
   for(let dy=-n;dy<=n;dy++) for(let dx=-n;dx<=n;dx++){
     if(dx*dx+dy*dy>r*r) continue;
     const x=cx+dx, y=cy+dy;
-    if(inGrid(x,y)&&grid[y*GX+x]<4){ grid[y*GX+x]=m; life[y*GX+x]=0; }
+    if(inGrid(x,y)&&grid[y*GX+x]<4){ grid[y*GX+x]=m; lifeS(y*GX+x,0); }
   }
 }
 function erase(wx,wy){
@@ -1653,7 +1660,7 @@ function erase(wx,wy){
     const x=cx+dx, y=cy+dy;
     if(!inGrid(x,y)) continue;
     const m=grid[y*GX+x];
-    if(m===LAVA||m===FIRE||m===WATER||m===ICE||m===WOOD||m===SNOW){ grid[y*GX+x]=0; life[y*GX+x]=0; }
+    if(m===LAVA||m===FIRE||m===WATER||m===ICE||m===WOOD||m===SNOW){ grid[y*GX+x]=0; lifeS(y*GX+x,0); }
   }
   props=props.filter(function(o){ return Math.abs(o.x-wx)>30||wy>o.y+10||wy<o.y-110; });
   for(let k=tracks.length-1;k>=0;k--){
@@ -2009,7 +2016,7 @@ function progress(){
     return d.rode?1:(has?.5:0);
   }
   if(id==='fire'){
-    const y=siteY.fire, n=boxCount(SITE.fire-70,SITE.fire+70,y-70,y+6,function(m,i){return m===FIRE&&life[i]===255;});
+    const y=siteY.fire, n=boxCount(SITE.fire-70,SITE.fire+70,y-70,y+6,function(m,i){return m===FIRE&&(LIFE.get(i)|0)===255;});
     return 1-Math.min(1,n/d.init);
   }
   if(id==='ice'){
@@ -2279,7 +2286,7 @@ function autosave(dt){
   packStep();
 }
 function restore(sv){
-  SEED=sv.seed; shapeWorld(); loadCells(sv); life.fill(0); stamp.fill(0);
+  SEED=sv.seed; shapeWorld(); loadCells(sv); LIFE.clear(); stamp.fill(0);
   parts.length=0; ghost=null; chest=null; stroke=null; strokeId=null; task=null; $('chip').hidden=true;
   trees.forEach(function(t,i){ t.state=(sv.trees&&sv.trees[i])|0; t.t=0; });
   zips=Array.isArray(sv.zips)?sv.zips.filter(zipOk).slice(-ZIPMAX):[]; P.zip=null; MONS.length=0; METS=[]; MROCKS=[]; FLIES=[]; ARROWS.length=0;
@@ -5177,7 +5184,7 @@ function doorAsk(v){
 }
 function doorOpen(v){
   const c=doorCols(v), fr=vFloor(v);
-  for(let cx=c[0];cx<=c[1];cx++) for(let cy=fr-8;cy<fr;cy++){ grid[cy*GX+cx]=0; life[cy*GX+cx]=0; }
+  for(let cx=c[0];cx<=c[1];cx++) for(let cy=fr-8;cy<fr;cy++){ grid[cy*GX+cx]=0; lifeS(cy*GX+cx,0); }
   scanMobile(); sfx('pop'); jingle(); confetti(v.x-v.rx,v.fy-30); addXp(30);
   say('','Die Wissenstür ist offen! Drinnen liegt ein Schatz.'); dayAdd('z','🚪'); campSoon();
 }
