@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { rng, hash2, riWith, shuffleWith } from './core/rng.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -232,7 +233,6 @@ let bx0=GX,bx1=-1,by0=GY,by1=-1, lavaCount=0, waterCount=0, fireCount=0, tick=0,
 let rx0=new Int16Array(GY).fill(GX), rx1=new Int16Array(GY).fill(-1), qx0=new Int16Array(GY).fill(GX), qx1=new Int16Array(GY).fill(-1);
 let px0=GX,px1=-1,py0=GY,py1=-1, SEED=1, gold=0, gems=0, lootDirty=false;
 
-function hash2(ix,iy){ let h=Math.imul(ix,374761393)+Math.imul(iy,668265263)|0; h=Math.imul(h^(h>>>13),1274126177); return ((h^(h>>>16))>>>0)/4294967296; }
 function vnoise(x,y){
   const ix=Math.floor(x), iy=Math.floor(y), fx=x-ix, fy=y-iy, sx=fx*fx*(3-2*fx), sy=fy*fy*(3-2*fy);
   const a=hash2(ix,iy), b=hash2(ix+1,iy), c=hash2(ix,iy+1), d=hash2(ix+1,iy+1);
@@ -1049,7 +1049,6 @@ function step(){
 }
 
 /* ---------- Bäume, Wolken ---------- */
-function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 const rnd=rng(20261004);
 const trees=[], clouds=[];
 for(let x=260;x<HOME_W-200;x+=130+rnd()*210){
@@ -6703,8 +6702,8 @@ function tone(list,type){
     });
   }catch(_){}
 }
-function ri(a,b){ return a+Math.floor(Math.random()*(b-a+1)); }
-function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=ri(0,i), t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+function ri(a,b){ return riWith(Math.random,a,b); }
+function shuffle(a){ return shuffleWith(Math.random,a); }
 function numOpts(ans,n,max){
   const o=[ans]; let guard=0;
   while(o.length<n&&guard++<80){ const v=ans+ri(-3,3); if(v>=0&&v<=max&&o.indexOf(v)<0) o.push(v); }
