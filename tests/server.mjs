@@ -8,6 +8,8 @@ import { fileURLToPath } from 'url';
 export const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const TESTPAGE = path.join(ROOT, 'dist', 'index.test.html');
 const ANCHOR = "document.addEventListener('visibilitychange',function(){ if(document.hidden) saveGame(false); });";
+const BUNDLE = /\n([ \t]*)document\.addEventListener\("visibilitychange", function\(\) \{\n[ \t]*if \(document\.hidden\) saveGame\(false\);\n[ \t]*\}\);/;
+const HOOK = 'window.__ev=function(s){return eval(s);};';
 const TYPES = { '.html': 'text/html', '.json': 'application/json', '.js': 'text/javascript', '.png': 'image/png', '.woff2': 'font/woff2', '.ogg': 'audio/ogg' };
 
 // Schalter für Netzprobleme im Test: html verzögert (ms) oder Statuscode statt der Seite.
@@ -27,9 +29,10 @@ export function serve(extra = {}) {
       if (p.endsWith('/index.html') && net.status) { r.writeHead(net.status); r.end(); return; }
       if (p === '/index.html' && !b.toString().includes('window.__ev')) throw new Error('dist/index.test.html ohne Testzugang, bitte node tools/build.mjs');
       if (extra[p] && p.endsWith('/index.html')) {
-        const s = b.toString();
-        if (!s.includes(ANCHOR)) throw new Error('Testanker in index.html fehlt');
-        b = Buffer.from(s.replace(ANCHOR, 'window.__ev=function(s){return eval(s);};\n' + ANCHOR));
+        // Vor PR 1 steht die Stelle so im Quelltext, ab PR 1 kommt main aus esbuild und ist neu formatiert (BUNDLE).
+        const s = b.toString(), hits = s.split(ANCHOR).length - 1, m = s.match(new RegExp(BUNDLE.source, 'g'));
+        if (hits + (m ? m.length : 0) !== 1) throw new Error('Testanker in index.html nicht genau einmal');
+        b = Buffer.from(hits ? s.replace(ANCHOR, HOOK + '\n' + ANCHOR) : s.replace(BUNDLE, (a, ind) => '\n' + ind + HOOK + a));
       }
       const send = () => { r.writeHead(200, { 'content-type': TYPES[path.extname(f)] || 'application/octet-stream' }); r.end(b); };
       if (p.endsWith('/index.html') && net.delay) setTimeout(send, net.delay); else send();
