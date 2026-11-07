@@ -1,8 +1,15 @@
 {
-  "pr": 4,
-  "renames": {},
-  "params": {},
-  "changed": [],
+  "pr": 5,
+  "renames": {
+    "mkMusterWith": "mkMuster", "mkSternWith": "mkStern", "mkSpiegelWith": "mkSpiegel", "mkRoboWith": "mkRobo",
+    "mkWaageWith": "mkWaage", "mkEchoWith": "mkEcho", "mkRohreWith": "mkRohre", "mkSudokuWith": "mkSudoku"
+  },
+  "params": {
+    "mkMusterWith": "rand", "mkSternWith": ["rand=Math.random", "FS"], "mkSpiegelWith": "rand", "mkRoboWith": "rand",
+    "mkWaageWith": ["rand=Math.random", "SCH"], "mkEchoWith": "rand", "mkRohreWith": "rand", "mkSudokuWith": "rand"
+  },
+  "wrappers": { "ri": "riWith", "shuffle": "shuffleWith" },
+  "changed": ["mkMuster", "mkStern", "mkSpiegel", "mkRobo", "mkWaage", "mkEcho", "mkRohre", "mkSudoku"],
   "added": [],
   "removed": []
 }
