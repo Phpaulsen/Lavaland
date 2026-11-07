@@ -69,5 +69,23 @@ check('Alle Dateien im Offline-Speicher gibt es', () => {
   if (miss.length) throw new Error(miss.join(', '));
 });
 
+// Abhängigkeiten: keine Laufzeitpakete, nur feste Versionen, jedes Paket aus der npm-Registry mit Prüfsumme, keine Install-Skripte.
+// Ein neues Paket braucht eine Begründung in docs/architecture/adr/ (README „Entwicklung“).
+check('Abhängigkeiten fest, geprüft und ohne Install-Skripte', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  const bad = [];
+  if (pkg.dependencies && Object.keys(pkg.dependencies).length) bad.push('Laufzeitabhängigkeiten: ' + Object.keys(pkg.dependencies).join(', '));
+  for (const [n, v] of Object.entries(pkg.devDependencies || {})) if (!/^\d+\.\d+\.\d+$/.test(v)) bad.push(n + '@' + v + ' ist keine feste Version');
+  const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'));
+  for (const [k, p] of Object.entries(lock.packages)) {
+    if (!k) continue;
+    if (!p.integrity || !/^sha512-/.test(p.integrity)) bad.push(k + ' ohne sha512-Prüfsumme');
+    if (!p.resolved || new URL(p.resolved).host !== 'registry.npmjs.org') bad.push(k + ' nicht aus registry.npmjs.org: ' + p.resolved);
+  }
+  const rc = fs.existsSync(path.join(ROOT, '.npmrc')) ? fs.readFileSync(path.join(ROOT, '.npmrc'), 'utf8') : '';
+  if (!/^ignore-scripts=true$/m.test(rc)) bad.push('.npmrc ohne ignore-scripts=true');
+  if (bad.length) throw new Error(bad.join('; '));
+});
+
 console.log(failed ? failed + ' Prüfungen fehlgeschlagen' : 'alle statischen Prüfungen ok');
 process.exit(failed ? 1 : 0);
