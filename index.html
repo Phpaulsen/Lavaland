@@ -885,6 +885,460 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
   var WL = 14;
   var WLR = Math.floor((WL - TOP) / CELL);
 
+  // src/core/puzzles/util.js
+  function idxs(n) {
+    const a = [];
+    for (let i = 0; i < n; i++) a.push(i);
+    return a;
+  }
+
+  // src/core/puzzles/muster.js
+  function tkKey(t) {
+    return t.n !== void 0 ? "n" + t.n : t.s + "-" + t.c;
+  }
+  function mkMusterWith(rand, lv) {
+    const sh = shuffleWith(rand, [0, 1, 2, 3, 4]), co = shuffleWith(rand, [0, 1, 2, 3, 4, 5]), T = [0, 1, 2, 3].map(function(i) {
+      return { s: sh[i], c: co[i] };
+    });
+    const st = (
+      /** @type {MusterState} */
+      { k: "rep", seq: [], hole: 0, opts: [], ans: "" }
+    );
+    let unit = (
+      /** @type {number[]|null} */
+      null
+    ), len = 6, mid = false;
+    if (lv === 0) {
+      unit = [0, 1];
+      len = 6;
+    } else if (lv === 1) {
+      unit = riWith(rand, 0, 1) ? [0, 0, 1] : [0, 1, 1];
+      len = 7;
+    } else if (lv === 2) {
+      unit = [0, 1, 2];
+      len = 7;
+    } else if (lv === 3) {
+      unit = [[0, 1], [0, 0, 1], [0, 1, 2]][riWith(rand, 0, 2)];
+      len = 8;
+      mid = true;
+    } else if (lv === 4) {
+      unit = riWith(rand, 0, 1) ? [0, 0, 1, 1] : [0, 1, 0, 2];
+      len = 9;
+      mid = riWith(rand, 0, 1) === 1;
+    } else if (lv === 5 || lv === 7) {
+      const step = lv === 5 ? 1 : riWith(rand, 2, 3), down = lv === 7 && riWith(rand, 0, 1) === 1, a = down ? step * 4 + riWith(rand, 1, 6) : riWith(rand, 1, 5);
+      st.k = "cnt";
+      for (let i = 0; i < 5; i++) st.seq.push({ n: down ? a - i * step : a + i * step });
+      st.hole = lv === 5 ? 4 : riWith(rand, 2, 4);
+    } else {
+      const ps = lv === 9 ? 3 : 2, pc = lv === 9 ? 2 : 3;
+      st.k = "two";
+      len = lv === 6 ? 7 : 9;
+      for (let i = 0; i < len; i++) st.seq.push({ s: sh[i % ps], c: co[i % pc] });
+      st.hole = lv === 6 ? len - 1 : riWith(rand, 4, len - 2);
+      st.ps = ps;
+      st.pc = pc;
+      st.sh = sh;
+      st.co = co;
+    }
+    if (unit) {
+      for (let i = 0; i < len; i++) st.seq.push(T[unit[i % unit.length]]);
+      st.hole = mid ? riWith(rand, 2, len - 3) : len - 1;
+      st.u = unit.length;
+    }
+    const ans = st.seq[st.hole], nOpt = lv < 3 ? 3 : 4;
+    let opts;
+    if (st.k === "cnt") {
+      const set = [ans.n];
+      for (const v of shuffleWith(rand, [ans.n - 1, ans.n + 1, ans.n + 2, ans.n - 2, ans.n + 3])) if (set.length < 4 && v > 0 && set.indexOf(v) < 0) set.push(v);
+      opts = set.map(function(n) {
+        return { n };
+      });
+    } else if (st.k === "two") {
+      const os = st.sh[(st.sh.indexOf(ans.s) + 1) % st.ps], oc = st.co[(st.co.indexOf(ans.c) + 1) % st.pc];
+      opts = [ans, { s: ans.s, c: oc }, { s: os, c: ans.c }, { s: os, c: oc }];
+    } else {
+      opts = [ans];
+      for (const t of T) if (opts.length < nOpt && t !== ans) opts.push(t);
+    }
+    st.opts = shuffleWith(rand, opts);
+    st.ans = tkKey(ans);
+    return st;
+  }
+
+  // src/core/puzzles/stern.js
+  var SHAPES = [
+    { n: "ein Stern", e: "⭐", p: [[0.5, 0.05], [0.62, 0.38], [0.96, 0.38], [0.69, 0.6], [0.8, 0.94], [0.5, 0.74], [0.2, 0.94], [0.31, 0.6], [0.04, 0.38], [0.38, 0.38]] },
+    { n: "ein Haus", e: "🏠", p: [[0.15, 0.94], [0.15, 0.46], [0.5, 0.08], [0.85, 0.46], [0.85, 0.94]] },
+    { n: "eine Rakete", e: "🚀", p: [[0.5, 0.04], [0.68, 0.3], [0.68, 0.7], [0.86, 0.94], [0.5, 0.82], [0.14, 0.94], [0.32, 0.7], [0.32, 0.3]] },
+    { n: "ein Fisch", e: "🐟", p: [[0.04, 0.5], [0.3, 0.22], [0.62, 0.25], [0.8, 0.45], [0.96, 0.22], [0.96, 0.78], [0.8, 0.55], [0.62, 0.75], [0.3, 0.78]] },
+    { n: "ein Herz", e: "❤️", p: [[0.5, 0.3], [0.65, 0.1], [0.88, 0.12], [0.96, 0.35], [0.85, 0.6], [0.5, 0.93], [0.15, 0.6], [0.04, 0.35], [0.12, 0.12], [0.35, 0.1]] },
+    { n: "ein Kristall", e: "💎", p: [[0.3, 0.1], [0.7, 0.1], [0.92, 0.38], [0.5, 0.94], [0.08, 0.38]] },
+    { n: "eine Tanne", e: "🌲", p: [[0.5, 0.04], [0.78, 0.38], [0.64, 0.38], [0.9, 0.74], [0.56, 0.74], [0.56, 0.95], [0.44, 0.95], [0.44, 0.74], [0.1, 0.74], [0.36, 0.38], [0.22, 0.38]] }
+  ];
+  function mkSternWith(rand, FS, lv) {
+    const N = [5, 6, 7, 8, 9, 10, 10, 11, 10, 10][lv], big = FS.u.m >= 2, two = big && lv >= 8, step = two ? 2 : 1;
+    let n = big ? N : Math.min(N, 10), a = 1;
+    if (two) a = 2;
+    else if (big && lv >= 6) a = riWith(rand, 2, 20 - n + 1);
+    const sh = shuffleWith(rand, SHAPES.filter(function(q) {
+      return q.p.length <= n;
+    }))[0];
+    let pts = sh.p.map(function(q) {
+      return q.slice();
+    });
+    while (pts.length < n) {
+      let bi = 0, bd = 0;
+      for (let i = 0; i < pts.length; i++) {
+        const p2 = pts[i], q2 = pts[(i + 1) % pts.length], d = Math.hypot(p2[0] - q2[0], p2[1] - q2[1]);
+        if (d > bd) {
+          bd = d;
+          bi = i;
+        }
+      }
+      const p = pts[bi], q = pts[(bi + 1) % pts.length];
+      pts.splice(bi + 1, 0, [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]);
+    }
+    const o = riWith(rand, 0, n - 1), dir = riWith(rand, 0, 1) ? 1 : -1, ord = [];
+    for (let i = 0; i < n; i++) ord.push(pts[((o + dir * i) % n + n) % n]);
+    return { sh, pts: ord.map(function(p, i) {
+      return [p[0], p[1], a + i * step];
+    }), k: 0, two };
+  }
+
+  // src/core/puzzles/spiegel.js
+  var SPL = [[2, 3, 2, 1, 0], [3, 3, 3, 1, 0], [3, 3, 5, 1, 0], [3, 4, 6, 1, 0], [3, 4, 6, 2, 0], [4, 4, 8, 2, 0], [4, 3, 6, 2, 1], [4, 5, 10, 2, 0], [4, 4, 9, 3, 1], [5, 5, 13, 3, 0]];
+  function mkSpiegelWith(rand, lv) {
+    const L = SPL[lv], w = L[0], h = L[1], st = (
+      /** @type {SpiegelState} */
+      { w, h, nc: L[3], ax: L[4], a: [], b: [] }
+    );
+    for (let i = 0; i < w * h; i++) {
+      st.a.push(0);
+      st.b.push(0);
+    }
+    for (const i of shuffleWith(rand, idxs(w * h)).slice(0, L[2])) st.a[i] = riWith(rand, 1, L[3]);
+    return st;
+  }
+
+  // src/core/puzzles/robo.js
+  var RBL = [[4, 3, 1, 0, 0, 9], [4, 4, 3, 0, 0, 9], [5, 4, 5, 0, 0, 9], [5, 5, 7, 0, 0, 9], [5, 5, 6, 1, 0, 9], [6, 5, 8, 1, 2, 9], [6, 5, 8, 2, 2, 2], [6, 6, 10, 2, 3, 1], [7, 6, 12, 3, 4, 1], [7, 6, 14, 3, 5, 0]];
+  var RBD = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+  function rbSolve(st) {
+    const w = st.w, h = st.h, n = w * h, G2 = st.gems, full = (1 << G2.length) - 1;
+    const dist = new Int16Array(n * 40).fill(999), prev = new Int32Array(n * 40).fill(-1), k0 = (st.s * 5 + 4) * 8, dq = [k0];
+    let end = -1;
+    dist[k0] = 0;
+    while (dq.length) {
+      const k = (
+        /** @type {number} */
+        dq.shift()
+      ), m = k & 7, pd = k >> 3, d = pd % 5, p = (pd - d) / 5;
+      if (p === st.g && m === full) {
+        end = k;
+        break;
+      }
+      const x = p % w, y = (p - x) / w;
+      for (let nd = 0; nd < 4; nd++) {
+        const nx = x + RBD[nd][0], ny = y + RBD[nd][1];
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const np = ny * w + nx;
+        if (st.wall.has(np) || st.lava.has(np)) continue;
+        const gi = G2.indexOf(np), nm = gi >= 0 ? m | 1 << gi : m, c = dist[k] + (nd === d ? 0 : 1), nk = (np * 5 + nd) * 8 + nm;
+        if (c < dist[nk]) {
+          dist[nk] = c;
+          prev[nk] = k;
+          if (nd === d) dq.unshift(nk);
+          else dq.push(nk);
+        }
+      }
+    }
+    if (end < 0) return null;
+    const dirs = [];
+    for (let k = end; prev[k] >= 0; k = prev[k]) dirs.push((k >> 3) % 5);
+    dirs.reverse();
+    const sol = [];
+    for (const d of dirs) {
+      const l = sol[sol.length - 1];
+      if (l && l.d === d && l.n < 9) l.n++;
+      else sol.push({ d, n: 1 });
+    }
+    return sol;
+  }
+  function mkRoboWith(rand, lv) {
+    const L = RBL[lv], w = L[0], h = L[1];
+    for (let tr = 0; tr < 120; tr++) {
+      const c = shuffleWith(rand, idxs(w * h)), a = 2 + L[3], b = a + L[2];
+      const st = (
+        /** @type {RoboState} */
+        { w, h, s: c[0], g: c[1], gems: c.slice(2, a), wall: new Set(c.slice(a, b)), lava: new Set(c.slice(b, b + L[4])), prog: [], max: 12, sol: null, pos: c[0], got: 0, bad: -1, cur: -1 }
+      );
+      const sol = rbSolve(st);
+      if (!sol) continue;
+      let steps = 0;
+      for (const q of sol) steps += q.n;
+      if (steps < Math.min(3 + lv, 9) || sol.length < Math.min(2 + (lv >> 1), 4) || sol.length > 9) continue;
+      st.sol = sol;
+      st.max = L[5] === 9 ? Math.max(sol.length + 3, 6) : sol.length + L[5];
+      return st;
+    }
+    return mkRoboWith(rand, Math.max(0, lv - 1));
+  }
+
+  // src/core/puzzles/waage.js
+  function mkWaageWith(rand, SCH, lv) {
+    const st = (
+      /** @type {WaageState} */
+      { L: [], R: [], pal: null, items: null, box: 0, opts: null, over: false, ang: 0 }
+    );
+    const pick = (
+      /** @type {(arr: number[], n: number) => number[]} */
+      (function(arr, n) {
+        return shuffleWith(rand, arr.slice()).slice(0, n);
+      })
+    ), sum = (
+      /** @type {(a: number[]) => number} */
+      (function(a) {
+        let s = 0;
+        for (const v of a) s += v;
+        return s;
+      })
+    );
+    if (SCH.on) lv = Math.min(lv, [0, 2, 3, 9][SCH.zr]);
+    if (lv === 0) {
+      st.pal = [1, 2];
+      st.L = [riWith(rand, 3, 5)];
+    } else if (lv === 1) {
+      st.pal = [1, 2, 5];
+      st.L = [riWith(rand, 6, 10)];
+    } else if (lv === 2) {
+      st.pal = [1, 2, 5];
+      st.L = [riWith(rand, 2, 5), riWith(rand, 2, 5)];
+    } else if (lv === 3) {
+      st.pal = [1, 2, 10];
+      st.L = [riWith(rand, 11, 15)];
+    } else if (lv === 4) {
+      const a = riWith(rand, 6, 9);
+      st.pal = [1, 2, 5, 10];
+      st.L = [a, riWith(rand, 11 - a, 9)];
+    } else if (lv === 5) {
+      const b = riWith(rand, 2, 9), a = riWith(rand, 5, 10);
+      st.box = b;
+      st.L = [-1, a];
+      st.R = [{ w: a + b, fix: 1 }];
+    } else if (lv === 6) {
+      st.items = [10, 5, 5, 2, 2, 1, 1];
+      let t;
+      do
+        t = sum(pick(st.items, riWith(rand, 3, 4)));
+      while (t > 20);
+      st.L = [t];
+    } else if (lv === 7) {
+      const pre = riWith(rand, 5, 10);
+      st.items = [1, 2, 3, 4, 5, 6];
+      st.R = [{ w: pre, fix: 1 }];
+      st.L = [Math.min(20, pre + sum(pick(st.items, 2)))];
+    } else if (lv === 8) {
+      const b = riWith(rand, 3, 8), a = riWith(rand, 1, 4);
+      st.box = b;
+      st.L = [-1, -1, a];
+      st.R = [{ w: 2 * b + a, fix: 1 }];
+    } else {
+      const b = riWith(rand, 3, 8), a = riWith(rand, 1, 4);
+      st.box = b;
+      st.L = [-1, -1, a];
+      st.R = [{ w: -1, fix: 1 }, { w: b + a, fix: 1 }];
+    }
+    if (st.items) st.items = st.items.map(function(w) {
+      return { w, used: false };
+    });
+    if (st.box) {
+      const o = [st.box];
+      for (const v of shuffleWith(rand, [st.box - 1, st.box + 1, st.box + 2, st.box - 2, st.box + 3])) if (o.length < 4 && v > 0 && o.indexOf(v) < 0) o.push(v);
+      st.opts = shuffleWith(rand, o);
+    }
+    return st;
+  }
+
+  // src/core/puzzles/echo.js
+  var ECL = [[4, 2, 0], [4, 3, 0], [4, 3, 0], [4, 4, 0], [6, 4, 0], [4, 5, 0], [6, 5, 0], [4, 3, 1], [6, 6, 0], [6, 4, 1]];
+  function mkEchoWith(rand, lv) {
+    const L = ECL[lv], st = (
+      /** @type {EchoState} */
+      { n: L[0], seq: [], rev: L[2], pos: 0, lit: -1, ph: "wait", sp: lv >= 2 ? 430 : 580 }
+    );
+    for (let i = 0; i < L[1]; i++) {
+      let v = riWith(rand, 0, L[0] - 1);
+      if (i && v === st.seq[i - 1]) v = (v + 1) % L[0];
+      st.seq.push(v);
+    }
+    return st;
+  }
+
+  // src/core/puzzles/rohre.js
+  var RHL = [[3, 2, 0], [3, 3, 0], [4, 3, 0], [4, 4, 0], [4, 4, 1], [5, 4, 1], [5, 5, 1], [5, 5, 2], [6, 5, 2], [6, 6, 2]];
+  var RMASK = [10, 3, 11];
+  function rhRot(m, r) {
+    for (let i = 0; i < r; i++) m = m << 1 & 15 | m >> 3;
+    return m;
+  }
+  function rhMask(st, p) {
+    return st.t[p] === 3 ? 0 : rhRot(RMASK[st.t[p]], st.r[p]);
+  }
+  function rhFlow(st) {
+    const w = st.w, h = st.h, f = /* @__PURE__ */ new Set(), s = st.ys * w, N = [[1, 0, -1, 4], [2, 1, 0, 8], [4, 0, 1, 1], [8, -1, 0, 2]];
+    if (!(rhMask(st, s) & 8)) return f;
+    const q = [s];
+    f.add(s);
+    while (q.length) {
+      const p = (
+        /** @type {number} */
+        q.pop()
+      ), x = p % w, y = (p - x) / w, m = rhMask(st, p);
+      for (const n of N) {
+        if (!(m & n[0])) continue;
+        const nx = x + n[1], ny = y + n[2];
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const np = ny * w + nx;
+        if (f.has(np) || !(rhMask(st, np) & n[3])) continue;
+        f.add(np);
+        q.push(np);
+      }
+    }
+    return f;
+  }
+  function rhDone(st, f) {
+    const e = st.ye * st.w + st.w - 1;
+    return f.has(e) && (rhMask(st, e) & 2) > 0;
+  }
+  function mkRohreWith(rand, lv) {
+    const L = RHL[lv], w = L[0], h = L[1];
+    for (let tr = 0; tr < 80; tr++) {
+      const ys = riWith(rand, 0, h - 1), ye = riWith(rand, 0, h - 1), seen = /* @__PURE__ */ new Set(), path = (
+        /** @type {number[]} */
+        []
+      );
+      const dfs = (
+        /** @type {(x: number, y: number) => boolean} */
+        (function(x, y) {
+          const p = y * w + x;
+          seen.add(p);
+          path.push(p);
+          if (x === w - 1 && y === ye) return true;
+          for (const d of shuffleWith(rand, [[1, 0], [0, 1], [0, -1], [-1, 0]])) {
+            const nx = x + d[0], ny = y + d[1];
+            if (nx < 0 || ny < 0 || nx >= w || ny >= h || seen.has(ny * w + nx)) continue;
+            if (dfs(nx, ny)) return true;
+          }
+          path.pop();
+          return false;
+        })
+      );
+      if (!dfs(0, ys)) continue;
+      if (path.length < Math.min(w + 1 + (lv >> 1), w * h - 2) || path.length > w * h * 0.75) continue;
+      const st = (
+        /** @type {RohreState} */
+        { w, h, ys, ye, t: [], r: [], sr: [], lk: [], ang: [], need: 0, taps: 0 }
+      );
+      const on = (
+        /** @type {Record<number, number>} */
+        {}
+      );
+      for (let i = 0; i < path.length; i++) {
+        const p = path[i], x = p % w, y = (p - x) / w;
+        let m = 0;
+        for (const q of [i ? path[i - 1] : -1, i < path.length - 1 ? path[i + 1] : -2]) {
+          if (q === -1) m |= 8;
+          else if (q === -2) m |= 2;
+          else {
+            const qx = q % w, qy = (q - qx) / w;
+            m |= qx > x ? 2 : qx < x ? 8 : qy > y ? 4 : 1;
+          }
+        }
+        on[p] = m;
+      }
+      for (let p = 0; p < w * h; p++) {
+        let t, r, sr = -1;
+        if (on[p] !== void 0) {
+          const m = on[p];
+          t = m === 10 || m === 5 ? 0 : 1;
+          if (L[2] >= 1 && rand() < 0.22) t = 2;
+          sr = 0;
+          while ((rhRot(RMASK[t], sr) & m) !== m) sr++;
+          r = (sr + riWith(rand, 1, 3)) % 4;
+          if (t === 0 && (r & 1) === (sr & 1)) r = (r + 1) % 4;
+          st.need += t === 0 ? 1 : Math.min((sr - r + 4) % 4, 4);
+        } else {
+          const q = rand();
+          t = L[2] >= 2 && q < 0.14 ? 3 : L[2] >= 1 && q < 0.4 ? 2 : q < 0.72 ? 1 : 0;
+          r = riWith(rand, 0, 3);
+        }
+        st.t.push(t);
+        st.r.push(r);
+        st.sr.push(sr);
+        st.lk.push(false);
+        st.ang.push(r * 90);
+      }
+      if (rhDone(st, rhFlow(st))) continue;
+      return st;
+    }
+    return mkRohreWith(rand, Math.max(0, lv - 1));
+  }
+
+  // src/core/puzzles/sudoku.js
+  var SDL = [[3, 2], [3, 3], [3, 4], [3, 5], [3, 6], [4, 4], [4, 6], [4, 7], [4, 8], [4, 10]];
+  function sdOk(a, n, i, v) {
+    const c = i % n, r = (i - c) / n;
+    for (let k = 0; k < n; k++) {
+      if (k !== c && a[r * n + k] === v) return false;
+      if (k !== r && a[k * n + c] === v) return false;
+    }
+    if (n === 4) {
+      const br = r & 2, bc = c & 2;
+      for (let y = br; y < br + 2; y++) for (let x = bc; x < bc + 2; x++) if ((y !== r || x !== c) && a[y * 4 + x] === v) return false;
+    }
+    return true;
+  }
+  function sdCount(a, n) {
+    const i = a.indexOf(-1);
+    if (i < 0) return 1;
+    let s = 0;
+    for (let v = 0; v < n && s < 2; v++) if (sdOk(a, n, i, v)) {
+      a[i] = v;
+      s += sdCount(a, n);
+      a[i] = -1;
+    }
+    return s;
+  }
+  function mkSudokuWith(rand, lv) {
+    const n = SDL[lv][0], want = SDL[lv][1], g = [];
+    if (n === 3) {
+      const b = shuffleWith(rand, [0, 1, 2]), sh = riWith(rand, 1, 2);
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) g.push(b[(c + r * sh) % 3]);
+    } else {
+      const base = [0, 1, 2, 3, 2, 3, 0, 1, 1, 0, 3, 2, 3, 2, 1, 0], sy = shuffleWith(rand, [0, 1, 2, 3]);
+      const mix = function() {
+        let o = [0, 1, 2, 3];
+        if (riWith(rand, 0, 1)) o = [1, 0, 2, 3];
+        if (riWith(rand, 0, 1)) o = [o[0], o[1], 3, 2];
+        if (riWith(rand, 0, 1)) o = [o[2], o[3], o[0], o[1]];
+        return o;
+      };
+      const rows = mix(), cols = mix();
+      for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) g.push(sy[base[rows[r] * 4 + cols[c]]]);
+    }
+    const giv = g.slice();
+    let bl = 0;
+    for (const i of shuffleWith(rand, idxs(n * n))) {
+      if (bl >= want) break;
+      const v = giv[i];
+      giv[i] = -1;
+      if (sdCount(giv, n) === 1) bl++;
+      else giv[i] = v;
+    }
+    return { n, sol: g, giv, cur: giv.slice(), sy: shuffleWith(rand, [0, 1, 2, 3]), co: shuffleWith(rand, [0, 1, 2, 3]), full: false };
+  }
+
   // src/legacy.js
   (function() {
     "use strict";
@@ -12316,11 +12770,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       const land = H <= 480, aw = land ? ctl ? Math.min(W * 0.5, 380) : Math.min(W - 90, 560) : Math.min(W - 64, 480), ah = land ? H - 124 : H - (ctl ? 340 : 215);
       return Math.max(20, Math.min(56, Math.floor(aw / c) - 4, Math.floor(ah / r) - 4));
     }
-    function idxs(n) {
-      const a = [];
-      for (let i = 0; i < n; i++) a.push(i);
-      return a;
-    }
     function pzOpen(m) {
       const T = PZI[m.t], lv = clamp((hero.pz[m.t] | 0) + (m.zb | 0), 0, 9);
       keys.l = keys.r = keys.u = keys.d = keys.a = false;
@@ -12482,74 +12931,11 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       paused = false;
       pzOpen({ id: "quiz", t: PZT[(hero.pzn | 0) % PZT.length].id, zb: 0, quiz: true });
     });
-    function tkKey(t) {
-      return t.n !== void 0 ? "n" + t.n : t.s + "-" + t.c;
-    }
     function tkHtml(t) {
       return t.n !== void 0 ? '<span class="pzn">' + t.n + "</span>" : tok(t.s, t.c);
     }
     function mkMuster(lv) {
-      const sh = shuffle([0, 1, 2, 3, 4]), co = shuffle([0, 1, 2, 3, 4, 5]), T = [0, 1, 2, 3].map(function(i) {
-        return { s: sh[i], c: co[i] };
-      });
-      const st = { k: "rep", seq: [], hole: 0, opts: [], ans: "" };
-      let unit = null, len = 6, mid = false;
-      if (lv === 0) {
-        unit = [0, 1];
-        len = 6;
-      } else if (lv === 1) {
-        unit = ri(0, 1) ? [0, 0, 1] : [0, 1, 1];
-        len = 7;
-      } else if (lv === 2) {
-        unit = [0, 1, 2];
-        len = 7;
-      } else if (lv === 3) {
-        unit = [[0, 1], [0, 0, 1], [0, 1, 2]][ri(0, 2)];
-        len = 8;
-        mid = true;
-      } else if (lv === 4) {
-        unit = ri(0, 1) ? [0, 0, 1, 1] : [0, 1, 0, 2];
-        len = 9;
-        mid = ri(0, 1) === 1;
-      } else if (lv === 5 || lv === 7) {
-        const step2 = lv === 5 ? 1 : ri(2, 3), down = lv === 7 && ri(0, 1) === 1, a = down ? step2 * 4 + ri(1, 6) : ri(1, 5);
-        st.k = "cnt";
-        for (let i = 0; i < 5; i++) st.seq.push({ n: down ? a - i * step2 : a + i * step2 });
-        st.hole = lv === 5 ? 4 : ri(2, 4);
-      } else {
-        const ps = lv === 9 ? 3 : 2, pc = lv === 9 ? 2 : 3;
-        st.k = "two";
-        len = lv === 6 ? 7 : 9;
-        for (let i = 0; i < len; i++) st.seq.push({ s: sh[i % ps], c: co[i % pc] });
-        st.hole = lv === 6 ? len - 1 : ri(4, len - 2);
-        st.ps = ps;
-        st.pc = pc;
-        st.sh = sh;
-        st.co = co;
-      }
-      if (unit) {
-        for (let i = 0; i < len; i++) st.seq.push(T[unit[i % unit.length]]);
-        st.hole = mid ? ri(2, len - 3) : len - 1;
-        st.u = unit.length;
-      }
-      const ans = st.seq[st.hole], nOpt = lv < 3 ? 3 : 4;
-      let opts;
-      if (st.k === "cnt") {
-        const set = [ans.n];
-        for (const v of shuffle([ans.n - 1, ans.n + 1, ans.n + 2, ans.n - 2, ans.n + 3])) if (set.length < 4 && v > 0 && set.indexOf(v) < 0) set.push(v);
-        opts = set.map(function(n) {
-          return { n };
-        });
-      } else if (st.k === "two") {
-        const os = st.sh[(st.sh.indexOf(ans.s) + 1) % st.ps], oc2 = st.co[(st.co.indexOf(ans.c) + 1) % st.pc];
-        opts = [ans, { s: ans.s, c: oc2 }, { s: os, c: ans.c }, { s: os, c: oc2 }];
-      } else {
-        opts = [ans];
-        for (const t of T) if (opts.length < nOpt && t !== ans) opts.push(t);
-      }
-      st.opts = shuffle(opts);
-      st.ans = tkKey(ans);
-      return st;
+      return mkMusterWith(Math.random, lv);
     }
     function drMuster(st) {
       let h = '<div class="pzrow">';
@@ -12594,43 +12980,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function syMuster(st) {
       return st.k === "cnt" ? "Welche Zahl fehlt? Schau, wie die Zahlen größer oder kleiner werden." : st.k === "two" ? "Welches Bild fehlt? Achte auf die Form und auf die Farbe." : "Welches Bild fehlt in der Reihe? Schau, was sich wiederholt.";
     }
-    const SHAPES = [
-      { n: "ein Stern", e: "⭐", p: [[0.5, 0.05], [0.62, 0.38], [0.96, 0.38], [0.69, 0.6], [0.8, 0.94], [0.5, 0.74], [0.2, 0.94], [0.31, 0.6], [0.04, 0.38], [0.38, 0.38]] },
-      { n: "ein Haus", e: "🏠", p: [[0.15, 0.94], [0.15, 0.46], [0.5, 0.08], [0.85, 0.46], [0.85, 0.94]] },
-      { n: "eine Rakete", e: "🚀", p: [[0.5, 0.04], [0.68, 0.3], [0.68, 0.7], [0.86, 0.94], [0.5, 0.82], [0.14, 0.94], [0.32, 0.7], [0.32, 0.3]] },
-      { n: "ein Fisch", e: "🐟", p: [[0.04, 0.5], [0.3, 0.22], [0.62, 0.25], [0.8, 0.45], [0.96, 0.22], [0.96, 0.78], [0.8, 0.55], [0.62, 0.75], [0.3, 0.78]] },
-      { n: "ein Herz", e: "❤️", p: [[0.5, 0.3], [0.65, 0.1], [0.88, 0.12], [0.96, 0.35], [0.85, 0.6], [0.5, 0.93], [0.15, 0.6], [0.04, 0.35], [0.12, 0.12], [0.35, 0.1]] },
-      { n: "ein Kristall", e: "💎", p: [[0.3, 0.1], [0.7, 0.1], [0.92, 0.38], [0.5, 0.94], [0.08, 0.38]] },
-      { n: "eine Tanne", e: "🌲", p: [[0.5, 0.04], [0.78, 0.38], [0.64, 0.38], [0.9, 0.74], [0.56, 0.74], [0.56, 0.95], [0.44, 0.95], [0.44, 0.74], [0.1, 0.74], [0.36, 0.38], [0.22, 0.38]] }
-    ];
     function mkStern(lv) {
-      const N2 = [5, 6, 7, 8, 9, 10, 10, 11, 10, 10][lv], big = FS.u.m >= 2, two = big && lv >= 8, step2 = two ? 2 : 1;
-      let n = big ? N2 : Math.min(N2, 10), a = 1;
-      if (two) a = 2;
-      else if (big && lv >= 6) a = ri(2, 20 - n + 1);
-      const sh = shuffle(SHAPES.filter(function(q) {
-        return q.p.length <= n;
-      }))[0];
-      let pts = sh.p.map(function(q) {
-        return q.slice();
-      });
-      while (pts.length < n) {
-        let bi = 0, bd = 0;
-        for (let i = 0; i < pts.length; i++) {
-          const p2 = pts[i], q2 = pts[(i + 1) % pts.length], d = Math.hypot(p2[0] - q2[0], p2[1] - q2[1]);
-          if (d > bd) {
-            bd = d;
-            bi = i;
-          }
-        }
-        const p = pts[bi], q = pts[(bi + 1) % pts.length];
-        pts.splice(bi + 1, 0, [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]);
-      }
-      const o = ri(0, n - 1), dir = ri(0, 1) ? 1 : -1, ord = [];
-      for (let i = 0; i < n; i++) ord.push(pts[((o + dir * i) % n + n) % n]);
-      return { sh, pts: ord.map(function(p, i) {
-        return [p[0], p[1], a + i * step2];
-      }), k: 0, two };
+      return mkSternWith(Math.random, FS, lv);
     }
     function stSide() {
       const land = H <= 480;
@@ -12695,15 +13046,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function syStern(st) {
       return "Verbinde die Sterne der Reihe nach. Fang bei " + st.pts[0][2] + " an" + (st.two ? " und zähl immer zwei weiter." : ".");
     }
-    const SPL = [[2, 3, 2, 1, 0], [3, 3, 3, 1, 0], [3, 3, 5, 1, 0], [3, 4, 6, 1, 0], [3, 4, 6, 2, 0], [4, 4, 8, 2, 0], [4, 3, 6, 2, 1], [4, 5, 10, 2, 0], [4, 4, 9, 3, 1], [5, 5, 13, 3, 0]];
     function mkSpiegel(lv) {
-      const L = SPL[lv], w = L[0], h = L[1], st = { w, h, nc: L[3], ax: L[4], a: [], b: [] };
-      for (let i = 0; i < w * h; i++) {
-        st.a.push(0);
-        st.b.push(0);
-      }
-      for (const i of shuffle(idxs(w * h)).slice(0, L[2])) st.a[i] = ri(1, L[3]);
-      return st;
+      return mkSpiegelWith(Math.random, lv);
     }
     function spWant(st, i) {
       const c = i % st.w, r = (i - c) / st.w;
@@ -12746,61 +13090,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function sySpiegel(st) {
       return (st.ax ? "Male unten das Spiegelbild von oben." : "Male rechts das Spiegelbild von links.") + " Tippe auf die leeren Felder." + (st.nc > 1 ? " Tippe mehrmals, dann wechselt die Farbe." : "");
     }
-    const RBL = [[4, 3, 1, 0, 0, 9], [4, 4, 3, 0, 0, 9], [5, 4, 5, 0, 0, 9], [5, 5, 7, 0, 0, 9], [5, 5, 6, 1, 0, 9], [6, 5, 8, 1, 2, 9], [6, 5, 8, 2, 2, 2], [6, 6, 10, 2, 3, 1], [7, 6, 12, 3, 4, 1], [7, 6, 14, 3, 5, 0]];
-    const RBD = [[1, 0], [0, 1], [-1, 0], [0, -1]], ARW = ["➡️", "⬇️", "⬅️", "⬆️"];
-    function rbSolve(st) {
-      const w = st.w, h = st.h, n = w * h, G2 = st.gems, full = (1 << G2.length) - 1;
-      const dist = new Int16Array(n * 40).fill(999), prev = new Int32Array(n * 40).fill(-1), k0 = (st.s * 5 + 4) * 8, dq = [k0];
-      let end = -1;
-      dist[k0] = 0;
-      while (dq.length) {
-        const k = dq.shift(), m = k & 7, pd = k >> 3, d = pd % 5, p = (pd - d) / 5;
-        if (p === st.g && m === full) {
-          end = k;
-          break;
-        }
-        const x = p % w, y = (p - x) / w;
-        for (let nd = 0; nd < 4; nd++) {
-          const nx = x + RBD[nd][0], ny = y + RBD[nd][1];
-          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-          const np = ny * w + nx;
-          if (st.wall.has(np) || st.lava.has(np)) continue;
-          const gi = G2.indexOf(np), nm = gi >= 0 ? m | 1 << gi : m, c = dist[k] + (nd === d ? 0 : 1), nk = (np * 5 + nd) * 8 + nm;
-          if (c < dist[nk]) {
-            dist[nk] = c;
-            prev[nk] = k;
-            if (nd === d) dq.unshift(nk);
-            else dq.push(nk);
-          }
-        }
-      }
-      if (end < 0) return null;
-      const dirs = [];
-      for (let k = end; prev[k] >= 0; k = prev[k]) dirs.push((k >> 3) % 5);
-      dirs.reverse();
-      const sol = [];
-      for (const d of dirs) {
-        const l = sol[sol.length - 1];
-        if (l && l.d === d && l.n < 9) l.n++;
-        else sol.push({ d, n: 1 });
-      }
-      return sol;
-    }
+    const ARW = ["➡️", "⬇️", "⬅️", "⬆️"];
     function mkRobo(lv) {
-      const L = RBL[lv], w = L[0], h = L[1];
-      for (let tr = 0; tr < 120; tr++) {
-        const c = shuffle(idxs(w * h)), a = 2 + L[3], b = a + L[2];
-        const st = { w, h, s: c[0], g: c[1], gems: c.slice(2, a), wall: new Set(c.slice(a, b)), lava: new Set(c.slice(b, b + L[4])), prog: [], max: 12, sol: null, pos: c[0], got: 0, bad: -1, cur: -1 };
-        const sol = rbSolve(st);
-        if (!sol) continue;
-        let steps = 0;
-        for (const q of sol) steps += q.n;
-        if (steps < Math.min(3 + lv, 9) || sol.length < Math.min(2 + (lv >> 1), 4) || sol.length > 9) continue;
-        st.sol = sol;
-        st.max = L[5] === 9 ? Math.max(sol.length + 3, 6) : sol.length + L[5];
-        return st;
-      }
-      return mkRobo(Math.max(0, lv - 1));
+      return mkRoboWith(Math.random, lv);
     }
     function drRobo(st) {
       const cs = pzCell(st.w, st.h + 1.3, true);
@@ -12927,68 +13219,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       return "Bring den Roboter zur Fahne. Tippe die Pfeile in der richtigen Reihenfolge, dann auf Los." + (st.gems.length ? " Sammle unterwegs " + (st.gems.length > 1 ? "alle Edelsteine" : "den Edelstein") + " ein." : "") + (st.lava.size ? " Pass auf das Feuer auf." : "") + (st.max < st.sol.length + 3 ? " Du hast nur wenige Felder. Gleiche Pfeile hintereinander brauchen nur ein Feld." : "");
     }
     function mkWaage(lv) {
-      const st = { L: [], R: [], pal: null, items: null, box: 0, opts: null, over: false, ang: 0 };
-      const pick = function(arr, n) {
-        return shuffle(arr.slice()).slice(0, n);
-      }, sum = function(a) {
-        let s = 0;
-        for (const v of a) s += v;
-        return s;
-      };
-      if (SCH.on) lv = Math.min(lv, [0, 2, 3, 9][SCH.zr]);
-      if (lv === 0) {
-        st.pal = [1, 2];
-        st.L = [ri(3, 5)];
-      } else if (lv === 1) {
-        st.pal = [1, 2, 5];
-        st.L = [ri(6, 10)];
-      } else if (lv === 2) {
-        st.pal = [1, 2, 5];
-        st.L = [ri(2, 5), ri(2, 5)];
-      } else if (lv === 3) {
-        st.pal = [1, 2, 10];
-        st.L = [ri(11, 15)];
-      } else if (lv === 4) {
-        const a = ri(6, 9);
-        st.pal = [1, 2, 5, 10];
-        st.L = [a, ri(11 - a, 9)];
-      } else if (lv === 5) {
-        const b = ri(2, 9), a = ri(5, 10);
-        st.box = b;
-        st.L = [-1, a];
-        st.R = [{ w: a + b, fix: 1 }];
-      } else if (lv === 6) {
-        st.items = [10, 5, 5, 2, 2, 1, 1];
-        let t;
-        do
-          t = sum(pick(st.items, ri(3, 4)));
-        while (t > 20);
-        st.L = [t];
-      } else if (lv === 7) {
-        const pre = ri(5, 10);
-        st.items = [1, 2, 3, 4, 5, 6];
-        st.R = [{ w: pre, fix: 1 }];
-        st.L = [Math.min(20, pre + sum(pick(st.items, 2)))];
-      } else if (lv === 8) {
-        const b = ri(3, 8), a = ri(1, 4);
-        st.box = b;
-        st.L = [-1, -1, a];
-        st.R = [{ w: 2 * b + a, fix: 1 }];
-      } else {
-        const b = ri(3, 8), a = ri(1, 4);
-        st.box = b;
-        st.L = [-1, -1, a];
-        st.R = [{ w: -1, fix: 1 }, { w: b + a, fix: 1 }];
-      }
-      if (st.items) st.items = st.items.map(function(w) {
-        return { w, used: false };
-      });
-      if (st.box) {
-        const o = [st.box];
-        for (const v of shuffle([st.box - 1, st.box + 1, st.box + 2, st.box - 2, st.box + 3])) if (o.length < 4 && v > 0 && o.indexOf(v) < 0) o.push(v);
-        st.opts = shuffle(o);
-      }
-      return st;
+      return mkWaageWith(Math.random, SCH, lv);
     }
     function wgDiff(st) {
       let d = 0;
@@ -13084,15 +13315,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }).length > 1 ? " Alle Geschenke sind gleich schwer." : "");
       return "Lege rechts Gewichte auf, bis die Waage gerade steht." + (st.items ? " Jedes Gewicht gibt es nur einmal." : "");
     }
-    const ECL = [[4, 2, 0], [4, 3, 0], [4, 3, 0], [4, 4, 0], [6, 4, 0], [4, 5, 0], [6, 5, 0], [4, 3, 1], [6, 6, 0], [6, 4, 1]], ECF = [262, 330, 392, 523, 659, 784];
+    const ECF = [262, 330, 392, 523, 659, 784];
     function mkEcho(lv) {
-      const L = ECL[lv], st = { n: L[0], seq: [], rev: L[2], pos: 0, lit: -1, ph: "wait", sp: lv >= 2 ? 430 : 580 };
-      for (let i = 0; i < L[1]; i++) {
-        let v = ri(0, L[0] - 1);
-        if (i && v === st.seq[i - 1]) v = (v + 1) % L[0];
-        st.seq.push(v);
-      }
-      return st;
+      return mkEchoWith(Math.random, lv);
     }
     function drEcho(st) {
       let h = '<div class="ec ec' + st.n + '">';
@@ -13177,98 +13402,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function syEcho(st) {
       return st.rev ? "Achtung, jetzt rückwärts! Merk dir, in welcher Reihenfolge die Kristalle leuchten. Dann tippe sie von hinten nach vorn: den letzten zuerst." : "Merk dir, in welcher Reihenfolge die Kristalle leuchten. Dann tippe sie genauso nach.";
     }
-    const RHL = [[3, 2, 0], [3, 3, 0], [4, 3, 0], [4, 4, 0], [4, 4, 1], [5, 4, 1], [5, 5, 1], [5, 5, 2], [6, 5, 2], [6, 6, 2]], RMASK = [10, 3, 11];
     const RSVG = ['<path d="M0 12h24"', '<path d="M12 0v5a7 7 0 0 0 7 7h5"', '<path d="M0 12h24M12 0v12"'];
-    function rhRot(m, r) {
-      for (let i = 0; i < r; i++) m = m << 1 & 15 | m >> 3;
-      return m;
-    }
-    function rhMask(st, p) {
-      return st.t[p] === 3 ? 0 : rhRot(RMASK[st.t[p]], st.r[p]);
-    }
-    function rhFlow(st) {
-      const w = st.w, h = st.h, f = /* @__PURE__ */ new Set(), s = st.ys * w, N2 = [[1, 0, -1, 4], [2, 1, 0, 8], [4, 0, 1, 1], [8, -1, 0, 2]];
-      if (!(rhMask(st, s) & 8)) return f;
-      const q = [s];
-      f.add(s);
-      while (q.length) {
-        const p = q.pop(), x = p % w, y = (p - x) / w, m = rhMask(st, p);
-        for (const n of N2) {
-          if (!(m & n[0])) continue;
-          const nx = x + n[1], ny = y + n[2];
-          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-          const np = ny * w + nx;
-          if (f.has(np) || !(rhMask(st, np) & n[3])) continue;
-          f.add(np);
-          q.push(np);
-        }
-      }
-      return f;
-    }
-    function rhDone(st, f) {
-      const e = st.ye * st.w + st.w - 1;
-      return f.has(e) && (rhMask(st, e) & 2) > 0;
-    }
     function mkRohre(lv) {
-      const L = RHL[lv], w = L[0], h = L[1];
-      for (let tr = 0; tr < 80; tr++) {
-        const ys = ri(0, h - 1), ye = ri(0, h - 1), seen2 = /* @__PURE__ */ new Set(), path = [];
-        const dfs = function(x, y) {
-          const p = y * w + x;
-          seen2.add(p);
-          path.push(p);
-          if (x === w - 1 && y === ye) return true;
-          for (const d of shuffle([[1, 0], [0, 1], [0, -1], [-1, 0]])) {
-            const nx = x + d[0], ny = y + d[1];
-            if (nx < 0 || ny < 0 || nx >= w || ny >= h || seen2.has(ny * w + nx)) continue;
-            if (dfs(nx, ny)) return true;
-          }
-          path.pop();
-          return false;
-        };
-        if (!dfs(0, ys)) continue;
-        if (path.length < Math.min(w + 1 + (lv >> 1), w * h - 2) || path.length > w * h * 0.75) continue;
-        const st = { w, h, ys, ye, t: [], r: [], sr: [], lk: [], ang: [], need: 0, taps: 0 };
-        const on = {};
-        for (let i = 0; i < path.length; i++) {
-          const p = path[i], x = p % w, y = (p - x) / w;
-          let m = 0;
-          for (const q of [i ? path[i - 1] : -1, i < path.length - 1 ? path[i + 1] : -2]) {
-            if (q === -1) m |= 8;
-            else if (q === -2) m |= 2;
-            else {
-              const qx = q % w, qy = (q - qx) / w;
-              m |= qx > x ? 2 : qx < x ? 8 : qy > y ? 4 : 1;
-            }
-          }
-          on[p] = m;
-        }
-        for (let p = 0; p < w * h; p++) {
-          let t, r, sr = -1;
-          if (on[p] !== void 0) {
-            const m = on[p];
-            t = m === 10 || m === 5 ? 0 : 1;
-            if (L[2] >= 1 && Math.random() < 0.22) t = 2;
-            sr = 0;
-            while ((rhRot(RMASK[t], sr) & m) !== m) sr++;
-            r = (sr + ri(1, 3)) % 4;
-            if (t === 0 && (r & 1) === (sr & 1)) r = (r + 1) % 4;
-            st.need += t === 0 ? 1 : Math.min((sr - r + 4) % 4, 4);
-          } else {
-            const q = Math.random();
-            t = L[2] >= 2 && q < 0.14 ? 3 : L[2] >= 1 && q < 0.4 ? 2 : q < 0.72 ? 1 : 0;
-            r = ri(0, 3);
-          }
-          st.t.push(t);
-          st.r.push(r);
-          st.sr.push(sr);
-          st.lk.push(false);
-          st.ang.push(r * 90);
-        }
-        if (rhDone(st, rhFlow(st))) continue;
-        return st;
-      }
-      return mkRohre(Math.max(0, lv - 1));
+      return mkRohreWith(Math.random, lv);
     }
     function drRohre(st) {
       const cs = pzCell(st.w + 2, st.h, false), f = rhFlow(st), done = rhDone(st, f);
@@ -13326,57 +13462,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function syRohre() {
       return "Dreh die Rohre, bis das Wasser vom Wasserhahn bis zur Pflanze fließt. Tippe auf ein Rohr, dann dreht es sich.";
     }
-    const SDL = [[3, 2], [3, 3], [3, 4], [3, 5], [3, 6], [4, 4], [4, 6], [4, 7], [4, 8], [4, 10]];
-    function sdOk(a, n, i, v) {
-      const c = i % n, r = (i - c) / n;
-      for (let k = 0; k < n; k++) {
-        if (k !== c && a[r * n + k] === v) return false;
-        if (k !== r && a[k * n + c] === v) return false;
-      }
-      if (n === 4) {
-        const br = r & 2, bc = c & 2;
-        for (let y = br; y < br + 2; y++) for (let x = bc; x < bc + 2; x++) if ((y !== r || x !== c) && a[y * 4 + x] === v) return false;
-      }
-      return true;
-    }
-    function sdCount(a, n) {
-      const i = a.indexOf(-1);
-      if (i < 0) return 1;
-      let s = 0;
-      for (let v = 0; v < n && s < 2; v++) if (sdOk(a, n, i, v)) {
-        a[i] = v;
-        s += sdCount(a, n);
-        a[i] = -1;
-      }
-      return s;
-    }
     function mkSudoku(lv) {
-      const n = SDL[lv][0], want = SDL[lv][1], g = [];
-      if (n === 3) {
-        const b = shuffle([0, 1, 2]), sh = ri(1, 2);
-        for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) g.push(b[(c + r * sh) % 3]);
-      } else {
-        const base = [0, 1, 2, 3, 2, 3, 0, 1, 1, 0, 3, 2, 3, 2, 1, 0], sy = shuffle([0, 1, 2, 3]);
-        const mix2 = function() {
-          let o = [0, 1, 2, 3];
-          if (ri(0, 1)) o = [1, 0, 2, 3];
-          if (ri(0, 1)) o = [o[0], o[1], 3, 2];
-          if (ri(0, 1)) o = [o[2], o[3], o[0], o[1]];
-          return o;
-        };
-        const rows = mix2(), cols = mix2();
-        for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) g.push(sy[base[rows[r] * 4 + cols[c]]]);
-      }
-      const giv = g.slice();
-      let bl = 0;
-      for (const i of shuffle(idxs(n * n))) {
-        if (bl >= want) break;
-        const v = giv[i];
-        giv[i] = -1;
-        if (sdCount(giv, n) === 1) bl++;
-        else giv[i] = v;
-      }
-      return { n, sol: g, giv, cur: giv.slice(), sy: shuffle([0, 1, 2, 3]), co: shuffle([0, 1, 2, 3]), full: false };
+      return mkSudokuWith(Math.random, lv);
     }
     function sdTok(st, v) {
       return tok(st.sy[v], st.co[v]);

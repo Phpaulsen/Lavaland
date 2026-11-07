@@ -68,8 +68,11 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 
 ### PR 5: Rätselgeneratoren
 
-- **Bewegt:** `mkMuster`, `mkStern`, `mkSpiegel`, `mkRobo`, `mkWaage`, `mkEcho`, `mkRohre`, `mkSudoku` mit ihren Datentabellen → `core/puzzles/*.js`. `dr…`, `ac…`, `hi…`, `sy…` bleiben in `legacy.js`.
-- **Risiken:** `PZT` (`index.html:6453`) hält die Funktionen als Werte; die Rätsel lesen Schulstand (`SCH`) und `FS`. **Absicherung:** Generator-Golden-Master, Knopftest (`crawl.mjs`) spielt jede Stufe.
+- **Bewegt:** `mkMuster`, `mkStern`, `mkSpiegel`, `mkRobo`, `mkWaage`, `mkEcho`, `mkRohre`, `mkSudoku` als `mk…With(rand, …, lv)` nach `core/puzzles/<rätsel>.js`, dazu ihre Datentabellen (`SHAPES`, `SPL`, `RBL`, `RBD`, `ECL`, `RHL`, `RMASK`, `SDL`) und reinen Hilfen (`tkKey`, `rbSolve`, `rhRot`, `rhMask`, `rhFlow`, `rhDone`, `sdOk`, `sdCount`, `idxs` in `core/puzzles/util.js`). In `legacy.js` bleibt je Rätsel ein Einzeiler `mkX(lv)`, den `PZT` weiter hält. `dr…`, `ac…`, `hi…`, `sy…` bleiben in `legacy.js`; ebenso `ARW` (zuvor mit `RBD` in einer Deklaration) und `ECF` (mit `ECL`), weil nur Zeichnen und Ton sie lesen.
+- **Gelesener Zustand als Parameter:** `mkStern` liest `FS.u.m`, `mkWaage` liest `SCH.on`/`SCH.zr`. Beide bekommen das Objekt als Parameter gleichen Namens; der Einzeiler übergibt `FS` bzw. `SCH` zur Aufrufzeit, wie vorher gelesen.
+- **Werkzeug:** `movecheck.mjs` kann jetzt mehrere Parameter (`["rand=Math.random", "FS"]`) und Einzeiler früherer PRs (`wrappers`: `ri` → `riWith(rand, …)`). Die Selbstaufrufe im Rückfall (`mkRobo(lv-1)`, `mkRohre(lv-1)`) werden zu `mkRoboWith(rand, lv-1)`; der Move-Nachweis prüft das mit.
+- **Typen:** JSDoc mit einem Zustandstyp je Rätsel (`MusterState` …), Umwandlungen als `/** @type */ (…)`, die den AST nicht ändern. Wo ein Feld je nach Art verschiedene Formen hat (Muster-Bilder, Waage-`items`), steht ausdrücklich `any`.
+- **Risiken:** `PZT` hält die Funktionen als Werte; die Rätsel lesen Schulstand (`SCH`) und `FS`. **Absicherung:** Generator-Golden-Master, Knopftest (`crawl.mjs`) spielt jede Stufe, einmaliger Differenztest alt gegen neu (siehe PR).
 - Echo und Sudoku ziehen hier noch mit um, weil die Streich-PRs erst vor PR 16 laufen.
 
 ### PR 6: Lernkern ohne Oberfläche

@@ -5,7 +5,9 @@
 // moves.json (je PR neu, steht im PR-Text):
 //   renames  { neuerName: alterName }         Funktion zieht unter neuem Namen um
 //   params   { neuerName: "rand" }            Funktion bekommt den Parameter vorn; Math.random im alten Körper wird zu ihm,
-//                                             Aufrufe anderer so bewegter Funktionen bekommen ihn als erstes Argument
+//                                             Aufrufe anderer so bewegter Funktionen bekommen ihn als erstes Argument.
+//            { neuerName: ["rand=Math.random", "FS"] }  mehrere; "FS" ist ein Parameter gleichen Namens statt des Top-Level-Namens
+//   wrappers { alterName: neuerName }         in bewegten Funktionen wird alterName(…) zu neuerName(rand, …) (Einzeiler wie ri → riWith)
 //   facade   { "name": "W", "names": [...] }  Bezug x wird zu W.x (Übergangsfassade, ADR 0001 Punkt 9)
 //   changed  [...]                            Name bleibt, Inhalt ändert sich bewusst (z. B. Einzeiler, der an core/ weitergibt)
 //   added, removed [...]                      neue bzw. gelöschte Namen
@@ -50,18 +52,24 @@ const id = name => ({ type: 'Identifier', name });
 /** Wendet die erlaubten Umschreibungen auf einen alten Knoten an. */
 export function transform(node, moves, own) {
   const ren = {}; for (const [n, o] of Object.entries(moves.renames || {})) ren[o] = n;
-  const par = moves.params || {}, fac = moves.facade ? new Set(moves.facade.names) : null;
-  const p = own && par[own], moved = !!own && own in (moves.renames || {});
+  const fac = moves.facade ? new Set(moves.facade.names) : null, wrap = moves.wrappers || {};
+  // params: "rand" (kurz für ["rand=Math.random"]) oder eine Liste. "rand=Math.random": Math.random im alten Körper wird zu rand.
+  // "FS": neuer Parameter gleichen Namens, der den Top-Level-Namen verdeckt; der Körper bleibt dafür unverändert.
+  const plist = n => { const v = (moves.params || {})[n]; if (!v) return []; return (typeof v === 'string' ? [v + '=Math.random'] : v).map(e => { const [name, src] = e.split('='); return { name, random: src === 'Math.random' }; }); };
+  const mine = own ? plist(own) : [], rnd = (mine.find(e => e.random) || {}).name, moved = !!own && own in (moves.renames || {});
   // Bezüge auf umbenannte Namen werden nur innerhalb bewegter Funktionen umgeschrieben; legacy.js ruft weiter den alten Namen (Einzeiler).
   const n0 = clone(node);
   const walk = (x, parent, key) => {
     if (!x || typeof x !== 'object') return x;
     if (Array.isArray(x)) { for (let i = 0; i < x.length; i++) x[i] = walk(x[i], parent, key); return x; }
     // Math.random → Parameter
-    if (p && x.type === 'MemberExpression' && !x.computed && x.object.type === 'Identifier' && x.object.name === 'Math' && x.property.name === 'random') return id(p);
-    // Aufruf einer mit Parameter bewegten Funktion: neuer Name, Parameter vorn
-    if (p && x.type === 'CallExpression' && x.callee.type === 'Identifier' && ren[x.callee.name] && par[ren[x.callee.name]] === p) {
-      x.callee = id(ren[x.callee.name]); x.arguments = [id(p), ...x.arguments.map(a => walk(a, x, 'arguments'))]; return x;
+    if (rnd && x.type === 'MemberExpression' && !x.computed && x.object.type === 'Identifier' && x.object.name === 'Math' && x.property.name === 'random') return id(rnd);
+    if (moved && x.type === 'CallExpression' && x.callee.type === 'Identifier') {
+      const c = x.callee.name;
+      // Aufruf einer mit Parametern bewegten Funktion: neuer Name, ihre Parameter vorn (gleich benannt wie hier)
+      if (ren[c] && plist(ren[c]).length) { x.callee = id(ren[c]); x.arguments = [...plist(ren[c]).map(e => id(e.name)), ...x.arguments.map(a => walk(a, x, 'arguments'))]; return x; }
+      // Aufruf eines Einzeilers aus legacy.js (z. B. ri → riWith): die core-Fassung mit dem Zufallsparameter vorn
+      if (wrap[c] && rnd) { x.callee = id(wrap[c]); x.arguments = [id(rnd), ...x.arguments.map(a => walk(a, x, 'arguments'))]; return x; }
     }
     if (x.type === 'Property' && !x.computed) { if (x.shorthand) { x.value = walk(x.value, x, 'value'); if (x.value.type !== 'Identifier' || x.value.name !== x.key.name) x.shorthand = false; return x; } x.value = walk(x.value, x, 'value'); return x; }
     if (x.type === 'MemberExpression' && !x.computed) { x.object = walk(x.object, x, 'object'); return x; }
@@ -79,7 +87,7 @@ export function transform(node, moves, own) {
   if ((n0.type === 'FunctionDeclaration' || n0.type === 'ClassDeclaration') && n0.id) { n0.id = id(own || n0.id.name); }
   const params = n0.params; if (params) n0.params = [];
   walk(n0);
-  if (params) n0.params = (p ? [id(p)] : []).concat(params);
+  if (params) n0.params = mine.map(e => id(e.name)).concat(params);
   return n0;
 }
 
@@ -137,6 +145,12 @@ function selftest() {
       { renames: { riW: 'ri', shW: 'sh' }, params: { riW: 'r', shW: 'r' }, changed: ['ri', 'sh'] }, 0],
     ['Parameter, aber anderer Aufruf', { 'legacy.js': L('function ri(a,b){return a+Math.floor(Math.random()*(b-a))}') },
       { 'legacy.js': L(''), 'core/r.js': 'export function riW(r,a,b){return a+Math.floor(r()*(b-a+1))}' }, { renames: { riW: 'ri' }, params: { riW: 'r' } }, 1],
+    ['Zustand als Parameter, Einzeiler aus früherem PR', { 'legacy.js': L('let FS={u:1};\nfunction ri(a){return riW(Math.random,a)}\nfunction mk(lv){return FS.u+ri(lv)}') },
+      { 'legacy.js': L('let FS={u:1};\nfunction ri(a){return riW(Math.random,a)}\nfunction mk(lv){return mkW(Math.random,FS,lv)}'), 'core/m.js': 'export function mkW(r,FS,lv){return FS.u+riW(r,lv)}' },
+      { renames: { mkW: 'mk' }, params: { mkW: ['r=Math.random', 'FS'] }, wrappers: { ri: 'riW' }, changed: ['mk'] }, 0],
+    ['Zustand als Parameter, Körper geändert', { 'legacy.js': L('let FS={u:1};\nfunction mk(lv){return FS.u+lv}') },
+      { 'legacy.js': L('let FS={u:1};\nfunction mk(lv){return mkW(FS,lv)}'), 'core/m.js': 'export function mkW(FS,lv){return FS.u-lv}' },
+      { renames: { mkW: 'mk' }, params: { mkW: ['FS'] }, changed: ['mk'] }, 1],
     ['Fassade', { 'legacy.js': L('let x=1;\nfunction f(){x++;return {x,y:x}}') }, { 'legacy.js': L('function f(){W.x++;return {x:W.x,y:W.x}}'), 'state/w.js': 'export const W={x:1}' },
       { facade: { name: 'W', names: ['x'] }, removed: ['x'], added: ['W'] }, 0],
     ['Fassade vergessen', { 'legacy.js': L('let x=1;\nfunction f(){return x}') }, { 'legacy.js': L('let x=1;\nfunction f(){return W.x}') }, {}, 1],
