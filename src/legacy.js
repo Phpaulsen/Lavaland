@@ -15,13 +15,14 @@ import { BOXD, NEWDAY, FASTMS, schoolOkWith, fUnlockWith, mixPreferWith, fParked
 import { mkQWith, mkSeqWith } from './core/learn/tasks.js';
 import { g0, grid, stamp, LIFE, zS1, z4, zS2, zS3, grow0, rA, rB, rD, rH, rC, mtop, bio, bio2, bmx, bix, noCave, liqM, liqY } from './state/world.js';
 import { ST } from './state/facade.js';
-import { ERRK, MISK, SAVEKEY, K_HERO, K_FINDS, K_STARS, K_SKILL, K_FACTS, K_SCHOOL, K_LIMIT, K_DAY, K_REALM, K_FOG, K_MARKS, K_MUTE, K_LEFTY, K_PSST, K_NEWS, K_BAK_AT, K_VOICE, K_VMISS, K_OPT, K_ALIVE, realmKey } from './persistence/keys.js';
+import { ERRK, MISK, SAVEKEY, K_HERO, K_FINDS, K_STARS, K_SKILL, K_FACTS, K_SCHOOL, K_LIMIT, K_DAY, K_REALM, K_FOG, K_MARKS, K_MUTE, K_LEFTY, K_PSST, K_NEWS, K_BAK_AT, K_VOICE, K_VMISS, K_OPT, realmKey } from './persistence/keys.js';
 import { idbOpen, idbDoWith } from './persistence/db.js';
 import { packRunsWith, unpackRunsWith, runsOk } from './core/world/pack.js';
 import { bx0, bx1, by0, by1, lavaCount, waterCount, fireCount, tick, sx0, winR, rx0, rx1, qx0, qx1, px0, px1, py0, py1, winC, ext, extI, react, cellAt, hotAt, lifeS, put, stepWith, scanMobileWith, steamWith } from './state/sim.js';
 import { winterColWith, carveCaveWith, carveCircleWith, carvePathWith, fillCraterWith, fillPondWith, houseBlocksWith, fillBlockWith, rawXWith, rawGWith, layoutWith, addTreeWith, addCreWith, populateWith, zoneColsWith, shapeWorldWith, blkWith, buildWith, genColWith, genWith, makeTrackWith, deepWorldWith, deepFarWith, planetDeepWith, vaultPlanWith } from './core/world/gen.js';
 import { SNX, SL0, PEAK, BACK, BEND, MH, SNB, CHX, CAVE, SNC0, SNC1, msurf, vnoise, inGrid, ellipse, PX0, PM, PMC, LANDX, PADH, BT, sm, colOf, hBio, craters, roomY, vFloor, WSX, LIFTX, SEA_T, SEA_L, SEA_B, HOUSE, FH } from './core/world/shape.js';
 import { BAK_DBS, BAK_ST, BAK_MAX, TYPED, BADK, bakOk, b64, unb64, enc, dec, dbDump, dbLoad } from './persistence/transfer.js';
+import { K_ALIVE, logWith } from './log/log.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -6478,155 +6479,25 @@ function resetWorld(seed){
 }
 
 /* ---------- Spielprotokoll für Eltern: Was er wann spielt und wie er Aufgaben löst. Liegt nur auf diesem Gerät, in einer eigenen Datenbank, damit ein Fehler hier nie den Spielstand trifft. Das Protokoll schaut nur zu: Nichts davon ändert Belohnung oder Schwierigkeit. ---------- */
-const LOG=(function(){
-  const KEEP=90, IDLE=60, buf=[], acc={};
-  let dbp=null, q=null, flushT=0, lastIn=performance.now(), accDay='';
-  function day(t){ const d=t?new Date(t):new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
-  /* Fehlt etwas (etwa nach einem Spielstand-Umzug, der nur die Daten mitbringt), wird die Datenbank eine Version höher neu eingerichtet. */
-  function op(ver){
-    return new Promise(function(res,rej){
-      let rq;
-      try{ rq=ver?indexedDB.open('lavaland-log',ver):indexedDB.open('lavaland-log'); }catch(e){ rej(e); return; }
-      rq.onupgradeneeded=function(){
-        const db=rq.result;
-        if(!db.objectStoreNames.contains('ev')) db.createObjectStore('ev',{autoIncrement:true});
-        if(!db.objectStoreNames.contains('day')) db.createObjectStore('day',{keyPath:'d'});
-        const es=rq.transaction.objectStore('ev'); if(!es.indexNames.contains('d')) es.createIndex('d','d');
-      };
-      rq.onsuccess=function(){
-        const db=rq.result;
-        let ok=false; try{ ok=db.objectStoreNames.contains('day')&&db.transaction('ev').objectStore('ev').indexNames.contains('d'); }catch(_){}
-        if(!ok){ const v=db.version+1; db.close(); if(ver) rej(new Error('log db')); else op(v).then(res,rej); return; }
-        db.onversionchange=function(){ db.close(); dbp=null; }; res(db);
-      };
-      rq.onerror=function(){ rej(rq.error); };
-    });
-  }
-  function open(){
-    if(!dbp){ dbp=op(0).then(function(db){ db.onclose=function(){ dbp=null; }; return db; }); dbp.catch(function(){ dbp=null; }); }
-    return dbp;
-  }
-  /* Android kann eine offene Datenbankverbindung jederzeit schließen (Speicherdruck, Hintergrund). Bisher blieb dann die tote Verbindung gemerkt:
-     Das Protokoll schrieb nichts mehr und die Elternansicht meldete „nicht lesbar“ bis zum Neustart. Jetzt wird einmal neu geöffnet. */
-  function trx(stores,mode){
-    return open().then(function(db){
-      try{ return db.transaction(stores,mode); }
-      catch(e){
-        dbp=null; try{ db.close(); }catch(_){}
-        errAdd('Protokoll-Datenbank neu geöffnet: '+((e&&e.name)||e),'log');
-        return open().then(function(d){ return d.transaction(stores,mode); });
-      }
-    });
-  }
-  function push(e){ if(frozen) return; e.d=day(e.t); buf.push(e); }
-  function flush(){
-    if(frozen||(!buf.length&&!accDay)) return;
-    const evs=buf.splice(0), d=accDay, sec=Object.assign({},acc), ss=acc.$s|0;
-    for(const k in acc) delete acc[k]; accDay='';
-    trx(['ev','day'],'readwrite').then(function(tx){
-      const es=tx.objectStore('ev');
-      evs.forEach(function(e){ es.add(e); });
-      if(d){
-        const ds=tx.objectStore('day'), g=ds.get(d);
-        g.onsuccess=function(){
-          const r=g.result||{d:d,sec:{},sess:0};
-          for(const k in sec) if(k!=='$s') r.sec[k]=Math.round(((r.sec[k]||0)+sec[k])*10)/10;
-          r.sess=(r.sess|0)+ss; ds.put(r);
-        };
-      }
-    }).catch(function(){});
-  }
-  /* Rohereignisse nach 90 Tagen weg, die Tagesbilanzen bleiben. */
-  function prune(){
-    const cut=day(Date.now()-KEEP*864e5);
-    trx('ev','readwrite').then(function(tx){
-      const c=tx.objectStore('ev').index('d').openCursor(IDBKeyRange.upperBound(cut,true));
-      c.onsuccess=function(){ const k=c.result; if(k){ k.delete(); k.continue(); } };
-    }).catch(function(){});
-  }
-  function state(){
-    if(!$('par').hidden||!$('pgate').hidden) return '';
-    if((performance.now()-lastIn)/1000>IDLE) return 'idle';
-    if(pzc) return 'pz';
-    if(!$('quiz').hidden) return 'quiz';
-    if(paused||uiOpen()) return 'ui';
-    return energy<=0?'empty':'play';
-  }
-  function qEnd(how){
-    if(!q) return;
-    const e=q; q=null; delete e.p0; e.end=how; e.first=e.taps.length>0&&e.taps[0][0]===e.ok; push(e);
-  }
-  function pEnd(c,how){
-    if(!c||!c.lg) return;
-    const g=c.lg; c.lg=null;
-    push({k:'p',t:g.t,id:c.T.id,lv:c.lv,src:c.m.quiz?'akku':'welt',ms:Math.round(performance.now()-g.p0),fails:c.fails,hint:c.hint,fph:g.fph,end:how});
-  }
-  ['pointerdown','keydown'].forEach(function(n){ document.addEventListener(n,function(){ lastIn=performance.now(); },true); });
-  /* Absturzerkennung: Solange das Spiel sichtbar läuft, steht alle 2 s ein kurzer Zwischenstand im localStorage (geht auch bei einem Absturz nicht verloren).
-     Wird das Spiel ordentlich verlassen (in den Hintergrund, Neuladen), steht dort ok:1. Steht beim nächsten Start ok:0, wurde es mitten im Spiel beendet:
-     vom Betriebssystem (meist Speichermangel) oder weil es hing. Dann kommt ein Eintrag ins Protokoll und ins Fehlerprotokoll, mit dem, was zuletzt lief. */
-  const ALK=K_ALIVE;
-  let beatT=0, beatJ=0, beat0=Date.now(), beatSkip=false;
-  function aliveW(ok){
-    try{
-      const o={t:Date.now(),ok:ok,up:Math.round((Date.now()-beat0)/1000),s:state()||'',m:P.mode,tl:tool||'',rl:realm,y:Math.round((P.y-TOP)/CELL),w:waterCount,l:lavaCount,f:fireCount,pa:parts.length,j:Math.round(beatJ)};
-      const pm=performance.memory; if(pm&&pm.usedJSHeapSize) o.mb=Math.round(pm.usedJSHeapSize/1048576);
-      localStorage.setItem(ALK,JSON.stringify(o)); beatJ=0;
-    }catch(_){}
-  }
-  function crashCheck(){
-    let a=null; try{ a=JSON.parse(localStorage.getItem(ALK)||'null'); }catch(_){}
-    if(!a||a.ok!==0||!(a.t>0)) return;
-    const e={k:'c',t:a.t,up:a.up|0,s:String(a.s||''),m:String(a.m||''),tl:String(a.tl||''),rl:String(a.rl||''),y:a.y|0,w:a.w|0,l:a.l|0,f:a.f|0,pa:a.pa|0,j:a.j|0};
-    if(a.mb) e.mb=a.mb|0;
-    push(e);
-    errAdd('Spiel unerwartet beendet nach '+e.up+' s: '+e.m+(e.tl?' + '+e.tl:'')+(e.rl?' auf '+e.rl:'')+', Zeile '+e.y+', Wasser '+e.w+', Lava '+e.l+', Teilchen '+e.pa+', längster Frame '+e.j+' ms'+(e.mb?', JS '+e.mb+' MB':''),'Absturz');
-  }
-  document.addEventListener('visibilitychange',function(){ if(document.hidden){ flush(); if(ready) aliveW(1); } else beatSkip=true; });
-  window.addEventListener('pagehide',function(){ flush(); if(ready) aliveW(1); });
-  return {
-    open:open, trx:trx, day:day, flush:flush, state:state,
-    start:function(){ try{ crashCheck(); beat0=Date.now(); aliveW(0); }catch(_){} try{ prune(); acc.$s=(acc.$s|0)+1; accDay=day(); push({k:'s',t:Date.now()}); flush(); }catch(_){} },
-    beat:function(raw){
-      try{
-        if(document.hidden||!ready) return;
-        /* Der erste Frame nach dem Zurückholen aus dem Hintergrund zählt nicht als Hänger. */
-        if(beatSkip){ beatSkip=false; aliveW(0); return; }
-        beatJ=Math.max(beatJ,raw*1000); beatT+=Math.min(raw,2);
-        if(beatT>=2){ beatT=0; aliveW(0); }
-      }catch(_){}
-    },
-    tick:function(raw){
-      try{
-        if(document.hidden) return;
-        const s=state(), d=day();
-        if(accDay&&accDay!==d) flush();
-        if(s){
-          accDay=d; const r=Math.min(1,raw); acc[s]=(acc[s]||0)+r;
-          /* Wobei die Sandbox-Zeit vergeht: je Fahrzeug und Werkzeug. Laut Plan fliegen Nebensysteme raus, die mehr als ein Fünftel der Zeit fressen. */
-          if(s==='play'||s==='empty'){ const m='m:'+P.mode; acc[m]=(acc[m]||0)+r; if(tool){ const t='t:'+tool; acc[t]=(acc[t]||0)+r; } }
-        }
-        flushT+=raw; if(flushT>30){ flushT=0; flush(); }
-      }catch(_){}
-    },
-    qOpen:function(){ try{ push({k:'qo',t:Date.now()}); }catch(_){} },
-    qStart:function(c,u){
-      try{
-        qEnd('skip');
-        const e={k:'q',t:Date.now(),ty:c.type,f:c.f,L:c.L,n:c.pad?21:c.opts.length,bx:c.box,ok:c.ans,taps:[],tts:null,p0:performance.now()};
-        q=e;
-        if(u){ const p0=e.p0; u.onend=function(){ e.tts=Math.round(performance.now()-p0); }; }
-      }catch(_){}
-    },
-    qTap:function(v,more){ try{ if(!q) return; q.taps.push([v,Math.round(performance.now()-q.p0)]); if(!more) qEnd(v===q.ok?'ok':'miss'); }catch(_){} },
-    qClose:function(){ try{ if(q){ qEnd('quit'); push({k:'x',t:Date.now(),what:'quiz',left:Math.ceil((MAXE-energy)/SEG)}); } }catch(_){} },
-    qSwitch:function(){ try{ qEnd('switch'); push({k:'x',t:Date.now(),what:'switch'}); }catch(_){} },
-    pStart:function(c){ try{ c.lg={t:Date.now(),p0:performance.now(),fph:null}; }catch(_){} },
-    pHint:function(c){ try{ if(c&&c.lg&&c.lg.fph===null) c.lg.fph=c.fails; }catch(_){} },
-    pWin:function(c){ try{ pEnd(c,'won'); }catch(_){} },
-    pQuit:function(c){ try{ if(c&&!c.won) pEnd(c,'quit'); }catch(_){} }
-  };
-})();
+/* Was das Protokoll vom Spiel liest (log/ darf state/ nicht importieren, ADR 0001). */
+const LP={
+  get energy(){ return energy; },
+  get frozen(){ return frozen; },
+  get paused(){ return paused; },
+  get pzc(){ return pzc; },
+  get ready(){ return ready; },
+  get realm(){ return realm; },
+  get tool(){ return tool; },
+  get MAXE(){ return MAXE; },
+  get P(){ return P; },
+  get SEG(){ return SEG; },
+  get parts(){ return parts; },
+  get fireCount(){ return fireCount; },
+  get lavaCount(){ return lavaCount; },
+  get waterCount(){ return waterCount; },
+  errAdd, uiOpen, $
+};
+const LOG=logWith(LP);
 /* ---------- Elternansicht: 3 Sekunden auf eine freie Stelle im Menü drücken, dann eine Malaufgabe. Die Schranke wird nicht vorgelesen, sonst wäre sie nur ein weiteres Rätsel. ---------- */
 const QNAME={count:'Zählen',fb:'Blitzblick',nb:'Nachbarzahl',zl:'Zerlegen',syl:'Silben',rhy:'Reime',add:'Plus',sub:'Minus',seq:'Zahlenfolge',anlaut:'Anlaut',case:'Groß/klein',word:'Wort zum Bild'};
 const SNAME={quiz:'Rechnen/Buchstaben',pz:'Rätsel',play:'Sandbox',empty:'Sandbox, Akku leer',ui:'Menüs'};

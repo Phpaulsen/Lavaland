@@ -14,6 +14,8 @@
 //                                             ST.x (für x in fromNames) ebenfalls zu WD.x (Weltobjekt statt globaler Felder, PR 8b)
 //   literals { "wert": "NAME" }               überall (auch außerhalb bewegter Funktionen): das String-Literal 'wert' wird zur Konstante NAME
 //                                             (Schlüsselnamen an einer Stelle, PR 11). Schlüssel in Objektliteralen bleiben Literale.
+//   iife     [neuerName, ...]                 der alte Name war const X=(function(){…})(); die Funktion zieht als function neuerName(…){…} um
+//                                             (Körper gleich, mit params/world wie oben; PR 13, LOG → logWith(LP))
 //   changed  [...]                            Name bleibt, Inhalt ändert sich bewusst (z. B. Einzeiler, der an core/ weitergibt)
 //   added, removed [...]                      neue bzw. gelöschte Namen
 // Gestapelte PRs (jeder zielt auf main und enthält den vorigen): moves.json ist dann { "stack": [ {pr:11, …}, {pr:12, …} ] }.
@@ -166,7 +168,13 @@ export function compare(base, head, moves) {
   for (const [n, o] of Object.entries(renames)) {
     if (!B.decl.has(o)) { err.push(`rename ${n}=${o}: ${o} gibt es im Basisstand nicht`); continue; }
     if (!H.decl.has(n)) { err.push(`rename ${n}=${o}: ${n} gibt es im neuen Stand nicht`); continue; }
-    if (norm(transform(B.decl.get(o).node, moves, n)) !== norm(H.decl.get(n).node)) err.push(`${o} → ${n} (${H.decl.get(n).file}): AST weicht über die erlaubten Umschreibungen hinaus ab`);
+    let bn = B.decl.get(o).node;
+    if ((moves.iife || []).includes(n)) {
+      const c = bn.type === 'Var' && bn.init && bn.init.type === 'CallExpression' && !bn.init.arguments.length ? bn.init.callee : null;
+      if (!c || c.type !== 'FunctionExpression' || c.id) { err.push(`iife ${n}=${o}: ${o} ist kein const ${o}=(function(){…})()`); continue; }
+      bn = { ...c, type: 'FunctionDeclaration', id: id(n) };
+    }
+    if (norm(transform(bn, moves, n)) !== norm(H.decl.get(n).node)) err.push(`${o} → ${n} (${H.decl.get(n).file}): AST weicht über die erlaubten Umschreibungen hinaus ab`);
     else rep.moved.push(`${o} → ${H.decl.get(n).file}:${n}`);
   }
   for (const [n, b] of B.decl) {
@@ -235,6 +243,12 @@ function selftest() {
       { literals: { 'k-x': 'KX' }, added: ['KX'] }, 0],
     ['Literal vergessen', { 'legacy.js': L("function a(){return get('k-x')}") }, { 'legacy.js': L("function a(){return get('k-y')}") },
       { literals: { 'k-x': 'KX' } }, 1],
+    ['IIFE wird Funktion mit Port', { 'legacy.js': L('let e=1;\nconst L=(function(){let b=0;function f(){return e+b}return {f}})();') },
+      { 'legacy.js': L('let e=1;\nconst LP={get e(){return e}};\nconst L=lW(LP);'), 'log/l.js': 'export function lW(LP){let b=0;function f(){return LP.e+b}return {f}}' },
+      { renames: { lW: 'L' }, iife: ['lW'], params: { lW: ['LP'] }, world: { param: 'LP', names: ['e'] }, changed: ['L'], added: ['LP'] }, 0],
+    ['IIFE, Körper geändert', { 'legacy.js': L('let e=1;\nconst L=(function(){return e})();') },
+      { 'legacy.js': L('let e=1;\nconst L=lW({});'), 'log/l.js': 'export function lW(LP){return LP.e+1}' },
+      { renames: { lW: 'L' }, iife: ['lW'], params: { lW: ['LP'] }, world: { param: 'LP', names: ['e'] }, changed: ['L'] }, 1],
     ['changed, aber gleich', { 'legacy.js': L('function a(){}') }, { 'legacy.js': L('function a(){}') }, { changed: ['a'] }, 1],
   ];
   const st = { stack: [{ pr: 11, renames: { a: 'b' }, added: ['x'], changed: ['c'] }, { pr: 12, renames: { d: 'e' }, changed: ['x', 'f'] }] };
