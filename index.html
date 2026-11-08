@@ -6250,6 +6250,173 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     ctx.globalAlpha = 1;
   }
 
+  // src/systems/finds.js
+  function grabWith(FP, q) {
+    const ty = q.ty, y = P.y - 54;
+    sfx("pop");
+    if (ty === "food" || ty === "egg1") {
+      ST.lootDirty = true;
+      FP.shout(P.x, y, "MAMPF!");
+    } else if (ty === "chili") {
+      FP.FX.hot = 6;
+      FP.shout(P.x, y, "HEISS!", "#ff8a1f");
+    } else if (ty === "peel") {
+      FP.FX.slip = 1.5;
+      FP.shout(P.x, y, "WHOAA!");
+    } else if (ty === "sugar") {
+      FP.FX.sugar = 8;
+      FP.shout(P.x, y, "ZUCKER!", "#ff9fd0");
+    } else if (ty === "big") {
+      FP.FX.big = 12;
+      FP.FX.tiny = 0;
+      FP.shout(P.x, y - 30, "RIESIG!");
+      sfx("roar");
+    } else if (ty === "tiny") {
+      FP.FX.tiny = 12;
+      FP.FX.big = 0;
+      FP.shout(P.x, y + 16, "WINZIG!");
+      sfx("hick");
+    } else if (ty === "pump") {
+      FP.FX.pump = 15;
+      FP.shout(P.x, y, "HIHI!");
+    } else if (ty === "star") {
+      FP.FX.star = 8;
+      FP.shout(P.x, y, "SUPER!", "#ffd23f");
+      jingle();
+    } else if (ty === "float") {
+      FP.FX.float = 6;
+      FP.shout(P.x, y, "HUIII!");
+    } else if (ty === "poo") {
+      FP.FX.stink = 8;
+      FP.shout(P.x, y, "IGITT!", "#9bd84a");
+      sfx("pups");
+    }
+  }
+  function pickTickWith(FP, dt) {
+    if (P.mode === "coaster") return;
+    const foot = P.mode === "walk" || P.mode === "ski";
+    for (const q of ST.PICKS) {
+      if (q.t > FP.time || Math.abs(q.x - P.x) > 500) continue;
+      if (q.y !== q.y) {
+        if (q.x > (FP.genF - 6) * CELL) continue;
+        q.y = FP.surfaceY(q.x) - 14;
+      }
+      if (Math.abs(q.x - P.x) < 17 && Math.abs(q.y - (P.y - 14)) < 30 && (foot || q.ty === "food")) {
+        q.t = FP.time + 25;
+        grabWith(FP, q);
+      }
+    }
+    for (let i = ST.DROPS.length - 1; i >= 0; i--) {
+      const d = ST.DROPS[i];
+      d.life -= dt;
+      if (!FP.solidW(d.x, d.y + 9)) {
+        d.vy = Math.min((d.vy || 0) + G * dt, 500);
+        d.y += d.vy * dt;
+      } else d.vy = 0;
+      if (d.life <= 0 || d.y > TOP + GY * CELL) {
+        ST.DROPS.splice(i, 1);
+        continue;
+      }
+      if (Math.abs(d.x - P.x) < 17 && Math.abs(d.y - (P.y - 14)) < 30 && (foot || d.ty === "food")) {
+        ST.DROPS.splice(i, 1);
+        grabWith(FP, d);
+      }
+    }
+    for (let i = throws.length - 1; i >= 0; i--) {
+      const t = throws[i], oy = t.y;
+      t.vy += 700 * dt;
+      t.x += t.vx * dt;
+      t.y += t.vy * dt;
+      if (Math.hypot(t.x - P.x, t.y - (P.y - 20)) < 18) {
+        throws.splice(i, 1);
+        FP.shout(P.x, P.y - 56, "BONK!");
+        if (foot) {
+          P.vy = -200;
+          P.on = false;
+        }
+        sfx("splat");
+      } else if (FP.solidW(t.x, t.y) || t.y > TOP + GY * CELL) {
+        throws.splice(i, 1);
+        if (ST.DROPS.length < 40) ST.DROPS.push({ e: "🍌", ty: "peel", x: t.x, y: oy - 6, life: 25 });
+      }
+    }
+  }
+  function padsTickWith(FP) {
+    const m = P.mode;
+    if (P.vy < 30 || m === "coaster" || m === "plane" || m === "rocket" || m === "dragon" || m === "sub") return;
+    const hit = (
+      /** @param {any} x @param {any} y @param {any} w @param {any} pow @param {any} p */
+      function(x, y, w, pow, p) {
+        if (Math.abs(P.x - x) > w || P.y < y - 6 || P.y > y + 20) return false;
+        P.vy = -pow * (FP.FX.tiny > 0 ? 0.8 : 1);
+        P.y = y - 7;
+        P.on = false;
+        P.air = 0;
+        P.chute = false;
+        if (p) p.bt = FP.time + 0.25;
+        FP.shout(x, y - 30, "BOING!");
+        sfx("jump");
+        return true;
+      }
+    );
+    for (const p of ST.PADS) if (Math.abs(p.x - P.x) < 60 && hit(p.x, p.y, p.w, p.pow, p)) return;
+  }
+  function grantWith(FP, w) {
+    hero.own[w[2]] = 1;
+    hero.trail = true;
+  }
+  function eggFoundWith(FP, e) {
+    ST.eggGot[e.b] = 1;
+    hero.eggs = (hero.eggs | 0) + 1;
+    ST.lootDirty = true;
+    FP.qEvent("egg", 1);
+    FP.confetti(e.x, e.y + 20);
+    jingle();
+    FP.pulse("btn-finds");
+    FP.banner(FP.EGGSVG + " " + hero.eggs, 2400);
+    let w = null;
+    for (const q of FP.WEAR) if (q[0] === hero.eggs) w = q;
+    if (w) {
+      grantWith(FP, w);
+      FP.say("", "Ein goldenes Ei! Das ist Nummer " + hero.eggs + ". Dafür bekommst du " + w[3] + ".");
+    } else FP.say("", "Ein goldenes Ei! Jetzt hast du " + hero.eggs + ".");
+    FP.saveHero();
+    FP.renderAlbum();
+  }
+  function lootFoundWith(FP, l) {
+    ST.lootGot[l.id] = 1;
+    ST.lootDirty = true;
+    sfx("coin");
+    jingle();
+    for (let i = 0; i < 22; i++) FP.spawn(6, l.x, l.y, (Math.random() - 0.5) * 240, -180 - Math.random() * 280, 1.4, 3.5, "#ffd23f");
+    FP.banner("✨", 2e3);
+    if (l.tro) {
+      FP.say("", "Du hast das Ende der Welt gefunden! Weiter geht es wirklich nicht. Dafür bekommst du den goldenen Pokal.");
+      for (let i = 0; i < 6; i++) FP.firework(l.x - 200 + i * 80, l.y - 160 - Math.random() * 120);
+    } else if (l.pot) FP.say("", "Ein Topf voll Gold am Regenbogen!");
+    else FP.say("", "Ein Schatz!");
+  }
+  function secretsTickWith(FP) {
+    const pts = [[P.x, P.y - 16]];
+    if (P.mode === "bagger") pts.push(FP.bucket());
+    else if (P.mode === "loader") pts.push(FP.scoop());
+    else if (P.mode === "tbm") pts.push(FP.drillHead());
+    for (const e of ST.EGGS) {
+      if (ST.eggGot[e.b] || Math.abs(e.x - P.x) > 300) continue;
+      for (const q of pts) if (Math.hypot(q[0] - e.x, q[1] - e.y) < 30) {
+        eggFoundWith(FP, e);
+        break;
+      }
+    }
+    for (const l of ST.LOOT) {
+      if (ST.lootGot[l.id] || Math.abs(l.x - P.x) > 300) continue;
+      for (const q of pts) if (Math.hypot(q[0] - l.x, q[1] - l.y) < 32) {
+        lootFoundWith(FP, l);
+        break;
+      }
+    }
+  }
+
   // src/legacy.js
   (function() {
     "use strict";
@@ -8262,6 +8429,38 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       qEvent,
       saveHero,
       say,
+      shout,
+      solidW,
+      spawn,
+      surfaceY
+    };
+    const FP = {
+      get FX() {
+        return FX;
+      },
+      get time() {
+        return time;
+      },
+      get genF() {
+        return genF;
+      },
+      get EGGSVG() {
+        return EGGSVG;
+      },
+      get WEAR() {
+        return WEAR;
+      },
+      banner,
+      bucket,
+      confetti,
+      drillHead,
+      firework,
+      pulse,
+      qEvent,
+      renderAlbum,
+      saveHero,
+      say,
+      scoop,
       shout,
       solidW,
       spawn,
@@ -10299,167 +10498,14 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function drawCres(x0, x1, y0, y1) {
       return drawCresWith(CR, ctx, x0, x1, y0, y1);
     }
-    function grab(q) {
-      const ty = q.ty, y = P.y - 54;
-      sfx("pop");
-      if (ty === "food" || ty === "egg1") {
-        ST.lootDirty = true;
-        shout(P.x, y, "MAMPF!");
-      } else if (ty === "chili") {
-        FX.hot = 6;
-        shout(P.x, y, "HEISS!", "#ff8a1f");
-      } else if (ty === "peel") {
-        FX.slip = 1.5;
-        shout(P.x, y, "WHOAA!");
-      } else if (ty === "sugar") {
-        FX.sugar = 8;
-        shout(P.x, y, "ZUCKER!", "#ff9fd0");
-      } else if (ty === "big") {
-        FX.big = 12;
-        FX.tiny = 0;
-        shout(P.x, y - 30, "RIESIG!");
-        sfx("roar");
-      } else if (ty === "tiny") {
-        FX.tiny = 12;
-        FX.big = 0;
-        shout(P.x, y + 16, "WINZIG!");
-        sfx("hick");
-      } else if (ty === "pump") {
-        FX.pump = 15;
-        shout(P.x, y, "HIHI!");
-      } else if (ty === "star") {
-        FX.star = 8;
-        shout(P.x, y, "SUPER!", "#ffd23f");
-        jingle();
-      } else if (ty === "float") {
-        FX.float = 6;
-        shout(P.x, y, "HUIII!");
-      } else if (ty === "poo") {
-        FX.stink = 8;
-        shout(P.x, y, "IGITT!", "#9bd84a");
-        sfx("pups");
-      }
-    }
     function pickTick(dt) {
-      if (P.mode === "coaster") return;
-      const foot = P.mode === "walk" || P.mode === "ski";
-      for (const q of ST.PICKS) {
-        if (q.t > time || Math.abs(q.x - P.x) > 500) continue;
-        if (q.y !== q.y) {
-          if (q.x > (genF - 6) * CELL) continue;
-          q.y = surfaceY(q.x) - 14;
-        }
-        if (Math.abs(q.x - P.x) < 17 && Math.abs(q.y - (P.y - 14)) < 30 && (foot || q.ty === "food")) {
-          q.t = time + 25;
-          grab(q);
-        }
-      }
-      for (let i = ST.DROPS.length - 1; i >= 0; i--) {
-        const d = ST.DROPS[i];
-        d.life -= dt;
-        if (!solidW(d.x, d.y + 9)) {
-          d.vy = Math.min((d.vy || 0) + G * dt, 500);
-          d.y += d.vy * dt;
-        } else d.vy = 0;
-        if (d.life <= 0 || d.y > TOP + GY * CELL) {
-          ST.DROPS.splice(i, 1);
-          continue;
-        }
-        if (Math.abs(d.x - P.x) < 17 && Math.abs(d.y - (P.y - 14)) < 30 && (foot || d.ty === "food")) {
-          ST.DROPS.splice(i, 1);
-          grab(d);
-        }
-      }
-      for (let i = throws.length - 1; i >= 0; i--) {
-        const t = throws[i], oy = t.y;
-        t.vy += 700 * dt;
-        t.x += t.vx * dt;
-        t.y += t.vy * dt;
-        if (Math.hypot(t.x - P.x, t.y - (P.y - 20)) < 18) {
-          throws.splice(i, 1);
-          shout(P.x, P.y - 56, "BONK!");
-          if (foot) {
-            P.vy = -200;
-            P.on = false;
-          }
-          sfx("splat");
-        } else if (solidW(t.x, t.y) || t.y > TOP + GY * CELL) {
-          throws.splice(i, 1);
-          if (ST.DROPS.length < 40) ST.DROPS.push({ e: "🍌", ty: "peel", x: t.x, y: oy - 6, life: 25 });
-        }
-      }
+      return pickTickWith(FP, dt);
     }
     function padsTick() {
-      const m = P.mode;
-      if (P.vy < 30 || m === "coaster" || m === "plane" || m === "rocket" || m === "dragon" || m === "sub") return;
-      const hit = function(x, y, w, pow, p) {
-        if (Math.abs(P.x - x) > w || P.y < y - 6 || P.y > y + 20) return false;
-        P.vy = -pow * (FX.tiny > 0 ? 0.8 : 1);
-        P.y = y - 7;
-        P.on = false;
-        P.air = 0;
-        P.chute = false;
-        if (p) p.bt = time + 0.25;
-        shout(x, y - 30, "BOING!");
-        sfx("jump");
-        return true;
-      };
-      for (const p of ST.PADS) if (Math.abs(p.x - P.x) < 60 && hit(p.x, p.y, p.w, p.pow, p)) return;
-    }
-    function grant(w) {
-      hero.own[w[2]] = 1;
-      hero.trail = true;
-    }
-    function eggFound(e) {
-      ST.eggGot[e.b] = 1;
-      hero.eggs = (hero.eggs | 0) + 1;
-      ST.lootDirty = true;
-      qEvent("egg", 1);
-      confetti(e.x, e.y + 20);
-      jingle();
-      pulse("btn-finds");
-      banner(EGGSVG + " " + hero.eggs, 2400);
-      let w = null;
-      for (const q of WEAR) if (q[0] === hero.eggs) w = q;
-      if (w) {
-        grant(w);
-        say("", "Ein goldenes Ei! Das ist Nummer " + hero.eggs + ". Dafür bekommst du " + w[3] + ".");
-      } else say("", "Ein goldenes Ei! Jetzt hast du " + hero.eggs + ".");
-      saveHero();
-      renderAlbum();
-    }
-    function lootFound(l) {
-      ST.lootGot[l.id] = 1;
-      ST.lootDirty = true;
-      sfx("coin");
-      jingle();
-      for (let i = 0; i < 22; i++) spawn(6, l.x, l.y, (Math.random() - 0.5) * 240, -180 - Math.random() * 280, 1.4, 3.5, "#ffd23f");
-      banner("✨", 2e3);
-      if (l.tro) {
-        say("", "Du hast das Ende der Welt gefunden! Weiter geht es wirklich nicht. Dafür bekommst du den goldenen Pokal.");
-        for (let i = 0; i < 6; i++) firework(l.x - 200 + i * 80, l.y - 160 - Math.random() * 120);
-      } else if (l.pot) say("", "Ein Topf voll Gold am Regenbogen!");
-      else say("", "Ein Schatz!");
+      return padsTickWith(FP);
     }
     function secretsTick() {
-      const pts = [[P.x, P.y - 16]];
-      if (P.mode === "bagger") pts.push(bucket());
-      else if (P.mode === "loader") pts.push(scoop());
-      else if (P.mode === "tbm") pts.push(drillHead());
-      for (const e of ST.EGGS) {
-        if (ST.eggGot[e.b] || Math.abs(e.x - P.x) > 300) continue;
-        for (const q of pts) if (Math.hypot(q[0] - e.x, q[1] - e.y) < 30) {
-          eggFound(e);
-          break;
-        }
-      }
-      for (const l of ST.LOOT) {
-        if (ST.lootGot[l.id] || Math.abs(l.x - P.x) > 300) continue;
-        for (const q of pts) if (Math.hypot(q[0] - l.x, q[1] - l.y) < 32) {
-          lootFound(l);
-          break;
-        }
-      }
+      return secretsTickWith(FP);
     }
     function sonarTarget() {
       let b = null, bd = 1e12;

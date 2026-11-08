@@ -30,6 +30,7 @@ import { AU, audio, jingle, VRATES, VOICE, voicesDe, VCLIP, speakStop, synth, sp
 import { sightsWith, METS, MROCKS, FLIES, JAR } from './systems/sights.js';
 import { mobsWith, shootWith, monStrikeWith, ARROWS, MONS } from './systems/mobs.js';
 import { creHitWith, creTickWith, drawCresWith, throws } from './systems/creatures.js';
+import { pickTickWith, padsTickWith, secretsTickWith } from './systems/finds.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -1241,6 +1242,29 @@ const CR={
   spawn,
   surfaceY
 };
+/* Port für systems/finds.js: Zeit, Welt, Effekte, Belohnung, Oberfläche und Werkzeugspitzen für Fundsachen, Sprungpilze, goldene Eier und Schätze. */
+const FP={
+  get FX(){ return FX; },
+  get time(){ return time; },
+  get genF(){ return genF; },
+  get EGGSVG(){ return EGGSVG; },
+  get WEAR(){ return WEAR; },
+  banner,
+  bucket,
+  confetti,
+  drillHead,
+  firework,
+  pulse,
+  qEvent,
+  renderAlbum,
+  saveHero,
+  say,
+  scoop,
+  shout,
+  solidW,
+  spawn,
+  surfaceY
+};
 /* Drei Stufen: alles an, nur Sprache (ohne Piepen und Klänge), alles aus. Sprache braucht das Kind, Effekte nerven manchmal die Großen. */
 try{ const mv=localStorage.getItem(K_MUTE); AU.muted=mv==='1'; AU.fxOff=mv==='s'; }catch(_){}
 document.addEventListener('pointerdown',function(e){
@@ -2196,81 +2220,9 @@ function creTick(dt){ return creTickWith(CR,dt); }
 function drawCres(x0,x1,y0,y1){ return drawCresWith(CR,ctx,x0,x1,y0,y1); }
 
 /* ---------- Fundsachen: Jede macht etwas anderes mit dem Helden. ---------- */
-function grab(q){
-  const ty=q.ty, y=P.y-54; sfx('pop');
-  if(ty==='food'||ty==='egg1'){ ST.lootDirty=true; shout(P.x,y,'MAMPF!'); }
-  else if(ty==='chili'){ FX.hot=6; shout(P.x,y,'HEISS!','#ff8a1f'); }
-  else if(ty==='peel'){ FX.slip=1.5; shout(P.x,y,'WHOAA!'); }
-  else if(ty==='sugar'){ FX.sugar=8; shout(P.x,y,'ZUCKER!','#ff9fd0'); }
-  else if(ty==='big'){ FX.big=12; FX.tiny=0; shout(P.x,y-30,'RIESIG!'); sfx('roar'); }
-  else if(ty==='tiny'){ FX.tiny=12; FX.big=0; shout(P.x,y+16,'WINZIG!'); sfx('hick'); }
-  else if(ty==='pump'){ FX.pump=15; shout(P.x,y,'HIHI!'); }
-  else if(ty==='star'){ FX.star=8; shout(P.x,y,'SUPER!','#ffd23f'); jingle(); }
-  else if(ty==='float'){ FX.float=6; shout(P.x,y,'HUIII!'); }
-  else if(ty==='poo'){ FX.stink=8; shout(P.x,y,'IGITT!','#9bd84a'); sfx('pups'); }
-}
-function pickTick(dt){
-  if(P.mode==='coaster') return;
-  const foot=P.mode==='walk'||P.mode==='ski';
-  for(const q of ST.PICKS){
-    if(q.t>time||Math.abs(q.x-P.x)>500) continue;
-    if(q.y!==q.y){ if(q.x>(genF-6)*CELL) continue; q.y=surfaceY(q.x)-14; }
-    if(Math.abs(q.x-P.x)<17&&Math.abs(q.y-(P.y-14))<30&&(foot||q.ty==='food')){ q.t=time+25; grab(q); }
-  }
-  for(let i=ST.DROPS.length-1;i>=0;i--){
-    const d=ST.DROPS[i]; d.life-=dt;
-    if(!solidW(d.x,d.y+9)){ d.vy=Math.min((d.vy||0)+G*dt,500); d.y+=d.vy*dt; } else d.vy=0;
-    if(d.life<=0||d.y>TOP+GY*CELL){ ST.DROPS.splice(i,1); continue; }
-    if(Math.abs(d.x-P.x)<17&&Math.abs(d.y-(P.y-14))<30&&(foot||d.ty==='food')){ ST.DROPS.splice(i,1); grab(d); }
-  }
-  for(let i=throws.length-1;i>=0;i--){
-    const t=throws[i], oy=t.y; t.vy+=700*dt; t.x+=t.vx*dt; t.y+=t.vy*dt;
-    if(Math.hypot(t.x-P.x,t.y-(P.y-20))<18){ throws.splice(i,1); shout(P.x,P.y-56,'BONK!'); if(foot){ P.vy=-200; P.on=false; } sfx('splat'); }
-    else if(solidW(t.x,t.y)||t.y>TOP+GY*CELL){ throws.splice(i,1); if(ST.DROPS.length<40) ST.DROPS.push({e:'🍌',ty:'peel',x:t.x,y:oy-6,life:25}); }
-  }
-}
-/* Sprungpilze und Heuballen */
-function padsTick(){
-  const m=P.mode;
-  if(P.vy<30||m==='coaster'||m==='plane'||m==='rocket'||m==='dragon'||m==='sub') return;
-  const hit=function(x,y,w,pow,p){
-    if(Math.abs(P.x-x)>w||P.y<y-6||P.y>y+20) return false;
-    P.vy=-pow*(FX.tiny>0?.8:1); P.y=y-7; P.on=false; P.air=0; P.chute=false; if(p) p.bt=time+.25;
-    shout(x,y-30,'BOING!'); sfx('jump'); return true;
-  };
-  for(const p of ST.PADS) if(Math.abs(p.x-P.x)<60&&hit(p.x,p.y,p.w,p.pow,p)) return;
-}
-/* Goldene Eier und Schätze */
-function grant(w){ hero.own[w[2]]=1; hero.trail=true; }
-function eggFound(e){
-  ST.eggGot[e.b]=1; hero.eggs=(hero.eggs|0)+1; ST.lootDirty=true; qEvent('egg',1);
-  confetti(e.x,e.y+20); jingle(); pulse('btn-finds');
-  banner(EGGSVG+' '+hero.eggs,2400);
-  let w=null; for(const q of WEAR) if(q[0]===hero.eggs) w=q;
-  if(w){ grant(w); say('','Ein goldenes Ei! Das ist Nummer '+hero.eggs+'. Dafür bekommst du '+w[3]+'.'); }
-  else say('','Ein goldenes Ei! Jetzt hast du '+hero.eggs+'.');
-  saveHero(); renderAlbum();
-}
-function lootFound(l){
-  ST.lootGot[l.id]=1; ST.lootDirty=true; sfx('coin'); jingle();
-  for(let i=0;i<22;i++) spawn(6,l.x,l.y,(Math.random()-.5)*240,-180-Math.random()*280,1.4,3.5,'#ffd23f');
-  banner('✨',2000);
-  if(l.tro){ say('','Du hast das Ende der Welt gefunden! Weiter geht es wirklich nicht. Dafür bekommst du den goldenen Pokal.'); for(let i=0;i<6;i++) firework(l.x-200+i*80,l.y-160-Math.random()*120); }
-  else if(l.pot) say('','Ein Topf voll Gold am Regenbogen!');
-  else say('','Ein Schatz!');
-}
-function secretsTick(){
-  const pts=[[P.x,P.y-16]];
-  if(P.mode==='bagger') pts.push(bucket()); else if(P.mode==='loader') pts.push(scoop()); else if(P.mode==='tbm') pts.push(drillHead());
-  for(const e of ST.EGGS){
-    if(ST.eggGot[e.b]||Math.abs(e.x-P.x)>300) continue;
-    for(const q of pts) if(Math.hypot(q[0]-e.x,q[1]-e.y)<30){ eggFound(e); break; }
-  }
-  for(const l of ST.LOOT){
-    if(ST.lootGot[l.id]||Math.abs(l.x-P.x)>300) continue;
-    for(const q of pts) if(Math.hypot(q[0]-l.x,q[1]-l.y)<32){ lootFound(l); break; }
-  }
-}
+function pickTick(dt){ return pickTickWith(FP,dt); }
+function padsTick(){ return padsTickWith(FP); }
+function secretsTick(){ return secretsTickWith(FP); }
 function sonarTarget(){
   let b=null, bd=1e12;
   for(const e of ST.EGGS){ if(ST.eggGot[e.b]||e.x>(genF-10)*CELL) continue; const d=Math.hypot(e.x-P.x,e.y-P.y); if(d<bd){ bd=d; b=e; } }

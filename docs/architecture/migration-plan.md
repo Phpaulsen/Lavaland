@@ -242,6 +242,8 @@ Je PR: `tick` und `draw(ctx, layer)` ins System, Zeichenaufruf in `draw()` an de
 
 **Umgesetzt PR 19a (Abweichung: PR 19 geteilt):** PR 19 wäre mit Tieren, Fundsachen, U-Boot und `worldTick` zu groß für einen prüfbaren Umzug. 19a bringt nur die Tiere (`creInit`, `hatch`, `creHit`, `creTick`, `drawCres`, dazu `throws` und `trexT`) nach `systems/creatures.js` mit Port `CR`. Sie bleiben ohne eigenen `SIDE`-Eintrag; `creTick`, `drawCres` und `creHit` stehen als Einzeiler in `legacy.js`, weil `worldTick`, `draw` und das Antippen sie aufrufen. `shake` schreibt das Tier über einen Setter im Port. Bildvergleich um eine fünfte Szene ergänzt (Tiere mit Banane). 19b: Fundsachen, U-Boot, `worldTick`.
 
+**Umgesetzt PR 19b (Abweichung: noch einmal geteilt):** Fundsachen, Sprungpilze, goldene Eier und Schätze (`grab`, `pickTick`, `padsTick`, `grant`, `eggFound`, `lootFound`, `secretsTick`) ziehen nach `systems/finds.js`, Port `FP`. `pickTick`, `padsTick` und `secretsTick` bleiben als Einzeiler, weil `worldTick` sie aufruft. Die geworfenen Bananen (`throws`) importiert `finds.js` aus `creatures.js`. Diese Funktionen zeichnen nichts, darum gibt es statt einer Bildszene einen neuen Rauchtest (Chili, Sprungpilz, goldenes Ei, Banane), der auch gegen main grün ist. 19c: `worldTick`, UFO und U-Boot. Dort schreibt `worldTick` viele Zustände von `legacy.js` (`nightA`, `discoT`, `idleT`, `ufo` …); vorher wird geklärt, welche davon mit umziehen.
+
 ### PR 22–23: Rendering
 
 - **22:** Paletten, Hintergrund, Stimmung, Flora, Deko (`S35`, `S36`, `S44`) → `render/`.
