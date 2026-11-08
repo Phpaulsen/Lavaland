@@ -504,6 +504,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
 /* Winter: Geschichte, Untertitel zum Mitlesen, breitere Auswahl-Fenster */
 .btn.tale{background:#ead9ff}
 .cards.c4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.cards.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.card .mg{font-size:38px;line-height:1}
 .card.pick.gone{display:none}
 .card.story{padding:6px}
 .card.story canvas{display:block;width:100%;max-width:84px;aspect-ratio:1;border-radius:10px}
