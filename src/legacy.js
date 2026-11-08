@@ -29,6 +29,7 @@ import { snapshotWith, saveGameWith, autosaveWith, packStartWith, packStepWith, 
 import { AU, audio, jingle, VRATES, VOICE, voicesDe, VCLIP, speakStop, synth, speakWith, blip, sfx, tone } from './audio/sound.js';
 import { sightsWith, METS, MROCKS, FLIES, JAR } from './systems/sights.js';
 import { mobsWith, shootWith, monStrikeWith, ARROWS, MONS } from './systems/mobs.js';
+import { creHitWith, creTickWith, drawCresWith, throws } from './systems/creatures.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -1219,6 +1220,27 @@ const SY={
   shout,
   spawn
 };
+/* Port für systems/creatures.js: Zeit, Welt, Effekte, Wackeln, Belohnung und Zeichenhelfer für die Tiere. */
+const CR={
+  get genF(){ return genF; },
+  get time(){ return time; },
+  get shake(){ return shake; },
+  set shake(v){ shake=v; },
+  get FX(){ return FX; },
+  get reduced(){ return reduced; },
+  get discoT(){ return discoT; },
+  boxCount,
+  confetti,
+  emo,
+  floorAt,
+  qEvent,
+  saveHero,
+  say,
+  shout,
+  solidW,
+  spawn,
+  surfaceY
+};
 /* Drei Stufen: alles an, nur Sprache (ohne Piepen und Klänge), alles aus. Sprache braucht das Kind, Effekte nerven manchmal die Großen. */
 try{ const mv=localStorage.getItem(K_MUTE); AU.muted=mv==='1'; AU.fxOff=mv==='s'; }catch(_){}
 document.addEventListener('pointerdown',function(e){
@@ -2157,7 +2179,7 @@ const ORBN=['Du bist auf dem Käsemond gelandet! Hier wohnen die Mäuse.','Ein P
 const NIGHT_T=[10,14,44], NIGHT_B=[40,40,96], MD={st:[84,191,230],sb:[212,244,238],h1:'#9bd8c4',h2:'#74c493',nl:0,w1:'rgba(48,140,224,.74)',w2:'rgba(132,204,246,.8)'};
 const EGGSVG='<svg viewBox="0 0 24 24" aria-hidden="true">'+QI.egg+'</svg>';
 let eruT=40, eruOn=0;
-let skySay=0, ufo=null, ufoNext=20, skyRb=0, tkN=0, tkT=0, nightOn=false, nightA=0, discoT=0, beatT=0, keySeq='', dTaps=[], idleT=0, zT=0, skyBonk=0, bolt=null, mapPg=0, throws=[], trexT=0, slipWas=false;
+let skySay=0, ufo=null, ufoNext=20, skyRb=0, tkN=0, tkT=0, nightOn=false, nightA=0, discoT=0, beatT=0, keySeq='', dTaps=[], idleT=0, zT=0, skyBonk=0, bolt=null, mapPg=0, slipWas=false;
 
 function fxSpeed(){ return (FX.slip>0?2.5:1)*(FX.hot>0?1.7:1)*(FX.sugar>0?1.8:1)*(FX.star>0?1.4:1)*(FX.rainbow>0?1.6:1)*(FX.big>0?1.2:1)*(FX.tiny>0?.8:1); }
 function kidScale(){
@@ -2169,117 +2191,9 @@ function nextLand(){ for(const b of ST.BIO) if(!ST.seen[b.i]) return b; return n
 function eggLand(){ for(const b of ST.BIO) if(ST.seen[b.i]&&!ST.eggGot[b.i]&&b.t<12) return b; return null; }
 
 /* ---------- Tiere ---------- */
-function creInit(c){
-  if(c.k==='swim') return true;
-  if(c.x>(genF-6)*CELL) return false;
-  if(c.y!==c.y) c.y=surfaceY(c.x);
-  if(c.k==='fly') c.y0=surfaceY(c.hx)-64-c.ph*8;
-  return true;
-}
-function hatch(c){
-  c.fl=''; c.e='🐣'; c.say='PIEP!'; confetti(c.x,c.y); jingle();
-  if(!hero.own.rex){ hero.own.rex=1; saveHero(); say('','Knack! Ein Dino-Baby schlüpft und piept dich fröhlich an.'); }
-  else{ ST.lootDirty=true; }
-}
-/* Der Held stößt ein Tier an oder tippt es an. Jedes sagt etwas, manche schubsen, schenken oder zaubern. */
-function creHit(c,tap){
-  if(c.cd>0) return;
-  c.cd=1.4; c.hop=.35;
-  shout(c.x,c.y-c.sz-12,c.say); sfx(c.sz>30?'roar':'quack');
-  if(!c.met){ c.met=true; qEvent('poke',1); }
-  const f=c.fl, away=P.x<c.x?-1:1, foot=!tap&&(P.mode==='walk'||P.mode==='ski');
-  if(f==='eat'){ c.gone=time+18; ST.lootDirty=true; sfx('coin'); }
-  else if(f==='gift'){ if(!(c.gt>time)){ c.gt=time+30; ST.lootDirty=true; spawn(8,c.x,c.y-30,0,-30,1.4,18,'🍪'); } }
-  else if(f==='sparkle'){ for(let i=0;i<12;i++) spawn(5,c.x,c.y-10,(Math.random()-.5)*160,-40-Math.random()*120,.7,2); }
-  else if(f==='mummy'){ c.k='hop'; c.follow=true; c.rng=60; }
-  if(!foot) return;
-  if(f==='sting'){ P.vy=-300; P.vx=away*160; P.on=false; shout(P.x,P.y-56,'AUA!'); }
-  else if(f==='scare'||f==='toss'||f==='trex'||f==='car'){ P.vy=-480; P.vx=away*220; P.on=false; shake=Math.max(shake,.3); }
-  else if(f==='uni'){ FX.rainbow=8; shout(P.x,P.y-56,'REGENBOGEN!','#ffd23f'); }
-  else if(f==='ghost'){ P.frost=2.5; P.vy=-220; P.on=false; }
-}
-function creTick(dt){
-  const hx=P.x, hy=P.y, foot=P.mode==='walk'||P.mode==='ski';
-  for(const c of ST.CRE){
-    if(Math.abs(c.x-cam.x)>1150||c.gone>time) continue;
-    if(!c.ok){ if(!creInit(c)) continue; c.ok=true; }
-    c.t+=dt; if(c.cd>0) c.cd-=dt; if(c.hop>0) c.hop-=dt;
-    const dx=hx-c.x, dist=Math.hypot(dx,hy-16-(c.y-c.sz*.5)), f=c.fl, k=c.k;
-    if(k==='walk'||k==='hop'){
-      let sp=f==='slow'?7:f==='car'?150:c.sp;
-      if(f==='trex'&&dist<280){
-        c.dir=dx>0?1:-1; sp=74; c.idle=0;
-        if(dist<230&&time>trexT){ trexT=time+6; shout(c.x,c.y-c.sz-14,'ROAAAR!'); shake=Math.max(shake,.3); sfx('roar'); }
-      }
-      else if(FX.stink>0&&dist<220){ c.dir=dx>0?-1:1; sp=Math.max(90,sp*3); c.idle=0; if(!(c.ig>time)){ c.ig=time+4; shout(c.x,c.y-c.sz-12,'IGITT!'); } }
-      else if(c.follow){ if(Math.abs(dx)>46) c.dir=dx>0?1:-1; sp=Math.abs(dx)>46?90:0; }
-      else if(Math.abs(c.x-c.hx)>c.rng) c.dir=c.x<c.hx?1:-1;
-      else{ c.next-=dt; if(c.next<=0){ c.next=2+Math.random()*5; c.dir=Math.random()<.5?-1:1; c.idle=Math.random()<.4?1.6:0; } }
-      if(c.idle>0) c.idle-=dt;
-      else if(sp>0){
-        const nx=clamp(c.x+c.dir*sp*dt,50,WORLD_W-50), fl=floorAt(nx,c.y,14);
-        if(solidW(nx,c.y-18)||fl>c.y+30||cellAt(nx,fl-8)===WATER||hotAt(nx,fl-4)) c.dir=-c.dir;
-        else{ c.x=nx; c.y=fl; }
-      }
-      const fh=floorAt(c.x,c.y,4); if(fh>c.y+1) c.y=Math.min(fh,c.y+320*dt);
-      if(f==='cow'||f==='hen'){
-        c.lay=(c.lay||8+Math.random()*10)-dt;
-        if(c.lay<=0){
-          c.lay=14+Math.random()*12;
-          if(ST.DROPS.length<40) ST.DROPS.push(f==='cow'?{e:'💩',ty:'poo',x:c.x-c.dir*14,y:c.y-8,life:45}:{e:'🥚',ty:'egg1',x:c.x-c.dir*10,y:c.y-7,life:45});
-        }
-      }
-    }else if(k==='fly'){
-      if(f==='ghost'){
-        /* Gespenster sind schüchtern: Sie kommen nur, wenn der Held wegschaut. */
-        const look=(P.face>0)===(c.x>hx);
-        if(dist<260&&look){ c.x+=(c.x>hx?1:-1)*70*dt; c.shy=true; }
-        else if(dist<420){ c.x+=(dx>0?1:-1)*36*dt; c.shy=false; }
-        else{ c.x+=(c.hx-c.x)*Math.min(1,dt*.3); c.shy=false; }
-        c.x=clamp(c.x,c.hx-520,c.hx+520);
-        c.y+=(((dist<420&&!look)?hy-26:c.y0)+10*Math.sin(c.t*2+c.ph)-c.y)*Math.min(1,dt*1.4); c.dir=dx>0?1:-1;
-      }else{ c.x=c.hx+Math.sin(c.t*.6+c.ph)*140; c.y=c.y0+Math.sin(c.t*1.7+c.ph)*18; c.dir=Math.cos(c.t*.6+c.ph)>0?1:-1; }
-    }else if(k==='swim'){
-      c.x+=c.dir*c.sp*dt;
-      if(c.x<c.a){ c.x=c.a; c.dir=1; } else if(c.x>c.z){ c.x=c.z; c.dir=-1; }
-      if(cellAt(c.x+c.dir*16,c.y)>=4) c.dir=-c.dir;
-      if(cellAt(c.x,c.y)!==WATER){ if(!solidW(c.x,c.y+6)) c.y+=90*dt; }
-      else if(cellAt(c.x,c.y+26)>=4) c.y-=24*dt;
-      else if(cellAt(c.x,c.y-26)!==WATER) c.y+=24*dt;
-      if(f==='jump'){ c.next-=dt; if(c.next<=0&&!(c.jmp>0)){ c.next=5+Math.random()*5; c.jmp=1; } if(c.jmp>0) c.jmp-=dt/1.1; }
-    }else if(f==='monkey'){
-      c.next-=dt;
-      if(c.next<=0){ c.next=4+Math.random()*4; if(dist<330&&foot){ const T=.9; throws.push({e:'🍌',x:c.x,y:c.y-12,vx:dx/T,vy:(hy-20-(c.y-12))/T-350*T}); shout(c.x,c.y-34,'UH UH!'); sfx('throw'); } }
-    }else if(f==='nest'){
-      c.next-=dt;
-      if(c.next<=0){ c.next=.4; if(boxCount(c.x-44,c.x+44,c.y-54,c.y+10,function(m){return m===FIRE||m===LAVA;})>1){ c.warm=(c.warm||0)+.4; spawn(8,c.x,c.y-36,0,-26,.8,12,'❤️'); if(c.warm>=2.8) hatch(c); } }
-    }
-    if(P.mode==='coaster') continue;
-    const top=c.y-c.sz;
-    if(f==='bront'&&P.vy>60&&Math.abs(dx)<c.sz*.55&&hy>top-8&&hy<top+c.sz*.6){ P.vy=-760; P.on=false; P.air=0; P.chute=false; shout(hx,hy-56,'HUIII!'); sfx('jump'); c.hop=.3; }
-    else if(c.cd<=0&&Math.abs(dx)<9+c.sz*.4&&hy>top-4&&hy<c.y+22&&!(f==='bury'&&solidW(c.x,c.y-8))) creHit(c,false);
-  }
-}
-function drawCres(x0,x1,y0,y1){
-  for(const c of ST.CRE){
-    if(!c.ok||c.x<x0-60||c.x>x1+60||c.gone>time) continue;
-    if(c.fl==='bury'&&solidW(c.x,c.y-8)) continue;
-    let y=c.y;
-    if(!reduced){
-      if(c.hop>0) y-=Math.abs(Math.sin(c.t*16))*12;
-      else if(discoT>0) y-=Math.abs(Math.sin(time*12+c.ph))*9;
-      else if(c.k==='hop'&&!(c.idle>0)) y-=Math.abs(Math.sin(c.t*6+c.ph))*9;
-      else if(c.k==='swim') y+=Math.sin(c.t*2+c.ph)*5;
-    }
-    if(c.jmp>0) y=WL-Math.sin((1-c.jmp)*Math.PI)*74;
-    if(y<y0-60||y>y1+60) continue;
-    ctx.save(); ctx.translate(c.x,y-c.sz*.5);
-    if(c.dir>0) ctx.scale(-1,1);
-    if(c.shy) ctx.globalAlpha=.4;
-    emo(c.e,0,0,c.sz); ctx.restore();
-  }
-  ctx.globalAlpha=1;
-}
+function creHit(c,tap){ return creHitWith(CR,c,tap); }
+function creTick(dt){ return creTickWith(CR,dt); }
+function drawCres(x0,x1,y0,y1){ return drawCresWith(CR,ctx,x0,x1,y0,y1); }
 
 /* ---------- Fundsachen: Jede macht etwas anderes mit dem Helden. ---------- */
 function grab(q){
