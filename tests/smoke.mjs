@@ -304,6 +304,7 @@ test('Zonen schenken Feuerwerk, goldene Ski und Drachen', async ({ ev }) => {
   await ev("hero.zn=5; zoneGifts(false)");
   if (!(await ev('hero.own.dragon')) || await ev("$('mode-dragon').classList.contains('gone')")) throw new Error('Zone 5: Drache fehlt');
   if (await ev("!!document.getElementById('btn-story')")) throw new Error('Geschichte-Knopf noch da');
+  if (await ev("!!document.getElementById('tasks')||!!document.getElementById('panel')")) throw new Error('Bau-Aufgaben noch da');
   await ev('hero.own=' + own + '; hero.zn=' + zn + '; syncOwn()');
 });
 

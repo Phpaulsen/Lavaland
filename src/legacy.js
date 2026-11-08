@@ -16,11 +16,11 @@ import { mkQWith, mkSeqWith } from './core/learn/tasks.js';
 import { g0, grid, stamp, LIFE, zS1, z4, zS2, zS3, grow0, rA, rB, rD, rH, rC, mtop, bio, bio2, bmx, bix, noCave, liqM, liqY } from './state/world.js';
 import { ST } from './state/facade.js';
 import { hero, P, parked, cam, pan, keys } from './state/game.js';
-import { ERRK, MISK, SAVEKEY, K_HERO, K_FINDS, K_STARS, K_SKILL, K_FACTS, K_SCHOOL, K_LIMIT, K_DAY, K_REALM, K_FOG, K_MARKS, K_MUTE, K_LEFTY, K_NEWS, K_BAK_AT, K_VOICE, K_VMISS, K_OPT, realmKey } from './persistence/keys.js';
+import { ERRK, MISK, SAVEKEY, K_HERO, K_FINDS, K_SKILL, K_FACTS, K_SCHOOL, K_LIMIT, K_DAY, K_REALM, K_FOG, K_MARKS, K_MUTE, K_LEFTY, K_NEWS, K_BAK_AT, K_VOICE, K_VMISS, K_OPT, realmKey } from './persistence/keys.js';
 import { idbOpen, idbDoWith } from './persistence/db.js';
 import { packRunsWith, unpackRunsWith, runsOk } from './core/world/pack.js';
 import { bx0, bx1, by0, by1, lavaCount, waterCount, fireCount, tick, sx0, winR, rx0, rx1, qx0, qx1, px0, px1, py0, py1, winC, ext, extI, react, cellAt, hotAt, lifeS, put, stepWith, scanMobileWith, steamWith } from './state/sim.js';
-import { winterColWith, carveCaveWith, carveCircleWith, carvePathWith, fillCraterWith, fillPondWith, houseBlocksWith, fillBlockWith, rawXWith, rawGWith, layoutWith, addTreeWith, addCreWith, populateWith, zoneColsWith, shapeWorldWith, blkWith, buildWith, genColWith, genWith, makeTrackWith, deepWorldWith, deepFarWith, planetDeepWith, vaultPlanWith } from './core/world/gen.js';
+import { winterColWith, carveCaveWith, carveCircleWith, carvePathWith, fillBlockWith, rawXWith, rawGWith, layoutWith, addTreeWith, addCreWith, populateWith, zoneColsWith, shapeWorldWith, blkWith, buildWith, genColWith, genWith, makeTrackWith, deepWorldWith, deepFarWith, planetDeepWith, vaultPlanWith } from './core/world/gen.js';
 import { SNX, SL0, PEAK, BACK, BEND, MH, SNB, CHX, CAVE, SNC0, SNC1, msurf, vnoise, inGrid, ellipse, PX0, PM, PMC, LANDX, PADH, BT, sm, colOf, hBio, craters, roomY, vFloor, WSX, LIFTX, SEA_T, SEA_L, SEA_B, HOUSE, FH } from './core/world/shape.js';
 import { BAK_DBS, BAK_ST, BAK_MAX, TYPED, BADK, bakOk, b64, unb64, enc, dec, dbDump, dbLoad, bakMakeWith, bakLoadWith } from './persistence/transfer.js';
 import { K_ALIVE, logWith } from './log/log.js';
@@ -148,19 +148,6 @@ const AI={
   dig:'<path d="M3 4l7 2 2 6" stroke="currentColor" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 11l8 1.5-1 8-8-3z" fill="currentColor"/><path d="M19 15v6M16 18.5l3 2.5 3-2.5" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
 };
 const S2=S1+' stroke-width="2.5"';
-const DROP='<path d="M38 2c3 4 5 6.5 5 9.5a5 5 0 0 1-10 0c0-3 2-5.5 5-9.5z" fill="#3aa0e8" '+S1+' stroke-width="2"/>';
-const PIC={
-  build:'<path d="M7 25L22 11l15 14" fill="none" '+S2+' stroke-dasharray="4 4"/><rect x="11" y="25" width="22" height="16" fill="none" '+S2+' stroke-dasharray="4 4"/><rect x="29" y="29" width="15" height="15" rx="2" fill="#f2b632" '+S2+'/><path d="M36.5 32.5v8M32.5 36.5h8" '+S2+'/>',
-  smash:'<path d="M5 25L21 10l16 15z" fill="#e2574c" '+S2+'/><rect x="9" y="25" width="24" height="16" fill="#f2b632" '+S2+'/><path d="M35 20c0 5 7 7 7 15a8 8 0 0 1-16 0c0-3.5 2.5-5.5 3.5-9 1 2.5 2.5 3.5 3.5 3.5 1-2.5 2-5.5 2-9.5z" fill="#ff7a1f" '+S2+'/>',
-  volcano:'<path d="M4 43L18 16h11l15 27z" fill="none" '+S2+' stroke-dasharray="4 4"/><path d="M18 16h11l-2 7-3.5-3-3 4z" fill="#ff5a1f" '+S1+' stroke-width="2"/><circle cx="38" cy="11" r="8" fill="#ffd23f" '+S2+'/><path d="M38 7v8M34 11h8" '+S2+'/>',
-  cool:'<path d="M3 44L17 19h11l15 25z" fill="#6a5f70" '+S2+'/><path d="M17 19h11l-2 7-3.5-3-3 4z" fill="#ff5a1f" '+S1+' stroke-width="2"/>'+DROP,
-  park:'<path d="M2 41c8 0 8-25 16-25s6 21-2 21-4-17 8-17 8 21 22 21" stroke="#e0304a" stroke-width="4.5" fill="none" stroke-linecap="round"/><rect x="11" y="8" width="14" height="9" rx="2.5" fill="#7b4fd6" '+S1+' stroke-width="2"/><circle cx="18" cy="5.5" r="3.2" fill="#ffd2a8" '+S1+' stroke-width="1.6"/>',
-  fire:'<path d="M20 5c0 9 13 13 13 27a13 13 0 0 1-26 0c0-6 4-9 6-15 2 4 4 6 6 6 2-4 1-11 1-18z" fill="#ff7a1f" '+S2+'/><path d="M20 26c2 4 5 5 5 9a5 5 0 0 1-10 0c0-4 3-5 5-9z" fill="#ffe066"/>'+DROP,
-  treasure:'<rect x="6" y="26" width="30" height="16" rx="2" fill="#b9793a" '+S2+'/><path d="M6 26c0-8 6-11 15-11s15 3 15 11z" fill="#d89a4a" '+S2+'/><rect x="18" y="23" width="6" height="8" rx="1.5" fill="#ffd23f" '+S1+' stroke-width="2"/><path d="M40 4l1.8 4.2 4.2 1.8-4.2 1.8L40 16l-1.8-4.2L34 10l4.2-1.8z" fill="#ffd23f" '+S1+' stroke-width="1.6"/>',
-  ice:'<path d="M24 4v24M13.6 10l20.8 12M34.4 10L13.6 22M24 4l-3 3m3-3l3 3M24 28l-3-3m3 3l3-3" stroke="#3aa0e8" stroke-width="3.4" stroke-linecap="round" fill="none"/><path d="M4 39c4-4 7 4 11 0s7 4 11 0 7 4 11 0 5 2 7 0" '+S1+' stroke-width="3" fill="none"/>'
-};
-
-PIC.moon='<circle cx="22" cy="26" r="16" fill="#cfd3dc" '+S2+'/><circle cx="16" cy="22" r="4" fill="#b3b8c4"/><circle cx="27" cy="31" r="5" fill="#b3b8c4"/><circle cx="26" cy="19" r="2.5" fill="#b3b8c4"/><path d="M40 3l1.8 4.2 4.2 1.8-4.2 1.8L40 15l-1.8-4.2L34 9l4.2-1.8z" fill="#ffd23f" '+S1+' stroke-width="1.6"/>';
 const QI={
   haus:'<path d="M2.5 11.5L12 3l9.5 8.5z" fill="#e2574c" '+S1+' stroke-width="1.5"/><rect x="5" y="11.5" width="14" height="9.5" fill="#f2b632" '+S1+' stroke-width="1.5"/><rect x="10" y="14.5" width="4" height="6.5" fill="#7a4a2c"/>',
   mond:'<path d="M15 3a9 9 0 1 0 6 13A8 8 0 0 1 15 3z" fill="#ffd23f" '+S1+' stroke-width="1.5"/>',
@@ -271,21 +258,7 @@ let SEED=1;
 
 function setCell(cx,cy,m,lf){ if(!inGrid(cx,cy)) return; const i=cy*GX+cx; grid[i]=m; lifeS(i,lf||0); if(m>0&&m<4) ext(cx,cy); }
 function carveCircle(x,y,r){ return carveCircleWith(WD,x,y,r); }
-function fillCrater(){ return fillCraterWith(WD); }
-function fillPond(){ return fillPondWith(WD); }
-function houseBlocks(site){ return houseBlocksWith(WD,site); }
 function fillBlock(bx,by){ return fillBlockWith(WD,bx,by); }
-function blockFilled(bx,by){
-  let n=0; for(let y=by*4;y<by*4+4;y++) for(let x=bx*4;x<bx*4+4;x++) if(grid[y*GX+x]>=4) n++;
-  return n>=12;
-}
-function restoreSite(xc,hw,up,down){
-  for(let cx=Math.floor((xc-hw)/CELL);cx<=Math.floor((xc+hw)/CELL);cx++){
-    const g=grow0[cx];
-    for(let cy=g-Math.ceil(up/CELL);cy<g;cy++) if(inGrid(cx,cy)){ grid[cy*GX+cx]=0; lifeS(cy*GX+cx,0); }
-    for(let cy=g;cy<g+Math.ceil(down/CELL);cy++) if(inGrid(cx,cy)&&grid[cy*GX+cx]<4) grid[cy*GX+cx]=EARTH;
-  }
-}
 /* ---------- Große Welt: Hinter dem Schneeberg folgen Länder, die aus der Welt-Nummer berechnet werden.
    Ihre Spalten entstehen erst, wenn der Held in die Nähe kommt. Flüssigkeiten rechnen nur rund um die Kamera. ---------- */
 const ORBS=[MOON];
@@ -573,7 +546,7 @@ function explode(x,y){
 
 /* ---------- Spielfigur ---------- */
 function grav(){ return P.y<-1700?G*.3:G; }
-let ghost=null, chest=null;
+let ghost=null;
 let time=0, volT=3, stroke=null, strokeId=null, strokeExt=null;
 
 function park(){ return {x:P.x,y:P.y,vy:P.vy,ang:P.mode==='rocket'?0:P.ang,face:P.face,arm:P.arm,lift:P.lift,da:P.da,load:P.load}; }
@@ -677,7 +650,6 @@ function dig(){
     P.load=Math.min(400,P.load+n);
     for(let i=0;i<6;i++) spawn(3,b[0]+(Math.random()-.5)*24,b[1]+(Math.random()-.5)*30,(Math.random()-.5)*160,-60-Math.random()*120,.6,3+Math.random()*3);
     shake=Math.max(shake,.08);
-    if(chest&&!chest.open&&Math.hypot(b[0]-chest.x,b[1]-chest.y)<46) chest.open=true;
   }
   return n;
 }
@@ -889,7 +861,6 @@ function updTbm(dt,ix,u,d){
       shake=Math.max(shake,.04); sfx('dig');
       if(Math.random()<dt*16) spawn(3,hd[0]+(Math.random()-.5)*30,hd[1]+(Math.random()-.5)*40,-go*(40+Math.random()*120),-40-Math.random()*90,.6,3+Math.random()*3);
     }
-    if(chest&&!chest.open&&Math.hypot(hd[0]-chest.x,hd[1]-chest.y)<46) chest.open=true;
   }
   if(up&&go&&(cutN||shaft)){
     const sp=80*(1+.15*hero.up.dig);
@@ -948,7 +919,6 @@ function updCoaster(dt,ix){
   P.x=q.x; P.y=q.y; P.vx=q.tx*P.v; P.vy=q.ty*P.v; P.ang=Math.atan2(q.ty,q.tx); P.face=T.dir;
   if(P.s>=T.len){
     qEvent('ride',1);
-    if(T.user&&ST.task&&ST.task.id==='park') ST.task.data.rode=true;
     P.vy-=90; P.mode='walk'; P.on=false; P.air=.2; P.chute=false;
     syncUI();
   }
@@ -998,7 +968,6 @@ function update(dt){
     if(hot||(hero.up.heat<3&&cellAt(P.x,P.y+3)===CORE)) burn();
   }
   if(P.soot>0&&Math.random()<dt*8) spawn(0,P.x,P.y-30,(Math.random()-.5)*20,-40,.7,4);
-  if(chest&&!chest.open&&Math.hypot(P.x-chest.x,P.y-12-chest.y)<34) chest.open=true;
 
   for(let i=bombs.length-1;i>=0;i--){
     const bm=bombs[i]; bm.t-=dt;
@@ -1217,35 +1186,15 @@ const AP={ get talkLock(){ return ST.talkLock; }, vcMiss };
 try{ const mv=localStorage.getItem(K_MUTE); AU.muted=mv==='1'; AU.fxOff=mv==='s'; }catch(_){}
 document.addEventListener('pointerdown',function(e){
   audio(); AU.tapT=performance.now();
-  if(e.target&&e.target.closest&&e.target.closest('.btn,.card,.opt,.round,.xb,#batt,#quest,#chip,.album button')) sfx('tick');
+  if(e.target&&e.target.closest&&e.target.closest('.btn,.card,.opt,.round,.xb,#batt,#quest,.album button')) sfx('tick');
 },true);
 
-/* ---------- Aufgaben ---------- */
-const TASKS=[
-  {id:'build',name:'Haus bauen',tool:'blocks',say:'Baue das Haus mit den Bauklötzen nach.'},
-  {id:'smash',name:'Haus kaputt machen',tool:'fire',say:'Mach das Haus kaputt. Nimm Feuer, Lava oder den Bagger.'},
-  {id:'volcano',name:'Vulkan bauen',tool:'earth',say:'Baue einen Berg aus Erde. Dann gieße oben Lava darauf.',say2:'Jetzt gieße Lava obendrauf.'},
-  {id:'cool',name:'Vulkan löschen',tool:'water',say:'Lösche den Vulkan. Gieße Wasser in die Lava.'},
-  {id:'park',name:'Achterbahn bauen',tool:'track',say:'Male eine lange Achterbahn. Dann fahre damit.',say2:'Jetzt tippe auf die Achterbahn und fahre los.'},
-  {id:'fire',name:'Feuer löschen',tool:'water',say:'Es brennt! Lösche das Feuer mit Wasser.'},
-  {id:'treasure',name:'Schatz ausgraben',mode:'bagger',say:'Da unten liegt ein Schatz. Grabe mit dem Bagger.'},
-  {id:'ice',name:'See zufrieren',tool:'ice',say:'Friere den See zu. Male mit dem Eis.'},
-  {id:'moon',name:'Zum Mond fliegen',mode:'plane',say:'Flieg hoch in den Weltraum und lande auf dem Mond.'}
-];
-let stars={};
-try{ stars=JSON.parse(localStorage.getItem(K_STARS)||'{}')||{}; }catch(_){ stars={}; }
-function saveStars(){ try{ localStorage.setItem(K_STARS,JSON.stringify(stars)); }catch(_){} }
+/* ---------- Hilfen: Zellen zählen, an einen Ort springen. Die Bau-Aufgaben mit Sternen gibt es nicht mehr (Vereinfachungsplan Schritt 3). ---------- */
 function boxCount(x0,x1,y0,y1,fn){
   const c0=clamp(Math.floor(x0/CELL),1,GX-2), c1=clamp(Math.floor(x1/CELL),1,GX-2), r0=clamp(Math.floor((y0-TOP)/CELL),1,GY-4), r1=clamp(Math.floor((y1-TOP)/CELL),1,GY-4);
   let n=0;
   for(let cy=r0;cy<=r1;cy++) for(let cx=c0;cx<=c1;cx++) if(fn(grid[cy*GX+cx],cy*GX+cx)) n++;
   return n;
-}
-function volcanoPlan(){
-  const c0=Math.round(SITE.volb/CELL), k=grow0[c0], cone=[], crater=[];
-  for(let j=0;j<14;j++){ const hw=15-j;
-    for(let dx=-hw;dx<=hw;dx++){ const i=(k-1-j)*GX+c0+dx; if(j>=11&&Math.abs(dx)<=1) crater.push(i); else cone.push(i); } }
-  return {cone:cone,crater:crater};
 }
 function teleport(x){
   if(P.mode!=='walk') setMode('walk');
@@ -1254,141 +1203,6 @@ function teleport(x){
   cam.x=P.x; cam.y=P.y-80;
   smoke(P.x,P.y-20,6);
 }
-function setChipTool(key){ $('chip-tool').innerHTML=IC[key]; }
-function startTask(def){
-  if(realm){ $('panel').hidden=true; say('','Diese Aufgaben gibt es auf der Erde. Flieg mit der Rakete ganz hoch, dann kommst du heim.'); return; }
-  $('panel').hidden=true;
-  ST.task={id:def.id,def:def,p:0,done:false,t:0,data:{}};
-  chest=null;
-  const d=ST.task.data, id=def.id;
-  if(id==='build'){ restoreSite(SITE.build,90,150,36); d.blocks=houseBlocks('build'); teleport(SITE.build-110); }
-  else if(id==='smash'){
-    restoreSite(SITE.smash,90,150,36); d.blocks=houseBlocks('smash');
-    d.blocks.forEach(function(b){fillBlock(b[0],b[1]);});
-    d.init=d.blocks.length*16; teleport(SITE.smash-120);
-  }
-  else if(id==='volcano'){ restoreSite(SITE.volb,120,130,36); d.plan=volcanoPlan(); teleport(SITE.volb-130); }
-  else if(id==='cool'){
-    for(let cx=Math.floor((VOLC-125)/CELL);cx<=Math.floor((VOLC+125)/CELL);cx++){
-      for(let cy=grow0[cx]-24;cy<grow0[cx];cy++) if(inGrid(cx,cy)) grid[cy*GX+cx]=0;
-      for(let cy=grow0[cx];cy<grow0[cx]+10;cy++) if(inGrid(cx,cy)&&grid[cy*GX+cx]<4) grid[cy*GX+cx]=ROCK;
-    }
-    const vc=Math.floor(VOLC/CELL);
-    for(let cx=vc-1;cx<=vc+1;cx++) for(let cy=grow0[cx];cy<grow0[cx]+12;cy++) setCell(cx,cy,LAVA);
-    fillCrater(); d.max=0; teleport(VOLC-150);
-  }
-  else if(id==='fire'){
-    restoreSite(SITE.fire,80,100,24);
-    const c0=Math.round(SITE.fire/CELL), g=grow0[c0];
-    for(let dx=-5;dx<=5;dx++){ setCell(c0+dx,g-1,FIRE,255); if(Math.abs(dx)<=3) setCell(c0+dx,g-2,FIRE,255); }
-    setCell(c0-7,g-1,ROCK); setCell(c0-6,g-1,ROCK); setCell(c0+6,g-1,ROCK); setCell(c0+7,g-1,ROCK);
-    d.init=18; teleport(SITE.fire-100);
-  }
-  else if(id==='ice'){
-    const n=boxCount(SITE.pond-170,SITE.pond+170,siteY.pond+4,siteY.pond+80,function(m,i){ if(m===ICE) grid[i]=WATER; return m===ICE||m===WATER; });
-    if(n<200) fillPond();
-    scanMobile(); teleport(SITE.pond-185);
-  }
-  else if(id==='treasure'){
-    const x=CHX;
-    for(let cx=Math.floor((x-110)/CELL);cx<=Math.floor((x+100)/CELL);cx++)
-      for(let cy=grow0[cx];cy<grow0[cx]+26;cy++) if(inGrid(cx,cy)&&grid[cy*GX+cx]<4) grid[cy*GX+cx]=EARTH;
-    chest={x:x,y:ground(x)+62,open:false};
-    teleport(x-42); setMode('bagger'); P.face=1; P.arm=1.1; d.far=90;
-  }
-  if(id==='moon'&&P.mode!=='plane') setMode('plane');
-  setTool(def.tool||null,true);
-  $('chip-pic').innerHTML=PIC[id]; setChipTool(def.tool||def.mode);
-  $('bar').style.width='0%';
-  $('chip').classList.remove('done'); $('chip').hidden=false;
-  pulse(def.tool?'tool-'+def.tool:'mode-'+def.mode);
-  if(id==='smash') pulse('mode-bagger');
-  speak(def.say);
-}
-function progress(){
-  const d=ST.task.data, id=ST.task.id;
-  if(id==='build'){ let n=0; for(const b of d.blocks) if(blockFilled(b[0],b[1])) n++; return Math.min(1,n/14); }
-  if(id==='smash'){
-    let n=0; for(const b of d.blocks) for(let y=b[1]*4;y<b[1]*4+4;y++) for(let x=b[0]*4;x<b[0]*4+4;x++) if(grid[y*GX+x]===WOOD) n++;
-    return Math.min(1,(1-n/d.init)/.88);
-  }
-  if(id==='volcano'){
-    let n=0; for(const i of d.plan.cone) if(grid[i]>=4) n++;
-    const fill=n/d.plan.cone.length, y=siteY.volb;
-    if(fill>=.8&&!d.stage2){ d.stage2=true; setTool('lava',true); setChipTool('lava'); pulse('tool-lava'); speak(ST.task.def.say2); }
-    const lv=d.stage2?boxCount(SITE.volb-100,SITE.volb+100,y-150,y-6,function(m){return m===LAVA;}):0;
-    return .85*Math.min(1,fill/.8)+(lv>=6?.15:0);
-  }
-  if(id==='cool'){
-    const n=boxCount(VOLC-125,VOLC+125,ground(VOLC-105)-60,ground(VOLC)+12,function(m,i){ return m===LAVA&&grid[i-GX]<4&&grid[i-GX]!==LAVA; });
-    if(n>d.max) d.max=n;
-    if(d.max<6||ST.task.t<1) return 0;
-    return n===0?1:Math.min(.95,1-n/d.max);
-  }
-  if(id==='park'){
-    let has=false; for(const T of ST.tracks) if(T.user&&T.len>=400) has=true;
-    if(has&&!d.stage2){ d.stage2=true; setChipTool('coaster'); pulse('mode-coaster'); speak(ST.task.def.say2); }
-    return d.rode?1:(has?.5:0);
-  }
-  if(id==='fire'){
-    const y=siteY.fire, n=boxCount(SITE.fire-70,SITE.fire+70,y-70,y+6,function(m,i){return m===FIRE&&(LIFE.get(i)|0)===255;});
-    return 1-Math.min(1,n/d.init);
-  }
-  if(id==='ice'){
-    let ice=0;
-    const all=boxCount(SITE.pond-170,SITE.pond+170,siteY.pond+4,siteY.pond+80,function(m){ if(m===ICE) ice++; return m===ICE||m===WATER; });
-    return all<60?0:Math.min(1,(ice/all)/.7);
-  }
-  if(id==='moon') return (P.on&&P.y<-3000&&P.mode!=='coaster')?1:clamp(-P.y/4800,0,.9);
-  if(id==='treasure'){
-    if(chest&&chest.open) return 1;
-    const dist=chest?Math.hypot(P.x-chest.x,P.y-12-chest.y):d.far;
-    return clamp(1-(dist-30)/(d.far-30),0,.9);
-  }
-  return 0;
-}
-function mark(){
-  if(!ST.task||ST.task.done) return null;
-  const id=ST.task.id;
-  if(id==='build') return [SITE.build+12,siteY.build-140];
-  if(id==='smash') return [SITE.smash+6,siteY.smash-140];
-  if(id==='volcano') return [SITE.volb,siteY.volb-104];
-  if(id==='cool') return [VOLC,ground(VOLC)-90];
-  if(id==='fire') return [SITE.fire,siteY.fire-46];
-  if(id==='ice') return [SITE.pond,siteY.pond-14];
-  if(id==='treasure'&&chest) return [chest.x,ground(chest.x)-30];
-  if(id==='moon') return [MOON.x,MOON.y-MOON.r-26];
-  return null;
-}
-function updateStars(){
-  let n=0;
-  for(const t of TASKS){
-    const won=!!stars[t.id]; if(won) n++;
-    const c=document.querySelector('[data-task="'+t.id+'"]');
-    if(c){ c.classList.toggle('won',won); c.querySelector('.got').toggleAttribute('hidden',!won); }
-  }
-  $('stars').textContent=String(n); $('stars').hidden=n===0;
-}
-function finishTask(){
-  ST.task.done=true; stars[ST.task.id]=1; saveStars(); updateStars();
-  $('bar').style.width='100%'; $('chip').classList.add('done');
-  confetti(P.x,P.y); jingle(); speak('Geschafft! Super!');
-  ST.lootDirty=true;
-  if(ST.task.id==='volcano') for(let i=0;i<16;i++) spawn(4,SITE.volb+(Math.random()-.5)*30,siteY.volb-90,(Math.random()-.5)*320,-300-Math.random()*260,2.4,4+Math.random()*3);
-  if(ST.task.id==='treasure'&&chest) for(let i=0;i<24;i++) spawn(6,chest.x,chest.y,(Math.random()-.5)*260,-200-Math.random()*300,1.6,3.5,'#ffd23f');
-  const mine=ST.task;
-  setTimeout(function(){ if(ST.task===mine){ ST.task=null; $('chip').hidden=true; pulse('tasks'); } },2800);
-}
-let taskAcc=0;
-function taskTick(dt){
-  if(!ST.task||ST.task.done) return;
-  ST.task.t+=dt; taskAcc+=dt;
-  if(taskAcc<.25) return;
-  taskAcc=0;
-  const p=progress(); ST.task.p=p; $('bar').style.width=Math.round(p*100)+'%';
-  if(p>=1) finishTask();
-}
-
 /* ---------- Funde: In jeder Welt sind 14 Dinge versteckt, bevorzugt solche, die im Album noch fehlen. ---------- */
 const FINDS=[
   ['bone','🦴','einen Dino-Knochen','shallow'],['key','🔑','einen alten Schlüssel','shallow'],['bell','🔔','eine Glocke','shallow'],['boot','👢','einen Stiefel','shallow'],
@@ -1530,7 +1344,7 @@ function saveGame(manual){ return saveGameWith(SV,manual); }
 function autosave(dt){ return autosaveWith(SV,dt); }
 function restore(sv){
   SEED=sv.seed; shapeWorld(); loadCells(sv); LIFE.clear(); stamp.fill(0);
-  parts.length=0; ghost=null; chest=null; stroke=null; strokeId=null; ST.task=null; $('chip').hidden=true;
+  parts.length=0; ghost=null; stroke=null; strokeId=null;
   trees.forEach(function(t,i){ t.state=(sv.trees&&sv.trees[i])|0; t.t=0; });
   ST.zips=Array.isArray(sv.zips)?sv.zips.filter(zipOk).slice(-ZIPMAX):[]; P.zip=null; MONS.length=0; METS=[]; MROCKS=[]; FLIES=[]; ARROWS.length=0;
   ST.tracks=[]; (sv.tracks||[]).forEach(function(t){ const T=makeTrack(t.raw,t.user); if(T){ if(t.rb) T.rb=true; ST.tracks.push(T); } });
@@ -1552,7 +1366,7 @@ function orbsOf(id){ const R=RLM[id]; return R.orb?[R.orb()]:R.orbs(); }
 function newRealm(){
   ST.seen={}; ST.eggGot={}; ST.lootGot={}; ST.orbGot={}; ST.matGot={}; ST.pzGot={};
   shapeWorld(); planetGen();
-  parts.length=0; ghost=null; chest=null; stroke=null; strokeId=null; ST.task=null; $('chip').hidden=true;
+  parts.length=0; ghost=null; stroke=null; strokeId=null;
   for(const tr of trees){ tr.state=0; tr.t=0; }
   ST.tracks=[]; ST.zips=[]; P.zip=null; MONS.length=0; METS=[]; MROCKS=[]; FLIES=[]; ARROWS.length=0; ST.props=[]; bombs.length=0; ST.hidden=[]; guide=null;
   for(const k in parked) parked[k]=null;
@@ -2071,7 +1885,7 @@ MIS.push({id:'flag2',e:'👩‍🚀',win:[80,5],
   steps:[flagStep('ice'),flagStep('jun')],
   end:'Flaggen auf dem Eisplaneten und dem Blubberplaneten! Du hast das ganze Weltall erkundet!'});
 
-const OVS=Array.prototype.slice.call(document.querySelectorAll('.ov,#panel,#quiz,#pz'));
+const OVS=Array.prototype.slice.call(document.querySelectorAll('.ov,#quiz,#pz'));
 function uiOpen(){ for(const o of OVS) if(!o.hidden) return true; return false; }
 function syncSound(){ $('sound').innerHTML=svg24(AU.muted?QI.mute:AU.fxOff?QI.talk:QI.sound); $('sound').setAttribute('aria-pressed',String(!AU.muted)); $('sound').setAttribute('aria-label',AU.muted?'Ton ist aus':AU.fxOff?'Nur Sprache':'Ton ist an'); }
 
@@ -3001,7 +2815,6 @@ function handDig(wx,wy){
   if(n){
     sfx('dig');
     for(let k=0;k<4;k++) spawn(3,wx+(Math.random()-.5)*16,wy+(Math.random()-.5)*16,(Math.random()-.5)*140-P.face*40,-60-Math.random()*100,.5,2.5+Math.random()*2);
-    if(chest&&!chest.open&&Math.hypot(wx-chest.x,wy-chest.y)<40) chest.open=true;
   }else if(hard){
     sfx('tick'); for(let k=0;k<3;k++) spawn(5,wx,wy,(Math.random()-.5)*160,-50-Math.random()*90,.4,2);
     if(time>handHint){ handHint=time+60; say('','Tock! Das ist zu hart für die Schaufel. Nimm die Spitzhacke.'); pulse('tool-pick'); }
@@ -4846,7 +4659,6 @@ const LOCK='<span class="lock">'+svg24(QI.lock)+'</span>';
 $('grid').innerHTML=
   '<button class="btn veh cool" id="btn-veh" aria-label="Fahrzeug wählen">'+svg24(IC.walk)+LOCK+'</button>'+
   '<button class="btn cool" id="btn-tool" aria-label="Werkzeug wählen" aria-pressed="false">'+svg24(QI.hand)+LOCK+'</button>'+
-  '<button class="btn gold" id="tasks" aria-label="Aufgaben">'+svg24(IC.star)+'<span class="badge" id="stars" hidden>0</span></button>'+
   '<button class="btn" id="btn-map" aria-label="Karte: zu einem entdeckten Land reisen">'+svg24(QI.map)+'</button>'+
   '<button class="btn" id="btn-lab" aria-label="Werkstatt: Bohrer, Rakete, Lampe und Schutz bauen">'+svg24(QI.lab)+'<span class="badge" id="lab-n" hidden>!</span></button>'+
   '<button class="btn" id="btn-finds" aria-label="Funde ansehen">'+svg24(QI.gem)+'<span class="badge" id="found" hidden>0</span></button>'+
@@ -4866,9 +4678,6 @@ $('tool-cards').innerHTML=TOOLS.filter(function(t){ return !PAINT[t[0]]; }).map(
   return (i===1?'<button class="card pick cool" id="tool-magic" aria-label="Zauberkasten: Lava, Feuer, Wasser, Eis, Erde oder Schnee malen" aria-pressed="false"><span class="mg" aria-hidden="true">🪄</span>'+LOCK+'</button>':'')+toolCard(t);
 }).join('');
 $('magic-cards').innerHTML=TOOLS.filter(function(t){ return PAINT[t[0]]; }).map(toolCard).join('');
-$('cards').innerHTML=TASKS.map(function(t){
-  return '<button class="card" data-task="'+t.id+'" aria-label="'+t.name+'"><svg class="pic" viewBox="0 0 48 48" aria-hidden="true">'+PIC[t.id]+'</svg><svg class="got" viewBox="0 0 24 24" aria-hidden="true" hidden>'+IC.star+'</svg></button>';
-}).join('');
 
 /* Geister-Klick: Öffnet ein Tippen schon beim Aufsetzen ein Fenster, landet der Klick nach dem Loslassen im neuen Fenster, etwa auf dem Hintergrund, der es wieder schließt. Ein Klick, der nicht dort ankommt, wo der Finger aufgesetzt hat, wird verschluckt. */
 let ghostEl=null;
@@ -4917,20 +4726,10 @@ $('album').addEventListener('click',function(e){
 document.querySelectorAll('.ov').forEach(function(o){
   o.addEventListener('click',function(e){ if(e.target===o||e.target.closest('.xb')) o.hidden=true; });
 });
-document.querySelectorAll('[data-task]').forEach(function(b){
-  b.addEventListener('click',function(){
-    const def=TASKS.find(function(t){return t.id===b.dataset.task;});
-    if(def){ $('panel').hidden=true; need(function(){ startTask(def); }); }
-  });
-});
 tap($('batt'),function(){ openQuiz(null); });
 $('quiz-x').addEventListener('click',closeQuiz);
 $('quiz-go').addEventListener('click',closeQuiz);
 $('quiz-say').addEventListener('click',function(){ if(qcur) speak(qcur.say); });
-tap($('tasks'),function(){ $('panel').hidden=false; });
-$('panel-x').addEventListener('click',function(){ $('panel').hidden=true; });
-$('panel').addEventListener('click',function(e){ if(e.target===$('panel')) $('panel').hidden=true; });
-tap($('chip'),function(){ if(ST.task) speak(ST.task.done?'Geschafft! Super!':(ST.task.data.stage2&&ST.task.def.say2?ST.task.def.say2:ST.task.def.say)); });
 tap($('btn-menu'),function(){ $('menu').hidden=false; });
 tap($('btn-map'),function(){ mapPg=0; renderMap(); $('map').hidden=false; renderFog(); });
 tap($('btn-lab'),openLab);
@@ -5302,7 +5101,7 @@ window.addEventListener('keydown',function(e){
   }
   /* Escape schließt die Aufgabe wie das X, sonst bliebe das Spiel pausiert. */
   if(e.key==='Escape'&&!$('quiz').hidden){ closeQuiz(); return; }
-  if(e.key==='Escape'){ document.querySelectorAll('.ov,#panel').forEach(function(o){ o.hidden=true; }); pzClose(); return; }
+  if(e.key==='Escape'){ document.querySelectorAll('.ov').forEach(function(o){ o.hidden=true; }); pzClose(); return; }
   if(ST.paused||uiOpen()||(e.target&&e.target.tagName==='BUTTON'&&e.key==='Enter')) return;
   const k=keymap[e.key];
   if(k){ if(!e.repeat) keyTap(k); keys[k]=true; e.preventDefault(); }
@@ -5616,38 +5415,6 @@ function drawCloud(c){
   circle(c.x-22*s,c.y+4*s,16*s); circle(c.x-3*s,c.y-7*s,22*s); circle(c.x+20*s,c.y+2*s,17*s);
   rr(c.x-36*s,c.y+4*s,72*s,15*s,7*s);
 }
-function drawChest(){
-  const x=chest.x, y=chest.y;
-  if(chest.open){ ctx.fillStyle='rgba(255,210,63,.35)'; circle(x,y-6,26+3*Math.sin(time*6)); }
-  ctx.fillStyle=INK; rr(x-15,y-9,30,20,3);
-  ctx.fillStyle='#b9793a'; rr(x-13,y-7,26,16,2);
-  if(chest.open){ ctx.fillStyle='#ffd23f'; circle(x-6,y-9,4); circle(x+1,y-11,4); circle(x+7,y-9,4); }
-  else{ ctx.fillStyle='#d89a4a'; rr(x-13,y-15,26,10,5); }
-  ctx.fillStyle='#ffd23f'; rr(x-3,y-5,6,7,1.5);
-  ctx.globalAlpha=.5+.5*Math.sin(time*5); ctx.fillStyle='#fff8e6'; circle(x+14,y-16,2.5); circle(x-16,y-4,1.8); ctx.globalAlpha=1;
-}
-function drawPlan(){
-  const d=ST.task.data;
-  if(ST.task.id==='build'){
-    ctx.setLineDash([5,4]); ctx.lineWidth=2; ctx.strokeStyle='#fff8e6';
-    for(const b of d.blocks){
-      if(blockFilled(b[0],b[1])) continue;
-      const x=b[0]*24, y=TOP+b[1]*24;
-      ctx.fillStyle='rgba(255,248,230,.3)'; ctx.fillRect(x+1,y+1,22,22); ctx.strokeRect(x+1.5,y+1.5,21,21);
-    }
-    ctx.setLineDash([]);
-  }else if(ST.task.id==='volcano'){
-    ctx.fillStyle='rgba(138,90,60,.38)'; ctx.beginPath();
-    for(const i of d.plan.cone) if(grid[i]<4){ const cy=(i/GX)|0; ctx.rect((i-cy*GX)*CELL,TOP+cy*CELL,CELL,CELL); }
-    ctx.fill();
-    ctx.fillStyle='rgba(255,90,31,.5)'; ctx.beginPath();
-    for(const i of d.plan.crater) if(grid[i]!==LAVA){ const cy=(i/GX)|0; ctx.rect((i-cy*GX)*CELL,TOP+cy*CELL,CELL,CELL); }
-    ctx.fill();
-    const x=SITE.volb+3, y=siteY.volb;
-    ctx.setLineDash([6,5]); ctx.lineWidth=2; ctx.strokeStyle='#fff8e6';
-    ctx.beginPath(); ctx.moveTo(x-93,y); ctx.lineTo(x-15,y-84); ctx.lineTo(x+15,y-84); ctx.lineTo(x+93,y); ctx.stroke(); ctx.setLineDash([]);
-  }
-}
 function arrow(x,y,ang,r,col){
   ctx.save(); ctx.translate(x,y); ctx.rotate(ang);
   ctx.beginPath(); ctx.moveTo(r,0); ctx.lineTo(-r*.7,-r*.85); ctx.lineTo(-r*.3,0); ctx.lineTo(-r*.7,r*.85); ctx.closePath();
@@ -5674,11 +5441,6 @@ function drawSpace(){
   ctx.fillStyle='#b84a2e'; circle(5780,-4915,16); circle(5822,-4880,10);
   ctx.fillStyle='#cfd3dc'; circle(MOON.x,MOON.y,MOON.r);
   ctx.fillStyle='#b3b8c4'; for(const c of MOONC) circle(MOON.x+c[0],MOON.y+c[1],c[2]);
-  if(stars.moon){
-    const fx=MOON.x+40, fy=MOON.y-Math.sqrt(MOON.r*MOON.r-1600);
-    ctx.strokeStyle=INK; ctx.lineWidth=3; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(fx,fy+4); ctx.lineTo(fx,fy-48); ctx.stroke();
-    ctx.fillStyle='#e63946'; ctx.beginPath(); ctx.moveTo(fx,fy-48); ctx.lineTo(fx+28,fy-39); ctx.lineTo(fx,fy-30); ctx.closePath(); ctx.fill();
-  }
 }
 function knob(x,y,r){
   ctx.fillStyle='#ffd23f'; circle(x,y,r);
@@ -5739,8 +5501,6 @@ function draw(){
   if(y0<-2500) drawSpace();
   for(const tr of trees) if(tr.x>x0-40&&tr.x<x1+40) drawTree(tr);
   drawCells(x0,x1,y0,y1);
-  if(ST.task&&!ST.task.done) drawPlan();
-  if(chest) drawChest();
   drawFinds(true,x0,x1,y0,y1);
   for(const o of ST.props) if(o.x>x0-60&&o.x<x1+60) drawProp(o);
   drawWinter(x0,x1);
@@ -5903,9 +5663,7 @@ function draw(){
   drawSnowfall();
   drawMood();
 
-  const mk=mark();
-  if(mk) pointTo(mk[0],mk[1],'#ffd23f');
-  else{ const mp=misPoint(); if(mp) pointTo(mp[0],mp[1],'#e63946'); const qp=questPoint(); if(qp) pointTo(qp[0],qp[1],'#58b548'); }
+  { const mp=misPoint(); if(mp) pointTo(mp[0],mp[1],'#e63946'); const qp=questPoint(); if(qp) pointTo(qp[0],qp[1],'#58b548'); }
   if(FX.sonar>0){ const so=sonarTarget(); if(so) pointTo(so[0],so[1],'#ffd23f'); }
   const gp=guidePoint(); if(gp) pointTo(gp[0],gp[1],'#ff8a1f');
   if(hero.up.compass>0&&nearF&&!nearF.got&&nearD<[0,900,2600,1e9][hero.up.compass]) pointTo(nearF.x,nearF.y,'#5fd4e6');
@@ -5938,7 +5696,7 @@ function resetWorld(seed){
   ST.seen={}; ST.eggGot={}; ST.lootGot={}; ST.orbGot={}; ST.matGot={}; ST.pzGot={};
   shapeWorld();
   gen();
-  parts.length=0; ghost=null; chest=null; stroke=null; strokeId=null; ST.task=null; $('chip').hidden=true;
+  parts.length=0; ghost=null; stroke=null; strokeId=null;
   for(const tr of trees){ tr.state=0; tr.t=0; }
   ST.tracks=[]; ST.zips=[]; P.zip=null; const d=demoTrack(); if(d) ST.tracks.push(d);
   if(MS.cur||Object.keys(MS.fl).length){ MS.cur=null; MS.fl={}; misSave(); }
@@ -6420,7 +6178,7 @@ function frame(t){
   }
 }
 /* Absturzschutz für Nebensysteme: Wirft eins dreimal einen Fehler, wird es für diese Sitzung abgeschaltet und steht im Fehlerprotokoll. Der Rest läuft weiter. */
-const SIDE=[arrowsTick,monTick,geyTick,metTick,wreckTick,flyTick,harpTick,worldTick,deepTick,winterTick,taskTick,findsTick,questTick,misTick,autosave,drain,fogTick,mkTick];
+const SIDE=[arrowsTick,monTick,geyTick,metTick,wreckTick,flyTick,harpTick,worldTick,deepTick,winterTick,findsTick,questTick,misTick,autosave,drain,fogTick,mkTick];
 const SAFE=new Map();
 function safe(f,dt){
   const n=SAFE.get(f)|0; if(n>=3) return;
@@ -6441,7 +6199,7 @@ function goldSwap(){
 function start(){
   resize();
   const go=function(){
-    ST.ready=true; LOG.start(); updateStars(); renderAlbum(); syncUI(); syncSound(); battShown=-1; renderBatt();
+    ST.ready=true; LOG.start(); renderAlbum(); syncUI(); syncSound(); battShown=-1; renderBatt();
     stEnter(); syncOwn(); zoneGifts(false);
     if(!hero.big) setTimeout(function(){ if(!uiOpen()&&!ST.paused){ hero.big=true; if(nextLand()){ hero.quest={type:'land',goal:1,p:0}; showQuest(false); } saveHero(); say('','Neu! Hinter dem Schneeberg liegen jetzt viele fremde Länder. Fahr hinten am Berg hinunter und entdecke sie!'); pulse('btn-map'); } },2800);
     if(hero.quest&&hero.quest.type==='core'&&hero.dr<3) hero.quest=null;

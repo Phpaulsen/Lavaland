@@ -29,7 +29,7 @@ const SEEDS = [1, 4711, 999983];
 // Von der Weltgenerierung geschriebene Top-Level-Namen (node tools/arch/analyze.mjs --json, Feld gen.writes, Stand main 7b1e009),
 // dazu SEED und realm. Feste Liste, damit ein Umzug die Prüfung nicht still verkleinert.
 const WORLD = ('ARROWS BIO CRE DECO DROPS EGGS FLIES LIFE LOOT MACH MATS METS MONS MROCKS OLD_END OLD_N ORBS P PADS PICKS SPACE STR VAULTS ZDEC ZN ' +
-  'bio bio2 bix bmx bombs bx0 bx1 by0 by1 chest clouds eggGot g0 genF ghost grid grow0 guide hidden liqM liqY lootGot matGot mtop noCave orbGot ' +
+  'bio bio2 bix bmx bombs bx0 bx1 by0 by1 clouds eggGot g0 genF ghost grid grow0 guide hidden liqM liqY lootGot matGot mtop noCave orbGot ' +
   'parked parts props px0 px1 py0 py1 pzGot qx0 qx1 rA rB rC rD rH rx0 rx1 seen stI stamp stroke strokeId sx0 task tracks trees winC winR ' +
   'z4 zS1 zS2 zS3 zips SEED realm').split(' ');
 
@@ -140,7 +140,7 @@ async function waitReady(page) {
 }
 
 // Alle Speicherfunktionen einmal schreiben lassen, dann die Sicherung je Teil hashen.
-const SAVEALL = `(function(){ ST.frozen=false; fogDirty=true; optSave(); voiceSave(); saveStars(); saveFinds(); saveHero(); misSave(); fogSave(); mkSave(); saveFacts(); saveSchool(); daySave(); return bakMake().then(function(b){ return {snap:enc(snapshot()), bak:b}; }); })()`;
+const SAVEALL = `(function(){ ST.frozen=false; fogDirty=true; optSave(); voiceSave(); saveFinds(); saveHero(); misSave(); fogSave(); mkSave(); saveFacts(); saveSchool(); daySave(); return bakMake().then(function(b){ return {snap:enc(snapshot()), bak:b}; }); })()`;
 function saveParts(r) {
   const o = { at: r.bak.at, snapshot: {} };
   for (const k in r.snap) o.snapshot[k] = sha(JSON.stringify(r.snap[k]));
