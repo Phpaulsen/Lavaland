@@ -1406,7 +1406,7 @@ function arrive(from,to,m){
     P.x=LANDX; P.y=surfaceY(LANDX)-(P.mode==='walk'?2:260);
     if(!ST.seen.hi){ ST.seen.hi=1; later(1,function(){ say('',R.hello); }); }
     else later(.6,function(){ banner(R.e,1800); speak('Wieder auf '+R.n+'.'); });
-    if(quest&&quest.type==='moon'&&to==='moon') quest.p=1;
+    if(to==='moon'){ skyMark('moon'); if(quest&&quest.type==='moon') quest.p=1; }
     if(to==='disco') disco(12);
   }else{
     const L=orbsOf(from); let o=L[0];
@@ -1475,7 +1475,9 @@ function pointTo(mx,my,col){
   ctx.restore();
 }
 
-/* ---------- Aufträge: Immer ein kleines Ziel mit Belohnung. Die ersten sieben führen durch das Spiel, danach kommen sie zufällig. ---------- */
+/* ---------- Aufträge: Immer ein kleines Ziel mit Belohnung. Die ersten sieben führen durch das Spiel. Danach zeigt der Auftrag auf das nächste Ziel
+   in der Tiefe oder im Weltraum (Vereinfachungsplan Schritt 3). Ist es noch zu, nennt er das fehlende Gerät und schickt zu den Rätselmaschinen.
+   Nur wenn dafür Meistersteine fehlen oder alles erreicht ist, kommt ein Zufallsauftrag. ---------- */
 const QSCRIPT=[{type:'quiz',goal:1},{type:'drive',goal:400,veh:'car'},{type:'dig',goal:200},{type:'find',goal:1},{type:'pz',goal:1},{type:'deep',goal:500},{type:'high',goal:2500}];
 const VNAME={car:'dem Auto',dumper:'dem Kipper',loader:'dem Radlader',tbm:'der Tunnelbohrmaschine'};
 const QDEF={
@@ -1494,8 +1496,42 @@ const QDEF={
   land:{ic:function(){return QI.map;},say:function(){return 'Entdecke ein neues Land. Es liegt rechts hinter dem Schneeberg.';},hint:function(){return 'btn-map';}},
   poke:{ic:function(){return QI.fisch;},say:function(q){return 'Begrüße '+q.goal+' Tiere. Lauf zu ihnen hin oder tippe sie an.';},hint:function(){return 'btn-map';}},
   egg:{ic:function(){return QI.egg;},say:function(){return 'Finde ein goldenes Ei. In jedem Land ist eins versteckt.';},hint:function(){return 'btn-map';}},
-  pz:{ic:function(){return QI.lab;},say:function(q){return (q.goal>1?'Löse '+q.goal+' Rätselmaschinen.':'Löse eine Rätselmaschine.')+' Über ihnen schwebt ein Zahnrad. Folge dem grünen Pfeil.';},hint:function(){return 'btn-lab';}},
+  pz:{ic:function(){return QI.lab;},say:function(q){return (q.g?'Für '+GEAR[q.g].art+' braucht Professor Zahnrad noch '+(q.goal>1?q.goal+' Zahnräder. ':'ein Zahnrad. '):'')+(q.goal>1?'Löse '+q.goal+' Rätselmaschinen.':'Löse eine Rätselmaschine.')+' Über ihnen schwebt ein Zahnrad. Folge dem grünen Pfeil.';},hint:function(){return 'btn-lab';}},
+  zone:{ic:function(q){return qEmo(ZN[q.z].e);},say:function(q){return 'Entdecke '+ZN[q.z].n+'. Fahr mit dem Aufzug so tief du kannst und bohr dich weiter nach unten.';},hint:function(){return 'mode-tbm';}},
+  orb:{ic:function(q){return qEmo(QSKY[q.k][1]);},say:function(q){return QSKY[q.k][2];},hint:function(){return 'mode-rocket';}},
+  make:{ic:function(q){return qEmo(GEAR[q.g].e);},say:function(q){return 'Du hast alles für '+GEAR[q.g].art+'. Geh zur Werkstatt und lass Professor Zahnrad bauen.';},hint:function(){return 'btn-lab';}},
 };
+function qEmo(e){ return '<text x="12" y="19" font-size="17" text-anchor="middle">'+e+'</text>'; }
+/* Die Kette: Zonen mit der nötigen Bohrerstufe, Ziele im Weltraum mit der nötigen Raketenstufe, ganz unten der Erdkern mit Schutz Stufe 3.
+   Besuchte Weltraumziele merkt sich hero.mk.o als Bitmaske (neu, fehlt in alten Spielständen; dort zählen ST.orbGot, hero.fin und hero.rk). */
+const QDEEP=[[1,0],[2,0],[3,1],[4,1],[5,2],[6,3]];
+const QSKY={moon:[1,'🌙','Lande mit der Rakete auf dem Mond.',0],stn:[2,'🛰️','Flieg mit der Rakete über den Mond hinaus und lande auf der Raumstation.',1],
+  ice:[4,'🧊','Flieg mit der Rakete weit hinauf und lande auf dem Eisplaneten.',2],jun:[8,'🟣','Flieg mit der Rakete weit hinauf und lande auf dem Blubberplaneten.',2],
+  gate:[16,'🌀','Flieg mit der Rakete bis zum Sternentor am Ende des Weltraums.',3]};
+function skyMark(k){ const b=QSKY[k][0], o=hero.mk.o|0; if(o&b) return; hero.mk.o=o|b; ST.heroDirty=true; }
+function skyDone(k){
+  if((hero.mk.o|0)&QSKY[k][0]) return true;
+  if(k==='gate') return !!(hero.fin&1);
+  if(k==='moon') return hero.rk>=1||(hero.mk.o|0)>1;
+  return !realm&&!!ST.orbGot[k];
+}
+/* Nächster Schritt zu Gerät g: bauen, wenn alles da ist, sonst Zahnräder aus Rätseln. null, wenn nur Meistersteine fehlen. */
+function gearStep(g){
+  if(canBuild(g)) return {type:'make',g:g,lv:gearLv(g)+1,goal:1,p:0};
+  const t=gearLv(g); if(t>=3) return null;
+  const miss=(GEAR[g].rc[t].zr|0)-(hero.mat.zr|0);
+  return miss>0&&nextMach()?{type:'pz',g:g,goal:Math.min(3,miss),p:0}:null;
+}
+function chainQuest(kind){
+  if(kind==='d'){
+    for(const s of QDEEP) if(hero.zn<s[0]) return hero.dr>=s[1]?{type:'zone',z:s[0],goal:1,p:0}:gearStep('dr');
+    if(hero.fin&2) return null;
+    return hero.up.heat>=3?{type:'core',goal:1,p:0}:gearStep('hs');
+  }
+  if(realm) return null;
+  for(const k in QSKY) if(!skyDone(k)) return hero.rk>=QSKY[k][3]?{type:'orb',k:k,goal:1,p:0}:gearStep('rk');
+  return null;
+}
 let quest=null, qShown='', qDoneT=0, bannerT=0;
 function banner(html,ms){
   $('banner-in').innerHTML=html; $('banner').classList.add('show');
@@ -1505,9 +1541,10 @@ function qEvent(type,n){ if(quest&&quest.type===type&&!quest.done) quest.p+=n; }
 function newQuest(){
   const n=hero.qn;
   if(n<QSCRIPT.length) return Object.assign({p:0},QSCRIPT[n]);
+  const first=n&1?'h':'d', cq=chainQuest(first)||chainQuest(first==='d'?'h':'d');
+  if(cq) return cq;
   const tier=Math.floor((n-QSCRIPT.length)/4), lastT=hero.quest?hero.quest.type:'';
   const pool=['dig','quiz','drive','deep','high','ride','moon','ski','salto','pz','pz'];
-  if(hero.dr>=3) pool.push('core');
   if(nextLand()) pool.push('land','land'); if(eggLand()) pool.push('egg','poke');
   if(ST.hidden.some(function(h){return !h.got;})) pool.push('find','find');
   pool.push('bomb');
@@ -1568,6 +1605,10 @@ function questTick(dt){
   else if(t==='moon'){ if((P.on&&P.y<-3000&&P.mode!=='coaster')||realm==='moon') quest.p=1; }
   else if(t==='drive'){ if(P.mode===quest.veh&&P.on) quest.p+=Math.abs(P.vx)*dt; }
   else if(t==='ski'){ if(P.mode==='ski'&&P.on&&P.ball<=0&&onSnow()) quest.p+=Math.abs(P.vx)*dt; }
+  else if(t==='zone'){ if(hero.zn>=quest.z) quest.p=1; }
+  else if(t==='orb'){ if(skyDone(quest.k)) quest.p=1; }
+  else if(t==='make'){ if(gearLv(quest.g)>=quest.lv) quest.p=1; }
+  else if(t==='core'){ if(hero.fin&2) quest.p=1; }
   renderQuest();
   if(quest.p>=quest.goal){
     quest.done=true; qDoneT=2.3; hero.qn++; ST.lootDirty=true;
@@ -1578,8 +1619,10 @@ function questTick(dt){
 }
 function questPoint(){
   if(!quest||quest.done) return null;
-  if(realm&&(quest.type==='buy'||quest.type==='moon'||quest.type==='ski'||quest.type==='salto')) return null;
-  if(quest.type==='buy') return [STALL_X,ground(STALL_X)-70];
+  if(realm&&(quest.type==='moon'||quest.type==='ski'||quest.type==='salto'||quest.type==='orb'||quest.type==='make'||quest.type==='zone')) return null;
+  if(quest.type==='make') return [WSX,ground(WSX)-70];
+  if(quest.type==='zone'){ const y=stationY(hero.zn); return P.y<y-150?[LIFTX,y-70]:null; }
+  if(quest.type==='orb'){ if(quest.k==='moon') return [MOON.x,MOON.y-MOON.r-26]; const o=SPACE[quest.k]; return o?[o.x,o.y-o.r-26]:null; }
   if(quest.type==='pz'){ const m=nextMach(); return m?[m.x,m.y-52]:null; }
   if(quest.type==='moon') return [MOON.x,MOON.y-MOON.r-26];
   if((quest.type==='ski'||quest.type==='salto')&&P.x<5500) return [LIFT0,surfaceY(LIFT0)-84];
@@ -3530,7 +3573,7 @@ function deepTick(dt){
     for(const k of ['stn','ice','jun']){
       const o=SPACE[k];
       if(ST.orbGot[k]||Math.hypot(P.x-o.x,P.y-o.y)>o.r+40) continue;
-      ST.orbGot[k]=1; ST.lootDirty=true; confetti(P.x,P.y); jingle(); banner('⭐',2400);
+      ST.orbGot[k]=1; skyMark(k); ST.lootDirty=true; confetti(P.x,P.y); jingle(); banner('⭐',2400);
       say('',k==='stn'?'Du bist auf der Raumstation gelandet! Ringsum schweben große Felsbrocken.':k==='ice'?'Du bist auf dem Eisplaneten gelandet!':'Du bist auf dem Blubberplaneten gelandet! Hier wohnt Blubb.');
     }
     if(!(hero.fin&1)&&Math.hypot(P.x-SPACE.gate.x,P.y-SPACE.gate.y)<SPACE.gate.r+40) finale(1);
