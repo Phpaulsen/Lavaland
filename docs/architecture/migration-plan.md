@@ -13,6 +13,7 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 - Berührt ein PR `step`, `draw`, `update` oder `frame`: Leistungsvergleich mit `tests/perf.mjs` (PR 2) im PR-Text, alt gegen neu, gleicher Rechner.
 - Nennt der PR Namen aus der Testliste (`current.md` Abschnitt 8), stellt er die betroffenen Tests im selben PR um.
 - Merge macht der Maintainer.
+- **Gestapelt (ab PR 11, Wunsch des Maintainers vom 8.11.2026):** Jeder PR zielt auf `main` und enthält den vorigen; gemergt wird in Reihenfolge. `moves.json` ist dann `{ "stack": [ … ] }` mit einem Eintrag je PR; `movecheck.mjs` prüft gegen `main` alle Schritte, die dort noch nicht gemergt sind.
 
 ## 2. Voraussetzung vor PR 1
 
@@ -123,9 +124,11 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 - **Abweichung: `loadCells` und `migrateSnow` bleiben in `legacy.js` und ziehen mit PR 12 (Altstände) um.** Beides sind Abläufe beim Laden, keine Umrechnung von Zellen: `loadCells` schreibt `genF`, `cutX`, `ST.stI`, `ST.seen` … und ruft `genCol`/`build`, `migrateSnow` verschiebt `P`, `parked`, `props`, `hidden` und Bäume. Nach `core/` gingen sie nur mit Weltobjekt und Spielzustand, der erst mit PR 14 ein Modul hat.
 - **Absicherung:** Move-Nachweis (3 bewegt, 2 Einzeiler), Golden Master Speicherformat, `save.mjs`, Upgrade-Test.
 
-### PR 11: Speichern
+### PR 11: Speicherplätze und Datenbankzugriff
 
-- **Bewegt:** `idbOpen`, `idbDo`, `SAVEKEY`, `realmKey`, `snapshot`, `saveGame`, `autosave`, `packStart`/`packStep`, `saveHero`, `saveFinds`, `saveFacts` → `persistence/`. Eine Datei `persistence/keys.js` mit allen `localStorage`-Schlüsseln als Konstanten, Werte wörtlich wie heute (Tabelle im README).
+- **Bewegt:** `idbOpen` und `idbDo` als `idbDoWith(diskLock, …)` → `persistence/db.js` (Parameter gleichen Namens, Einzeiler in `legacy.js`). `SAVEKEY`, `realmKey`, `ERRK`, `MISK` → `persistence/keys.js`, dazu alle übrigen `localStorage`-Schlüssel als Konstanten `K_…`, Werte wörtlich wie heute (Tabelle im README). Die 44 Stellen in `legacy.js` nennen die Konstante statt des Literals; `movecheck.mjs` kennt dafür `literals`.
+- **Abweichung: `snapshot`, `saveGame`, `autosave`, `packStart`/`packStep`, `saveHero`, `saveFinds`, `saveFacts` ziehen erst mit PR 14d um.** Sie lesen fast den ganzen Spielzustand (`P`, `parked`, `park`, `tracks`, `zips`, `hero`, `found`, `FS`, `energy`, `realm`, `saving`, `frozen` …), der erst mit PR 14 Module hat. Vorher ginge es nur über einen Port mit zwanzig Feldern.
+- Der IDB-Name `lavaland` und die Ablage `save` bleiben Literale in `db.js`: `'lavaland'` ist im Quelltext auch App-Kennung und Schlüsselpräfix, `'save'` auch ein Knopfname. Eine Ersetzung nach Wert träfe beides.
 - **Risiken:** `saveGame` ruft Banner, Ton und Sprache (`index.html:3049`). **Absicherung:** Rückmeldung wird als Port übergeben (`target.md` Abschnitt 3), gleiche Reihenfolge; `save.mjs`, `offline.mjs`, Golden-Master Speicherformat.
 
 ### PR 12: Umzug, Rettung, Altstände
@@ -143,6 +146,7 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 - **14a:** `hero`, `gold`, `gems`, `lootDirty`, `heroDirty` → `state/game.js`. Benannte Mutation `addGold(n)` noch nicht (wäre 15 Sektionen Umbau), nur `G`.
 - **14b:** `P`, `cam`, `pan`, `parked`, `keys` → `state/game.js`.
 - **14c:** `realm`, `SEED`, `setRealm`, UI-Modus (`paused`, `tool`, `task`, `talkLock`, `OVS`, `uiOpen`) und Speicherschalter (`frozen`, `diskLock`, `saving`, `traveling`, `ready`).
+- **14d (aus PR 11 verschoben):** `snapshot`, `saveGame`, `autosave`, `packStart`/`packStep`, `saveHero`, `saveFinds`, `saveFacts` → `persistence/save.js`. Banner, Ton und Sprache in `saveGame` als Port, gleiche Reihenfolge; `save.mjs`, `offline.mjs`, Golden Master Speicherformat.
 - **Risiken:** Viele Testnamen (`gold`, `hero`, `P`, `paused`, `ready` stehen in fast jedem Test). **Absicherung:** Tests im selben PR auf `G` umstellen; Codemod; Move-Nachweis.
 
 ### PR 15: Ton und Sprache
@@ -198,6 +202,15 @@ Je PR: `tick` und `draw(ctx, layer)` ins System, Zeichenaufruf in `draw()` an de
 - `README.md` „Entwicklung“ neu: Quellen in `src/`, `npm ci`, `npm run dev`, `node tools/build.mjs`, „nie `index.html` von Hand ändern“.
 - `CLAUDE.md`: Verzeichnisse, Schichten und Importtabelle, Invarianten (Spielstand, Welt-Determinismus, Fehlerschutz, CSP, Budget, `CACHE`), Build- und Testbefehle, „Golden-Master nie aktualisieren“.
 - ADR 0002: Auslieferung (a) oder (b) neu bewerten.
+- **Endstand dokumentieren:** `docs/architecture/architecture.md` beschreibt die Architektur, wie sie nach der Migration wirklich ist, nicht wie sie geplant war:
+  - Repostruktur als Baum bis auf Dateiebene in `src/`, dazu `tools/`, `tests/`, `docs/`, je Eintrag ein Satz Zweck.
+  - Schichten mit tatsächlicher Importtabelle und allen Ausnahmen aus ADR 0001 (z. B. Punkt 17, Zellautomat in `state/`).
+  - Module je Schicht: Zweck, öffentliche Exporte, Zustand, den sie besitzen.
+  - Ablauf eines Frames (`frame` → `update`/`step` → `draw`) und Start (`start`, Laden, Rettung).
+  - Spielstand: IDB-Namen, `localStorage`-Schlüssel, Formatversionen.
+  - Build und Auslieferung (esbuild → `index.html`, `sw.js`/`CACHE`), Tests und welche Invariante jeder Test schützt.
+  - Baum und Importtabelle erzeugt ein Skript (`tools/arch/doc.mjs`); die CI prüft wie bei „Bundle aktuell“, dass der Abschnitt aktuell ist.
+  - `current.md` und `target.md` bekommen oben einen Hinweis „historisch, Stand vor/während der Migration“ und verweisen auf `architecture.md`. `CLAUDE.md` und `README.md` verlinken `architecture.md` statt sie zu wiederholen.
 
 ## 5. Größter Aufwand und Unsicherheit
 

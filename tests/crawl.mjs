@@ -13,6 +13,10 @@ const srv = await serve();
 const url = 'http://127.0.0.1:' + srv.address().port + '/';
 const browser = await launch();
 const ctx = await browser.newContext({ ...phone(), serviceWorkers: 'block', bypassCSP: true });
+// „Übungsblatt drucken“ ruft window.print(). Firefox öffnet dafür ein Druckfenster, das die Seite anhält: Der Knopftest hing in der CI
+// jedes Mal direkt nach dem Tipp auf par-sheet (#109, #111, vorher 3 von 10 Läufen). Wie Teilen und Herunterladen wird nur das
+// Fenster ersetzt, der Code hinter dem Knopf (Blatt bauen) läuft weiter.
+await ctx.addInitScript(() => { window.print = () => { window.__printed = (window.__printed || 0) + 1; }; });
 const page = await ctx.newPage();
 const errs = [];
 page.on('pageerror', e => errs.push(e.message + '\n' + (e.stack || '').split('\n').slice(1, 3).join('\n')));
