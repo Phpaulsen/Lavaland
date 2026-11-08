@@ -1109,8 +1109,26 @@ function erase(wx,wy){
     }
   }
 }
+/* Zauberkasten: Malen kostet Akku je Zelle, die wirklich neu den Stoff bekommt (Entscheidung 8.11.). Gezählt wird im Pinselbereich vorher und nachher;
+   putUp klettert bis zu 8 Zellen nach oben, darum reicht das Fenster 11 Zellen hoch. Wählen und Stillhalten kosten nichts. */
+const PAINTM={lava:LAVA,fire:FIRE,water:WATER,ice:ICE,earth:EARTH,snow:SNOW}, PAINTC=.012;
+function paintCount(cx,cy,m){
+  let n=0;
+  for(let y=cy-11;y<=cy+3;y++) for(let x=cx-3;x<=cx+3;x++) if(inGrid(x,y)&&grid[y*GX+x]===m) n++;
+  return n;
+}
 function paintAt(wx,wy){
   const cx=Math.floor(wx/CELL), cy=Math.floor((wy-TOP)/CELL);
+  const pm=PAINTM[ST.tool], n0=pm===undefined?0:paintCount(cx,cy,pm);
+  paintDo(wx,wy,cx,cy);
+  if(pm!==undefined){ const d=paintCount(cx,cy,pm)-n0; if(d>0) paintPay(d*PAINTC); }
+}
+function paintPay(e){
+  if(ST.energy<=0) return;
+  ST.energy=Math.max(0,ST.energy-e);
+  if(ST.energy<=0) drain(0);
+}
+function paintDo(wx,wy,cx,cy){
   if(ST.tool==='lava'||ST.tool==='water'){
     const t=ST.tool==='lava'?LAVA:WATER;
     if(t===LAVA?lavaCount>=MAX_LAVA:waterCount>=MAX_WATER){ pulse('tool-erase'); return; }
@@ -5403,7 +5421,7 @@ function closeQuiz(){
   else{ if(!HANDT[ST.tool]) setTool(null,true); if(P.mode!=='walk'){ const air=!P.on; setMode('walk'); if(air){ P.chute=true; P.vy=Math.min(P.vy,0); } } pulse('batt'); }
 }
 function drain(dt){
-  if(P.mode!=='walk'||(ST.tool&&!HANDT[ST.tool])){
+  if(P.mode!=='walk'||(ST.tool&&!HANDT[ST.tool]&&(!PAINT[ST.tool]||ST.energy<=0))){
     ST.energy-=dt;
     if(ST.energy<=0){ ST.energy=0; battLow=false; $('batt').classList.remove('low'); renderBatt(); openQuiz(null); return; }
     /* Kurz vor leer blinkt der Akku und tickt, damit die Lernaufgabe nicht aus dem Nichts kommt. */

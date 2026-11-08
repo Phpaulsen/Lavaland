@@ -13,5 +13,5 @@
 ,
 {"pr": 15, "renames": {"speakWith": "speak"}, "params": {"speakWith": ["AP"]}, "world": {"param": "AP", "names": ["talkLock", "vcMiss"]}, "facade": {"name": "AU", "names": ["muted", "fxOff", "tapT"], "own": "audio/sound.js"}, "changed": ["speak"], "added": ["AU", "AP"]},
 {"pr": 15.1, "changed": ["deepWorldWith", "deepFarWith", "take", "SHOP", "renderLab", "openQuiz"], "added": ["PZON"], "stmtsChanged": 1},
-{"pr": 15.2, "changed": ["syncUI", "pulse"], "added": ["PAINT", "toolCard"], "stmtsChanged": 2, "stmtsAdded": 2}
+{"pr": 15.2, "changed": ["syncUI", "pulse", "paintAt", "drain"], "added": ["PAINT", "toolCard", "PAINTM", "PAINTC", "paintCount", "paintPay", "paintDo"], "stmtsChanged": 2, "stmtsAdded": 2}
 ]}
