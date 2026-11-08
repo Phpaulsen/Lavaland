@@ -698,6 +698,28 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
 
 <script>
 (() => {
+  // src/systems/index.js
+  var SIDE = [];
+  function register(name, tick2) {
+    SIDE.push({ name, tick: tick2 });
+  }
+  var SAFE = /* @__PURE__ */ new Map();
+  function safeWith(errAdd, s, dt) {
+    const n = SAFE.get(s) || 0;
+    if (n >= 3) return;
+    try {
+      s.tick(dt);
+    } catch (e) {
+      SAFE.set(s, n + 1);
+      const x = (
+        /** @type {any} */
+        e
+      );
+      errAdd(x && x.message || x, s.name + (n + 1 >= 3 ? " (abgeschaltet)" : ""));
+      console.error(e);
+    }
+  }
+
   // src/core/rng.js
   function rng(seed) {
     return function() {
@@ -17022,18 +17044,24 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         }
       }
     }
-    const SIDE = [arrowsTick, monTick, geyTick, metTick, wreckTick, flyTick, harpTick, worldTick, deepTick, winterTick, findsTick, questTick, autosave, drain, fogTick, mkTick];
-    const SAFE = /* @__PURE__ */ new Map();
-    function safe(f, dt) {
-      const n = SAFE.get(f) | 0;
-      if (n >= 3) return;
-      try {
-        f(dt);
-      } catch (e) {
-        SAFE.set(f, n + 1);
-        errAdd(e && e.message || e, f.name + (n + 1 >= 3 ? " (abgeschaltet)" : ""));
-        console.error(e);
-      }
+    register("arrowsTick", arrowsTick);
+    register("monTick", monTick);
+    register("geyTick", geyTick);
+    register("metTick", metTick);
+    register("wreckTick", wreckTick);
+    register("flyTick", flyTick);
+    register("harpTick", harpTick);
+    register("worldTick", worldTick);
+    register("deepTick", deepTick);
+    register("winterTick", winterTick);
+    register("findsTick", findsTick);
+    register("questTick", questTick);
+    register("autosave", autosave);
+    register("drain", drain);
+    register("fogTick", fogTick);
+    register("mkTick", mkTick);
+    function safe(s, dt) {
+      safeWith(errAdd, s, dt);
     }
     const GOLDZ = 50, GEMZ = 10;
     function goldSwap() {
