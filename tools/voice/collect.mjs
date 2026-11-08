@@ -27,7 +27,8 @@ for (const m of src.matchAll(/'((?:[^'\\\n]|\\.)*)'/g)) {
 
 const srv = await serve();
 const browser = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
-const ctx = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block' });
+// bypassCSP wie in den Tests: Der Testzugang __ev ist eval, die CSP der Seite erlaubt kein unsafe-eval (lief lokal 1 von 5 Mal in den Fehler).
+const ctx = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block', bypassCSP: true });
 const page = await ctx.newPage();
 await page.goto('http://127.0.0.1:' + srv.address().port + '/');
 await page.waitForFunction(() => window.__ev && window.__ev('ST.ready'), null, { timeout: 20000 });
