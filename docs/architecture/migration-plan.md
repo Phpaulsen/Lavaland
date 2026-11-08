@@ -201,6 +201,12 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 - Belohnungen an Zonen (Entscheidung 8.11.): Feuerwerk ab Zone 1, goldene Ski ab Zone 3, Drache ab Zone 5 (`ZGIFT`, `zoneGifts`). Beim Start wird nachgeholt, was zur erreichten Zone gehört, und wer etwas schon hat, behält es.
 - Fremde Länder und die Einführung von Professor Zahnrad kommen jetzt ohne die Geschichte. Golden Master unverändert.
 
+### Streich-PR 3b: Bau-Aufgaben mit Sternen weg (verhaltensändernd, nicht Teil der Migration)
+
+- Die neun Bau-Aufgaben (Haus bauen, Vulkan, Achterbahn, Schatz, Mond …) mit Sternen, ihr Knopf, das Fenster `#panel`, der Aufgaben-Chip im HUD, die Baupläne und die Schatztruhe entfallen. Malen, Bauklötze, Schienen und Bagger bleiben frei nutzbar.
+- `lavaland-stars` wird nicht mehr gelesen oder geschrieben, die Mondflagge der alten Mond-Aufgabe entfällt.
+- Golden Master: 49 Einträge gestrichen (24 × `chest`, 24 × `grow chest` für die entfernte Truhe, `speichern / leer / ls lavaland-stars`), kein Wert geändert. `golden.mjs` ruft `saveStars` nicht mehr auf.
+
 ### PR 16: Systemschnittstelle
 
 - **Bewegt:** `SIDE`, `SAFE`, `safe()` → `systems/index.js` mit `{ name, tick }` je Eintrag, gleiche Reihenfolge, `name` = heutiger Funktionsname. Die Tick-Funktionen selbst bleiben noch in `legacy.js` und werden nur registriert.

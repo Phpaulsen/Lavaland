@@ -48,7 +48,7 @@ const step = async () => {
     const all = [...document.querySelectorAll('button,[data-a],[data-go],[data-st],[data-ch],[data-shop],[data-mk],[data-pzt],[data-opt],[data-sc],[data-wear],[data-find],[data-tl]')]
       .filter(b => !b.disabled && !b.matches(skip) && b.offsetParent && b.getClientRects().length);
     // Liegt ein Fenster offen, nur darin tippen, sonst auf die Leiste.
-    const ov = [...document.querySelectorAll('.ov,#quiz,#pz,#panel')].filter(o => !o.hidden).pop();
+    const ov = [...document.querySelectorAll('.ov,#quiz,#pz')].filter(o => !o.hidden).pop();
     const pool = ov ? all.filter(b => ov.contains(b)) : all;
     if (!pool.length) return null;
     const b = pool[Math.floor(r * pool.length)];
