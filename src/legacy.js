@@ -15,6 +15,7 @@ import { BOXD, NEWDAY, FASTMS, schoolOkWith, fUnlockWith, mixPreferWith, fParked
 import { mkQWith, mkSeqWith } from './core/learn/tasks.js';
 import { g0, grid, stamp, LIFE, zS1, z4, zS2, zS3, grow0, rA, rB, rD, rH, rC, mtop, bio, bio2, bmx, bix, noCave, liqM, liqY } from './state/world.js';
 import { ST } from './state/facade.js';
+import { packRunsWith, unpackRunsWith, runsOk } from './core/world/pack.js';
 import { bx0, bx1, by0, by1, lavaCount, waterCount, fireCount, tick, sx0, winR, rx0, rx1, qx0, qx1, px0, px1, py0, py1, winC, ext, extI, react, cellAt, hotAt, lifeS, put, stepWith, scanMobileWith, steamWith } from './state/sim.js';
 import { winterColWith, carveCaveWith, carveCircleWith, carvePathWith, fillCraterWith, fillPondWith, houseBlocksWith, fillBlockWith, rawXWith, rawGWith, layoutWith, addTreeWith, addCreWith, populateWith, zoneColsWith, shapeWorldWith, blkWith, buildWith, genColWith, genWith, makeTrackWith, deepWorldWith, deepFarWith, planetDeepWith, vaultPlanWith } from './core/world/gen.js';
 import { SNX, SL0, PEAK, BACK, BEND, MH, SNB, CHX, CAVE, SNC0, SNC1, msurf, vnoise, inGrid, ellipse, PX0, PM, PMC, LANDX, PADH, BT, sm, colOf, hBio, craters, roomY, vFloor, WSX, LIFTX, SEA_T, SEA_L, SEA_B, HOUSE, FH } from './core/world/shape.js';
@@ -414,40 +415,9 @@ function grow(toX){
   genF=c1;
   while(ST.stI<ST.STR.length&&ST.STR[ST.stI].c1<genF){ build(ST.STR[ST.stI]); ST.stI++; }
 }
-/* Gespeichert wird nur der Teil der Welt, der schon erzeugt ist. Spalte für Spalte als Läufe: Zellart und wie oft sie untereinander kommt.
-   Eine Welt aus langen Erd- und Felsschichten wird so etwa zwanzigmal kleiner und ist schneller geschrieben. */
-function packRuns(f){
-  let out=new Uint8Array(1<<20), n=0;
-  for(let cx=0;cx<f;cx++){
-    let i=cx, cy=0;
-    while(cy<GY){
-      const m=grid[i]; let r=1; i+=GX; cy++;
-      while(cy<GY&&grid[i]===m){ r++; i+=GX; cy++; }
-      if(n+8>out.length){ const o=new Uint8Array(out.length*2); o.set(out); out=o; }
-      out[n++]=m;
-      while(r>=128){ out[n++]=(r&127)|128; r>>>=7; }
-      out[n++]=r;
-    }
-  }
-  return out.slice(0,n);
-}
-/* Schreibt die Läufe zurück ins Gitter. Passt die Länge nicht genau, ist der Spielstand kaputt: dann false. */
-function unpackRuns(b,f){
-  let k=0;
-  for(let cx=0;cx<f;cx++){
-    let cy=0, i=cx;
-    while(cy<GY){
-      if(k>=b.length) return false;
-      const m=b[k++]; let r=0, sh=0, c;
-      do{ if(k>=b.length) return false; c=b[k++]; r|=(c&127)<<sh; sh+=7; }while(c&128);
-      if(r<1||cy+r>GY) return false;
-      for(let e=cy+r;cy<e;cy++,i+=GX) grid[i]=m;
-    }
-  }
-  return k===b.length;
-}
+function packRuns(f){ return packRunsWith(grid,f); }
+function unpackRuns(b,f){ return unpackRunsWith(grid,b,f); }
 let cutX=0;
-function runsOk(sv){ return sv.v===5&&sv.gy===GY&&sv.f>0&&sv.f<=GX&&sv.runs instanceof Uint8Array; }
 function loadCells(sv){
   const old=sv.v<4, f0=sv.v>=3?sv.f:HOME_GX;
   let f=Math.min(f0,GX);
