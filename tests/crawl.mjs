@@ -26,6 +26,19 @@ await ev("localStorage.removeItem(ERRK); gold=5000; gems=50; for(const k in MAT)
 // Was nicht geklickt wird: Dateiauswahl, Teilen/Herunterladen, Löschen des Protokolls.
 const SKIP = '#imp,#exp,#par-del,#par-dl,#par-exp,#imp-yes';
 let last = '';
+// Wächter: Kommt der Test 60 s lang nicht weiter, gibt er Startwert, die letzten Schritte und den Zustand der Seite aus und bricht ab.
+// Sonst läuft er bis zum Job-Limit, und im Protokoll steht nichts (Firefox in CI, 7.11.).
+const hist = [];
+let lastT = Date.now();
+const mark = s => { last = s; lastT = Date.now(); hist.push(s); if (hist.length > 15) hist.shift(); };
+const seed0 = seed;
+const dog = setInterval(async () => {
+  if (Date.now() - lastT < 60000) return;
+  clearInterval(dog);
+  const alive = await Promise.race([page.evaluate(() => 1).then(() => 'antwortet (der Test wartet auf etwas)', e => 'Fehler: ' + e.message), new Promise(r => setTimeout(() => r('antwortet nicht (Endlosschleife im Spiel?)'), 5000))]);
+  console.log('FAIL Knopftest hängt seit 60 s, Startwert ' + seed0 + ', Seite ' + alive + '\n     zuletzt:\n       ' + hist.join('\n       '));
+  process.exit(1);
+}, 5000);
 const step = async () => {
   const info = await page.evaluate(([skip, r]) => {
     const all = [...document.querySelectorAll('button,[data-a],[data-go],[data-st],[data-ch],[data-shop],[data-mk],[data-pzt],[data-opt],[data-sc],[data-wear],[data-find],[data-tl]')]
@@ -40,7 +53,7 @@ const step = async () => {
     return { id: b.id || b.getAttribute('aria-label') || b.className, x: rc.left + rc.width / 2, y: rc.top + rc.height / 2 };
   }, [SKIP, rnd()]);
   if (!info) { await ev("OVS.forEach(o=>o.hidden=true); paused=false"); return; }
-  last = 'Tipp auf ' + info.id;
+  mark('Tipp auf ' + info.id + ' (' + Math.round(info.x) + ',' + Math.round(info.y) + ')');
   await page.mouse.click(info.x, info.y);
   await page.waitForTimeout(60 + rnd() * 250);
 };
@@ -50,7 +63,7 @@ try {
   // 1. Jedes Rätsel auf jeder Stufe öffnen, zufällig bedienen, Tipp holen, schließen.
   const types = await ev('PZT.map(p=>p.id)');
   for (const t of types) for (let lv = 0; lv < 10; lv++) {
-    last = 'Rätsel ' + t + ' Stufe ' + lv;
+    mark('Rätsel ' + t + ' Stufe ' + lv);
     await ev(`OVS.forEach(o=>o.hidden=true); paused=false; hero.pz['${t}']=${lv}; pzOpen({id:'crawl-${t}-${lv}',t:'${t}',zb:0})`);
     for (let i = 0; i < 14 && !errs.length; i++) {
       const ok = await page.evaluate(r => { const bs = [...document.querySelectorAll('#pz [data-a]')].filter(b => !b.disabled && b.offsetParent); if (!bs.length) return false; bs[Math.floor(r * bs.length)].click(); return true; }, rnd());
@@ -65,12 +78,13 @@ try {
   // 2. Zufällig tippen.
   for (let i = 0; i < N && !errs.length; i++) {
     if (i % 80 === 0) await ev("OVS.forEach(o=>o.hidden=true); pzClose(); paused=false; energy=MAXE; gold=Math.max(gold,500)");
-    if (i % 150 === 75) { last = 'Elternansicht'; await ev("OVS.forEach(o=>o.hidden=true); parOpen()"); await page.waitForTimeout(800); }
+    if (i % 150 === 75) { mark('Elternansicht'); await ev("OVS.forEach(o=>o.hidden=true); parOpen()"); await page.waitForTimeout(800); }
     await step();
   }
   const logged = await ev("errLoad().map(e=>e.m+' ('+e.w+')')");
   if (logged.length) errs.push('Fehlerprotokoll: ' + logged.join(' | '));
 } catch (e) { errs.push('Testschritt „' + last + '“: ' + e.message); }
+clearInterval(dog);
 await browser.close(); srv.close();
 if (errs.length) { console.log('FAIL Knopftest, zuletzt ' + last + '\n     ' + errs.join('\n     ')); process.exit(1); }
 console.log('ok   Knopftest: alle Rätselstufen und ' + N + ' Tipps ohne Fehler');
