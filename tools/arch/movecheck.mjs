@@ -119,7 +119,7 @@ export function transform(node, moves, own) {
     if (x.type === 'MemberExpression' && !x.computed) { x.object = walk(x.object, x, 'object', sh); return x; }
     if (x.type === 'MethodDefinition' || x.type === 'PropertyDefinition') { if (x.computed) x.key = walk(x.key, x, 'key', sh); x.value = walk(x.value, x, 'value', sh); return x; }
     if (x.type === 'LabeledStatement' || x.type === 'BreakStatement' || x.type === 'ContinueStatement') { if (x.body) x.body = walk(x.body, x, 'body', sh); return x; }
-    if (lit && x.type === 'Literal' && typeof x.value === 'string' && Object.hasOwn(lit, x.value)) return id(lit[x.value]);
+    if (lit && x.type === 'Literal' && typeof x.value === 'string' && Object.hasOwn(lit, x.value)) { const k = lit[x.value]; return wn && wn.has(k) && !sh.has(k) ? mem(wo.param, k) : id(k); } // Konstante, die später über einen Port kommt
     if (x.type === 'Identifier') {
       if (wn && wn.has(x.name) && !sh.has(x.name)) return mem(wo.param, x.name);
       if (fac && fac.has(x.name) && !sh.has(x.name)) return { type: 'MemberExpression', object: id(moves.facade.name), property: id(x.name), computed: false, optional: false };

@@ -1,5 +1,7 @@
 // Spielstand umziehen: Sicherungsdatei prüfen, kodieren, Datenbanken auslesen und einspielen. Bewegt aus legacy.js (PR 12), Text unverändert.
-// Was den Spielzustand braucht (bakMake, bakLoad, bakIn), bleibt bis PR 14d in legacy.js.
+// bakMake und bakLoad kamen mit PR 14f dazu (…With(TP), Port TP in legacy.js); bakIn setzt die Oberfläche (bakPick) und kommt über den Port.
+import { ST } from '../state/facade.js';
+import { realmKey } from './keys.js';
 
 export const BAK_DBS=['lavaland','lavaland-log'];
 /* Eine Sicherungsdatei kann von irgendwoher kommen. Erlaubt sind nur die bekannten Datenbanken, Tabellen, Datentypen und Schlüssel. */
@@ -93,4 +95,29 @@ export function dbLoad(name,d){
   };
   /* Ist die Datenbank hier schon neuer als in der Datei, wird sie in ihrer jetzigen Fassung geöffnet. */
   return go(d.v).catch(/** @param {any} e */ function(e){ if(e&&e.name==='VersionError') return go(0); throw e; });
+}
+/** @param {any} TP */
+export function bakMakeWith(TP){
+  const fresh=ST.ready&&!ST.traveling?TP.idbDo('readwrite',/** @param {any} st */ function(st){ return st.put(TP.snapshot(),realmKey(TP.realm)); }).catch(function(){}):Promise.resolve();
+  TP.saveFinds(); TP.saveHero();
+  return fresh.then(function(){ return Promise.all(BAK_DBS.map(dbDump)); }).then(/** @param {any} rs */ function(rs){
+    const ls=/** @type {any} */ ({}), db=/** @type {any} */ ({});
+    try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.indexOf('lavaland')===0&&k!==TP.K_ALIVE) ls[k]=localStorage.getItem(k); } }catch(_){}
+    BAK_DBS.forEach(/** @param {any} n @param {any} i */ function(n,i){ if(rs[i]) db[n]=enc(rs[i]); });
+    return {app:'lavaland',bak:1,at:new Date().toISOString(),ls:ls,db:db};
+  });
+}
+/** @param {any} TP */
+export function bakLoadWith(TP){
+  const b=TP.bakIn; TP.bakIn=null; if(!b) return;
+  ST.frozen=true;
+  const dbs=Object.keys(b.db).filter(/** @param {any} n */ function(n){ return BAK_DBS.indexOf(n)>=0; });
+  Promise.all(dbs.map(/** @param {any} n */ function(n){ return dbLoad(n,dec(b.db[n])); })).then(function(){
+    try{
+      const old=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.indexOf('lavaland')===0) old.push(k); }
+      old.forEach(/** @param {any} k */ function(k){ localStorage.removeItem(k); });
+      for(const k in (b.ls||{})) if(k.indexOf('lavaland')===0) localStorage.setItem(k,String(b.ls[k]));
+    }catch(_){}
+    location.reload();
+  },function(){ ST.frozen=false; TP.tone([170],'sawtooth'); });
 }
