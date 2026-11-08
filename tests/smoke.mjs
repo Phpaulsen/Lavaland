@@ -293,6 +293,20 @@ test('Werkstatt braucht nur Zahnräder und Meistersteine, Eisen bleibt liegen', 
   await ev("hero.dr=0; hero.mat.zr=0; hero.mat.ms=0; teleport(1500)"); await page.waitForTimeout(500);
 });
 
+test('Zonen schenken Feuerwerk, goldene Ski und Drachen', async ({ ev }) => {
+  const own = await ev('JSON.stringify(hero.own)'), zn = await ev('hero.zn');
+  await ev("hero.own={}; hero.zn=0; zoneGifts(false)");
+  if (await ev('!!(hero.own.fw||hero.own.goldski||hero.own.dragon)')) throw new Error('Geschenk ohne Zone');
+  await ev("hero.zn=1; zoneGifts(false)");
+  if (!(await ev('hero.own.fw')) || await ev('!!hero.own.goldski')) throw new Error('Zone 1: nur Feuerwerk erwartet');
+  await ev("hero.zn=4; zoneGifts(false)");
+  if (!(await ev('hero.own.goldski')) || await ev('!!hero.own.dragon')) throw new Error('Zone 4: goldene Ski ohne Drachen erwartet');
+  await ev("hero.zn=5; zoneGifts(false)");
+  if (!(await ev('hero.own.dragon')) || await ev("$('mode-dragon').classList.contains('gone')")) throw new Error('Zone 5: Drache fehlt');
+  if (await ev("!!document.getElementById('btn-story')")) throw new Error('Geschichte-Knopf noch da');
+  await ev('hero.own=' + own + '; hero.zn=' + zn + '; syncOwn()');
+});
+
 test('Altes Gold wird einmal zu Zahnrädern', async ({ ev }) => {
   await ev('OVS.forEach(o=>o.hidden=true); ST.paused=false; hero.mat.zr=0; ST.gold=120; ST.gems=11; goldSwap()');
   if (await ev('hero.mat.zr') !== 5 || await ev('ST.gold') || await ev('ST.gems')) throw new Error('Tausch falsch: ' + await ev('hero.mat.zr'));

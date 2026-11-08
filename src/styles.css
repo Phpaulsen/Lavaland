@@ -470,16 +470,10 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
 }
 
 /* Winter: Geschichte, Untertitel zum Mitlesen, breitere Auswahl-Fenster */
-.btn.tale{background:#ead9ff}
 .cards.c4{grid-template-columns:repeat(4,minmax(0,1fr))}
 .cards.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .card .mg{font-size:38px;line-height:1}
 .card.pick.gone{display:none}
-.card.story{padding:6px}
-.card.story canvas{display:block;width:100%;max-width:84px;aspect-ratio:1;border-radius:10px}
-.card.story.cur{background:var(--sun)}
-.card.story.shut{background:#e9e4d6}
-.card.story.shut canvas{opacity:.22;filter:grayscale(1)}
 #say{position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 164px);z-index:4;display:flex;justify-content:center;pointer-events:none}
 #say span{
   max-width:520px;padding:9px 14px;border-radius:16px;background:var(--paper);border:3px solid var(--ink);box-shadow:0 4px 0 var(--ink);

@@ -16,7 +16,7 @@ import { mkQWith, mkSeqWith } from './core/learn/tasks.js';
 import { g0, grid, stamp, LIFE, zS1, z4, zS2, zS3, grow0, rA, rB, rD, rH, rC, mtop, bio, bio2, bmx, bix, noCave, liqM, liqY } from './state/world.js';
 import { ST } from './state/facade.js';
 import { hero, P, parked, cam, pan, keys } from './state/game.js';
-import { ERRK, MISK, SAVEKEY, K_HERO, K_FINDS, K_STARS, K_SKILL, K_FACTS, K_SCHOOL, K_LIMIT, K_DAY, K_REALM, K_FOG, K_MARKS, K_MUTE, K_LEFTY, K_PSST, K_NEWS, K_BAK_AT, K_VOICE, K_VMISS, K_OPT, realmKey } from './persistence/keys.js';
+import { ERRK, MISK, SAVEKEY, K_HERO, K_FINDS, K_STARS, K_SKILL, K_FACTS, K_SCHOOL, K_LIMIT, K_DAY, K_REALM, K_FOG, K_MARKS, K_MUTE, K_LEFTY, K_NEWS, K_BAK_AT, K_VOICE, K_VMISS, K_OPT, realmKey } from './persistence/keys.js';
 import { idbOpen, idbDoWith } from './persistence/db.js';
 import { packRunsWith, unpackRunsWith, runsOk } from './core/world/pack.js';
 import { bx0, bx1, by0, by1, lavaCount, waterCount, fireCount, tick, sx0, winR, rx0, rx1, qx0, qx1, px0, px1, py0, py1, winC, ext, extI, react, cellAt, hotAt, lifeS, put, stepWith, scanMobileWith, steamWith } from './state/sim.js';
@@ -211,7 +211,6 @@ IC.ball='<circle cx="14.500" cy="12" r="7" fill="#fff" '+S1+' stroke-width="1.6"
 IC.man='<circle cx="12" cy="16" r="6" fill="#fff" '+S1+' stroke-width="1.5"/><circle cx="12" cy="7.500" r="4" fill="#fff" '+S1+' stroke-width="1.5"/><path d="M12 8l4.500 1" stroke="#ff8a1f" stroke-width="2.200" stroke-linecap="round"/><rect x="8.500" y="1.200" width="7" height="3" fill="'+K+'"/>';
 IC.fw='<path d="M12 12V3M12 12l6.400-6.400M12 12h9M12 12l6.400 6.400M12 12v9M12 12l-6.400 6.400M12 12H3M12 12L5.600 5.600" stroke="#e63946" stroke-width="2.200" stroke-linecap="round"/><circle cx="12" cy="12" r="2.800" fill="#ffd23f" '+S1+' stroke-width="1.2"/>';
 IC.dragon='<path d="M6 9l-4-5 7 2z" fill="#a02622" '+S1+' stroke-width="1.2"/><path d="M2 16c0-4.500 3.500-7.500 8.500-7.500l2.500-4 1.500 4c4 .5 7.500 2.500 7.500 5.500 0 2-1.500 3-3.500 3H12l-2 3.500-1.500-3.500C5 17 2 17.500 2 16z" fill="#e2452f" '+S1+' stroke-width="1.5"/><circle cx="15.500" cy="12" r="1.500" fill="'+K+'"/>';
-QI.book='<path d="M3 5c3-1.500 6-1.500 9 0v15c-3-1.500-6-1.500-9 0z" fill="#fff8e6" '+S1+' stroke-width="1.6"/><path d="M21 5c-3-1.500-6-1.500-9 0v15c3-1.500 6-1.500 9 0z" fill="#b48cf2" '+S1+' stroke-width="1.6"/>';
 AI.lift='<path d="M2 5l20-3" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M12 3.500V8" stroke="currentColor" stroke-width="2.4"/><rect x="5" y="8" width="14" height="12" rx="3" fill="currentColor"/>';
 AI.spin='<path d="M19 12a7 7 0 1 1-2.500-5.400" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M21.500 3l-1.500 6.500-5.500-2.500z" fill="currentColor"/>';
 AI.flame='<path d="M13 2c0 4 6 6 6 13a7 7 0 0 1-14 0c0-3 2-5 3-8 1 2 2 3 3 3 1-2 2-5 2-8z" fill="currentColor"/>';
@@ -1629,7 +1628,7 @@ function portalTick(dt){
 /* ---------- Held: Stufen der Verbesserungen, Bomben aus dem alten Vorrat, Aufträge und Werkstatt-Stand. ---------- */
 try{
   const o=JSON.parse(localStorage.getItem(K_HERO)||'null');
-  if(o&&o.up){ for(const k in hero.up) hero.up[k]=clamp(o.up[k]|0,0,3); hero.xp=o.xp|0; hero.lvl=Math.max(1,o.lvl|0); hero.own=o.own||{}; hero.pet=''; hero.hat=''; hero.tnt=o.tnt|0; hero.qn=o.qn|0; hero.quest=o.quest||null; hero.day=o.day||''; if(o.st&&o.st.ch) hero.st={ch:clamp(o.st.ch|0,1,8),on:!!o.st.on}; hero.eggs=o.eggs|0; hero.trail=!!o.trail; hero.ext=!!o.ext; hero.big=!!o.big; hero.dr=clamp(o.dr|0,0,3); hero.rk=clamp(o.rk|0,0,3); hero.lp=clamp(o.lp|0,0,3); hero.zn=clamp(o.zn|0,0,6); hero.mat=o.mat||{}; hero.mk=o.mk||{}; hero.pz=o.pz||{}; hero.pzn=o.pzn|0; hero.deep=!!o.deep; hero.fin=o.fin|0; }
+  if(o&&o.up){ for(const k in hero.up) hero.up[k]=clamp(o.up[k]|0,0,3); hero.xp=o.xp|0; hero.lvl=Math.max(1,o.lvl|0); hero.own=o.own||{}; hero.pet=''; hero.hat=''; hero.tnt=o.tnt|0; hero.qn=o.qn|0; hero.quest=o.quest||null; hero.day=o.day||'';  hero.eggs=o.eggs|0; hero.trail=!!o.trail; hero.ext=!!o.ext; hero.big=!!o.big; hero.dr=clamp(o.dr|0,0,3); hero.rk=clamp(o.rk|0,0,3); hero.lp=clamp(o.lp|0,0,3); hero.zn=clamp(o.zn|0,0,6); hero.mat=o.mat||{}; hero.mk=o.mk||{}; hero.pz=o.pz||{}; hero.pzn=o.pzn|0; hero.deep=!!o.deep; hero.fin=o.fin|0; }
 }catch(_){}
 let nearF=null, nearD=1e9;
 const bombs=[], pet={x:820,y:0};
@@ -2080,8 +2079,8 @@ function syncSound(){ $('sound').innerHTML=svg24(AU.muted?QI.mute:AU.fxOff?QI.ta
 const FLX=5892, HAREX=6885, YETX=7052, IGX=7128, LIFT0=5790, LIFT1=6935, PENX=5952, RIMY=Math.min(ground(VOLC-92),ground(VOLC+92));
 const balls=[], fws=[], stq=[], FLK=[];
 for(let i=0;i<70;i++) FLK.push([Math.random(),Math.random(),.6+Math.random()*1.6,22+Math.random()*30,Math.random()*TAU]);
-let stv={}, partyT=0, sayT=0, swishT=0, manT=0, pinT=-9, pinN=0, remindT=0;
-const N={hare:{x:HAREX,y:0,s:0,t:0,run:0},yeti:{x:YETX,y:0,hits:0,laugh:0,tt:2,roll:0,hick:6,grr:0,hop:0},fau:{x:CAVE[0],y:CAVE[1]+30,warm:0,hk:4,face:-1},mama:{up:0},pen:[],car:null};
+let sayT=0, swishT=0, manT=0, pinT=-9, pinN=0;
+const N={hare:{x:HAREX,y:0},yeti:{x:YETX,y:0,hits:0,laugh:0,roll:0,hick:6,hop:0},fau:{x:CAVE[0],y:CAVE[1]+30,face:-1},mama:{up:0},pen:[]};
 for(let i=0;i<6;i++) N.pen.push({hx:PENX+i*15,x:PENX+i*15,y:0,vx:0,vy:0,rot:0,vr:0,s:0,t:0});
 const LIFT=(function(){
   const raw=[[LIFT0,msurf(LIFT0)-62]];
@@ -2093,7 +2092,7 @@ const LIFT=(function(){
 function puff(x,y,n){ for(let i=0;i<n;i++) spawn(10,x+(Math.random()-.5)*16,y+(Math.random()-.5)*8,(Math.random()-.5)*170,-40-Math.random()*120,.45+Math.random()*.35,2.5+Math.random()*3); }
 function shout(x,y,s,col){ spawn(9,x,y,0,-48,1.3,19,s,col||'#fff8e6'); }
 function emo(e,x,y,sz){ ctx.font=sz+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#000'; ctx.fillText(e,x,y); }
-function flX(){ return partyT>0?6962:FLX; }
+function flX(){ return FLX; }
 
 /* Erzählen: Der Text wird vorgelesen und steht zum Mitlesen unten im Bild. Solange erzählt wird, schweigen die anderen Ansagen. */
 function say(who,text){
@@ -2314,7 +2313,7 @@ function pensTick(dt){
   for(const p of N.pen){
     if(p.s===0){
       p.x=p.hx; p.y=surfaceY(p.hx); p.rot=0;
-      if(partyT<=0&&P.mode!=='coaster'&&Math.abs(P.x-p.x)<13&&P.y>p.y-26&&P.y<p.y+34&&Math.abs(P.vx)>110) pinFly(p,P.vx*.7);
+      if(P.mode!=='coaster'&&Math.abs(P.x-p.x)<13&&P.y>p.y-26&&P.y<p.y+34&&Math.abs(P.vx)>110) pinFly(p,P.vx*.7);
     }else if(p.s===1){
       p.vy+=G*.8*dt; p.x=clamp(p.x+p.vx*dt,30,WORLD_W-30); p.y+=p.vy*dt; p.rot+=p.vr*dt;
       if((p.vy>0&&solidW(p.x,p.y+2))||p.y>TOP+GY*CELL){ p.y=surfaceY(p.x); p.s=2; p.t=1.6+Math.random()*1.5; p.rot=1.57; puff(p.x,p.y-4,4); }
@@ -2326,27 +2325,9 @@ function pensTick(dt){
   }
 }
 
-/* ---------- Die Figuren der Geschichte ---------- */
-function hareTick(dt){
-  const h=N.hare, c=hero.st.ch; h.t+=dt;
-  if(c!==2||!hero.st.on){ h.s=0; h.x=c>2?flX()+28:HAREX; h.y=surfaceY(h.x); return; }
-  const dx=P.x-h.x;
-  if(h.s===0){ if(Math.hypot(dx,P.y-h.y)<160&&!stv.busy){ h.s=1; h.run=0; say('Mümmel','Hihi! Fang mich doch!'); } }
-  else if(h.s<3){
-    if(h.x<=6012){ h.s=3; shout(h.x,h.y-34,'PUH!'); }
-    else if(dx>440){ if(h.s===1){ h.s=2; shout(h.x,h.y-34,'ÄTSCH!'); } }
-    else{ if(h.s===2&&dx<270) h.s=1; if(h.s===1){ h.run+=dt; h.x-=Math.max(150,400-20*h.run)*dt; } }
-  }
-  h.y=surfaceY(h.x);
-  if(h.s>0&&h.s<4&&!stv.busy&&P.mode!=='coaster'&&Math.abs(dx)<34&&Math.abs(P.y-h.y)<46){
-    h.s=4; stv.busy=true; confetti(h.x,h.y); shout(h.x,h.y-40,'ERWISCHT!','#ffd23f'); sfx('pop');
-    tell([['Mümmel','Hihi, erwischt! Ich wollte doch nur Fangen spielen. Hier ist die Karotte.']],function(){
-      N.car={x:h.x,y:h.y-20,t:0};
-      tell([['','Die Karotte fliegt zu Flocke. Plopp! Die Nase sitzt wieder. Flocke freut sich riesig.']],function(){
-        reward(); stGoto(3);
-      });
-    });
-  }
+/* ---------- Die Figuren am Schneeberg und am Vulkan. Die Geschichte gibt es nicht mehr (Vereinfachungsplan Schritt 3), sie stehen so da wie nach ihrem Ende. ---------- */
+function hareTick(){
+  const h=N.hare; h.x=flX()+28; h.y=surfaceY(h.x);
 }
 function yetiPups(){
   const y=N.yeti; y.roll=1.8;
@@ -2355,162 +2336,26 @@ function yetiPups(){
 }
 function yetiHit(){
   const y=N.yeti; y.laugh=.7; y.hits++; shout(y.x,y.y-88,['HIHI!','HOHO!','HAHA!'][y.hits%3]); sfx('laugh');
-  if(hero.st.ch===3&&stv.fight&&!stv.won){
-    stv.n=(stv.n||0)+1;
-    if(stv.n>=5){
-      stv.won=true; stv.fight=false; stv.busy=true; yetiPups(); setTool(null,true);
-      tell([['','Brummel kichert und kugelt sich im Schnee. Das kitzelt! Und vor lauter Lachen macht er einen Schnee-Pups.'],
-        ['Brummel','Ho, ho, ho! Jetzt habe ich gute Laune. Das Hick kommt von unten, tief aus dem Berg. Ich trau mich da nicht runter. Aber du bist mutig!']],
-        function(){ reward(); stGoto(4); });
-    }
-  }else if(y.hits%5===0) yetiPups();
+  if(y.hits%5===0) yetiPups();
 }
 function yetiTick(dt){
-  const y=N.yeti, c=hero.st.ch; y.y=surfaceY(YETX);
-  if(y.laugh>0) y.laugh-=dt; if(y.roll>0) y.roll-=dt; if(y.hop>0) y.hop-=dt; if(y.grr>0) y.grr-=dt;
-  const dist=Math.hypot(P.x-y.x,P.y-y.y);
-  if(c===3&&hero.st.on&&!stv.busy){
-    if(!stv.met){
-      if(dist<250){
-        stv.met=true; stv.busy=true;
-        tell([['Brummel','Wer stört? Ich kann nicht schlafen! Immer dieses Hick!'],['','Oh, oh. Brummel ist brummig und wirft Schneebälle. Wirf zurück! Tippe auf den Yeti.']],
-          function(){ stv.busy=false; stv.fight=true; setTool('ball',true); pulse('tool-ball'); });
-      }
-    }else if(stv.fight){
-      y.tt-=dt;
-      if(y.tt<=0&&dist<380){ y.tt=2.6; throwBall(P.x+P.vx*.5,P.y-22,[y.x-12,y.y-52]); }
-    }
-  }else if(c<3&&dist<150&&y.grr<=0){ y.grr=4; shout(y.x,y.y-88,'GRRR!'); }
-  if(c>7){
-    y.hick-=dt;
-    if(y.hick<=0){ y.hick=6+Math.random()*6; if(Math.abs(cam.x-y.x)<500){ shout(y.x,y.y-92,'HICK!'); y.hop=.35; sfx('hick'); } }
-  }
+  const y=N.yeti; y.y=surfaceY(YETX);
+  if(y.laugh>0) y.laugh-=dt; if(y.roll>0) y.roll-=dt; if(y.hop>0) y.hop-=dt;
+  y.hick-=dt;
+  if(y.hick<=0){ y.hick=6+Math.random()*6; if(Math.abs(cam.x-y.x)<500){ shout(y.x,y.y-92,'HICK!'); y.hop=.35; sfx('hick'); } }
 }
 function fauTick(dt){
-  const f=N.fau, c=hero.st.ch;
-  if(c<6){
-    f.x=CAVE[0]; f.y=TOP+colTop(Math.floor(f.x/CELL),Math.floor((CAVE[1]-14-TOP)/CELL))*CELL; f.face=P.x<f.x?-1:1;
-    if(c<5) f.warm=0;
-    if(!(c===5&&(f.warm>.6||stv.busy))){
-      f.hk-=dt;
-      if(f.hk<=0){
-        f.hk=4.5+Math.random()*4;
-        if(Math.abs(cam.x-f.x)<760&&cam.y<900){ shout(f.x,f.y-36,'HICK!'); shout(f.x,surfaceY(f.x)-24,'HICK!'); if(c>2) shake=Math.max(shake,.16); sfx('hick'); }
-      }
-    }
-  }else if(c===6&&!stv.home){
-    f.x+=(P.x-P.face*24-f.x)*Math.min(1,dt*5); f.y+=(P.y-30-f.y)*Math.min(1,dt*6); f.face=P.face; f.warm=1;
-  }else{
-    const tx=partyT>0?6990+70*Math.cos(time*1.7):VOLC+88, ty=partyT>0?msurf(6990)-120+24*Math.sin(time*3.1):surfaceY(VOLC+88);
-    f.x+=(tx-f.x)*Math.min(1,dt*3); f.y+=(ty-f.y)*Math.min(1,dt*3); f.face=partyT>0?(Math.sin(time*1.7)>0?-1:1):-1; f.warm=1;
-  }
+  const f=N.fau, tx=VOLC+88, ty=surfaceY(VOLC+88);
+  f.x+=(tx-f.x)*Math.min(1,dt*3); f.y+=(ty-f.y)*Math.min(1,dt*3); f.face=-1;
 }
 function mamaTick(dt){
-  const m=N.mama, tgt=((hero.st.ch>6||stv.home)&&P.mode!=='dragon'&&partyT<=0)?1:0;
+  const m=N.mama, tgt=P.mode!=='dragon'?1:0;
   m.up+=(tgt-m.up)*Math.min(1,dt*1.3);
   if(m.up>.9&&Math.abs(cam.x-VOLC)<700&&Math.random()<dt*.8) spawn(0,VOLC+(P.x<VOLC?-78:66),RIMY-28,(Math.random()-.5)*10,-30,1.4,5);
 }
 
-/* ---------- Die Geschichte: Das Geheimnis vom Schneeberg, sieben Kapitel ---------- */
-const STN=['','Der Schneeberg','Mümmel, der Nasendieb','Brummel ist brummig','Das Hick im Berg','Fauchi friert','Heim zum Vulkan','Das Schneefest'];
-const STX=[0,5650,5740,5740,6150,6150,0,0];
-const HINT=['','','mode-ski','','mode-tbm','tool-fire','mode-plane','mode-dragon'];
-const INTRO=[null,
-  [['','Über Nacht ist ein riesiger Schneeberg nach Lavaland gewandert. Unten steht ein kleiner Schneemann und winkt. Lauf zu ihm!']],
-  [['','Mümmel sitzt ganz oben auf dem Berg. Geh zur Lift-Station und drück die rote Taste. Oben nimmst du die Ski und fängst ihn!']],
-  [['Flocke','Hörst du das? Hick! Der ganze Berg wackelt. Frag den Yeti Brummel. Er wohnt ganz oben im Iglu.']],
-  [['','Nimm die Tunnelbohrmaschine und bohr dich in den Berg. Der Pfeil zeigt dir, wo es Hick macht.']],
-  [['','Fauchi braucht Wärme. Nimm das Feuer und male ihm ein Lagerfeuer.']],
-  [['','Fauchi hüpft auf deinen Rücken. Bring ihn nach Hause zum Vulkan. Nimm das Flugzeug oder die Rakete!']],
-  [['Mama Glut','Steig auf meinen Rücken! Wir fliegen zum Schneeberg. Ganz oben wartet eine Überraschung.']]
-];
-const RECAP=['',
-  'Über Nacht kam ein Schneeberg nach Lavaland. Dort hast du Flocke getroffen, den Schneemann ohne Nase.',
-  'Du hast den frechen Hasen Mümmel gefangen. Flocke bekam seine Karottennase zurück.',
-  'Der Yeti Brummel war brummig. Du hast ihn mit Schneebällen gekitzelt, bis er pupsen musste.',
-  'Tief im Berg machte es Hick. Dort saß kein Monster, sondern das Drachenbaby Fauchi.',
-  'Du hast Fauchi ein Feuer gemacht. Da war sein Schluckauf weg. Rülps!',
-  'Du hast Fauchi zu Mama Glut in den Vulkan gebracht. Seitdem darfst du auf ihr fliegen.',
-  'Alle haben auf dem Schneeberg gefeiert, mit Feuerwerk und goldenen Ski.'];
 function stEnter(){
-  stv={}; stq.length=0; partyT=0; N.car=null;
-  const h=N.hare; h.s=0; h.x=HAREX; h.run=0;
-  N.yeti.tt=2; N.fau.warm=hero.st.ch>5?1:0;
-  if(hero.st.ch===6){ N.fau.x=P.x; N.fau.y=P.y-30; }
-}
-function stBegin(){
-  const c=hero.st.ch; if(c>7) return;
-  hero.st.on=true; saveHero(); renderStory();
-  if(STX[c]&&Math.abs(P.x-STX[c])>1400) teleport(STX[c]);
-  stEnter(); stv.busy=true; stv.intro=true;
-  const mine=stv;
-  tell(INTRO[c],function(){ mine.busy=false; mine.intro=false; });
-  if(HINT[c]) pulse(HINT[c]);
-  if(c===5) setTool('fire',true);
-}
-function stGoto(n){ hero.st.ch=n; hero.st.on=true; saveHero(); syncOwn(); if(n<=7) stBegin(); else{ stEnter(); renderStory(); } }
-function storyTick(dt){
-  const s=hero.st, c=s.ch;
-  if(!s.on||c>7||stv.busy) return;
-  if(c===1){
-    if(Math.hypot(P.x-FLX,P.y-surfaceY(FLX))<75){
-      stv.busy=true;
-      tell([['Flocke','Hallo! Ich bin Flocke. Ha, ha, hatschi! Oh nein. Meine Karottennase ist weg!'],['Flocke','Der freche Hase Mümmel hat sie geklaut. Holst du sie mir zurück?']],
-        function(){ reward(); stGoto(2); });
-    }
-  }else if(c===2){
-    if(!stv.top&&N.hare.s>0&&P.mode==='walk'&&P.on&&P.x>6700){ stv.top=true; pulse('mode-ski'); later(2.2,function(){ if(hero.st.ch===2&&P.mode==='walk') say('','Jetzt die Ski! Tippe oben auf das Fahrzeug und nimm die Ski.'); }); }
-  }else if(c===3){
-    if(stv.fight&&ST.tool!=='ball'){ remindT-=dt; if(remindT<=0){ remindT=7; pulse('tool-ball'); } }
-  }else if(c===4){
-    const f=N.fau, hd=P.mode==='tbm'?drillHead():P.mode==='bagger'?bucket():[P.x,P.y-16];
-    if(Math.hypot(hd[0]-f.x,hd[1]-(f.y-22))<74||Math.hypot(P.x-f.x,P.y-16-(f.y-22))<74){
-      stv.busy=true; confetti(f.x,f.y);
-      tell([['','Da ist ja gar kein Monster! Da sitzt ein winziges Drachenbaby. Es ist ganz blau vor Kälte.'],['Fauchi','Hick! Ich bin Fauchi. Ich habe mich verlaufen. Hick! Mir ist so kalt. Mein Feuer ist ausgegangen.']],
-        function(){ reward(); stGoto(5); });
-    }
-  }else if(c===5){
-    const f=N.fau, n=boxCount(f.x-64,f.x+64,f.y-72,f.y+14,function(m){return m===FIRE||m===LAVA;});
-    if(n>1){ stv.warm=Math.min(1,(stv.warm||0)+dt/3.2); if(Math.random()<dt*3) spawn(8,f.x+(Math.random()-.5)*20,f.y-44,0,-30,1,13,'❤️'); }
-    else if(ST.tool!=='fire'){ remindT-=dt; if(remindT<=0){ remindT=7; pulse('tool-fire'); } }
-    f.warm=stv.warm||0;
-    if(f.warm>=1){
-      stv.busy=true; setTool(null,true); shout(f.x,f.y-60,'RÜLPS!','#ffd23f'); sfx('burp'); shake=Math.max(shake,.3);
-      for(let i=0;i<44;i++) spawn(1,f.x+f.face*14,f.y-30,f.face*(60+Math.random()*200),-120-Math.random()*320,.5+Math.random()*.6,8+Math.random()*9);
-      tell([['','Fauchi wird warm und rot. Und dann: Rülps! Eine riesige Flamme!'],['Fauchi','Hoppla, Entschuldigung! Mein Schluckauf ist weg. Aber ich will zu meiner Mama. Sie wohnt im Vulkan.']],
-        function(){ reward(); stGoto(6); });
-    }
-  }else if(c===6){
-    if(Math.abs(P.x-VOLC)<190&&P.y<RIMY+150&&P.y>RIMY-430){
-      stv.busy=true; stv.home=true; shake=.6; sfx('boom'); sfx('roar');
-      for(let i=0;i<14;i++) spawn(4,VOLC+(Math.random()-.5)*60,RIMY,(Math.random()-.5)*340,-380-Math.random()*220,2.4,4+Math.random()*3);
-      tell([['','Der Vulkan rumpelt. Da kommt Mama Glut aus dem Krater!'],['Mama Glut','Fauchi, mein Kleiner! Ich habe dich überall gesucht.'],
-        ['Mama Glut','Danke! Du bist der mutigste Mensch von ganz Lavaland. Zum Dank darfst du auf mir fliegen. Wann immer du willst!']],
-        function(){ hero.own.dragon=1; reward(); stGoto(7); });
-    }
-  }else if(c===7){
-    if(P.x>6860&&P.y<msurf(6900)+70&&P.y>msurf(6900)-400){
-      stv.busy=true; partyT=34; jingle();
-      tell([['','Überraschung! Alle sind da: Flocke, Mümmel, Brummel und die Pinguine. Mama Glut pustet ein riesiges Feuerwerk in den Himmel.'],
-        ['Flocke','Das ist das schönste Schneefest der Welt! Und für dich gibt es die goldenen Ski.'],
-        ['','Und Brummel? Hick! Oh nein. Jetzt hat der Yeti den Schluckauf.']],
-        function(){
-          hero.own.goldski=1; hero.own.fw=1; hero.st.ch=8; saveHero(); syncOwn(); renderStory(); reward(); N.yeti.hick=.4; stv={};
-          later(4,function(){ say('','Du hast die ganze Geschichte geschafft! Das Feuerwerk gehört jetzt dir. Es liegt bei den Werkzeugen.'); pulse('tool-fw'); });
-        });
-    }
-  }
-}
-function storyPoint(){
-  const s=hero.st;
-  if(!s.on||s.ch>7||(stv.busy&&!stv.intro)) return null;
-  const low=P.mode!=='coaster'&&P.x<6500&&P.y>msurf(6500)+40, lift=[LIFT0,surfaceY(LIFT0)-84];
-  if(s.ch===1) return [FLX,surfaceY(FLX)-78];
-  if(s.ch===2) return (N.hare.s===0&&low)?lift:[N.hare.x,N.hare.y-40];
-  if(s.ch===3) return low?lift:[YETX,N.yeti.y-96];
-  if(s.ch===4||s.ch===5) return [N.fau.x,N.fau.y-48];
-  if(s.ch===6) return [VOLC,RIMY-60];
-  return [7000,msurf(7000)-80];
+  stq.length=0; N.fau.x=VOLC+88; N.fau.y=surfaceY(VOLC+88);
 }
 function winterTick(dt){
   const due=[];
@@ -2519,45 +2364,14 @@ function winterTick(dt){
   if(balls.length) ballsTick(dt);
   if(fws.length) fwsTick(dt);
   if(realm) return;
-  if((cam.x>5100&&cam.x<9600)||hero.st.ch===2){ hareTick(dt); yetiTick(dt); pensTick(dt); }
+  if(cam.x>5100&&cam.x<9600){ hareTick(); yetiTick(dt); pensTick(dt); }
   fauTick(dt); mamaTick(dt);
   manT-=dt; if(manT<=0){ manT=.4; menTick(); }
-  if(N.car){ N.car.t+=dt/1.6; if(N.car.t>=1){ N.car=null; stv.nose=true; puff(flX(),surfaceY(flX())-46,10); sfx('pop'); } }
-  if(partyT>0){ partyT-=dt; if(Math.random()<dt*2.4) firework(6830+Math.random()*330,msurf(6950)-150-Math.random()*230); }
-  storyTick(dt);
 }
 function syncOwn(){
   $('mode-dragon').classList.toggle('gone',!hero.own.dragon);
   $('tool-fw').classList.toggle('gone',!hero.own.fw);
 }
-function portrait(el,k){
-  const old=ctx; ctx=el.getContext('2d');
-  ctx.save(); ctx.scale(2,2);
-  ctx.fillStyle=k===6?'#ffd9b8':k===4?'#3d5878':'#bfe6f7'; ctx.fillRect(0,0,84,84);
-  ctx.fillStyle=k===6?'#6a5f70':k===4?'#2b3c52':'#fff'; ctx.beginPath(); ctx.moveTo(0,84); ctx.lineTo(0,68); ctx.quadraticCurveTo(42,56,84,68); ctx.lineTo(84,84); ctx.closePath(); ctx.fill();
-  if(k===1) drawSnowman(42,76,1.2,false,1,INK,true);
-  else if(k===2){ emo('🐇',32,56,32); emo('🥕',62,34,22); }
-  else if(k===3) drawYeti(42,80,1,0,0);
-  else if(k===4){
-    ctx.fillStyle='#ffe066'; circle(33,46,5.5); circle(51,46,5.5); ctx.fillStyle=INK; circle(34,46,2.2); circle(52,46,2.2);
-    ctx.font='700 15px system-ui,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#fff8e6'; ctx.fillText('HICK!',42,20);
-  }
-  else if(k===5){ drawDragon(34,76,1.15,1,0,0,false); emo('🔥',68,64,20); }
-  else if(k===6) drawDragon(38,78,1.45,1,1,.5,false);
-  else{ emo('🎆',42,28,34); drawSnowman(22,80,.7,true,1,INK,false); drawDragon(58,80,.75,-1,1,.5,false); }
-  ctx.restore(); ctx=old;
-}
-function renderStory(){
-  const c=hero.st.ch, wait=c<=7&&!hero.st.on;
-  $('story-cards').innerHTML=STN.slice(1).map(function(n,i){
-    const k=i+1, cls=k<c?'won':k===c?'cur':'shut';
-    return '<button class="card story '+cls+'" data-ch="'+k+'" aria-label="Kapitel '+k+': '+(k<=c?n:'noch geheim')+'"><canvas width="168" height="168"></canvas><svg class="got" viewBox="0 0 24 24" aria-hidden="true"'+(k<c?'':' hidden')+'>'+IC.star+'</svg></button>';
-  }).join('')+(c>7?'<button class="card story pick" data-ch="0" aria-label="Geschichte noch einmal spielen">'+svg24(IC.reset)+'</button>':'');
-  const cs=$('story-cards').querySelectorAll('canvas');
-  for(let i=0;i<cs.length;i++) portrait(cs[i],i+1);
-  $('st-n').hidden=!wait; $('btn-story').classList.toggle('near',wait);
-}
-
 /* ---------- Winter malen ---------- */
 function drawSnowman(x,y,s,nose,wave,hat,sad){
   ctx.save(); ctx.translate(x,y); ctx.scale(s,s); ctx.lineCap='round';
@@ -2671,38 +2485,28 @@ function drawRoll(){
 }
 /* Alles vom Winter, das hinter dem Helden steht */
 function drawWinter(x0,x1){
-  const c=hero.st.ch, f=N.fau, m=N.mama;
+  const f=N.fau, m=N.mama;
   if(x1>VOLC-260&&x0<VOLC+260){
     if(m.up>.02){
       ctx.save(); ctx.beginPath(); ctx.rect(VOLC-240,RIMY-430,480,438); ctx.clip();
       drawDragon(VOLC-6,RIMY+52+130*(1-m.up),2.4,P.x<VOLC?-1:1,1,reduced?0:.3*Math.sin(time*2),false);
       ctx.restore();
     }
-    if(partyT<=0&&(c>6||(c===6&&stv.home))) drawDragon(f.x,f.y,.8,f.face,1,reduced?0:.4*Math.sin(time*5),false);
+    drawDragon(f.x,f.y,.8,f.face,1,reduced?0:.4*Math.sin(time*5),false);
   }
   if(x1<LIFT0-90||x0>8500) return;
   drawLift();
   drawIgloo(IGX,surfaceY(IGX));
-  const fx=flX(), nose=c>2||!!stv.nose;
-  drawSnowman(fx,surfaceY(fx),1.1,nose,(!reduced&&Math.abs(P.x-fx)<230)?Math.sin(time*9):0,INK,!nose);
-  const h=N.hare, hop=reduced?0:(h.s===1?Math.abs(Math.sin(h.t*13))*13:partyT>0?Math.abs(Math.sin(time*8))*8:0);
-  emo('🐇',h.x,h.y-11-hop,22);
-  if(c<2||(c===2&&h.s<4)) emo('🥕',h.x-11,h.y-8-hop,12);
-  const yt=N.yeti, mood=(yt.laugh>0||yt.roll>0)?2:(c<3||(c===3&&!stv.won))?0:1;
+  const fx=flX();
+  drawSnowman(fx,surfaceY(fx),1.1,true,(!reduced&&Math.abs(P.x-fx)<230)?Math.sin(time*9):0,INK,false);
+  const h=N.hare;
+  emo('🐇',h.x,h.y-11,22);
+  const yt=N.yeti, mood=(yt.laugh>0||yt.roll>0)?2:1;
   const wob=reduced?0:(yt.roll>0?-1.35+.18*Math.sin(time*22):yt.laugh>0?.1*Math.sin(time*38):0);
   drawYeti(yt.x,yt.y-(yt.hop>0?16*Math.sin(yt.hop/.35*Math.PI):0)-(yt.roll>0?18:0),P.x<yt.x?-1:1,mood,wob);
-  N.pen.forEach(function(p,i){
-    const party=partyT>0, x=party?7082+i*12:p.x, y=party?surfaceY(x)-(reduced?0:Math.abs(Math.sin(time*9+i))*10):p.y;
-    ctx.save(); ctx.translate(x,y-11); ctx.rotate(party?0:p.rot); emo('🐧',0,0,20); ctx.restore();
+  N.pen.forEach(function(p){
+    ctx.save(); ctx.translate(p.x,p.y-11); ctx.rotate(p.rot); emo('🐧',0,0,20); ctx.restore();
   });
-  if(c<5){
-    ctx.fillStyle='rgba(14,22,38,.82)'; ctx.beginPath(); ctx.ellipse(CAVE[0],CAVE[1],82,38,0,0,TAU); ctx.fill();
-    if(reduced||(time*.7)%1>.12){ ctx.fillStyle='#ffe066'; circle(f.x-6,f.y-17,3.2); circle(f.x+6,f.y-17,3.2); ctx.fillStyle=INK; circle(f.x-6+f.face,f.y-17,1.3); circle(f.x+6+f.face,f.y-17,1.3); }
-  }else if(c===5) drawDragon(f.x+(reduced?0:(1-f.warm)*1.5*Math.sin(time*40)),f.y,.8,f.face,f.warm,0,false);
-  if(N.car){
-    const t=N.car.t, tx=fx+5, ty=surfaceY(fx)-50;
-    ctx.save(); ctx.translate(N.car.x+(tx-N.car.x)*t,N.car.y+(ty-N.car.y)*t-90*Math.sin(t*Math.PI)); ctx.rotate(t*9); emo('🥕',0,0,18); ctx.restore();
-  }
 }
 /* Alles vom Winter, das vor dem Helden fliegt */
 function drawFront(){
@@ -2711,9 +2515,6 @@ function drawFront(){
     ctx.fillStyle='#fff'; for(const b of balls) circle(b.x,b.y,4.2);
   }
   for(const f of fws){ ctx.fillStyle=CONF[f.c]; rr(f.x-2,f.y-8,4,11,2); ctx.fillStyle='#ffd23f'; circle(f.x,f.y+5,2.6); }
-  const c=hero.st.ch, f=N.fau;
-  if((c===6&&!stv.home)||partyT>0) drawDragon(f.x,f.y,.8,f.face,1,reduced?0:Math.sin(time*16),false);
-  if(partyT>0&&P.mode!=='dragon') drawDragon(6905,msurf(6905)-150+(reduced?0:10*Math.sin(time*3)),2.1,1,1,reduced?0:Math.sin(time*8),false);
 }
 function drawSnowfall(){
   const amt=clamp((cam.x-5250)/500,0,1)*clamp((9100-cam.x)/500,0,1)*clamp((cam.y+1700)/400,0,1)*clamp((500-cam.y)/300,0,1);
@@ -4174,6 +3975,16 @@ function deepIntro(){
     ['Professor Zahnrad','Unter der Erde geht es jetzt viel tiefer, und der Weltraum ist riesig. Aber dafür brauchst du einen besseren Bohrer und eine stärkere Rakete.'],
     ['Professor Zahnrad','Die baue ich dir. Bring mir Zahnräder und später Meistersteine. Zahnräder bekommst du von meinen Rätselmaschinen. Die erste steht gleich rechts neben dem Aufzug.']]);
 }
+/* Was früher die Geschichte schenkte, gibt es jetzt für Zonen (Vereinfachungsplan Schritt 3): Feuerwerk, goldene Ski, Drache.
+   Wer es schon hat, behält es. Beim Start wird nachgeholt, was zur erreichten Zone gehört. */
+const ZGIFT=[[1,'fw','Das Feuerwerk','Es liegt bei den Werkzeugen.','tool-fw'],[3,'goldski','Die goldenen Ski','Nimm die Ski, dann siehst du sie.','mode-ski'],[5,'dragon','Mama Glut, der Drache','Sie wartet bei den Fahrzeugen. Jetzt kannst du auf ihr fliegen.','mode-dragon']];
+function zoneGifts(talk){
+  let got=null;
+  for(const g of ZGIFT) if(hero.zn>=g[0]&&!hero.own[g[1]]){ hero.own[g[1]]=1; got=g; }
+  if(!got) return;
+  saveHero(); syncOwn();
+  if(talk) later(3,function(){ banner('🎁',2400); say('',got[2]+' gehört jetzt dir! '+got[3]); pulse(got[4]); });
+}
 function deepTick(dt){
   mhT-=dt;
   if(mhT<=0){ mhT=.6; const lim=(genF-8)*CELL; for(const m of MACH) if(m.sf&&m.x<lim) m.y=surfaceY(m.x); }
@@ -4184,6 +3995,7 @@ function deepTick(dt){
     }else if(z>hero.zn){
       hero.zn=z; saveHero(); jingle(); confetti(P.x,P.y); banner(ZN[z].e+' ⭐',2400);
       say('','Du hast '+ZN[z].n+' erreicht! Der Aufzug zu Hause fährt jetzt bis hierher.'); dayAdd('z',ZN[z].e); campSoon();
+      zoneGifts(true);
     }
   }
   const pts=[[P.x,P.y-16]];
@@ -5035,7 +4847,6 @@ $('grid').innerHTML=
   '<button class="btn veh cool" id="btn-veh" aria-label="Fahrzeug wählen">'+svg24(IC.walk)+LOCK+'</button>'+
   '<button class="btn cool" id="btn-tool" aria-label="Werkzeug wählen" aria-pressed="false">'+svg24(QI.hand)+LOCK+'</button>'+
   '<button class="btn gold" id="tasks" aria-label="Aufgaben">'+svg24(IC.star)+'<span class="badge" id="stars" hidden>0</span></button>'+
-  '<button class="btn tale" id="btn-story" aria-label="Geschichte: Das Geheimnis vom Schneeberg">'+svg24(QI.book)+'<span class="badge" id="st-n" hidden>!</span></button>'+
   '<button class="btn" id="btn-map" aria-label="Karte: zu einem entdeckten Land reisen">'+svg24(QI.map)+'</button>'+
   '<button class="btn" id="btn-lab" aria-label="Werkstatt: Bohrer, Rakete, Lampe und Schutz bauen">'+svg24(QI.lab)+'<span class="badge" id="lab-n" hidden>!</span></button>'+
   '<button class="btn" id="btn-finds" aria-label="Funde ansehen">'+svg24(QI.gem)+'<span class="badge" id="found" hidden>0</span></button>'+
@@ -5121,20 +4932,10 @@ $('panel-x').addEventListener('click',function(){ $('panel').hidden=true; });
 $('panel').addEventListener('click',function(e){ if(e.target===$('panel')) $('panel').hidden=true; });
 tap($('chip'),function(){ if(ST.task) speak(ST.task.done?'Geschafft! Super!':(ST.task.data.stage2&&ST.task.def.say2?ST.task.def.say2:ST.task.def.say)); });
 tap($('btn-menu'),function(){ $('menu').hidden=false; });
-tap($('btn-story'),function(){ renderStory(); $('story').hidden=false; });
 tap($('btn-map'),function(){ mapPg=0; renderMap(); $('map').hidden=false; renderFog(); });
 tap($('btn-lab'),openLab);
 $('map-cards').addEventListener('click',mapClick);
 $('eggs').addEventListener('click',eggClick);
-$('story-cards').addEventListener('click',function(e){
-  const b=e.target.closest('[data-ch]'); if(!b) return;
-  const k=+b.dataset.ch, c=hero.st.ch;
-  if(k>c){ tone([170],'sawtooth'); speak('Das ist noch geheim.'); return; }
-  $('story').hidden=true;
-  if(k===0){ hero.st.ch=1; stBegin(); }
-  else if(k<c) say('',RECAP[k]);
-  else stBegin();
-});
 tap($('mis'),function(){ misTalk(false); });
 tap($('quest'),function(){ if(quest&&!quest.done){ const d=QDEF[quest.type]; speak(d.say(quest)); pulse(d.hint(quest)); } });
 /* Linkshänder: Laufen rechts, Springen und Aktion links. */
@@ -5509,7 +5310,7 @@ window.addEventListener('keydown',function(e){
   else if(!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey) keyShort(e.key.toLowerCase());
 });
 /* Tastenkürzel für Tablet-Tastatur und Laptop: dieselben Knöpfe wie oben in der Leiste. Fragezeichen zeigt die Liste. */
-const SHORT={f:'btn-veh',t:'btn-tool',k:'btn-map',e:'batt',b:'btn-story',m:'btn-menu'};
+const SHORT={f:'btn-veh',t:'btn-tool',k:'btn-map',e:'batt',m:'btn-menu'};
 function keyShort(k){
   if(k==='x'){ if(P.mode!=='walk') setMode('walk'); else if(ST.tool) setTool(null,true); return; }
   if(k==='?'||k==='h'){ banner('⌨️ F Fahrzeuge · T Werkzeug · K Karte · E Aufgabe · B Buch · M Menü · X Aussteigen',4200); return; }
@@ -6104,7 +5905,7 @@ function draw(){
 
   const mk=mark();
   if(mk) pointTo(mk[0],mk[1],'#ffd23f');
-  else{ const mp=misPoint(); if(mp) pointTo(mp[0],mp[1],'#e63946'); const qp=questPoint(); if(qp) pointTo(qp[0],qp[1],'#58b548'); const sp2=storyPoint(); if(sp2) pointTo(sp2[0],sp2[1],'#c77dff'); }
+  else{ const mp=misPoint(); if(mp) pointTo(mp[0],mp[1],'#e63946'); const qp=questPoint(); if(qp) pointTo(qp[0],qp[1],'#58b548'); }
   if(FX.sonar>0){ const so=sonarTarget(); if(so) pointTo(so[0],so[1],'#ffd23f'); }
   const gp=guidePoint(); if(gp) pointTo(gp[0],gp[1],'#ff8a1f');
   if(hero.up.compass>0&&nearF&&!nearF.got&&nearD<[0,900,2600,1e9][hero.up.compass]) pointTo(nearF.x,nearF.y,'#5fd4e6');
@@ -6641,12 +6442,10 @@ function start(){
   resize();
   const go=function(){
     ST.ready=true; LOG.start(); updateStars(); renderAlbum(); syncUI(); syncSound(); battShown=-1; renderBatt();
-    stEnter(); syncOwn(); renderStory();
-    let psst=0; try{ psst=+localStorage.getItem(K_PSST)||0; }catch(_){}
-    if(!hero.st.on){ if(psst<3) setTimeout(function(){ if(!hero.st.on&&!uiOpen()&&!ST.paused){ try{ localStorage.setItem(K_PSST,String(psst+1)); }catch(_){} say('','Psst! Über Nacht ist etwas Seltsames passiert. Tippe auf das Buch!'); pulse('btn-story'); } },2800); else pulse('btn-story'); }
-    else if(!hero.big) setTimeout(function(){ if(!uiOpen()&&!ST.paused){ hero.big=true; if(nextLand()){ hero.quest={type:'land',goal:1,p:0}; showQuest(false); } saveHero(); say('','Neu! Hinter dem Schneeberg liegen jetzt viele fremde Länder. Fahr hinten am Berg hinunter und entdecke sie!'); pulse('btn-map'); } },2800);
+    stEnter(); syncOwn(); zoneGifts(false);
+    if(!hero.big) setTimeout(function(){ if(!uiOpen()&&!ST.paused){ hero.big=true; if(nextLand()){ hero.quest={type:'land',goal:1,p:0}; showQuest(false); } saveHero(); say('','Neu! Hinter dem Schneeberg liegen jetzt viele fremde Länder. Fahr hinten am Berg hinunter und entdecke sie!'); pulse('btn-map'); } },2800);
     if(hero.quest&&hero.quest.type==='core'&&hero.dr<3) hero.quest=null;
-    if(hero.st.on&&hero.big&&!hero.deep) setTimeout(function(){ if(!uiOpen()&&!ST.paused) deepIntro(); },2800);
+    if(hero.big&&!hero.deep) setTimeout(function(){ if(!uiOpen()&&!ST.paused) deepIntro(); },2800);
     labBadge(false);
     if(!hero.quest||hero.quest.done||!QDEF[hero.quest.type]) hero.quest=newQuest();
     showQuest(false); pulse('quest');

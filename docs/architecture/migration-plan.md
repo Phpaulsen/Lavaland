@@ -195,6 +195,12 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 - Preise (Entscheidung 8.11.): Bohrer 3⚙ / 6⚙+2💠 / 9⚙+5💠, Rakete 3⚙ / 5⚙+1💠 / 8⚙+3💠, Lampe 1/2/4⚙, Schutz 2/3/4⚙ (aus 2a).
 - Bauteil-Auftrag entfällt. Golden Master unverändert.
 
+### Streich-PR 3a: Geschichte weg (verhaltensändernd, nicht Teil der Migration)
+
+- Buch, sieben Kapitel, Story-Knopf und Pfeil entfallen. Flocke, Mümmel, Brummel, Fauchi und Mama Glut stehen so da wie nach dem Ende der Geschichte. `hero.st` bleibt im Spielstand, wird nicht mehr gelesen.
+- Belohnungen an Zonen (Entscheidung 8.11.): Feuerwerk ab Zone 1, goldene Ski ab Zone 3, Drache ab Zone 5 (`ZGIFT`, `zoneGifts`). Beim Start wird nachgeholt, was zur erreichten Zone gehört, und wer etwas schon hat, behält es.
+- Fremde Länder und die Einführung von Professor Zahnrad kommen jetzt ohne die Geschichte. Golden Master unverändert.
+
 ### PR 16: Systemschnittstelle
 
 - **Bewegt:** `SIDE`, `SAFE`, `safe()` → `systems/index.js` mit `{ name, tick }` je Eintrag, gleiche Reihenfolge, `name` = heutiger Funktionsname. Die Tick-Funktionen selbst bleiben noch in `legacy.js` und werden nur registriert.
