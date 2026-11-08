@@ -44,3 +44,6 @@ Nur notiert, nicht behoben. Jeder Eintrag mit Beleg. „geprüft“ heißt: im B
 **R6. U-Boot-Sektion als Sammelbecken.** `S33` (`index.html:4698`–`5301`, 604 Zeilen, 87 Namen) enthält neben dem U-Boot auch Geysire, Meteore, Wrack, Glühwürmchen, Harfe und Monster. Der Titel sagt das nicht.
 
 **R7. App und Browser-Tab überschreiben sich gegenseitig** (bekannt seit #84, kein Fix). Beide schreiben in dieselbe IndexedDB, wenn sie gleichzeitig offen sind. Die Migration ändert daran nichts.
+
+**R8. Vorlesesätze-Sammler und eigene Skripte ohne `bypassCSP` scheitern gelegentlich an der CSP.** (geprüft, 8.11.2026)
+`tools/voice/collect.mjs` öffnet den Testbuild ohne `bypassCSP` (die Browser-Tests setzen es, z. B. `tests/smoke.mjs:348`). Der Testzugang `window.__ev` ruft `eval`, die CSP im Testbuild erlaubt kein `unsafe-eval`. Meist geht es trotzdem durch, gelegentlich bricht `waitForFunction` mit `EvalError … 'unsafe-eval' is not an allowed source` ab: 1 von 10 Starts auf dem Stand nach PR 8a, 0 von 10 nach PR 8b, zweimal an einem Tag beim Sammler. Unabhängig von den Umzügen. Folge: In der CI kann der Schritt „Vorlesetexte haben Aufnahmen“ rot werden, ohne dass sich etwas geändert hat. Behebung (eigener PR): `bypassCSP: true` im Kontext von `collect.mjs`.

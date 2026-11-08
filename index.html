@@ -2464,11 +2464,1200 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
   function vFloor(v) {
     return Math.floor((v.y + v.ry * 0.5 - TOP) / CELL);
   }
+  var WSX = 1032;
+  var LIFTX = 1152;
+  var SEA_T = 1905;
+  var SEA_L = 1936;
+  var SEA_B = 1962;
+  var HOUSE = [[0, 0], [1, 0], [3, 0], [4, 0], [0, 1], [1, 1], [3, 1], [4, 1], [0, 2], [1, 2], [2, 2], [3, 2], [4, 2], [1, 3], [2, 3], [3, 3], [2, 4]];
+  var FH = { fir: [62, 40], cactus: [34, 26], palm: [72, 30], jungle: [110, 60], giant: [250, 0], lolly: [46, 30], cane: [40, 14], shroom: [12, 12], dead: [60, 40], grave: [20, 6], fern: [30, 18], crystal: [30, 44], flower: [14, 10], bush: [16, 10], tree: [62, 40] };
+
+  // src/core/world/gen.js
+  function winterColWith(WD, cx) {
+    const x = (cx + 0.5) * CELL, mt = WD.mtop[cx], g = WD.grow0[cx], s3 = WD.SEED % 389 * 7.77;
+    for (let cy = mt; cy < g; cy++) {
+      const i = cy * GX + cx, m = WD.grid[i], d = cy - mt;
+      if (m >= 4 && m !== EARTH) continue;
+      WD.grid[i] = d < 9 ? SNOW : d > 18 && vnoise(x / 30 + s3, (TOP + cy * CELL) / 30) > 0.87 ? GEM : ROCK;
+      if (WD.LIFE.size) WD.LIFE.delete(i);
+    }
+    if (mt >= g - 1 && (x < SL0 + 60 || x > BEND - 90)) {
+      const r = WD.colTop(cx, 2);
+      for (let k = 0; k < 2; k++) if (r + k < GY - 3 && WD.grid[(r + k) * GX + cx] === EARTH) WD.grid[(r + k) * GX + cx] = SNOW;
+    }
+  }
+  function carveCaveWith(WD) {
+    ellipse(
+      CAVE[0],
+      CAVE[1],
+      74,
+      30,
+      /** @param {any} cx @param {any} cy */
+      function(cx, cy) {
+        WD.grid[cy * GX + cx] = 0;
+      }
+    );
+  }
+  function carveCircleWith(WD, x, y, r) {
+    const c0 = Math.floor((x - r) / CELL), c1 = Math.floor((x + r) / CELL), r0 = Math.floor((y - r - TOP) / CELL), r1 = Math.floor((y + r - TOP) / CELL);
+    for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) {
+      if (!inGrid(cx, cy)) continue;
+      const dx = (cx + 0.5) * CELL - x, dy = TOP + (cy + 0.5) * CELL - y;
+      if (dx * dx + dy * dy <= r * r) WD.grid[cy * GX + cx] = 0;
+    }
+  }
+  function carvePathWith(WD, pts, r) {
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1], n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 8);
+      for (let k = 0; k <= n; k++) carveCircleWith(WD, a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n, r);
+    }
+  }
+  function fillCraterWith(WD) {
+    const level = Math.min(WD.ground(VOLC - 105), WD.ground(VOLC + 105)) + 16;
+    for (let cx = Math.floor((VOLC - 100) / CELL); cx <= Math.floor((VOLC + 100) / CELL); cx++) {
+      for (let cy = WD.grow0[cx] - 1; cy >= 1; cy--) {
+        if (TOP + (cy + 0.5) * CELL < level) break;
+        if (WD.grid[cy * GX + cx] === 0) WD.setCell(cx, cy, LAVA);
+      }
+    }
+  }
+  function fillPondWith(WD) {
+    const lv = Math.floor((siteY.pond + 8 - TOP) / CELL);
+    for (let cx = Math.floor((SITE.pond - 170) / CELL); cx <= Math.floor((SITE.pond + 170) / CELL); cx++)
+      for (let cy = lv; cy < WD.grow0[cx]; cy++) if (WD.grid[cy * GX + cx] === 0) WD.setCell(cx, cy, WATER);
+  }
+  function houseBlocksWith(WD, site) {
+    const k = WD.grow0[Math.floor(SITE[site] / CELL)] >> 2, b0 = Math.round(SITE[site] / 24) - 2;
+    return HOUSE.map(
+      /** @param {any} h */
+      function(h) {
+        return [b0 + h[0], k - 1 - h[1]];
+      }
+    );
+  }
+  function fillBlockWith(WD, bx, by) {
+    for (let y = by * 4; y < by * 4 + 4; y++) for (let x = bx * 4; x < bx * 4 + 4; x++) if (inGrid(x, y) && WD.grid[y * GX + x] < 4) WD.grid[y * GX + x] = WOOD;
+  }
+  function rawXWith(WD, x) {
+    let k = WD.bix[clamp(Math.floor(x / CELL), 0, GX - 1)] - 1;
+    if (k < 0) k = 0;
+    const b = WD.BIO[k], d0 = x - b.x0, d1 = b.x1 - x;
+    let h = hBio(b, x);
+    if (WD.realm) {
+      const dl = Math.abs(x - LANDX);
+      if (dl < 420) h += (PADH - h) * sm(dl < 260 ? 1 : 1 - (dl - 260) / 160);
+      if (k === 0 && d0 < 300) return PADH + (h - PADH) * sm(d0 / 300);
+      if (k === WD.BIO.length - 1 && d1 < 300) return PADH + (h - PADH) * sm(d1 / 300);
+    }
+    if (d0 < 220) {
+      const o = k > 0 ? hBio(WD.BIO[k - 1], x) : rawH(x);
+      return o + (h - o) * sm((d0 + 220) / 440);
+    }
+    if (d1 < 220 && k < WD.BIO.length - 1) {
+      const o = hBio(WD.BIO[k + 1], x);
+      return h + (o - h) * sm((220 - d1) / 440);
+    }
+    return h;
+  }
+  function rawGWith(WD, x) {
+    return x < EXT_X || !WD.BIO.length ? rawH(x) : rawXWith(WD, x);
+  }
+  function layoutWith(WD) {
+    WD.BIO = [];
+    let r = rng(WD.SEED * 13 + 7);
+    const cnt = (
+      /** @type {Record<string, number>} */
+      {}
+    );
+    let x = B0, bag = (
+      /** @type {any[]} */
+      []
+    ), i = 0, last = 0;
+    const R = WD.rlm();
+    if (R) {
+      r = rng(WD.SEED * 13 + R.salt);
+      x = PX0;
+    }
+    const add = (
+      /** @param {any} t @param {any} w */
+      function(t, w) {
+        const b = (
+          /** @type {any} */
+          { t, x0: x, x1: x + w, i: i++, s: Math.floor(r() * 1e6), n: cnt[t] | 0 }
+        );
+        cnt[t] = b.n + 1;
+        last = t;
+        b.px = x + w * (0.24 + 0.14 * r());
+        b.qx = 24 * Math.round((x + w * (0.62 + 0.16 * r())) / 24);
+        if (t === 12) b.qx = 24 * Math.round((WORLD_W - 700) / 24);
+        b.hq = TOP + 24 * Math.round((hBio(b, b.qx, true) - TOP) / 24);
+        WD.BIO.push(b);
+        x += w;
+      }
+    );
+    const fill = (
+      /** @param {any} end */
+      function(end) {
+        while (x < end - 5600 || i < 11) {
+          if (!bag.length) {
+            for (let t2 = 1; t2 <= 11; t2++) bag.push(t2);
+            for (let k = 10; k > 0; k--) {
+              const j = Math.floor(r() * (k + 1)), q = bag[k];
+              bag[k] = bag[j];
+              bag[j] = q;
+            }
+            if (bag[10] === last) {
+              const q = bag[10];
+              bag[10] = bag[0];
+              bag[0] = q;
+            }
+          }
+          const t = bag.pop();
+          add(t, BT[t].w[0] + Math.floor(r() * BT[t].w[1]));
+        }
+      }
+    );
+    if (R) {
+      const E = PX0 + WD.RW;
+      while (x < E) {
+        const t = R.lands[i % R.lands.length];
+        let w = BT[t].w[0] + Math.floor(r() * BT[t].w[1]);
+        if (E - x - w < BT[t].w[0] * 0.6) w = E - x;
+        add(t, w);
+      }
+      return;
+    }
+    fill(WORLD_W0);
+    WD.OLD_N = i;
+    WD.OLD_END = x;
+    r = rng(WD.SEED * 29 + 11);
+    fill(WORLD_W);
+    add(12, WORLD_W - x);
+  }
+  function addTreeWith(WD, x, k, r) {
+    const f = FH[k], t = (
+      /** @type {any} */
+      { x, gy: WD.ground(x), row: WD.grow0[Math.floor(x / CELL)], h: f[0] + r() * f[1], state: 0, t: 0, s: 0.85 + r() * 0.4 }
+    );
+    if (k === "fir") t.fir = true;
+    else if (k !== "tree") t.kind = k;
+    WD.trees.push(t);
+    return t;
+  }
+  function addCreWith(WD, b, f, r, x, y) {
+    const k = f[1], w = b.x1 - b.x0, isle = b.t === 7 && k !== "swim" && x === void 0;
+    if (x === void 0) x = isle ? b.px + (r() - 0.5) * 150 : b.x0 + 280 + r() * (w - 560);
+    const c = (
+      /** @type {any} */
+      { e: f[0], k, x, hx: x, y: y === void 0 ? NaN : y, dir: r() < 0.5 ? -1 : 1, t: r() * 9, cd: 0, hop: 0, say: f[3], fl: f[4] || "", b: b.i, sz: f[5] || 22, sp: 22 + r() * 10, ph: r() * 6, next: 3 + r() * 6, gone: 0, rng: isle ? 70 : 170, ok: false }
+    );
+    if (k === "swim") {
+      c.a = b.x0 + 140;
+      c.z = b.x1 - 140;
+      c.sp = 28 + r() * 30;
+      c.y = WL + 40 + r() * 110;
+    }
+    WD.CRE.push(c);
+    return c;
+  }
+  function populateWith(WD, b) {
+    const T = BT[b.t], r = rng(b.s * 7 + b.i), w = b.x1 - b.x0, tier = Math.min(3, b.n), t0 = WD.trees.length;
+    WD.DECO.push({ k: "gate", x: b.x0 + 240, b });
+    if (T.flora) for (let x = b.x0 + 70; x < b.x1 - 70; x += T.fs * (0.55 + r() * 0.9)) {
+      if (Math.abs(x - b.x0 - 240) < 50 || Math.abs(x - b.qx) < (T.clr || 150) || Math.abs(x - b.px) < (T.clp || 0) || WD.liqM[Math.floor(x / CELL)]) continue;
+      addTreeWith(WD, x, T.flora[Math.floor(r() * T.flora.length)], r);
+    }
+    for (const f of T.fauna || []) for (let n = 0; n < f[2]; n++) {
+      const c = addCreWith(WD, b, f, r);
+      if (f[4] === "monkey" && WD.trees.length > t0) {
+        const tr = WD.trees[t0 + Math.floor(r() * (WD.trees.length - t0))];
+        c.x = c.hx = tr.x;
+        c.y = tr.gy - tr.h * 0.86;
+      }
+    }
+    for (const q of T.picks || []) for (let n = 0; n < q[2]; n++) WD.PICKS.push({ e: q[0], ty: q[1], x: b.x0 + 300 + r() * (w - 600), y: NaN, t: 0 });
+    for (let n = 0; n < 2; n++) {
+      const x = b.x0 + 320 + r() * (w - 640);
+      if (Math.abs(x - b.qx) > 250 && Math.abs(x - b.px) > 210) WD.LOOT.push({ id: b.i * 4 + n, x, y: WD.ground(x) + 56 + r() * 50, g: 20 + 10 * tier, bur: true });
+    }
+    if (!T.noCloud) for (let n = 0; n < w / 800; n++) WD.clouds.push({ x: b.x0 + r() * w, y: -190 - r() * 900, s: 0.7 + r() * 1.1 });
+    if (WD.BUILD[b.t]) WD.BUILD[b.t](b, r, tier);
+  }
+  function zoneColsWith(WD) {
+    for (let cx = 0; cx < GX; cx++) {
+      const c = WD.wc(cx);
+      WD.zS1[cx] = 630 + Math.round(3 * Math.sin(c * 0.027 + 1));
+      WD.z4[cx] = 960 + Math.round(10 * Math.sin(c * 0.013 + 2));
+      WD.zS2[cx] = 1290 + Math.round(4 * Math.sin(c * 0.022));
+      WD.zS3[cx] = 1640 + Math.round(4 * Math.sin(c * 0.019 + 4));
+    }
+  }
+  function shapeWorldWith(WD) {
+    layoutWith(WD);
+    const R = WD.rlm(), C0 = R ? WD.RC0 : EXC, C1 = R ? WD.RC1 : GX;
+    zoneColsWith(WD);
+    WD.bix.fill(0);
+    WD.bio.fill(0);
+    WD.bmx.fill(0);
+    WD.noCave.fill(0);
+    WD.liqM.fill(0);
+    WD.liqY.fill(0);
+    for (const b of WD.BIO) {
+      const c0 = Math.floor(b.x0 / CELL), c1 = Math.min(GX, Math.floor(b.x1 / CELL));
+      for (let cx = c0; cx < c1; cx++) {
+        WD.bix[cx] = b.i + 1;
+        WD.bio[cx] = b.t;
+      }
+    }
+    for (let k2 = 0; k2 < WD.BIO.length; k2++) {
+      const c0 = Math.floor(WD.BIO[k2].x0 / CELL), pt = k2 ? WD.BIO[k2 - 1].t : R ? WD.BIO[WD.BIO.length - 1].t : 0;
+      for (let d = -20; d < 20; d++) {
+        const cx = c0 + d;
+        if (cx > 0 && cx < GX) {
+          WD.bio[cx] = pt;
+          WD.bio2[cx] = WD.BIO[k2].t;
+          WD.bmx[cx] = Math.max(1, Math.round((d + 20) / 40 * 255));
+        }
+      }
+    }
+    for (let i = C0; i < (R ? C1 : GX + 2); i++) WD.g0[i] = rawGWith(WD, i * CELL);
+    for (const b of WD.BIO) {
+      if (b.t === 1 || b.t === 3) b.ly = Math.min(rawGWith(WD, b.px - 98), rawGWith(WD, b.px + 98)) + 9;
+      else if (b.t === 6) b.ly = Math.min(rawGWith(WD, b.px - 92), rawGWith(WD, b.px + 92)) + 14;
+    }
+    for (let cx = C0; cx < C1; cx++) {
+      const x = (cx + 0.5) * CELL, g = Math.ceil((rawGWith(WD, x) - TOP) / CELL - 0.5), b = WD.bix[cx] ? WD.BIO[WD.bix[cx] - 1] : null;
+      const rock = b && (b.t === 8 || b.t === 6 && Math.abs(x - b.px) < 300);
+      WD.grow0[cx] = g;
+      WD.mtop[cx] = g;
+      WD.rA[cx] = g + (rock ? 70 : 0);
+      WD.rB[cx] = Math.max(WD.rA[cx], g + 30 + Math.round(5 * Math.sin(cx * 0.05)));
+      WD.rD[cx] = 342 + Math.round(8 * Math.sin(cx * 0.021));
+      WD.rH[cx] = 552 + Math.round(10 * Math.sin(cx * 0.017 + 2));
+      WD.rC[cx] = GY - 52 + Math.round(4 * Math.sin(cx * 0.03));
+      if (!b) continue;
+      const dq = Math.abs(x - b.qx), dp = Math.abs(x - b.px), t = b.t;
+      if (t === 7) {
+        WD.noCave[cx] = 2;
+        if (x > b.x0 + 50 && x < b.x1 - 50) {
+          WD.liqM[cx] = WATER;
+          WD.liqY[cx] = WLR;
+        }
+      } else if (t === 6 && dp < 320) {
+        WD.noCave[cx] = 2;
+        if (dp < 92) {
+          WD.liqM[cx] = LAVA;
+          WD.liqY[cx] = Math.floor((b.ly - TOP) / CELL);
+        }
+      } else if ((t === 1 || t === 3) && dp < 240) {
+        WD.noCave[cx] = 1;
+        if (dp < 100) {
+          WD.liqM[cx] = WATER;
+          WD.liqY[cx] = Math.floor((b.ly - TOP) / CELL);
+        }
+      } else if (t === 10 || dq < 240) WD.noCave[cx] = 1;
+      if (t === 18 && x > b.x0 + 260 && x < b.x1 - 260 && dq >= 240) {
+        WD.noCave[cx] = 2;
+        WD.liqM[cx] = WATER;
+        WD.liqY[cx] = Math.floor((PADH + 8 - TOP) / CELL);
+      }
+      if (t === 16 && x > b.x0 + 260 && x < b.x1 - 260 && dq >= 240) {
+        WD.noCave[cx] = 2;
+        WD.liqM[cx] = ICE;
+        WD.liqY[cx] = Math.floor((PADH + 8 - TOP) / CELL);
+      }
+    }
+    WD.trees.length = 0;
+    WD.clouds.length = 0;
+    WD.CRE = [];
+    WD.PICKS = [];
+    WD.PADS = [];
+    WD.DECO = [];
+    WD.EGGS = [];
+    WD.LOOT = [];
+    WD.STR = [];
+    WD.DROPS = [];
+    WD.ORBS.length = 0;
+    if (R) {
+      const L = [WD.g0, WD.grow0, WD.mtop, WD.rA, WD.rB, WD.rD, WD.rH, WD.rC, WD.bix, WD.bio, WD.bio2, WD.bmx, WD.noCave, WD.liqM, WD.liqY];
+      for (let d = 0; d < PMC; d++) for (const a of L) {
+        a[WD.RC0 - PMC + d] = a[WD.RC1 - PMC + d];
+        a[WD.RC1 + d] = a[WD.RC0 + d];
+      }
+      WD.g0[WD.RC1 + PMC] = WD.g0[WD.RC0 + PMC];
+      for (const b of WD.BIO) populateWith(WD, b);
+      WD.DECO.push({ k: "sign", x: LANDX - 90, y: WD.ground(LANDX - 90), e: "🚀" });
+      planetDeepWith(WD, R);
+      return;
+    }
+    for (const t of WD.HOME_T) WD.trees.push(Object.assign({}, t));
+    for (const c of WD.HOME_C) WD.clouds.push(Object.assign({}, c));
+    WD.ORBS.push(MOON);
+    const r = rng(WD.SEED * 5 + 3), hb = { i: -1, x0: 0, x1: HOME_W, t: 0 };
+    for (let x = 7380; x < 8250; x += 120 + r() * 90) {
+      const cx = Math.floor(x / CELL);
+      WD.trees.push({ x, gy: TOP + WD.mtop[cx] * CELL, row: WD.mtop[cx], h: 62 + r() * 40, state: 0, t: 0, s: 0.85 + r() * 0.4, fir: true });
+    }
+    const ns = addCreWith(WD, hb, ["🦕", "swim", 1, "NESSIE!", "", 34], r, 940);
+    ns.a = 800;
+    ns.z = 1090;
+    ns.sp = 20;
+    ns.y = WD.ground(700) + 266;
+    addCreWith(WD, hb, ["🐭", "sit", 1, "HEY! LOCH ZU!", "bury", 22], r, 858, WD.ground(858) + 310);
+    WD.DECO.push({ k: "sign", x: 7240, y: msurf(7240), e: "➡️" }, { k: "sign", x: 8420, y: WD.ground(8420), e: "🌍" });
+    WD.PICKS.push({ e: "🎈", ty: "float", x: 1190, y: NaN, t: 0 }, { e: "🍄", ty: "big", x: 2130, y: NaN, t: 0 }, { e: "⭐", ty: "star", x: 3900, y: NaN, t: 0 }, { e: "🌶️", ty: "chili", x: 5300, y: NaN, t: 0 });
+    for (const b of WD.BIO) populateWith(WD, b);
+    WD.STR.sort(
+      /** @param {any} p @param {any} q */
+      function(p, q) {
+        return p.c1 - q.c1;
+      }
+    );
+    const ro = rng(WD.SEED * 3 + 1);
+    let k = 0;
+    for (let x = 13e3; x < WORLD_W - 4e3; x += 7e3 + ro() * 5e3) {
+      WD.ORBS.push({ x, y: -3800 - ro() * 1e3, r: 140 + ro() * 90, k: k % 4, i: k + 1 });
+      k++;
+    }
+    deepWorldWith(WD);
+  }
+  function blkWith(WD, bx, by, m) {
+    for (let y = by * 4; y < by * 4 + 4; y++) for (let x = bx * 4; x < bx * 4 + 4; x++) if (inGrid(x, y)) {
+      WD.grid[y * GX + x] = m;
+      if (m === WATER) WD.ext(x, y);
+    }
+  }
+  function buildWith(WD, s) {
+    const k = s.k;
+    if (k === "pyr") {
+      const gq = Math.round((s.y - TOP) / CELL), c0 = Math.floor((s.x - 156) / CELL), c1 = Math.floor((s.x + 156) / CELL);
+      for (let cx = c0; cx <= c1; cx++) {
+        const d = Math.abs((cx + 0.5) * CELL - s.x), st = Math.min(10, Math.floor((156 - d) / 14));
+        if (st < 0) continue;
+        for (let cy = gq - 2 * (st + 1); cy < gq + 14; cy++) if (inGrid(cx, cy) && WD.grid[cy * GX + cx] < 4) WD.grid[cy * GX + cx] = ROCK;
+        if (d < 38) for (let cy = gq - 7; cy < gq; cy++) WD.grid[cy * GX + cx] = 0;
+      }
+    } else if (k === "house" || k === "tower" || k === "bld" || k === "wreck") {
+      const kq = Math.round((s.y - TOP) / 24), w = k === "tower" ? 5 : k === "wreck" ? 7 : s.w, h = k === "tower" ? 8 : k === "wreck" ? 3 : s.h;
+      const b0 = k === "bld" ? s.bx : Math.round(s.x / 24) - (k === "wreck" ? 3 : 2), base = k === "tower" || k === "bld" ? ROCK : EARTH;
+      if (k !== "wreck") {
+        for (let i = 0; i < w; i++) for (let y = kq * 4; y < kq * 4 + 10; y++) for (let x = (b0 + i) * 4; x < (b0 + i) * 4 + 4; x++) if (inGrid(x, y) && WD.grid[y * GX + x] < 4) WD.grid[y * GX + x] = base;
+      }
+      for (let j = 0; j <= h; j++) for (let i = 0; i < w; i++) {
+        let m = 0;
+        if (k === "house") {
+          if (i === 0 || i === w - 1 || j === h) m = s.m;
+          if (i === 0 && j < 2) m = 0;
+        } else if (k === "tower") {
+          if (j < h && (i === 0 || i === 4)) m = ROCK;
+          if (j === 3 && i !== 1 || j === 7 && i !== 3) m = ROCK;
+          if (j === h) m = i % 2 ? 0 : ROCK;
+          if (i === 0 && j < 2) m = 0;
+        } else if (k === "bld") {
+          if (j === h) continue;
+          m = j % 2 === 1 && i > 0 && i < w - 1 && (i + j) % 2 === 0 ? 0 : WOOD;
+        } else {
+          if (j < h) m = i === 0 || i === 6 ? WOOD : WATER;
+          else m = i < 3 ? WOOD : WATER;
+        }
+        blkWith(WD, b0 + i, kq - 1 - j, m);
+      }
+      if (k === "house") for (let j = 1; j <= 2; j++) for (let i = j; i < w - j; i++) blkWith(WD, b0 + i, kq - 1 - h - j, s.m);
+    } else if (k === "geode") {
+      ellipse(
+        s.x,
+        s.y,
+        128,
+        58,
+        /** @param {any} cx @param {any} cy @param {any} wy */
+        function(cx, cy, wy) {
+          const dx = ((cx + 0.5) * CELL - s.x) / 110, dy = (wy - s.y) / 46, i = cy * GX + cx;
+          if (dx * dx + dy * dy <= 1) WD.grid[i] = 0;
+          else if (WD.grid[i] >= 4 && WD.grid[i] !== BED) WD.grid[i] = GEM;
+        }
+      );
+    } else if (k === "isle") {
+      ellipse(
+        s.x,
+        s.y,
+        s.rx,
+        14,
+        /** @param {any} cx @param {any} cy */
+        function(cx, cy) {
+          if (WD.grid[cy * GX + cx] < 4) WD.grid[cy * GX + cx] = SNOW;
+        }
+      );
+    } else if (k === "pillar") {
+      const c0 = Math.floor((s.x - 12) / CELL);
+      for (let cx = c0; cx < c0 + 4; cx++) for (let cy = Math.floor((s.y - TOP) / CELL); cy < WD.grow0[cx] + 2; cy++) if (inGrid(cx, cy)) WD.grid[cy * GX + cx] = ROCK;
+    } else if (k === "room" || k === "lake") {
+      const lk = k === "lake", fr = Math.floor((s.y + s.ry * 0.5 - TOP) / CELL), pad = lk ? 12 : 0;
+      ellipse(
+        s.x,
+        s.y,
+        s.rx + pad,
+        s.ry + pad,
+        /** @param {any} cx @param {any} cy @param {any} wy */
+        function(cx, cy, wy) {
+          const i = cy * GX + cx, m = WD.grid[i];
+          if (m === BED || m === SHELL || m === CORE) return;
+          const dx = ((cx + 0.5) * CELL - s.x) / s.rx, dy = (wy - s.y) / s.ry, inn = dx * dx + dy * dy <= 1;
+          if (!lk) {
+            if (cy < fr) {
+              WD.grid[i] = 0;
+              WD.lifeS(i, 0);
+            } else if (m < 4) WD.grid[i] = ROCK;
+          } else if (inn) {
+            WD.grid[i] = wy > s.y + s.ry * 0.15 ? s.m : 0;
+            WD.lifeS(i, 0);
+          } else if (m < 4 && wy > s.y - 6) WD.grid[i] = ROCK;
+        }
+      );
+      if (s.hw) {
+        const c0 = Math.floor((s.x - s.rx - s.hw) / CELL), c1 = Math.floor((s.x - s.rx + 12) / CELL);
+        for (let cx = c0; cx <= c1; cx++) for (let cy = fr - 8; cy < fr; cy++) if (inGrid(cx, cy)) {
+          const m = WD.grid[cy * GX + cx];
+          if (m !== BED && m !== SHELL && m !== CORE) WD.grid[cy * GX + cx] = 0;
+        }
+      }
+    } else if (k === "vault") {
+      const v = s.v, fr = vFloor(v);
+      ellipse(
+        v.x,
+        v.y,
+        v.rx + 14,
+        v.ry + 14,
+        /** @param {any} cx @param {any} cy @param {any} wy */
+        function(cx, cy, wy) {
+          const i = cy * GX + cx, dx = ((cx + 0.5) * CELL - v.x) / v.rx, dy = (wy - v.y) / v.ry;
+          if (dx * dx + dy * dy <= 1 && cy < fr) {
+            WD.grid[i] = 0;
+            WD.lifeS(i, 0);
+          } else WD.grid[i] = BED;
+        }
+      );
+      for (let cx = Math.floor((v.x - v.rx - 64) / CELL); cx < Math.floor((v.x - v.rx - 16) / CELL); cx++) for (let cy = fr - 9; cy < fr; cy++) if (inGrid(cx, cy)) {
+        const m = WD.grid[cy * GX + cx];
+        if (m !== BED && m !== SHELL && m !== CORE) {
+          WD.grid[cy * GX + cx] = 0;
+          WD.lifeS(cy * GX + cx, 0);
+        }
+      }
+    } else if (k === "rb") {
+      const raw = [];
+      for (let n = 0; n <= 24; n++) {
+        const t = n / 24;
+        raw.push([s.x + (s.x2 - s.x) * t, s.y + (s.y2 - s.y) * t * t - 70 * Math.sin(Math.PI * t) * (1 - t)]);
+      }
+      const T = makeTrackWith(WD, raw, false);
+      if (T) {
+        T.rb = true;
+        WD.tracks.push(T);
+      }
+    }
+  }
+  function genColWith(WD, cx, from) {
+    if (WD.realm && (cx < WD.RC0 - PMC || cx >= WD.RC1 + PMC)) {
+      for (let cy = 0; cy < GY; cy++) WD.grid[cy * GX + cx] = BED;
+      return;
+    }
+    const x = (WD.wc(cx) + 0.5) * CELL, g = WD.grow0[cx], cA = WD.rA[cx], cB = WD.rB[cx], cD = WD.rD[cx], cH = WD.rH[cx], cC = WD.rC[cx];
+    const a1 = WD.zS1[cx], a2 = WD.z4[cx], a3 = WD.zS2[cx], a4 = WD.zS3[cx], edge = cx > 0 && cx < GX - 1;
+    const ns = WD.realm ? WD.SEED * 31 + WD.RLM[WD.realm].salt : WD.SEED, s1 = ns % 977 * 3.17, s2 = ns % 613 * 5.31, s3 = ns % 389 * 7.77;
+    let safe, pond, gb, rich = false;
+    if (cx < HOME_GX && !WD.realm) {
+      safe = !(x < 1300 || x > 2400 && x < 3640 || Math.abs(x - SITE.chest - 40) < 150);
+      pond = Math.abs(x - SITE.pond) < 240;
+      gb = Math.ceil((baseG(x) - TOP) / CELL - 0.5);
+    } else {
+      safe = WD.noCave[cx] < 2;
+      pond = WD.noCave[cx] === 1;
+      gb = g;
+      rich = WD.bix[cx] > 0 && WD.BIO[WD.bix[cx] - 1].t === 8;
+    }
+    if (!from) for (let cy = 0; cy < g; cy++) WD.grid[cy * GX + cx] = 0;
+    const pil = vnoise(x / 240 + s1, 9.5), seaT = SEA_T + Math.round(14 * vnoise(x / 170 + s2, 3.3)), bch = Math.min(1, Math.max(0, (0.6 - pil) / 0.07)), seaB = Math.round(SEA_L - 5 + (SEA_B + 10 * vnoise(x / 130 + s3, 5.1) - SEA_L + 5) * bch * bch);
+    for (let cy = Math.max(g, from | 0); cy < GY; cy++) {
+      const wy = TOP + cy * CELL;
+      let m;
+      if (cy < a1) {
+        m = cy >= cH ? HOT : cy >= cD ? DEEP : cy < cA || cy >= cB ? ROCK : EARTH;
+        if (edge) {
+          const d = (cy - g) * CELL;
+          if (d > 70 && cy < a1 - 6 && ((cy - gb) * CELL > 420 || safe && !(pond && d < 200))) {
+            if (Math.abs(vnoise(x / 200 + s1, wy / 120) - 0.5) < 0.055 * Math.min(1, (d - 70) / 90)) m = 0;
+            else if (d > 900 && vnoise(x / 380 + s2, wy / 250) > 0.76) m = 0;
+          }
+          if (m && d > 260 && vnoise(x / 30 + s3, wy / 30) > 0.86) m = cy >= cD ? GEM : GOLD;
+          else if (m && rich && d > 18 && vnoise(x / 26 + s3, wy / 26) > 0.8) m = GEM;
+        }
+      } else if (cy >= cC) m = CORE;
+      else if (cy < a1 + SH || cy >= a3 && cy < a3 + SH || cy >= a4 && cy < a4 + SH) m = SHELL;
+      else {
+        const z = cy < a2 ? 1 : cy < a3 ? 2 : cy < a4 ? 3 : 4;
+        m = ROCK;
+        if (edge) {
+          const lo = z === 1 ? a1 + SH : z === 2 ? a2 - 60 : z === 3 ? a3 + SH : a4 + SH, hi = z === 1 ? a2 + 60 : z === 2 ? a3 : z === 3 ? a4 : cC;
+          if (cy > lo + 4 && cy < hi - 5) {
+            const n1 = Math.abs(vnoise(x / 200 + s1, wy / 120) - 0.5), n2 = vnoise(x / 380 + s2, wy / 250);
+            if (z === 1) {
+              if (n2 > 0.6 || n1 < 0.04) m = 0;
+              else if (n2 > 0.555) m = EARTH;
+            } else if (z === 2) {
+              if (n1 < 0.065 || n2 > 0.8) m = 0;
+              else if (vnoise(x / 110 + s2, wy / 36) > 0.7) m = EARTH;
+            } else if (z === 3) {
+              if (n2 > 0.68 || n1 < 0.035) m = 0;
+              else if (n2 > 0.63) m = ICE;
+            } else if (cy >= seaT - 3) {
+              if (cy >= seaT && cy < seaB && pil < 0.6) m = cy >= SEA_L ? LAVA : 0;
+            } else if (n2 > 0.7 || n1 < 0.045) m = 0;
+          }
+          if (m === ROCK && vnoise(x / 30 + s3, wy / 30) > (z === 3 ? 0.8 : 0.86)) m = z === 4 ? GOLD : GEM;
+        }
+      }
+      WD.grid[cy * GX + cx] = m;
+    }
+    if (!from && WD.liqM[cx]) for (let cy = Math.max(1, WD.liqY[cx]); cy < g; cy++) WD.grid[cy * GX + cx] = WD.liqM[cx] === ICE && cy > WD.liqY[cx] + 2 ? WATER : WD.liqM[cx];
+    if (cx === 0 || cx === GX - 1) for (let cy = 0; cy < GY; cy++) WD.grid[cy * GX + cx] = BED;
+    for (let cy = GY - 3; cy < GY; cy++) WD.grid[cy * GX + cx] = BED;
+    if (!from && !WD.realm && cx >= SNC0 && cx <= SNC1) winterColWith(WD, cx);
+  }
+  function genWith(WD) {
+    WD.grid.fill(0);
+    WD.LIFE.clear();
+    WD.stamp.fill(0);
+    for (let cx = 0; cx < HOME_END; cx++) genColWith(WD, cx);
+    WD.genF = HOME_END;
+    WD.stI = 0;
+    const gc = WD.ground(700);
+    carvePathWith(WD, [[470, WD.ground(470) - 4], [560, gc + 70], [680, gc + 150], [790, gc + 212]], 26);
+    ellipse(
+      940,
+      gc + 235,
+      190,
+      52,
+      /** @param {any} cx @param {any} cy */
+      function(cx, cy) {
+        WD.grid[cy * GX + cx] = 0;
+      }
+    );
+    ellipse(
+      940,
+      gc + 235,
+      190,
+      52,
+      /** @param {any} cx @param {any} cy @param {any} wy */
+      function(cx, cy, wy) {
+        if (wy > gc + 247) WD.grid[cy * GX + cx] = WATER;
+      }
+    );
+    const gl = WD.ground(3250);
+    carvePathWith(WD, [[3150, WD.ground(3150) - 4], [3230, gl + 75], [3300, gl + 140]], 26);
+    ellipse(
+      3400,
+      gl + 165,
+      130,
+      44,
+      /** @param {any} cx @param {any} cy */
+      function(cx, cy) {
+        WD.grid[cy * GX + cx] = 0;
+      }
+    );
+    ellipse(
+      3400,
+      gl + 165,
+      130,
+      44,
+      /** @param {any} cx @param {any} cy @param {any} wy */
+      function(cx, cy, wy) {
+        if (wy > gl + 180) WD.grid[cy * GX + cx] = LAVA;
+      }
+    );
+    const mc = baseG(VOLC) + 150, vc = Math.floor(VOLC / CELL), mr = Math.floor((mc - TOP) / CELL);
+    ellipse(
+      VOLC,
+      mc,
+      110,
+      38,
+      /** @param {any} cx @param {any} cy */
+      function(cx, cy) {
+        WD.grid[cy * GX + cx] = LAVA;
+      }
+    );
+    for (let cx = vc - 1; cx <= vc + 1; cx++) for (let cy = WD.grow0[cx]; cy <= mr; cy++) WD.grid[cy * GX + cx] = LAVA;
+    carveCaveWith(WD);
+    while (WD.stI < WD.STR.length && WD.STR[WD.stI].c1 < WD.genF) {
+      buildWith(WD, WD.STR[WD.stI]);
+      WD.stI++;
+    }
+    WD.scanMobile();
+    fillCraterWith(WD);
+    fillPondWith(WD);
+    houseBlocksWith(WD, "smash").forEach(
+      /** @param {any} b */
+      function(b) {
+        fillBlockWith(WD, b[0], b[1]);
+      }
+    );
+  }
+  function makeTrackWith(WD, raw, user) {
+    if (!raw || raw.length < 2) return null;
+    let pts = raw.map(
+      /** @param {any} p */
+      function(p) {
+        return [clamp(p[0], 30, WORLD_W - 30), clamp(p[1], WD.skyLim() + 120, TOP + (GY - 8) * CELL)];
+      }
+    );
+    for (let k = 0; k < 2; k++) {
+      const o = [pts[0]];
+      for (let i = 0; i < pts.length - 1; i++) {
+        const a = pts[i], b = pts[i + 1];
+        o.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25], [a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]);
+      }
+      o.push(pts[pts.length - 1]);
+      pts = o;
+    }
+    const R = [[pts[0][0], pts[0][1]]];
+    let acc = 0;
+    for (let i = 1; i < pts.length; i++) {
+      let ax = pts[i - 1][0], ay = pts[i - 1][1];
+      const bx = pts[i][0], by = pts[i][1];
+      let seg = Math.hypot(bx - ax, by - ay);
+      while (seg > 0 && acc + seg >= 8) {
+        const t = (8 - acc) / seg;
+        ax += (bx - ax) * t;
+        ay += (by - ay) * t;
+        R.push([ax, ay]);
+        seg = Math.hypot(bx - ax, by - ay);
+        acc = 0;
+      }
+      acc += seg;
+    }
+    if (R.length < 16) return null;
+    let minX = 1e9, maxX = -1e9;
+    for (const p of R) {
+      if (p[0] < minX) minX = p[0];
+      if (p[0] > maxX) maxX = p[0];
+    }
+    return {
+      pts: R,
+      len: (R.length - 1) * 8,
+      minX,
+      maxX,
+      user: !!user,
+      dir: R[R.length - 1][0] >= R[0][0] ? 1 : -1,
+      raw: raw.map(
+        /** @param {any} p */
+        function(p) {
+          return [Math.round(p[0]), Math.round(p[1])];
+        }
+      )
+    };
+  }
+  function deepWorldWith(WD) {
+    WD.MATS = [];
+    WD.MACH = [];
+    WD.ZDEC = [];
+    const r = rng(WD.SEED * 17 + 5), WW = WORLD_W0, hb = { i: -1, x0: 0, x1: WORLD_W, t: 0 };
+    let mi = 0, di = 0, ti = 0;
+    const mat = (
+      /** @param {any} k @param {any} x @param {any} y */
+      function(k, x, y) {
+        WD.MATS.push({ id: mi++, k, x, y });
+      }
+    );
+    const yr = (
+      /** @param {any} a @param {any} b */
+      function(a, b) {
+        return TOP + CELL * (a + r() * (b - a));
+      }
+    );
+    const xr = (
+      /** @param {any} near */
+      function(near) {
+        return near ? 170 + r() * 8500 : 9e3 + r() * (WW - 9900);
+      }
+    );
+    const types = ["muster", "spiegel", "robo", "waage", "echo", "rohre", "sudoku"];
+    for (let k = 6; k > 0; k--) {
+      const j = Math.floor(r() * (k + 1)), q = types[k];
+      types[k] = types[j];
+      types[j] = q;
+    }
+    const nt = function() {
+      return types[ti++ % 7];
+    };
+    const room = (
+      /** @param {any} x @param {any} y @param {any} rx @param {any} ry @param {any} hw */
+      function(x, y, rx, ry, hw) {
+        const s = { k: "room", x, y, rx, ry, hw: hw || 0, nw: 1, c1: colOf(x + rx + 14) };
+        WD.STR.push(s);
+        return roomY(s);
+      }
+    );
+    const dm = (
+      /** @param {any} x @param {any} row @param {any} zb @param {any} hw */
+      function(x, row, zb, hw) {
+        const y = room(x, TOP + row * CELL, 92, 44, hw);
+        WD.MACH.push({ id: "d" + di++, t: nt(), x, y, zb });
+      }
+    );
+    const far = (
+      /** @param {any} x */
+      function(x) {
+        return Math.abs(x - LIFTX) > 560;
+      }
+    );
+    const ZA = [660, 978, 1322, 1672], ZB = [944, 1272, 1622, 1880], ZBN = [1, 1, 2, 3];
+    for (let n = 0; n < 36; n++) mat("fe", xr(n < 24), yr(368, 616));
+    for (let n = 0; n < 18; n++) mat("pi", xr(n < 11), yr(ZA[0] + 4, ZB[0] - 4));
+    for (let n = 0; n < 18; n++) mat("kn", xr(n < 11), yr(ZA[1] + 4, ZB[1] - 4));
+    for (let n = 0; n < 18; n++) mat("kr", xr(n < 11), yr(ZA[2] + 2, ZB[2] - 2));
+    for (let n = 0; n < 12; n++) mat("fp", xr(n < 8), n % 2 ? yr(SEA_L + 3, SEA_B - 6) : yr(ZA[3] + 4, ZB[3]));
+    for (let n = 0; n < 8; n++) {
+      r();
+      WD.MATS.push({ id: mi++, k: "mo", x: -1e5, y: -1e5, off: 1 });
+    }
+    WD.MACH.push({ id: "h0", t: "muster", x: 1330, y: NaN, sf: 1, zb: 0 }, { id: "h1", t: "robo", x: 4280, y: NaN, sf: 1, zb: 0 }, { id: "h2", t: "spiegel", x: 8590, y: NaN, sf: 1, zb: 0 }, { id: "n0", t: "stern", x: 7010, y: NaN, sf: 1, zb: 0 });
+    let ti2 = 0;
+    for (const b of WD.BIO) if (b.t !== 12) WD.MACH.push({ id: "b" + b.i, t: b.i < WD.OLD_N ? nt() : types[ti2++ % 7], x: b.t === 7 ? b.px - 12 : b.t === 10 ? b.x0 + 330 : b.qx + 150, y: NaN, sf: 1, zb: b.i < 4 ? 0 : 1 });
+    for (let k = 1; k <= 6; k++) WD.ZN[k].y = room(LIFTX, TOP + WD.ZN[k].row * CELL, 124, 48, 0);
+    dm(LIFTX + 300, WD.ZN[1].row, 0, 90);
+    dm(LIFTX + 300, WD.ZN[2].row, 1, 90);
+    for (let z = 0; z < 4; z++) {
+      const a = ZA[z], b = ZB[z];
+      dm(LIFTX + 300, WD.ZN[z + 3].row, ZBN[z], 90);
+      dm(2400 + r() * 5600, a + 24 + r() * (b - a - 48), ZBN[z], 0);
+      dm(9400 + r() * (WW - 10600), a + 24 + r() * (b - a - 48), ZBN[z], 0);
+    }
+    for (let n = 0; n < 16; n++) {
+      const x = xr(n < 9), yy = yr(ZA[0] + 12, ZB[0] - 12), rx = 54 + r() * 30, h = 34 + r() * 40;
+      if (!far(x)) continue;
+      const y = room(x, yy, rx, 34, 0);
+      WD.PADS.push({ k: "shroom", x, y: y - h, w: 26 + r() * 8, h, pow: 560 + h * 2, c: n, bt: 0 });
+      if (n % 3 === 0) addCreWith(WD, hb, ["🐛", "sit", 1, "GLÜH!", "sparkle", 18], r, x + 40, y);
+    }
+    for (let n = 0; n < 22; n++) WD.ZDEC.push({ k: "bone", x: xr(n < 12), y: yr(ZA[1] + 6, ZB[1] - 6), s: 0.8 + r() * 0.9, f: r() < 0.5 ? -1 : 1, v: n % 3 });
+    for (let n = 0; n < 10; n++) {
+      const x = xr(n < 6), yy = yr(ZA[1] + 20, ZB[1] - 20), rx = 120 + r() * 50;
+      if (!far(x)) continue;
+      const y = room(x, yy, rx, 46, 0);
+      addCreWith(WD, hb, n % 2 ? ["🦕", "walk", 1, "MÖÖÖH!", "bront", 40] : ["🦖", "sit", 1, "ROAR!", "", 28], r, x, y).rng = 60;
+    }
+    const lake = (
+      /** @param {any} m @param {any} a @param {any} b @param {any} n */
+      function(m, a, b, n) {
+        for (let i = 0; i < n; i++) {
+          const x = xr(i < n * 0.45), rx = 64 + r() * 70, y = yr(a, b), ry = 26 + r() * 14;
+          if (far(x)) WD.STR.push({ k: "lake", x, y, rx, ry, m, nw: 1, c1: colOf(x + rx + 26) });
+        }
+      }
+    );
+    lake(WATER, ZA[1] + 16, ZB[1] - 16, 22);
+    lake(WATER, ZA[2] + 16, ZB[2] - 16, 36);
+    lake(LAVA, ZA[3] + 16, ZB[3] - 30, 26);
+    for (let n = 0; n < 16; n++) {
+      const x = xr(n < 9), yy = yr(ZA[2] + 16, ZB[2] - 16), rx = 70 + r() * 50, sc = 0.8 + r() * 0.8, cc = Math.floor(r() * 3);
+      if (!far(x)) continue;
+      const y = room(x, yy, rx, 40, 0);
+      WD.ZDEC.push({ k: "cry", x, y, s: sc, c: cc });
+      if (n % 4 === 1) addCreWith(WD, hb, ["🐧", "sit", 1, "BRRR!", "", 22], r, x + 34, y);
+    }
+    for (let n = 0; n < 8; n++) {
+      const x = xr(n < 5), yy = yr(ZA[3] + 16, ZB[3] - 30);
+      if (!far(x)) continue;
+      addCreWith(WD, hb, ["🐲", "sit", 1, "FAUCH!", "", 26], r, x, room(x, yy, 80, 40, 0));
+    }
+    const stn = { x: 2400, y: -9100, r: 84, z: "stn" }, ice = { x: 1900, y: -16e3, r: 420, z: "ice" }, jun = { x: 6100, y: -19200, r: 330, z: "jun" }, gate = { x: 3900, y: -28300, r: 470, z: "gate" }, ast = [];
+    for (let n = 0; n < 34; n++) {
+      const big = n < 12;
+      let o = null;
+      for (let g = 0; g < 10 && !o; g++) {
+        const q = { x: 260 + r() * 8800, y: -6500 - r() * 4600, r: big ? 46 + r() * 22 : 22 + r() * 20, z: "ast", s: Math.floor(r() * 1e6) };
+        let ok = Math.hypot(q.x - stn.x, q.y - stn.y) > 280;
+        for (const p of ast) if (Math.hypot(p.x - q.x, p.y - q.y) < p.r + q.r + 70) ok = false;
+        if (ok) o = q;
+      }
+      if (!o) continue;
+      ast.push(o);
+      WD.ORBS.push(o);
+      if (big) mat("st", o.x, o.y - o.r - 12);
+    }
+    WD.ORBS.push(stn, ice, jun, gate);
+    const top = (
+      /** @param {any} o @param {any} dx */
+      function(o, dx) {
+        return o.y - Math.sqrt(o.r * o.r - dx * dx);
+      }
+    );
+    for (let n = 0; n < 12; n++) {
+      r();
+      WD.MATS.push({ id: mi++, k: "ei", x: -1e5, y: -1e5, off: 1 });
+    }
+    WD.MACH.push({ id: "s0", t: nt(), x: stn.x, y: top(stn, 0), zb: 1 }, { id: "s1", t: nt(), x: ice.x + 382, y: top(ice, 382), zb: 2, gone: 1 }, { id: "s2", t: nt(), x: jun.x - 30, y: top(jun, -30), zb: 2, gone: 1 }, { id: "s3", t: nt(), x: gate.x + 170, y: top(gate, 170), zb: 3 });
+    WD.MACH = WD.MACH.filter(
+      /** @param {any} m */
+      function(m) {
+        return !m.gone;
+      }
+    );
+    for (let k = 0; k < 5; k++) r();
+    for (let k = 0; k < 5; k++) r();
+    addCreWith(WD, hb, ["👽", "sit", 1, "WILLKOMMEN!", "sparkle", 26], r, gate.x - 150, top(gate, -150));
+    addCreWith(WD, hb, ["👾", "sit", 1, "PIEP PIEP!", "sparkle", 24], r, gate.x - 210, top(gate, -210));
+    WD.SPACE = { stn, ice, jun, gate };
+    deepFarWith(WD, hb);
+    vaultPlanWith(WD, 7, 2, 9500, WORLD_W - 11e3, 4);
+    WD.STR.sort(
+      /** @param {any} p @param {any} q */
+      function(p, q) {
+        return p.c1 - q.c1;
+      }
+    );
+  }
+  function deepFarWith(WD, hb) {
+    const r = rng(WD.SEED * 31 + 17), X0 = WORLD_W0 + 300, XW = WORLD_W - X0 - 900;
+    let mi = WD.MATS.length;
+    const mat = (
+      /** @param {any} k @param {any} x @param {any} y */
+      function(k, x, y) {
+        WD.MATS.push({ id: mi++, k, x, y });
+      }
+    );
+    const yr = (
+      /** @param {any} a @param {any} b */
+      function(a, b) {
+        return TOP + CELL * (a + r() * (b - a));
+      }
+    );
+    const xr = function() {
+      return X0 + r() * XW;
+    };
+    const types = ["muster", "spiegel", "robo", "waage", "echo", "rohre", "sudoku"];
+    let di = 100, ti = Math.floor(r() * 7);
+    const room = (
+      /** @param {any} x @param {any} y @param {any} rx @param {any} ry */
+      function(x, y, rx, ry) {
+        const s = { k: "room", x, y, rx, ry, hw: 0, nw: 1, c1: colOf(x + rx + 14) };
+        WD.STR.push(s);
+        return roomY(s);
+      }
+    );
+    const ZA = [660, 978, 1322, 1672], ZB = [944, 1272, 1622, 1880], ZBN = [1, 1, 2, 3];
+    for (let n = 0; n < 12; n++) mat("fe", xr(), yr(368, 616));
+    for (let n = 0; n < 7; n++) mat("pi", xr(), yr(ZA[0] + 4, ZB[0] - 4));
+    for (let n = 0; n < 7; n++) mat("kn", xr(), yr(ZA[1] + 4, ZB[1] - 4));
+    for (let n = 0; n < 7; n++) mat("kr", xr(), yr(ZA[2] + 2, ZB[2] - 2));
+    for (let n = 0; n < 4; n++) mat("fp", xr(), n % 2 ? yr(SEA_L + 3, SEA_B - 6) : yr(ZA[3] + 4, ZB[3]));
+    for (let z = 0; z < 4; z++) {
+      const a = ZA[z], b = ZB[z], x = xr();
+      WD.MACH.push({ id: "d" + di++, t: types[ti++ % 7], x, y: room(x, a + 24 + r() * (b - a - 48), 92, 44), zb: ZBN[z] });
+    }
+    for (let n = 0; n < 8; n++) {
+      const x = xr(), y = room(x, yr(ZA[0] + 12, ZB[0] - 12), 54 + r() * 30, 34), h = 34 + r() * 40;
+      WD.PADS.push({ k: "shroom", x, y: y - h, w: 26 + r() * 8, h, pow: 560 + h * 2, c: n, bt: 0 });
+      if (n % 3 === 0) addCreWith(WD, hb, ["🐛", "sit", 1, "GLÜH!", "sparkle", 18], r, x + 40, y);
+    }
+    for (let n = 0; n < 10; n++) WD.ZDEC.push({ k: "bone", x: xr(), y: yr(ZA[1] + 6, ZB[1] - 6), s: 0.8 + r() * 0.9, f: r() < 0.5 ? -1 : 1, v: n % 3 });
+    for (let n = 0; n < 5; n++) {
+      const x = xr(), y = room(x, yr(ZA[1] + 20, ZB[1] - 20), 120 + r() * 50, 46);
+      addCreWith(WD, hb, n % 2 ? ["🦕", "walk", 1, "MÖÖÖH!", "bront", 40] : ["🦖", "sit", 1, "ROAR!", "", 28], r, x, y).rng = 60;
+    }
+    const lake = (
+      /** @param {any} m @param {any} a @param {any} b @param {any} n */
+      function(m, a, b, n) {
+        for (let i = 0; i < n; i++) {
+          const x = xr(), rx = 64 + r() * 70, y = yr(a, b), ry = 26 + r() * 14;
+          WD.STR.push({ k: "lake", x, y, rx, ry, m, nw: 1, c1: colOf(x + rx + 26) });
+        }
+      }
+    );
+    lake(WATER, ZA[1] + 16, ZB[1] - 16, 10);
+    lake(WATER, ZA[2] + 16, ZB[2] - 16, 16);
+    lake(LAVA, ZA[3] + 16, ZB[3] - 30, 12);
+    for (let n = 0; n < 8; n++) {
+      const x = xr(), y = room(x, yr(ZA[2] + 16, ZB[2] - 16), 70 + r() * 50, 40);
+      WD.ZDEC.push({ k: "cry", x, y, s: 0.8 + r() * 0.8, c: Math.floor(r() * 3) });
+      if (n % 4 === 1) addCreWith(WD, hb, ["🐧", "sit", 1, "BRRR!", "", 22], r, x + 34, y);
+    }
+    for (let n = 0; n < 4; n++) {
+      const x = xr();
+      addCreWith(WD, hb, ["🐲", "sit", 1, "FAUCH!", "", 26], r, x, room(x, yr(ZA[3] + 16, ZB[3] - 30), 80, 40));
+    }
+  }
+  function planetDeepWith(WD, R) {
+    WD.MATS = [];
+    WD.MACH = [];
+    WD.ZDEC = [];
+    WD.SPACE = {};
+    const r = rng(WD.SEED * 37 + R.salt), X0 = PX0 + 300, XW = WD.RW - 600, hb = { i: -1, x0: PX0, x1: PX0 + WD.RW, t: 0 };
+    let mi = 0, di = 0, ti = Math.floor(r() * 4);
+    const mat = (
+      /** @param {any} k @param {any} x @param {any} y */
+      function(k, x, y) {
+        WD.MATS.push({ id: mi++, k, x, y });
+      }
+    );
+    const yr = (
+      /** @param {any} a @param {any} b */
+      function(a, b) {
+        return TOP + CELL * (a + r() * (b - a));
+      }
+    );
+    const xr = function() {
+      return X0 + r() * XW;
+    };
+    const types = ["stern", "muster", "spiegel", "robo", "waage"];
+    const room = (
+      /** @param {any} x @param {any} y @param {any} rx @param {any} ry */
+      function(x, y, rx, ry) {
+        const s = { k: "room", x, y, rx, ry, hw: 0, nw: 1, c1: colOf(x + rx + 14) };
+        WD.STR.push(s);
+        return roomY(s);
+      }
+    );
+    const ZA = [368, 560, 660, 978, 1322, 1672], ZB = [552, 616, 944, 1272, 1622, 1880], ZBN = [0, 1, 1, 1, 2, 3];
+    for (const q of R.mat) for (let n = 0; n < q[1]; n++) {
+      const x = xr();
+      if (q[2]) mat(q[0], x, yr(ZA[q[2] - 1] + 4, ZB[q[2] - 1] - 4));
+      else mat(q[0], x, n % 2 ? WD.ground(x) - 12 : WD.ground(x) + 30 + r() * 90);
+    }
+    for (let n = 0; n < 2; n++) WD.MACH.push({ id: "p" + di++, t: n ? types[ti++ % 5] : "stern", x: PX0 + WD.RW * (0.3 + 0.4 * n) + r() * 900, y: NaN, sf: 1, zb: n });
+    for (let z = 2; z < 6; z++) {
+      const x = xr();
+      WD.MACH.push({ id: "p" + di++, t: types[ti++ % 5], x, y: room(x, ZA[z] + 24 + r() * (ZB[z] - ZA[z] - 48), 92, 44), zb: ZBN[z] });
+    }
+    for (let z = 3; z <= 6; z++) {
+      const a = ZA[z - 1], b = ZB[z - 1], f = R.zc[z];
+      for (let n = 0; n < 8; n++) {
+        const x = xr(), y = room(x, yr(a + 16, b - 16), 60 + r() * 60, 38);
+        if (z === 4 && n % 2 === 0) {
+          const h = 34 + r() * 40;
+          WD.PADS.push({ k: "shroom", x, y: y - h, w: 26 + r() * 8, h, pow: 560 + h * 2, c: n, bt: 0 });
+        } else if (z === 5 && n % 2 === 0) WD.ZDEC.push({ k: "cry", x, y, s: 0.8 + r() * 0.8, c: Math.floor(r() * 3) });
+        if (f && n % 3 === 0) addCreWith(WD, hb, f, r, x + 30, y);
+      }
+      if (R.lk[z]) for (let n = 0; n < 10; n++) {
+        const x = xr(), rx = 64 + r() * 70, y = yr(a + 16, b - 30), ry = 26 + r() * 14;
+        WD.STR.push({ k: "lake", x, y, rx, ry, m: R.lk[z], nw: 1, c1: colOf(x + rx + 26) });
+      }
+    }
+    vaultPlanWith(WD, R.salt, 0, PX0 + 400, WD.RW - 800, R.small !== void 0 ? 1 : 2);
+    if (R.small === void 0) {
+      const rc = rng(WD.SEED * 53 + R.salt), x = X0 + rc() * XW;
+      mat("pk", x, TOP + CELL * (ZA[5] + 40 + rc() * (ZB[5] - ZA[5] - 80)));
+    }
+    WD.STR.sort(
+      /** @param {any} p @param {any} q */
+      function(p, q) {
+        return p.c1 - q.c1;
+      }
+    );
+  }
+  function vaultPlanWith(WD, salt, near, X0, XW, per) {
+    WD.VAULTS = [];
+    const r = rng(WD.SEED * 41 + salt), ZA = [368, 660, 978, 1322, 1672], ZB = [616, 944, 1272, 1622, 1880];
+    for (let z = 0; z < 5; z++) for (let n = 0; n < per; n++) {
+      const x = n < near ? 1500 + r() * 7200 : X0 + r() * XW, y = TOP + CELL * (ZA[z] + 30 + r() * (ZB[z] - ZA[z] - 60));
+      const v = (
+        /** @type {any} */
+        { id: WD.VAULTS.length, x, y, z, rx: 66, ry: 34 }
+      );
+      v.fy = TOP + vFloor(v) * CELL;
+      WD.VAULTS.push(v);
+      WD.STR.push({ k: "vault", v, nw: 1, c1: colOf(x + v.rx + 40) });
+      WD.LOOT.push({ id: 5e3 + v.id, x: x + 10, y: v.fy - 14, g: 40 + 30 * z, bur: false });
+    }
+  }
 
   // src/legacy.js
   (function() {
     "use strict";
     const $ = (id) => document.getElementById(id);
+    const WD = {
+      LIFE,
+      bio,
+      bio2,
+      bix,
+      bmx,
+      g0,
+      grid,
+      grow0,
+      liqM,
+      liqY,
+      mtop,
+      noCave,
+      rA,
+      rB,
+      rC,
+      rD,
+      rH,
+      stamp,
+      z4,
+      zS1,
+      zS2,
+      zS3,
+      get BIO() {
+        return ST.BIO;
+      },
+      set BIO(v) {
+        ST.BIO = v;
+      },
+      get CRE() {
+        return ST.CRE;
+      },
+      set CRE(v) {
+        ST.CRE = v;
+      },
+      get DECO() {
+        return ST.DECO;
+      },
+      set DECO(v) {
+        ST.DECO = v;
+      },
+      get PICKS() {
+        return ST.PICKS;
+      },
+      set PICKS(v) {
+        ST.PICKS = v;
+      },
+      get LOOT() {
+        return ST.LOOT;
+      },
+      set LOOT(v) {
+        ST.LOOT = v;
+      },
+      get PADS() {
+        return ST.PADS;
+      },
+      set PADS(v) {
+        ST.PADS = v;
+      },
+      get EGGS() {
+        return ST.EGGS;
+      },
+      set EGGS(v) {
+        ST.EGGS = v;
+      },
+      get STR() {
+        return ST.STR;
+      },
+      set STR(v) {
+        ST.STR = v;
+      },
+      get DROPS() {
+        return ST.DROPS;
+      },
+      set DROPS(v) {
+        ST.DROPS = v;
+      },
+      get stI() {
+        return ST.stI;
+      },
+      set stI(v) {
+        ST.stI = v;
+      },
+      get MACH() {
+        return MACH;
+      },
+      set MACH(v) {
+        MACH = v;
+      },
+      get MATS() {
+        return MATS;
+      },
+      set MATS(v) {
+        MATS = v;
+      },
+      get OLD_END() {
+        return OLD_END;
+      },
+      set OLD_END(v) {
+        OLD_END = v;
+      },
+      get OLD_N() {
+        return OLD_N;
+      },
+      set OLD_N(v) {
+        OLD_N = v;
+      },
+      get RC0() {
+        return RC0;
+      },
+      get RC1() {
+        return RC1;
+      },
+      get RW() {
+        return RW;
+      },
+      get SEED() {
+        return SEED;
+      },
+      get SPACE() {
+        return SPACE;
+      },
+      set SPACE(v) {
+        SPACE = v;
+      },
+      get VAULTS() {
+        return VAULTS;
+      },
+      set VAULTS(v) {
+        VAULTS = v;
+      },
+      get ZDEC() {
+        return ZDEC;
+      },
+      set ZDEC(v) {
+        ZDEC = v;
+      },
+      get genF() {
+        return genF;
+      },
+      set genF(v) {
+        genF = v;
+      },
+      get realm() {
+        return realm;
+      },
+      get tracks() {
+        return tracks;
+      },
+      get BUILD() {
+        return BUILD;
+      },
+      get HOME_C() {
+        return HOME_C;
+      },
+      get HOME_T() {
+        return HOME_T;
+      },
+      get ORBS() {
+        return ORBS;
+      },
+      get RLM() {
+        return RLM;
+      },
+      get ZN() {
+        return ZN;
+      },
+      get clouds() {
+        return clouds;
+      },
+      get trees() {
+        return trees;
+      },
+      colTop,
+      ext,
+      ground,
+      lifeS,
+      rlm,
+      scanMobile,
+      setCell,
+      skyLim,
+      wc
+    };
     const ERRK = "lavaland-err";
     function errLoad() {
       try {
@@ -2660,22 +3849,10 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     for (let cx = 0; cx < GX; cx++) mtop[cx] = cx < SNC0 || cx > SNC1 ? grow0[cx] : Math.min(grow0[cx], Math.ceil((msurf((cx + 0.5) * CELL) - TOP) / CELL - 0.5));
     function winterCol(cx) {
-      const x = (cx + 0.5) * CELL, mt = mtop[cx], g = grow0[cx], s3 = SEED % 389 * 7.77;
-      for (let cy = mt; cy < g; cy++) {
-        const i = cy * GX + cx, m = grid[i], d = cy - mt;
-        if (m >= 4 && m !== EARTH) continue;
-        grid[i] = d < 9 ? SNOW : d > 18 && vnoise(x / 30 + s3, (TOP + cy * CELL) / 30) > 0.87 ? GEM : ROCK;
-        if (LIFE.size) LIFE.delete(i);
-      }
-      if (mt >= g - 1 && (x < SL0 + 60 || x > BEND - 90)) {
-        const r = colTop(cx, 2);
-        for (let k = 0; k < 2; k++) if (r + k < GY - 3 && grid[(r + k) * GX + cx] === EARTH) grid[(r + k) * GX + cx] = SNOW;
-      }
+      return winterColWith(WD, cx);
     }
     function carveCave() {
-      ellipse(CAVE[0], CAVE[1], 74, 30, function(cx, cy) {
-        grid[cy * GX + cx] = 0;
-      });
+      return carveCaveWith(WD);
     }
     function migrateSnow() {
       for (let cx = SNC0; cx < Math.min(genF, SNC1); cx++) winterCol(cx);
@@ -2724,42 +3901,19 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (m > 0 && m < 4) ext(cx, cy);
     }
     function carveCircle(x, y, r) {
-      const c0 = Math.floor((x - r) / CELL), c1 = Math.floor((x + r) / CELL), r0 = Math.floor((y - r - TOP) / CELL), r1 = Math.floor((y + r - TOP) / CELL);
-      for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) {
-        if (!inGrid(cx, cy)) continue;
-        const dx = (cx + 0.5) * CELL - x, dy = TOP + (cy + 0.5) * CELL - y;
-        if (dx * dx + dy * dy <= r * r) grid[cy * GX + cx] = 0;
-      }
-    }
-    function carvePath(pts, r) {
-      for (let i = 0; i < pts.length - 1; i++) {
-        const a = pts[i], b = pts[i + 1], n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 8);
-        for (let k = 0; k <= n; k++) carveCircle(a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n, r);
-      }
+      return carveCircleWith(WD, x, y, r);
     }
     function fillCrater() {
-      const level = Math.min(ground(VOLC - 105), ground(VOLC + 105)) + 16;
-      for (let cx = Math.floor((VOLC - 100) / CELL); cx <= Math.floor((VOLC + 100) / CELL); cx++) {
-        for (let cy = grow0[cx] - 1; cy >= 1; cy--) {
-          if (TOP + (cy + 0.5) * CELL < level) break;
-          if (grid[cy * GX + cx] === 0) setCell(cx, cy, LAVA);
-        }
-      }
+      return fillCraterWith(WD);
     }
     function fillPond() {
-      const lv = Math.floor((siteY.pond + 8 - TOP) / CELL);
-      for (let cx = Math.floor((SITE.pond - 170) / CELL); cx <= Math.floor((SITE.pond + 170) / CELL); cx++)
-        for (let cy = lv; cy < grow0[cx]; cy++) if (grid[cy * GX + cx] === 0) setCell(cx, cy, WATER);
+      return fillPondWith(WD);
     }
-    const HOUSE = [[0, 0], [1, 0], [3, 0], [4, 0], [0, 1], [1, 1], [3, 1], [4, 1], [0, 2], [1, 2], [2, 2], [3, 2], [4, 2], [1, 3], [2, 3], [3, 3], [2, 4]];
     function houseBlocks(site) {
-      const k = grow0[Math.floor(SITE[site] / CELL)] >> 2, b0 = Math.round(SITE[site] / 24) - 2;
-      return HOUSE.map(function(h) {
-        return [b0 + h[0], k - 1 - h[1]];
-      });
+      return houseBlocksWith(WD, site);
     }
     function fillBlock(bx, by) {
-      for (let y = by * 4; y < by * 4 + 4; y++) for (let x = bx * 4; x < bx * 4 + 4; x++) if (inGrid(x, y) && grid[y * GX + x] < 4) grid[y * GX + x] = WOOD;
+      return fillBlockWith(WD, bx, by);
     }
     function blockFilled(bx, by) {
       let n = 0;
@@ -2847,108 +4001,12 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function wc(cx) {
       return !realm ? cx : cx < RC0 ? cx + (RC1 - RC0) : cx >= RC1 ? cx - (RC1 - RC0) : cx;
     }
-    const FH = { fir: [62, 40], cactus: [34, 26], palm: [72, 30], jungle: [110, 60], giant: [250, 0], lolly: [46, 30], cane: [40, 14], shroom: [12, 12], dead: [60, 40], grave: [20, 6], fern: [30, 18], crystal: [30, 44], flower: [14, 10], bush: [16, 10], tree: [62, 40] };
-    function rawX(x) {
-      let k = bix[clamp(Math.floor(x / CELL), 0, GX - 1)] - 1;
-      if (k < 0) k = 0;
-      const b = ST.BIO[k], d0 = x - b.x0, d1 = b.x1 - x;
-      let h = hBio(b, x);
-      if (realm) {
-        const dl = Math.abs(x - LANDX);
-        if (dl < 420) h += (PADH - h) * sm(dl < 260 ? 1 : 1 - (dl - 260) / 160);
-        if (k === 0 && d0 < 300) return PADH + (h - PADH) * sm(d0 / 300);
-        if (k === ST.BIO.length - 1 && d1 < 300) return PADH + (h - PADH) * sm(d1 / 300);
-      }
-      if (d0 < 220) {
-        const o = k > 0 ? hBio(ST.BIO[k - 1], x) : rawH(x);
-        return o + (h - o) * sm((d0 + 220) / 440);
-      }
-      if (d1 < 220 && k < ST.BIO.length - 1) {
-        const o = hBio(ST.BIO[k + 1], x);
-        return h + (o - h) * sm((220 - d1) / 440);
-      }
-      return h;
-    }
-    function rawG(x) {
-      return x < EXT_X || !ST.BIO.length ? rawH(x) : rawX(x);
-    }
     let OLD_N = 0, OLD_END = 0;
-    function layout() {
-      ST.BIO = [];
-      let r = rng(SEED * 13 + 7);
-      const cnt = {};
-      let x = B0, bag = [], i = 0, last2 = 0;
-      const R = rlm();
-      if (R) {
-        r = rng(SEED * 13 + R.salt);
-        x = PX0;
-      }
-      const add = function(t, w) {
-        const b = { t, x0: x, x1: x + w, i: i++, s: Math.floor(r() * 1e6), n: cnt[t] | 0 };
-        cnt[t] = b.n + 1;
-        last2 = t;
-        b.px = x + w * (0.24 + 0.14 * r());
-        b.qx = 24 * Math.round((x + w * (0.62 + 0.16 * r())) / 24);
-        if (t === 12) b.qx = 24 * Math.round((WORLD_W - 700) / 24);
-        b.hq = TOP + 24 * Math.round((hBio(b, b.qx, true) - TOP) / 24);
-        ST.BIO.push(b);
-        x += w;
-      };
-      const fill = function(end) {
-        while (x < end - 5600 || i < 11) {
-          if (!bag.length) {
-            for (let t2 = 1; t2 <= 11; t2++) bag.push(t2);
-            for (let k = 10; k > 0; k--) {
-              const j = Math.floor(r() * (k + 1)), q = bag[k];
-              bag[k] = bag[j];
-              bag[j] = q;
-            }
-            if (bag[10] === last2) {
-              const q = bag[10];
-              bag[10] = bag[0];
-              bag[0] = q;
-            }
-          }
-          const t = bag.pop();
-          add(t, BT[t].w[0] + Math.floor(r() * BT[t].w[1]));
-        }
-      };
-      if (R) {
-        const E = PX0 + RW;
-        while (x < E) {
-          const t = R.lands[i % R.lands.length];
-          let w = BT[t].w[0] + Math.floor(r() * BT[t].w[1]);
-          if (E - x - w < BT[t].w[0] * 0.6) w = E - x;
-          add(t, w);
-        }
-        return;
-      }
-      fill(WORLD_W0);
-      OLD_N = i;
-      OLD_END = x;
-      r = rng(SEED * 29 + 11);
-      fill(WORLD_W);
-      add(12, WORLD_W - x);
-    }
     function addTree(x, k, r) {
-      const f = FH[k], t = { x, gy: ground(x), row: grow0[Math.floor(x / CELL)], h: f[0] + r() * f[1], state: 0, t: 0, s: 0.85 + r() * 0.4 };
-      if (k === "fir") t.fir = true;
-      else if (k !== "tree") t.kind = k;
-      trees.push(t);
-      return t;
+      return addTreeWith(WD, x, k, r);
     }
     function addCre(b, f, r, x, y) {
-      const k = f[1], w = b.x1 - b.x0, isle = b.t === 7 && k !== "swim" && x === void 0;
-      if (x === void 0) x = isle ? b.px + (r() - 0.5) * 150 : b.x0 + 280 + r() * (w - 560);
-      const c = { e: f[0], k, x, hx: x, y: y === void 0 ? NaN : y, dir: r() < 0.5 ? -1 : 1, t: r() * 9, cd: 0, hop: 0, say: f[3], fl: f[4] || "", b: b.i, sz: f[5] || 22, sp: 22 + r() * 10, ph: r() * 6, next: 3 + r() * 6, gone: 0, rng: isle ? 70 : 170, ok: false };
-      if (k === "swim") {
-        c.a = b.x0 + 140;
-        c.z = b.x1 - 140;
-        c.sp = 28 + r() * 30;
-        c.y = WL + 40 + r() * 110;
-      }
-      ST.CRE.push(c);
-      return c;
+      return addCreWith(WD, b, f, r, x, y);
     }
     const BUILD = [];
     BUILD[1] = function(b, r) {
@@ -3053,271 +4111,12 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       ST.STR.push({ k: "geode", x: b.qx, y, c1: colOf(b.qx + 140) });
       ST.LOOT.push({ id: b.i * 4 + 3, x: b.qx, y: y + 30, g: 60, bur: false });
     };
-    function populate(b) {
-      const T = BT[b.t], r = rng(b.s * 7 + b.i), w = b.x1 - b.x0, tier = Math.min(3, b.n), t0 = trees.length;
-      ST.DECO.push({ k: "gate", x: b.x0 + 240, b });
-      if (T.flora) for (let x = b.x0 + 70; x < b.x1 - 70; x += T.fs * (0.55 + r() * 0.9)) {
-        if (Math.abs(x - b.x0 - 240) < 50 || Math.abs(x - b.qx) < (T.clr || 150) || Math.abs(x - b.px) < (T.clp || 0) || liqM[Math.floor(x / CELL)]) continue;
-        addTree(x, T.flora[Math.floor(r() * T.flora.length)], r);
-      }
-      for (const f of T.fauna || []) for (let n = 0; n < f[2]; n++) {
-        const c = addCre(b, f, r);
-        if (f[4] === "monkey" && trees.length > t0) {
-          const tr = trees[t0 + Math.floor(r() * (trees.length - t0))];
-          c.x = c.hx = tr.x;
-          c.y = tr.gy - tr.h * 0.86;
-        }
-      }
-      for (const q of T.picks || []) for (let n = 0; n < q[2]; n++) ST.PICKS.push({ e: q[0], ty: q[1], x: b.x0 + 300 + r() * (w - 600), y: NaN, t: 0 });
-      for (let n = 0; n < 2; n++) {
-        const x = b.x0 + 320 + r() * (w - 640);
-        if (Math.abs(x - b.qx) > 250 && Math.abs(x - b.px) > 210) ST.LOOT.push({ id: b.i * 4 + n, x, y: ground(x) + 56 + r() * 50, g: 20 + 10 * tier, bur: true });
-      }
-      if (!T.noCloud) for (let n = 0; n < w / 800; n++) clouds.push({ x: b.x0 + r() * w, y: -190 - r() * 900, s: 0.7 + r() * 1.1 });
-      if (BUILD[b.t]) BUILD[b.t](b, r, tier);
-    }
-    function zoneCols() {
-      for (let cx = 0; cx < GX; cx++) {
-        const c = wc(cx);
-        zS1[cx] = 630 + Math.round(3 * Math.sin(c * 0.027 + 1));
-        z4[cx] = 960 + Math.round(10 * Math.sin(c * 0.013 + 2));
-        zS2[cx] = 1290 + Math.round(4 * Math.sin(c * 0.022));
-        zS3[cx] = 1640 + Math.round(4 * Math.sin(c * 0.019 + 4));
-      }
-    }
     const HOME_T = [], HOME_C = [];
     function shapeWorld() {
-      layout();
-      const R = rlm(), C0 = R ? RC0 : EXC, C1 = R ? RC1 : GX;
-      zoneCols();
-      bix.fill(0);
-      bio.fill(0);
-      bmx.fill(0);
-      noCave.fill(0);
-      liqM.fill(0);
-      liqY.fill(0);
-      for (const b of ST.BIO) {
-        const c0 = Math.floor(b.x0 / CELL), c1 = Math.min(GX, Math.floor(b.x1 / CELL));
-        for (let cx = c0; cx < c1; cx++) {
-          bix[cx] = b.i + 1;
-          bio[cx] = b.t;
-        }
-      }
-      for (let k2 = 0; k2 < ST.BIO.length; k2++) {
-        const c0 = Math.floor(ST.BIO[k2].x0 / CELL), pt = k2 ? ST.BIO[k2 - 1].t : R ? ST.BIO[ST.BIO.length - 1].t : 0;
-        for (let d = -20; d < 20; d++) {
-          const cx = c0 + d;
-          if (cx > 0 && cx < GX) {
-            bio[cx] = pt;
-            bio2[cx] = ST.BIO[k2].t;
-            bmx[cx] = Math.max(1, Math.round((d + 20) / 40 * 255));
-          }
-        }
-      }
-      for (let i = C0; i < (R ? C1 : GX + 2); i++) g0[i] = rawG(i * CELL);
-      for (const b of ST.BIO) {
-        if (b.t === 1 || b.t === 3) b.ly = Math.min(rawG(b.px - 98), rawG(b.px + 98)) + 9;
-        else if (b.t === 6) b.ly = Math.min(rawG(b.px - 92), rawG(b.px + 92)) + 14;
-      }
-      for (let cx = C0; cx < C1; cx++) {
-        const x = (cx + 0.5) * CELL, g = Math.ceil((rawG(x) - TOP) / CELL - 0.5), b = bix[cx] ? ST.BIO[bix[cx] - 1] : null;
-        const rock = b && (b.t === 8 || b.t === 6 && Math.abs(x - b.px) < 300);
-        grow0[cx] = g;
-        mtop[cx] = g;
-        rA[cx] = g + (rock ? 70 : 0);
-        rB[cx] = Math.max(rA[cx], g + 30 + Math.round(5 * Math.sin(cx * 0.05)));
-        rD[cx] = 342 + Math.round(8 * Math.sin(cx * 0.021));
-        rH[cx] = 552 + Math.round(10 * Math.sin(cx * 0.017 + 2));
-        rC[cx] = GY - 52 + Math.round(4 * Math.sin(cx * 0.03));
-        if (!b) continue;
-        const dq = Math.abs(x - b.qx), dp = Math.abs(x - b.px), t = b.t;
-        if (t === 7) {
-          noCave[cx] = 2;
-          if (x > b.x0 + 50 && x < b.x1 - 50) {
-            liqM[cx] = WATER;
-            liqY[cx] = WLR;
-          }
-        } else if (t === 6 && dp < 320) {
-          noCave[cx] = 2;
-          if (dp < 92) {
-            liqM[cx] = LAVA;
-            liqY[cx] = Math.floor((b.ly - TOP) / CELL);
-          }
-        } else if ((t === 1 || t === 3) && dp < 240) {
-          noCave[cx] = 1;
-          if (dp < 100) {
-            liqM[cx] = WATER;
-            liqY[cx] = Math.floor((b.ly - TOP) / CELL);
-          }
-        } else if (t === 10 || dq < 240) noCave[cx] = 1;
-        if (t === 18 && x > b.x0 + 260 && x < b.x1 - 260 && dq >= 240) {
-          noCave[cx] = 2;
-          liqM[cx] = WATER;
-          liqY[cx] = Math.floor((PADH + 8 - TOP) / CELL);
-        }
-        if (t === 16 && x > b.x0 + 260 && x < b.x1 - 260 && dq >= 240) {
-          noCave[cx] = 2;
-          liqM[cx] = ICE;
-          liqY[cx] = Math.floor((PADH + 8 - TOP) / CELL);
-        }
-      }
-      trees.length = 0;
-      clouds.length = 0;
-      ST.CRE = [];
-      ST.PICKS = [];
-      ST.PADS = [];
-      ST.DECO = [];
-      ST.EGGS = [];
-      ST.LOOT = [];
-      ST.STR = [];
-      ST.DROPS = [];
-      ORBS.length = 0;
-      if (R) {
-        const L = [g0, grow0, mtop, rA, rB, rD, rH, rC, bix, bio, bio2, bmx, noCave, liqM, liqY];
-        for (let d = 0; d < PMC; d++) for (const a of L) {
-          a[RC0 - PMC + d] = a[RC1 - PMC + d];
-          a[RC1 + d] = a[RC0 + d];
-        }
-        g0[RC1 + PMC] = g0[RC0 + PMC];
-        for (const b of ST.BIO) populate(b);
-        ST.DECO.push({ k: "sign", x: LANDX - 90, y: ground(LANDX - 90), e: "🚀" });
-        planetDeep(R);
-        return;
-      }
-      for (const t of HOME_T) trees.push(Object.assign({}, t));
-      for (const c of HOME_C) clouds.push(Object.assign({}, c));
-      ORBS.push(MOON);
-      const r = rng(SEED * 5 + 3), hb = { i: -1, x0: 0, x1: HOME_W, t: 0 };
-      for (let x = 7380; x < 8250; x += 120 + r() * 90) {
-        const cx = Math.floor(x / CELL);
-        trees.push({ x, gy: TOP + mtop[cx] * CELL, row: mtop[cx], h: 62 + r() * 40, state: 0, t: 0, s: 0.85 + r() * 0.4, fir: true });
-      }
-      const ns = addCre(hb, ["🦕", "swim", 1, "NESSIE!", "", 34], r, 940);
-      ns.a = 800;
-      ns.z = 1090;
-      ns.sp = 20;
-      ns.y = ground(700) + 266;
-      addCre(hb, ["🐭", "sit", 1, "HEY! LOCH ZU!", "bury", 22], r, 858, ground(858) + 310);
-      ST.DECO.push({ k: "sign", x: 7240, y: msurf(7240), e: "➡️" }, { k: "sign", x: 8420, y: ground(8420), e: "🌍" });
-      ST.PICKS.push({ e: "🎈", ty: "float", x: 1190, y: NaN, t: 0 }, { e: "🍄", ty: "big", x: 2130, y: NaN, t: 0 }, { e: "⭐", ty: "star", x: 3900, y: NaN, t: 0 }, { e: "🌶️", ty: "chili", x: 5300, y: NaN, t: 0 });
-      for (const b of ST.BIO) populate(b);
-      ST.STR.sort(function(p, q) {
-        return p.c1 - q.c1;
-      });
-      const ro = rng(SEED * 3 + 1);
-      let k = 0;
-      for (let x = 13e3; x < WORLD_W - 4e3; x += 7e3 + ro() * 5e3) {
-        ORBS.push({ x, y: -3800 - ro() * 1e3, r: 140 + ro() * 90, k: k % 4, i: k + 1 });
-        k++;
-      }
-      deepWorld();
-    }
-    function blk(bx, by, m) {
-      for (let y = by * 4; y < by * 4 + 4; y++) for (let x = bx * 4; x < bx * 4 + 4; x++) if (inGrid(x, y)) {
-        grid[y * GX + x] = m;
-        if (m === WATER) ext(x, y);
-      }
+      return shapeWorldWith(WD);
     }
     function build(s) {
-      const k = s.k;
-      if (k === "pyr") {
-        const gq = Math.round((s.y - TOP) / CELL), c0 = Math.floor((s.x - 156) / CELL), c1 = Math.floor((s.x + 156) / CELL);
-        for (let cx = c0; cx <= c1; cx++) {
-          const d = Math.abs((cx + 0.5) * CELL - s.x), st = Math.min(10, Math.floor((156 - d) / 14));
-          if (st < 0) continue;
-          for (let cy = gq - 2 * (st + 1); cy < gq + 14; cy++) if (inGrid(cx, cy) && grid[cy * GX + cx] < 4) grid[cy * GX + cx] = ROCK;
-          if (d < 38) for (let cy = gq - 7; cy < gq; cy++) grid[cy * GX + cx] = 0;
-        }
-      } else if (k === "house" || k === "tower" || k === "bld" || k === "wreck") {
-        const kq = Math.round((s.y - TOP) / 24), w = k === "tower" ? 5 : k === "wreck" ? 7 : s.w, h = k === "tower" ? 8 : k === "wreck" ? 3 : s.h;
-        const b0 = k === "bld" ? s.bx : Math.round(s.x / 24) - (k === "wreck" ? 3 : 2), base = k === "tower" || k === "bld" ? ROCK : EARTH;
-        if (k !== "wreck") {
-          for (let i = 0; i < w; i++) for (let y = kq * 4; y < kq * 4 + 10; y++) for (let x = (b0 + i) * 4; x < (b0 + i) * 4 + 4; x++) if (inGrid(x, y) && grid[y * GX + x] < 4) grid[y * GX + x] = base;
-        }
-        for (let j = 0; j <= h; j++) for (let i = 0; i < w; i++) {
-          let m = 0;
-          if (k === "house") {
-            if (i === 0 || i === w - 1 || j === h) m = s.m;
-            if (i === 0 && j < 2) m = 0;
-          } else if (k === "tower") {
-            if (j < h && (i === 0 || i === 4)) m = ROCK;
-            if (j === 3 && i !== 1 || j === 7 && i !== 3) m = ROCK;
-            if (j === h) m = i % 2 ? 0 : ROCK;
-            if (i === 0 && j < 2) m = 0;
-          } else if (k === "bld") {
-            if (j === h) continue;
-            m = j % 2 === 1 && i > 0 && i < w - 1 && (i + j) % 2 === 0 ? 0 : WOOD;
-          } else {
-            if (j < h) m = i === 0 || i === 6 ? WOOD : WATER;
-            else m = i < 3 ? WOOD : WATER;
-          }
-          blk(b0 + i, kq - 1 - j, m);
-        }
-        if (k === "house") for (let j = 1; j <= 2; j++) for (let i = j; i < w - j; i++) blk(b0 + i, kq - 1 - h - j, s.m);
-      } else if (k === "geode") {
-        ellipse(s.x, s.y, 128, 58, function(cx, cy, wy) {
-          const dx = ((cx + 0.5) * CELL - s.x) / 110, dy = (wy - s.y) / 46, i = cy * GX + cx;
-          if (dx * dx + dy * dy <= 1) grid[i] = 0;
-          else if (grid[i] >= 4 && grid[i] !== BED) grid[i] = GEM;
-        });
-      } else if (k === "isle") {
-        ellipse(s.x, s.y, s.rx, 14, function(cx, cy) {
-          if (grid[cy * GX + cx] < 4) grid[cy * GX + cx] = SNOW;
-        });
-      } else if (k === "pillar") {
-        const c0 = Math.floor((s.x - 12) / CELL);
-        for (let cx = c0; cx < c0 + 4; cx++) for (let cy = Math.floor((s.y - TOP) / CELL); cy < grow0[cx] + 2; cy++) if (inGrid(cx, cy)) grid[cy * GX + cx] = ROCK;
-      } else if (k === "room" || k === "lake") {
-        const lk = k === "lake", fr = Math.floor((s.y + s.ry * 0.5 - TOP) / CELL), pad = lk ? 12 : 0;
-        ellipse(s.x, s.y, s.rx + pad, s.ry + pad, function(cx, cy, wy) {
-          const i = cy * GX + cx, m = grid[i];
-          if (m === BED || m === SHELL || m === CORE) return;
-          const dx = ((cx + 0.5) * CELL - s.x) / s.rx, dy = (wy - s.y) / s.ry, inn = dx * dx + dy * dy <= 1;
-          if (!lk) {
-            if (cy < fr) {
-              grid[i] = 0;
-              lifeS(i, 0);
-            } else if (m < 4) grid[i] = ROCK;
-          } else if (inn) {
-            grid[i] = wy > s.y + s.ry * 0.15 ? s.m : 0;
-            lifeS(i, 0);
-          } else if (m < 4 && wy > s.y - 6) grid[i] = ROCK;
-        });
-        if (s.hw) {
-          const c0 = Math.floor((s.x - s.rx - s.hw) / CELL), c1 = Math.floor((s.x - s.rx + 12) / CELL);
-          for (let cx = c0; cx <= c1; cx++) for (let cy = fr - 8; cy < fr; cy++) if (inGrid(cx, cy)) {
-            const m = grid[cy * GX + cx];
-            if (m !== BED && m !== SHELL && m !== CORE) grid[cy * GX + cx] = 0;
-          }
-        }
-      } else if (k === "vault") {
-        const v = s.v, fr = vFloor(v);
-        ellipse(v.x, v.y, v.rx + 14, v.ry + 14, function(cx, cy, wy) {
-          const i = cy * GX + cx, dx = ((cx + 0.5) * CELL - v.x) / v.rx, dy = (wy - v.y) / v.ry;
-          if (dx * dx + dy * dy <= 1 && cy < fr) {
-            grid[i] = 0;
-            lifeS(i, 0);
-          } else grid[i] = BED;
-        });
-        for (let cx = Math.floor((v.x - v.rx - 64) / CELL); cx < Math.floor((v.x - v.rx - 16) / CELL); cx++) for (let cy = fr - 9; cy < fr; cy++) if (inGrid(cx, cy)) {
-          const m = grid[cy * GX + cx];
-          if (m !== BED && m !== SHELL && m !== CORE) {
-            grid[cy * GX + cx] = 0;
-            lifeS(cy * GX + cx, 0);
-          }
-        }
-      } else if (k === "rb") {
-        const raw = [];
-        for (let n = 0; n <= 24; n++) {
-          const t = n / 24;
-          raw.push([s.x + (s.x2 - s.x) * t, s.y + (s.y2 - s.y) * t * t - 70 * Math.sin(Math.PI * t) * (1 - t)]);
-        }
-        const T = makeTrack(raw, false);
-        if (T) {
-          T.rb = true;
-          tracks.push(T);
-        }
-      }
+      return buildWith(WD, s);
     }
     function scanMobile() {
       winC = Math.floor(cam.x / CELL);
@@ -3342,111 +4141,10 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
     }
     function genCol(cx, from) {
-      if (realm && (cx < RC0 - PMC || cx >= RC1 + PMC)) {
-        for (let cy = 0; cy < GY; cy++) grid[cy * GX + cx] = BED;
-        return;
-      }
-      const x = (wc(cx) + 0.5) * CELL, g = grow0[cx], cA = rA[cx], cB = rB[cx], cD = rD[cx], cH = rH[cx], cC = rC[cx];
-      const a1 = zS1[cx], a2 = z4[cx], a3 = zS2[cx], a4 = zS3[cx], edge = cx > 0 && cx < GX - 1;
-      const ns = realm ? SEED * 31 + RLM[realm].salt : SEED, s1 = ns % 977 * 3.17, s2 = ns % 613 * 5.31, s3 = ns % 389 * 7.77;
-      let safe2, pond, gb, rich = false;
-      if (cx < HOME_GX && !realm) {
-        safe2 = !(x < 1300 || x > 2400 && x < 3640 || Math.abs(x - SITE.chest - 40) < 150);
-        pond = Math.abs(x - SITE.pond) < 240;
-        gb = Math.ceil((baseG(x) - TOP) / CELL - 0.5);
-      } else {
-        safe2 = noCave[cx] < 2;
-        pond = noCave[cx] === 1;
-        gb = g;
-        rich = bix[cx] > 0 && ST.BIO[bix[cx] - 1].t === 8;
-      }
-      if (!from) for (let cy = 0; cy < g; cy++) grid[cy * GX + cx] = 0;
-      const pil = vnoise(x / 240 + s1, 9.5), seaT = SEA_T + Math.round(14 * vnoise(x / 170 + s2, 3.3)), bch = Math.min(1, Math.max(0, (0.6 - pil) / 0.07)), seaB = Math.round(SEA_L - 5 + (SEA_B + 10 * vnoise(x / 130 + s3, 5.1) - SEA_L + 5) * bch * bch);
-      for (let cy = Math.max(g, from | 0); cy < GY; cy++) {
-        const wy = TOP + cy * CELL;
-        let m;
-        if (cy < a1) {
-          m = cy >= cH ? HOT : cy >= cD ? DEEP : cy < cA || cy >= cB ? ROCK : EARTH;
-          if (edge) {
-            const d = (cy - g) * CELL;
-            if (d > 70 && cy < a1 - 6 && ((cy - gb) * CELL > 420 || safe2 && !(pond && d < 200))) {
-              if (Math.abs(vnoise(x / 200 + s1, wy / 120) - 0.5) < 0.055 * Math.min(1, (d - 70) / 90)) m = 0;
-              else if (d > 900 && vnoise(x / 380 + s2, wy / 250) > 0.76) m = 0;
-            }
-            if (m && d > 260 && vnoise(x / 30 + s3, wy / 30) > 0.86) m = cy >= cD ? GEM : GOLD;
-            else if (m && rich && d > 18 && vnoise(x / 26 + s3, wy / 26) > 0.8) m = GEM;
-          }
-        } else if (cy >= cC) m = CORE;
-        else if (cy < a1 + SH || cy >= a3 && cy < a3 + SH || cy >= a4 && cy < a4 + SH) m = SHELL;
-        else {
-          const z = cy < a2 ? 1 : cy < a3 ? 2 : cy < a4 ? 3 : 4;
-          m = ROCK;
-          if (edge) {
-            const lo = z === 1 ? a1 + SH : z === 2 ? a2 - 60 : z === 3 ? a3 + SH : a4 + SH, hi = z === 1 ? a2 + 60 : z === 2 ? a3 : z === 3 ? a4 : cC;
-            if (cy > lo + 4 && cy < hi - 5) {
-              const n1 = Math.abs(vnoise(x / 200 + s1, wy / 120) - 0.5), n2 = vnoise(x / 380 + s2, wy / 250);
-              if (z === 1) {
-                if (n2 > 0.6 || n1 < 0.04) m = 0;
-                else if (n2 > 0.555) m = EARTH;
-              } else if (z === 2) {
-                if (n1 < 0.065 || n2 > 0.8) m = 0;
-                else if (vnoise(x / 110 + s2, wy / 36) > 0.7) m = EARTH;
-              } else if (z === 3) {
-                if (n2 > 0.68 || n1 < 0.035) m = 0;
-                else if (n2 > 0.63) m = ICE;
-              } else if (cy >= seaT - 3) {
-                if (cy >= seaT && cy < seaB && pil < 0.6) m = cy >= SEA_L ? LAVA : 0;
-              } else if (n2 > 0.7 || n1 < 0.045) m = 0;
-            }
-            if (m === ROCK && vnoise(x / 30 + s3, wy / 30) > (z === 3 ? 0.8 : 0.86)) m = z === 4 ? GOLD : GEM;
-          }
-        }
-        grid[cy * GX + cx] = m;
-      }
-      if (!from && liqM[cx]) for (let cy = Math.max(1, liqY[cx]); cy < g; cy++) grid[cy * GX + cx] = liqM[cx] === ICE && cy > liqY[cx] + 2 ? WATER : liqM[cx];
-      if (cx === 0 || cx === GX - 1) for (let cy = 0; cy < GY; cy++) grid[cy * GX + cx] = BED;
-      for (let cy = GY - 3; cy < GY; cy++) grid[cy * GX + cx] = BED;
-      if (!from && !realm && cx >= SNC0 && cx <= SNC1) winterCol(cx);
+      return genColWith(WD, cx, from);
     }
     function gen() {
-      grid.fill(0);
-      LIFE.clear();
-      stamp.fill(0);
-      for (let cx = 0; cx < HOME_END; cx++) genCol(cx);
-      genF = HOME_END;
-      ST.stI = 0;
-      const gc = ground(700);
-      carvePath([[470, ground(470) - 4], [560, gc + 70], [680, gc + 150], [790, gc + 212]], 26);
-      ellipse(940, gc + 235, 190, 52, function(cx, cy) {
-        grid[cy * GX + cx] = 0;
-      });
-      ellipse(940, gc + 235, 190, 52, function(cx, cy, wy) {
-        if (wy > gc + 247) grid[cy * GX + cx] = WATER;
-      });
-      const gl = ground(3250);
-      carvePath([[3150, ground(3150) - 4], [3230, gl + 75], [3300, gl + 140]], 26);
-      ellipse(3400, gl + 165, 130, 44, function(cx, cy) {
-        grid[cy * GX + cx] = 0;
-      });
-      ellipse(3400, gl + 165, 130, 44, function(cx, cy, wy) {
-        if (wy > gl + 180) grid[cy * GX + cx] = LAVA;
-      });
-      const mc = baseG(VOLC) + 150, vc = Math.floor(VOLC / CELL), mr = Math.floor((mc - TOP) / CELL);
-      ellipse(VOLC, mc, 110, 38, function(cx, cy) {
-        grid[cy * GX + cx] = LAVA;
-      });
-      for (let cx = vc - 1; cx <= vc + 1; cx++) for (let cy = grow0[cx]; cy <= mr; cy++) grid[cy * GX + cx] = LAVA;
-      carveCave();
-      while (ST.stI < ST.STR.length && ST.STR[ST.stI].c1 < genF) {
-        build(ST.STR[ST.stI]);
-        ST.stI++;
-      }
-      scanMobile();
-      fillCrater();
-      fillPond();
-      houseBlocks("smash").forEach(function(b) {
-        fillBlock(b[0], b[1]);
-      });
+      return genWith(WD);
     }
     function planetGen() {
       grid.fill(0);
@@ -3848,52 +4546,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     for (const c of clouds) HOME_C.push(Object.assign({}, c));
     let tracks = [], zips = [];
     function makeTrack(raw, user) {
-      if (!raw || raw.length < 2) return null;
-      let pts = raw.map(function(p) {
-        return [clamp(p[0], 30, WORLD_W - 30), clamp(p[1], skyLim() + 120, TOP + (GY - 8) * CELL)];
-      });
-      for (let k = 0; k < 2; k++) {
-        const o = [pts[0]];
-        for (let i = 0; i < pts.length - 1; i++) {
-          const a = pts[i], b = pts[i + 1];
-          o.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25], [a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]);
-        }
-        o.push(pts[pts.length - 1]);
-        pts = o;
-      }
-      const R = [[pts[0][0], pts[0][1]]];
-      let acc = 0;
-      for (let i = 1; i < pts.length; i++) {
-        let ax = pts[i - 1][0], ay = pts[i - 1][1];
-        const bx = pts[i][0], by = pts[i][1];
-        let seg = Math.hypot(bx - ax, by - ay);
-        while (seg > 0 && acc + seg >= 8) {
-          const t = (8 - acc) / seg;
-          ax += (bx - ax) * t;
-          ay += (by - ay) * t;
-          R.push([ax, ay]);
-          seg = Math.hypot(bx - ax, by - ay);
-          acc = 0;
-        }
-        acc += seg;
-      }
-      if (R.length < 16) return null;
-      let minX = 1e9, maxX = -1e9;
-      for (const p of R) {
-        if (p[0] < minX) minX = p[0];
-        if (p[0] > maxX) maxX = p[0];
-      }
-      return {
-        pts: R,
-        len: (R.length - 1) * 8,
-        minX,
-        maxX,
-        user: !!user,
-        dir: R[R.length - 1][0] >= R[0][0] ? 1 : -1,
-        raw: raw.map(function(p) {
-          return [Math.round(p[0]), Math.round(p[1])];
-        })
-      };
+      return makeTrackWith(WD, raw, user);
     }
     const Q = { x: 0, y: 0, tx: 1, ty: 0 };
     function trackAt(T, s) {
@@ -11928,7 +12581,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     QI.lab = '<path d="M14.5 3a5 5 0 0 0-4.6 6.9L3.6 16.2a2.3 2.3 0 0 0 3.2 3.2l6.300-6.300A5 5 0 0 0 20 8.500l-3 3-3.500-1-1-3.500 3-3z" fill="#9aa7b4" ' + S1 + ' stroke-width="1.6"/><circle cx="5.300" cy="17.700" r="1" fill="' + K + '"/>';
     AI.lab = '<path d="M14.5 3a5 5 0 0 0-4.6 6.9L3.6 16.2a2.3 2.3 0 0 0 3.2 3.2l6.300-6.300A5 5 0 0 0 20 8.500l-3 3-3.500-1-1-3.500 3-3z" fill="currentColor"/>';
     AI.pz = '<path d="M8.300 9a3.700 3.700 0 1 1 5.600 3.200c-1.200.7-1.900 1.500-1.900 2.800" stroke="currentColor" stroke-width="3.200" fill="none" stroke-linecap="round"/><circle cx="12" cy="19.500" r="2" fill="currentColor"/>';
-    const WSX = 1032, LIFTX = 1152, SEA_T = 1905, SEA_L = 1936, SEA_B = 1962;
     const ZN = [
       { e: "🏠", n: "dein Zuhause", need: "" },
       { e: "⛏️", n: "das Tiefengestein", s: "Tiefengestein", row: 412, need: "Bohr dich mit der Tunnelbohrmaschine nach unten, bis das Gestein dunkel wird." },
@@ -12011,265 +12663,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
       return false;
     }
-    function deepWorld() {
-      MATS = [];
-      MACH = [];
-      ZDEC = [];
-      const r = rng(SEED * 17 + 5), WW = WORLD_W0, hb = { i: -1, x0: 0, x1: WORLD_W, t: 0 };
-      let mi = 0, di = 0, ti = 0;
-      const mat = function(k, x, y) {
-        MATS.push({ id: mi++, k, x, y });
-      };
-      const yr = function(a, b) {
-        return TOP + CELL * (a + r() * (b - a));
-      };
-      const xr = function(near) {
-        return near ? 170 + r() * 8500 : 9e3 + r() * (WW - 9900);
-      };
-      const types = ["muster", "spiegel", "robo", "waage", "echo", "rohre", "sudoku"];
-      for (let k = 6; k > 0; k--) {
-        const j = Math.floor(r() * (k + 1)), q = types[k];
-        types[k] = types[j];
-        types[j] = q;
-      }
-      const nt = function() {
-        return types[ti++ % 7];
-      };
-      const room = function(x, y, rx, ry, hw) {
-        const s = { k: "room", x, y, rx, ry, hw: hw || 0, nw: 1, c1: colOf(x + rx + 14) };
-        ST.STR.push(s);
-        return roomY(s);
-      };
-      const dm = function(x, row, zb, hw) {
-        const y = room(x, TOP + row * CELL, 92, 44, hw);
-        MACH.push({ id: "d" + di++, t: nt(), x, y, zb });
-      };
-      const far = function(x) {
-        return Math.abs(x - LIFTX) > 560;
-      };
-      const ZA = [660, 978, 1322, 1672], ZB = [944, 1272, 1622, 1880], ZBN = [1, 1, 2, 3];
-      for (let n = 0; n < 36; n++) mat("fe", xr(n < 24), yr(368, 616));
-      for (let n = 0; n < 18; n++) mat("pi", xr(n < 11), yr(ZA[0] + 4, ZB[0] - 4));
-      for (let n = 0; n < 18; n++) mat("kn", xr(n < 11), yr(ZA[1] + 4, ZB[1] - 4));
-      for (let n = 0; n < 18; n++) mat("kr", xr(n < 11), yr(ZA[2] + 2, ZB[2] - 2));
-      for (let n = 0; n < 12; n++) mat("fp", xr(n < 8), n % 2 ? yr(SEA_L + 3, SEA_B - 6) : yr(ZA[3] + 4, ZB[3]));
-      for (let n = 0; n < 8; n++) {
-        r();
-        MATS.push({ id: mi++, k: "mo", x: -1e5, y: -1e5, off: 1 });
-      }
-      MACH.push({ id: "h0", t: "muster", x: 1330, y: NaN, sf: 1, zb: 0 }, { id: "h1", t: "robo", x: 4280, y: NaN, sf: 1, zb: 0 }, { id: "h2", t: "spiegel", x: 8590, y: NaN, sf: 1, zb: 0 }, { id: "n0", t: "stern", x: 7010, y: NaN, sf: 1, zb: 0 });
-      let ti2 = 0;
-      for (const b of ST.BIO) if (b.t !== 12) MACH.push({ id: "b" + b.i, t: b.i < OLD_N ? nt() : types[ti2++ % 7], x: b.t === 7 ? b.px - 12 : b.t === 10 ? b.x0 + 330 : b.qx + 150, y: NaN, sf: 1, zb: b.i < 4 ? 0 : 1 });
-      for (let k = 1; k <= 6; k++) ZN[k].y = room(LIFTX, TOP + ZN[k].row * CELL, 124, 48, 0);
-      dm(LIFTX + 300, ZN[1].row, 0, 90);
-      dm(LIFTX + 300, ZN[2].row, 1, 90);
-      for (let z = 0; z < 4; z++) {
-        const a = ZA[z], b = ZB[z];
-        dm(LIFTX + 300, ZN[z + 3].row, ZBN[z], 90);
-        dm(2400 + r() * 5600, a + 24 + r() * (b - a - 48), ZBN[z], 0);
-        dm(9400 + r() * (WW - 10600), a + 24 + r() * (b - a - 48), ZBN[z], 0);
-      }
-      for (let n = 0; n < 16; n++) {
-        const x = xr(n < 9), yy = yr(ZA[0] + 12, ZB[0] - 12), rx = 54 + r() * 30, h = 34 + r() * 40;
-        if (!far(x)) continue;
-        const y = room(x, yy, rx, 34, 0);
-        ST.PADS.push({ k: "shroom", x, y: y - h, w: 26 + r() * 8, h, pow: 560 + h * 2, c: n, bt: 0 });
-        if (n % 3 === 0) addCre(hb, ["🐛", "sit", 1, "GLÜH!", "sparkle", 18], r, x + 40, y);
-      }
-      for (let n = 0; n < 22; n++) ZDEC.push({ k: "bone", x: xr(n < 12), y: yr(ZA[1] + 6, ZB[1] - 6), s: 0.8 + r() * 0.9, f: r() < 0.5 ? -1 : 1, v: n % 3 });
-      for (let n = 0; n < 10; n++) {
-        const x = xr(n < 6), yy = yr(ZA[1] + 20, ZB[1] - 20), rx = 120 + r() * 50;
-        if (!far(x)) continue;
-        const y = room(x, yy, rx, 46, 0);
-        addCre(hb, n % 2 ? ["🦕", "walk", 1, "MÖÖÖH!", "bront", 40] : ["🦖", "sit", 1, "ROAR!", "", 28], r, x, y).rng = 60;
-      }
-      const lake = function(m, a, b, n) {
-        for (let i = 0; i < n; i++) {
-          const x = xr(i < n * 0.45), rx = 64 + r() * 70, y = yr(a, b), ry = 26 + r() * 14;
-          if (far(x)) ST.STR.push({ k: "lake", x, y, rx, ry, m, nw: 1, c1: colOf(x + rx + 26) });
-        }
-      };
-      lake(WATER, ZA[1] + 16, ZB[1] - 16, 22);
-      lake(WATER, ZA[2] + 16, ZB[2] - 16, 36);
-      lake(LAVA, ZA[3] + 16, ZB[3] - 30, 26);
-      for (let n = 0; n < 16; n++) {
-        const x = xr(n < 9), yy = yr(ZA[2] + 16, ZB[2] - 16), rx = 70 + r() * 50, sc = 0.8 + r() * 0.8, cc = Math.floor(r() * 3);
-        if (!far(x)) continue;
-        const y = room(x, yy, rx, 40, 0);
-        ZDEC.push({ k: "cry", x, y, s: sc, c: cc });
-        if (n % 4 === 1) addCre(hb, ["🐧", "sit", 1, "BRRR!", "", 22], r, x + 34, y);
-      }
-      for (let n = 0; n < 8; n++) {
-        const x = xr(n < 5), yy = yr(ZA[3] + 16, ZB[3] - 30);
-        if (!far(x)) continue;
-        addCre(hb, ["🐲", "sit", 1, "FAUCH!", "", 26], r, x, room(x, yy, 80, 40, 0));
-      }
-      const stn = { x: 2400, y: -9100, r: 84, z: "stn" }, ice = { x: 1900, y: -16e3, r: 420, z: "ice" }, jun = { x: 6100, y: -19200, r: 330, z: "jun" }, gate = { x: 3900, y: -28300, r: 470, z: "gate" }, ast = [];
-      for (let n = 0; n < 34; n++) {
-        const big = n < 12;
-        let o = null;
-        for (let g = 0; g < 10 && !o; g++) {
-          const q = { x: 260 + r() * 8800, y: -6500 - r() * 4600, r: big ? 46 + r() * 22 : 22 + r() * 20, z: "ast", s: Math.floor(r() * 1e6) };
-          let ok = Math.hypot(q.x - stn.x, q.y - stn.y) > 280;
-          for (const p of ast) if (Math.hypot(p.x - q.x, p.y - q.y) < p.r + q.r + 70) ok = false;
-          if (ok) o = q;
-        }
-        if (!o) continue;
-        ast.push(o);
-        ORBS.push(o);
-        if (big) mat("st", o.x, o.y - o.r - 12);
-      }
-      ORBS.push(stn, ice, jun, gate);
-      const top = function(o, dx) {
-        return o.y - Math.sqrt(o.r * o.r - dx * dx);
-      };
-      for (let n = 0; n < 12; n++) {
-        r();
-        MATS.push({ id: mi++, k: "ei", x: -1e5, y: -1e5, off: 1 });
-      }
-      MACH.push({ id: "s0", t: nt(), x: stn.x, y: top(stn, 0), zb: 1 }, { id: "s1", t: nt(), x: ice.x + 382, y: top(ice, 382), zb: 2, gone: 1 }, { id: "s2", t: nt(), x: jun.x - 30, y: top(jun, -30), zb: 2, gone: 1 }, { id: "s3", t: nt(), x: gate.x + 170, y: top(gate, 170), zb: 3 });
-      MACH = MACH.filter(function(m) {
-        return !m.gone;
-      });
-      for (let k = 0; k < 5; k++) r();
-      for (let k = 0; k < 5; k++) r();
-      addCre(hb, ["👽", "sit", 1, "WILLKOMMEN!", "sparkle", 26], r, gate.x - 150, top(gate, -150));
-      addCre(hb, ["👾", "sit", 1, "PIEP PIEP!", "sparkle", 24], r, gate.x - 210, top(gate, -210));
-      SPACE = { stn, ice, jun, gate };
-      deepFar(hb);
-      vaultPlan(7, 2, 9500, WORLD_W - 11e3, 4);
-      ST.STR.sort(function(p, q) {
-        return p.c1 - q.c1;
-      });
-    }
-    function deepFar(hb) {
-      const r = rng(SEED * 31 + 17), X0 = WORLD_W0 + 300, XW = WORLD_W - X0 - 900;
-      let mi = MATS.length;
-      const mat = function(k, x, y) {
-        MATS.push({ id: mi++, k, x, y });
-      };
-      const yr = function(a, b) {
-        return TOP + CELL * (a + r() * (b - a));
-      };
-      const xr = function() {
-        return X0 + r() * XW;
-      };
-      const types = ["muster", "spiegel", "robo", "waage", "echo", "rohre", "sudoku"];
-      let di = 100, ti = Math.floor(r() * 7);
-      const room = function(x, y, rx, ry) {
-        const s = { k: "room", x, y, rx, ry, hw: 0, nw: 1, c1: colOf(x + rx + 14) };
-        ST.STR.push(s);
-        return roomY(s);
-      };
-      const ZA = [660, 978, 1322, 1672], ZB = [944, 1272, 1622, 1880], ZBN = [1, 1, 2, 3];
-      for (let n = 0; n < 12; n++) mat("fe", xr(), yr(368, 616));
-      for (let n = 0; n < 7; n++) mat("pi", xr(), yr(ZA[0] + 4, ZB[0] - 4));
-      for (let n = 0; n < 7; n++) mat("kn", xr(), yr(ZA[1] + 4, ZB[1] - 4));
-      for (let n = 0; n < 7; n++) mat("kr", xr(), yr(ZA[2] + 2, ZB[2] - 2));
-      for (let n = 0; n < 4; n++) mat("fp", xr(), n % 2 ? yr(SEA_L + 3, SEA_B - 6) : yr(ZA[3] + 4, ZB[3]));
-      for (let z = 0; z < 4; z++) {
-        const a = ZA[z], b = ZB[z], x = xr();
-        MACH.push({ id: "d" + di++, t: types[ti++ % 7], x, y: room(x, a + 24 + r() * (b - a - 48), 92, 44), zb: ZBN[z] });
-      }
-      for (let n = 0; n < 8; n++) {
-        const x = xr(), y = room(x, yr(ZA[0] + 12, ZB[0] - 12), 54 + r() * 30, 34), h = 34 + r() * 40;
-        ST.PADS.push({ k: "shroom", x, y: y - h, w: 26 + r() * 8, h, pow: 560 + h * 2, c: n, bt: 0 });
-        if (n % 3 === 0) addCre(hb, ["🐛", "sit", 1, "GLÜH!", "sparkle", 18], r, x + 40, y);
-      }
-      for (let n = 0; n < 10; n++) ZDEC.push({ k: "bone", x: xr(), y: yr(ZA[1] + 6, ZB[1] - 6), s: 0.8 + r() * 0.9, f: r() < 0.5 ? -1 : 1, v: n % 3 });
-      for (let n = 0; n < 5; n++) {
-        const x = xr(), y = room(x, yr(ZA[1] + 20, ZB[1] - 20), 120 + r() * 50, 46);
-        addCre(hb, n % 2 ? ["🦕", "walk", 1, "MÖÖÖH!", "bront", 40] : ["🦖", "sit", 1, "ROAR!", "", 28], r, x, y).rng = 60;
-      }
-      const lake = function(m, a, b, n) {
-        for (let i = 0; i < n; i++) {
-          const x = xr(), rx = 64 + r() * 70, y = yr(a, b), ry = 26 + r() * 14;
-          ST.STR.push({ k: "lake", x, y, rx, ry, m, nw: 1, c1: colOf(x + rx + 26) });
-        }
-      };
-      lake(WATER, ZA[1] + 16, ZB[1] - 16, 10);
-      lake(WATER, ZA[2] + 16, ZB[2] - 16, 16);
-      lake(LAVA, ZA[3] + 16, ZB[3] - 30, 12);
-      for (let n = 0; n < 8; n++) {
-        const x = xr(), y = room(x, yr(ZA[2] + 16, ZB[2] - 16), 70 + r() * 50, 40);
-        ZDEC.push({ k: "cry", x, y, s: 0.8 + r() * 0.8, c: Math.floor(r() * 3) });
-        if (n % 4 === 1) addCre(hb, ["🐧", "sit", 1, "BRRR!", "", 22], r, x + 34, y);
-      }
-      for (let n = 0; n < 4; n++) {
-        const x = xr();
-        addCre(hb, ["🐲", "sit", 1, "FAUCH!", "", 26], r, x, room(x, yr(ZA[3] + 16, ZB[3] - 30), 80, 40));
-      }
-    }
-    function planetDeep(R) {
-      MATS = [];
-      MACH = [];
-      ZDEC = [];
-      SPACE = {};
-      const r = rng(SEED * 37 + R.salt), X0 = PX0 + 300, XW = RW - 600, hb = { i: -1, x0: PX0, x1: PX0 + RW, t: 0 };
-      let mi = 0, di = 0, ti = Math.floor(r() * 4);
-      const mat = function(k, x, y) {
-        MATS.push({ id: mi++, k, x, y });
-      };
-      const yr = function(a, b) {
-        return TOP + CELL * (a + r() * (b - a));
-      };
-      const xr = function() {
-        return X0 + r() * XW;
-      };
-      const types = ["stern", "muster", "spiegel", "robo", "waage"];
-      const room = function(x, y, rx, ry) {
-        const s = { k: "room", x, y, rx, ry, hw: 0, nw: 1, c1: colOf(x + rx + 14) };
-        ST.STR.push(s);
-        return roomY(s);
-      };
-      const ZA = [368, 560, 660, 978, 1322, 1672], ZB = [552, 616, 944, 1272, 1622, 1880], ZBN = [0, 1, 1, 1, 2, 3];
-      for (const q of R.mat) for (let n = 0; n < q[1]; n++) {
-        const x = xr();
-        if (q[2]) mat(q[0], x, yr(ZA[q[2] - 1] + 4, ZB[q[2] - 1] - 4));
-        else mat(q[0], x, n % 2 ? ground(x) - 12 : ground(x) + 30 + r() * 90);
-      }
-      for (let n = 0; n < 2; n++) MACH.push({ id: "p" + di++, t: n ? types[ti++ % 5] : "stern", x: PX0 + RW * (0.3 + 0.4 * n) + r() * 900, y: NaN, sf: 1, zb: n });
-      for (let z = 2; z < 6; z++) {
-        const x = xr();
-        MACH.push({ id: "p" + di++, t: types[ti++ % 5], x, y: room(x, ZA[z] + 24 + r() * (ZB[z] - ZA[z] - 48), 92, 44), zb: ZBN[z] });
-      }
-      for (let z = 3; z <= 6; z++) {
-        const a = ZA[z - 1], b = ZB[z - 1], f = R.zc[z];
-        for (let n = 0; n < 8; n++) {
-          const x = xr(), y = room(x, yr(a + 16, b - 16), 60 + r() * 60, 38);
-          if (z === 4 && n % 2 === 0) {
-            const h = 34 + r() * 40;
-            ST.PADS.push({ k: "shroom", x, y: y - h, w: 26 + r() * 8, h, pow: 560 + h * 2, c: n, bt: 0 });
-          } else if (z === 5 && n % 2 === 0) ZDEC.push({ k: "cry", x, y, s: 0.8 + r() * 0.8, c: Math.floor(r() * 3) });
-          if (f && n % 3 === 0) addCre(hb, f, r, x + 30, y);
-        }
-        if (R.lk[z]) for (let n = 0; n < 10; n++) {
-          const x = xr(), rx = 64 + r() * 70, y = yr(a + 16, b - 30), ry = 26 + r() * 14;
-          ST.STR.push({ k: "lake", x, y, rx, ry, m: R.lk[z], nw: 1, c1: colOf(x + rx + 26) });
-        }
-      }
-      vaultPlan(R.salt, 0, PX0 + 400, RW - 800, R.small !== void 0 ? 1 : 2);
-      if (R.small === void 0) {
-        const rc = rng(SEED * 53 + R.salt), x = X0 + rc() * XW;
-        mat("pk", x, TOP + CELL * (ZA[5] + 40 + rc() * (ZB[5] - ZA[5] - 80)));
-      }
-      ST.STR.sort(function(p, q) {
-        return p.c1 - q.c1;
-      });
-    }
     let VAULTS = [], doorQ = null;
-    function vaultPlan(salt, near, X0, XW, per) {
-      VAULTS = [];
-      const r = rng(SEED * 41 + salt), ZA = [368, 660, 978, 1322, 1672], ZB = [616, 944, 1272, 1622, 1880];
-      for (let z = 0; z < 5; z++) for (let n = 0; n < per; n++) {
-        const x = n < near ? 1500 + r() * 7200 : X0 + r() * XW, y = TOP + CELL * (ZA[z] + 30 + r() * (ZB[z] - ZA[z] - 60));
-        const v = { id: VAULTS.length, x, y, z, rx: 66, ry: 34 };
-        v.fy = TOP + vFloor(v) * CELL;
-        VAULTS.push(v);
-        ST.STR.push({ k: "vault", v, nw: 1, c1: colOf(x + v.rx + 40) });
-        ST.LOOT.push({ id: 5e3 + v.id, x: x + 10, y: v.fy - 14, g: 40 + 30 * z, bur: false });
-      }
-    }
     function doorCols(v) {
       return [Math.floor((v.x - v.rx - 20) / CELL), Math.floor((v.x - v.rx * 0.55) / CELL)];
     }
