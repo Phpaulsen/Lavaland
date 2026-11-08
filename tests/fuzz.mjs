@@ -25,7 +25,7 @@ await ev('OVS.forEach(o=>o.hidden=true); ST.paused=false; ST.energy=MAXE');
 const KEYS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'f', 't', 'k', 'e', 'x', 'Escape'];
 const MODES = ['walk', 'car', 'plane', 'ski', 'bagger', 'loader', 'dumper', 'tbm', 'rocket', 'sub', 'balloon', 'heli', 'boat', 'bug'];
 const TOOLS = ['shovel', 'pick', 'bow', 'earth', 'water', 'lava', 'rope', null];
-const PLACES = ['1500', 'MISX', 'SCOPEX', 'VOLC-200', 'WRECKS[0]&&WRECKS[0].x', 'HARPS[0]&&HARPS[0].x0', 'GEYS[1]', 'BOXX[2]'];
+const PLACES = ['1500', 'WSX', 'SCOPEX', 'VOLC-200', 'WRECKS[0]&&WRECKS[0].x', 'HARPS[0]&&HARPS[0].x0', 'GEYS[1]', 'LIFTX'];
 const vp = page.viewportSize();
 const t0 = Date.now(); let n = 0, last = '';
 while (Date.now() - t0 < SEC * 1000 && !errs.length) {
@@ -38,7 +38,7 @@ while (Date.now() - t0 < SEC * 1000 && !errs.length) {
     else if (r < .83) { const p = pick(PLACES); last = 'Ort ' + p; await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; { const x=" + p + "; if(x>0) teleport(x); }"); await page.waitForTimeout(300); }
     else if (r < .87) { last = 'Nacht'; await ev('nightOn=!nightOn'); }
     else if (r < .89) { const w = pick(['moon', '', 'ice', '']); last = 'Reise ' + w; await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; ST.energy=MAXE; RLM['" + w + "']||'" + w + "'===''?travel('" + w + "'):0"); await page.waitForTimeout(3500); }
-    else if (r < .92) { last = 'Mission'; await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); teleport(MISX); P.x=MISX; P.y=ground(MISX); P.on=true; doAction()"); await page.waitForTimeout(500); }
+    else if (r < .92) { last = 'Werkstatt'; await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); teleport(WSX); P.x=WSX; P.y=ground(WSX); P.on=true; doAction()"); await page.waitForTimeout(500); }
     else if (r < .95) { last = 'Fernrohr'; await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; realm===''&&scopeOpen()"); await page.waitForTimeout(200); await page.mouse.click(vp.width / 2, vp.height * .62); }
     else if (r < .96) { last = 'Seilrutsche'; await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); zipAdd&&zipAdd(P.x-40,P.y-120,P.x+260,P.y-20); doAction()"); }
     else if (r < .97) { last = 'Haken'; await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; ST.energy=MAXE; setMode('heli'); doAction(); doAction()"); }

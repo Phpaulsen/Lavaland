@@ -65,16 +65,6 @@ test('Elternansicht zählt Sandbox-Zeit je Fahrzeug', async ({ ev, page }) => {
   await ev("$('par').hidden=true");
 });
 
-test('Mission am Brett: Küken retten', async ({ ev, page }) => {
-  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; MS={done:{},cur:null}; P.mode='walk'; P.x=MISX; P.y=ground(MISX); P.on=true");
-  await page.waitForTimeout(300);
-  await ev('doAction()');
-  if (await ev("!MS.cur||MS.cur.id!=='chick'")) throw new Error('Mission nicht gestartet');
-  await ev('P.x=MS.cur.x; P.y=MS.cur.y; P.vy=0'); await page.waitForTimeout(600);
-  await ev('P.x=MISX+10; P.y=ground(MISX); P.vy=0'); await page.waitForTimeout(1200);
-  if (await ev("!MS.done.chick")) throw new Error('Mission nicht abgeschlossen');
-});
-
 test('Schaufel gräbt zu Fuß ohne Akku', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; ST.energy=0; setMode('walk'); P.x=1500; P.y=ground(1500); P.on=true; $('tool-cards').querySelector('[data-tool=shovel]').click()");
   const y0 = await ev('P.y');
@@ -305,6 +295,7 @@ test('Zonen schenken Feuerwerk, goldene Ski und Drachen', async ({ ev }) => {
   if (!(await ev('hero.own.dragon')) || await ev("$('mode-dragon').classList.contains('gone')")) throw new Error('Zone 5: Drache fehlt');
   if (await ev("!!document.getElementById('btn-story')")) throw new Error('Geschichte-Knopf noch da');
   if (await ev("!!document.getElementById('tasks')||!!document.getElementById('panel')")) throw new Error('Bau-Aufgaben noch da');
+  if (await ev("!!document.getElementById('mis')||typeof misTick!=='undefined'")) throw new Error('Missionsbrett noch da');
   await ev('hero.own=' + own + '; hero.zn=' + zn + '; syncOwn()');
 });
 

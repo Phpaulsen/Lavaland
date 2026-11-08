@@ -16,7 +16,7 @@ import { mkQWith, mkSeqWith } from './core/learn/tasks.js';
 import { g0, grid, stamp, LIFE, zS1, z4, zS2, zS3, grow0, rA, rB, rD, rH, rC, mtop, bio, bio2, bmx, bix, noCave, liqM, liqY } from './state/world.js';
 import { ST } from './state/facade.js';
 import { hero, P, parked, cam, pan, keys } from './state/game.js';
-import { ERRK, MISK, SAVEKEY, K_HERO, K_FINDS, K_SKILL, K_FACTS, K_SCHOOL, K_LIMIT, K_DAY, K_REALM, K_FOG, K_MARKS, K_MUTE, K_LEFTY, K_NEWS, K_BAK_AT, K_VOICE, K_VMISS, K_OPT, realmKey } from './persistence/keys.js';
+import { ERRK, SAVEKEY, K_HERO, K_FINDS, K_SKILL, K_FACTS, K_SCHOOL, K_LIMIT, K_DAY, K_REALM, K_FOG, K_MARKS, K_MUTE, K_LEFTY, K_NEWS, K_BAK_AT, K_VOICE, K_VMISS, K_OPT, realmKey } from './persistence/keys.js';
 import { idbOpen, idbDoWith } from './persistence/db.js';
 import { packRunsWith, unpackRunsWith, runsOk } from './core/world/pack.js';
 import { bx0, bx1, by0, by1, lavaCount, waterCount, fireCount, tick, sx0, winR, rx0, rx1, qx0, qx1, px0, px1, py0, py1, winC, ext, extI, react, cellAt, hotAt, lifeS, put, stepWith, scanMobileWith, steamWith } from './state/sim.js';
@@ -212,7 +212,6 @@ IC.rope='<path d="M2 4l20 9" '+S1+' stroke-width="2"/><rect x="1" y="2" width="3
 IC.sub='<path d="M9 9V5.500h4" fill="none" '+S1+' stroke-width="2"/><rect x="2" y="9" width="18" height="10" rx="5" fill="#ffc21a" '+S1+' stroke-width="1.6"/><circle cx="13" cy="14" r="2.400" fill="#bfe9f5" '+S1+' stroke-width="1.3"/><circle cx="7" cy="14" r="1.500" fill="#bfe9f5" '+S1+' stroke-width="1.1"/><path d="M21.500 10.500v7" '+S1+' stroke-width="2.4"/>';
 AI.hook='<path d="M12 2v9" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><path d="M12 11a4.500 4.500 0 1 1-4.500 4.500" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M5 13.500l2.500 2 2-2.500" stroke="currentColor" stroke-width="2.400" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
 AI.horn='<path d="M3 9h4l8-5v16l-8-5H3z" fill="currentColor"/><path d="M18 8.5a5 5 0 0 1 0 7M20.500 6a8.500 8.500 0 0 1 0 12" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round"/>';
-AI.mis='<path d="M12 2v3" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><rect x="3" y="5" width="18" height="13" rx="2.500" fill="currentColor"/><path d="M12 18v4" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>';
 AI.scope='<path d="M3 13l13-7 3 5-13 7z" fill="currentColor"/><path d="M10 15l-3 7M10 15l3 7" stroke="currentColor" stroke-width="2.400" stroke-linecap="round"/><circle cx="20" cy="5" r="1.600" fill="currentColor"/>';
 AI.bow='<path d="M5 3c9 1.500 14 6.500 16 16" stroke="currentColor" stroke-width="2.800" fill="none" stroke-linecap="round"/><path d="M5 3l16 16M2 12h13" stroke="currentColor" stroke-width="1.800" stroke-linecap="round"/><path d="M15 9l5 3-5 3z" fill="currentColor"/>';
 AI.sonar='<circle cx="12" cy="12" r="2.600" fill="currentColor"/><path d="M6.500 6.500a8 8 0 0 0 0 11M17.500 6.500a8 8 0 0 1 0 11M3.500 3.500a12 12 0 0 0 0 17M20.500 3.500a12 12 0 0 1 0 17" stroke="currentColor" stroke-width="2.200" fill="none" stroke-linecap="round"/>';
@@ -698,7 +697,6 @@ function doAction(){
   if(P.zip){ keys.u=true; zipRide(0); keys.u=false; return; }
   if(P.mode==='walk'){
     const zn=zipNear(); if(zn){ zipGo(zn); return; }
-    if(nearBoard()){ misBoard(); return; }
     if(nearScope()){ scopeOpen(); return; }
     if(deepAct()) return;
     if(nearLift()){ rideLift(); return; }
@@ -940,7 +938,7 @@ function update(dt){
     popG=0; popM=0; popT=.4;
   }
   if(P.swing>0) P.swing=Math.max(0,P.swing-dt*5);
-  if(keys.a&&DIGT[ST.tool]&&P.mode==='walk'&&!ST.paused&&!nearBoard()&&!zipNear()&&!deepIcon()) handDig();
+  if(keys.a&&DIGT[ST.tool]&&P.mode==='walk'&&!ST.paused&&!zipNear()&&!deepIcon()) handDig();
   else if(P.mode==='walk'&&!ST.paused&&(ix||u||d)) pushDig(ix,u,d);
   if(P.zip) zipRide(dt);
   else if(P.mode==='walk') updWalk(dt,ix,u,d);
@@ -1593,297 +1591,8 @@ function questPoint(){
   }
   return null;
 }
-/* ---------- Missionen: kleine Geschichten mit mehreren Schritten. Am Missionsbrett neben dem Aufzug holt man sich die nächste. Immer nur eine auf einmal, nichts läuft ab, man kann jederzeit etwas anderes machen. ---------- */
-const MISX=1262;
-let MS={done:{},cur:null,fl:{}}, misShown='';
-try{ const o=JSON.parse(localStorage.getItem(MISK)||'null'); if(o&&typeof o==='object'){ if(o.done&&typeof o.done==='object'&&!Array.isArray(o.done)) MS.done=o.done; if(o.cur&&typeof o.cur==='object'&&typeof o.cur.id==='string'&&(o.cur.st|0)===o.cur.st) MS.cur=o.cur; if(o.fl&&typeof o.fl==='object'&&!Array.isArray(o.fl)) MS.fl=o.fl; } }catch(_){}
-function misSave(){ if(ST.frozen) return; try{ localStorage.setItem(MISK,JSON.stringify(MS)); }catch(_){} }
-/* Eine Mission: e = wer sie gibt, start(m) richtet sie ein (false = gerade nicht möglich), steps mit Bild, Ansage, Ziel und Prüfung, win = früher Gold und Edelsteine, wird seit Vereinfachungsplan Schritt 2 nicht mehr ausgezahlt. */
-const MIS=[];
-function misDef(){ if(!MS.cur) return null; for(const d of MIS) if(d.id===MS.cur.id) return d; return null; }
-function misNext(){
-  for(const d of MIS) if(!MS.done[d.id]&&(!d.can||d.can())) return d;
-  const ag=MIS.filter(function(d){ return d.again&&(!d.can||d.can()); });
-  return ag.length?ag[ri(0,ag.length-1)]:null;
-}
-function misHere(d){ if(!d||!MS.cur) return false; const st=d.steps[MS.cur.st]; return ((st&&st.realm)||d.realm||'')===realm; }
-function nearBoard(){ return !realm&&P.mode==='walk'&&P.on&&Math.abs(P.x-MISX)<44&&Math.abs(P.y-ground(MISX))<60; }
-function misBoard(){
-  const d=misDef();
-  if(d){ misTalk(true); return; }
-  const n=misNext();
-  if(!n){ say('','Du hast alle Missionen geschafft! Super gemacht.'); return; }
-  const m={id:n.id,st:0};
-  if(n.start(m)===false){ say(n.e,n.no||'Das klappt gerade nicht. Versuch es gleich nochmal.'); return; }
-  MS.cur=m; misSave(); sfx('pop'); renderMis(); misTalk(true); pulse('mis');
-}
-function misTalk(intro){
-  const d=misDef(); if(!d) return;
-  const st=d.steps[MS.cur.st], t=(intro&&MS.cur.st===0&&d.hi?d.hi(MS.cur)+' ':'')+st.say(MS.cur);
-  say(d.e,t);
-}
-function renderMis(){
-  const d=misDef(), ic=d?d.steps[MS.cur.st].ic:'', t=typeof ic==='function'?ic(MS.cur):ic, k=d?d.id+MS.cur.st+t:'';
-  if(k===misShown) return; misShown=k;
-  $('mis').hidden=!d;
-  if(d){ $('mis-e').textContent=d.e; $('mis-s').textContent=t; }
-}
-function misTick(dt){
-  const d=misDef();
-  if(MS.cur&&!d){ MS.cur=null; misSave(); }
-  renderMis();
-  if(!d||!misHere(d)||ST.traveling) return;
-  const m=MS.cur, st=d.steps[m.st];
-  if(!st.tick(m,dt)) return;
-  m.st++;
-  if(m.st>=d.steps.length){
-    MS.done[d.id]=(MS.done[d.id]|0)+1; MS.cur=null; misSave(); renderMis();
-    reward(); later(.3,function(){ say(d.e,d.end); });
-    return;
-  }
-  misSave(); renderMis(); sfx('pop'); later(.2,function(){ misTalk(false); });
-}
-function misPoint(){
-  const d=misDef(); if(!d) return null;
-  const st=d.steps[MS.cur.st];
-  if(!misHere(d)) return st.away&&!realm?st.away(MS.cur):null;
-  return st.tgt(MS.cur);
-}
-function drawMis(x0,x1){
-  if(!realm&&MISX>x0-60&&MISX<x1+60){
-    const gy=ground(MISX), cur=misDef();
-    ctx.fillStyle=INK; ctx.fillRect(MISX-4,gy-62,8,62); ctx.fillStyle='#a0632f'; ctx.fillRect(MISX-2.5,gy-60,5,60);
-    ctx.fillStyle=INK; rr(MISX-30,gy-92,60,40,6); ctx.fillStyle='#d9a066'; rr(MISX-27,gy-89,54,34,4);
-    ctx.fillStyle='#fff8e6'; ctx.fillRect(MISX-20,gy-84,18,13); ctx.fillRect(MISX+3,gy-80,17,16);
-    ctx.fillStyle='#e63946'; circle(MISX-11,gy-84,2.2); circle(MISX+11,gy-80,2.2);
-    if(!cur&&misNext()){ ctx.fillStyle='#e63946'; circle(MISX,gy-110,12); ctx.fillStyle='#fff'; ctx.font='bold 18px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('!',MISX,gy-109); }
-    else if(cur) emo(cur.e,MISX,gy-110,24);
-  }
-  const d=misDef(); if(d&&misHere(d)&&d.draw) d.draw(MS.cur,x0,x1);
-  const fx=realm&&MS.fl&&MS.fl[realm];
-  if(typeof fx==='number'&&fx>x0-60&&fx<x1+60) drawFlag(fx,ground(fx));
-}
-function drawFlag(x,y){
-  ctx.fillStyle=INK; ctx.fillRect(x-2.5,y-70,5,70);
-  ctx.fillStyle=INK; ctx.beginPath(); ctx.moveTo(x+1,y-70); ctx.lineTo(x+40,y-61); ctx.lineTo(x+1,y-46); ctx.closePath(); ctx.fill();
-  ctx.fillStyle='#e63946'; ctx.beginPath(); ctx.moveTo(x+2.5,y-67); ctx.lineTo(x+35,y-60.5); ctx.lineTo(x+2.5,y-49); ctx.closePath(); ctx.fill();
-  ctx.fillStyle='#ffd23f'; star4(x+14,y-59,5);
-  ctx.fillStyle='#ffd23f'; circle(x,y-72,3.5);
-}
-function misFollow(m,dt){ const tx=P.x-P.face*26, ty=P.y-4; m.fx+=(tx-m.fx)*Math.min(1,dt*4); m.fy+=(ty-m.fy)*Math.min(1,dt*5); }
-function misSpot(lo,hi){
-  for(let i=0;i<40;i++){
-    const x=MISX+(Math.random()<.5?-1:1)*ri(lo,hi);
-    if(x<160||Math.abs(x-VOLC)<650||x>SNX-200||Math.abs(x-STALL_X)<80||Math.abs(x-LIFTX)<80) continue;
-    return x;
-  }
-  return MISX+lo;
-}
-
-/* Küken retten: Es ist in eine Höhle unter der Erde gefallen. Hingraben, abholen, zur Henne bringen. */
-MIS.push({id:'chick',e:'🐔',win:[30,1],
-  hi:function(){ return 'Hilfe! Mein Küken ist in ein Loch gefallen und sitzt jetzt unter der Erde.'; },
-  start:function(m){
-    const x=misSpot(450,1000), y=ground(x)+ri(120,170);
-    carveCircle(x,y,22); m.x=x; m.y=y+16; m.fx=m.x; m.fy=m.y;
-  },
-  steps:[
-    {ic:'🐥⛏️',say:function(){ return 'Folge dem roten Pfeil und grab dich zum Küken hinunter.'; },tgt:function(m){ return [m.x,m.y-20]; },
-      tick:function(m){ return P.mode==='walk'&&Math.hypot(P.x-m.x,P.y-m.y)<46; }},
-    {ic:'🐥🏠',say:function(){ return 'Piep! Du hast das Küken gefunden. Bring es zurück zur Henne am Missionsbrett.'; },tgt:function(){ return [MISX,ground(MISX)-60]; },
-      tick:function(m,dt){ misFollow(m,dt); return Math.abs(P.x-MISX)<70&&Math.abs(P.y-ground(MISX))<90; }}
-  ],
-  draw:function(m){
-    const by=ground(MISX);
-    emo('🐔',MISX+40,by-14,26);
-    if(m.st===0) emo('🐥',m.x,m.y-10,22); else emo('🐥',m.fx,m.fy-10,20);
-  },
-  end:'Danke! Mein Küken ist wieder da. Du bist ein echter Retter!'});
-
-/* Paketdienst: Fünf Briefkästen mit Nummern stehen hinter dem Schießstand. Auf jedem Paket steht eine Zahl, vorgelesen wird sie nicht: Die Zahl lesen ist die Aufgabe. Wer zweimal den falschen Kasten erwischt, bekommt die Zahl vorgesagt. */
-const BOXX=[1995,2105,2215,2325,2435];
+/* Höchste Zahl beim Sternezählen im Fernrohr: nach Schulstand bis 10 oder 20. */
 function postMax(){ return SCH.on&&SCH.zr<=1?10:20; }
-function postStep(k){
-  return {ic:function(m){ return '📦'+m.n[m.p[k]]; },
-    say:function(m){ return (k?'Super! Hier ist das nächste Paket. ':'')+'Bring das Paket zum Briefkasten mit derselben Zahl. Die Zahl steht auf dem Paket.'+(m.w>=2?' Es ist die '+m.n[m.p[k]]+'.':''); },
-    tgt:function(m){ return m.w>=2?[BOXX[m.p[k]],ground(BOXX[m.p[k]])-60]:[BOXX[2],ground(BOXX[2])-90]; },
-    tick:function(m){
-      if(P.mode!=='walk'||!P.on) return false;
-      let at=-1; for(let i=0;i<BOXX.length;i++) if(Math.abs(P.x-BOXX[i])<24&&Math.abs(P.y-ground(BOXX[i]))<40) at=i;
-      if(at<0){ m.last=-1; return false; }
-      if(at===m.p[k]){ m.w=0; m.last=-1; sfx('coin'); burst(BOXX[at],ground(BOXX[at])-40,'#ffd23f'); return true; }
-      if(at!==m.last){ m.last=at; m.w=(m.w|0)+1; tone([262,220],'triangle'); say('🐻','Das ist die '+m.n[at]+'. Auf dem Paket steht eine andere Zahl.'+(m.w>=2?' Auf dem Paket steht die '+m.n[m.p[k]]+'.':'')); misSave(); }
-      return false;
-    }};
-}
-MIS.push({id:'post',e:'🐻',win:[25,1],again:true,
-  hi:function(){ return 'Hallo, ich bin Bruno, der Postbär. Hilfst du mir? Hinter den Zielscheiben stehen Briefkästen.'; },
-  start:function(m){
-    const pool=[]; for(let i=1;i<=postMax();i++) pool.push(i); shuffle(pool);
-    m.n=pool.slice(0,5).sort(function(a,b){ return a-b; }); if(Math.random()<.5) m.n=shuffle(m.n);
-    m.p=shuffle([0,1,2,3,4]).slice(0,3); m.w=0; m.last=-1;
-  },
-  steps:[postStep(0),postStep(1),postStep(2)],
-  draw:function(m,x0,x1){
-    emo('🐻',MISX+40,ground(MISX)-18,30);
-    for(let i=0;i<BOXX.length;i++){
-      const x=BOXX[i]; if(x<x0-40||x>x1+40) continue;
-      const gy=ground(x);
-      ctx.fillStyle=INK; ctx.fillRect(x-3,gy-36,6,36); ctx.fillStyle='#a0632f'; ctx.fillRect(x-1.5,gy-35,3,35);
-      ctx.fillStyle=INK; rr(x-15,gy-60,30,26,6); ctx.fillStyle='#e63946'; rr(x-13,gy-58,26,22,5);
-      ctx.fillStyle='#fff8e6'; rr(x-10,gy-55,20,16,3);
-      ctx.fillStyle=INK; ctx.font='bold 14px Andika, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(String(m.n[i]),x,gy-46.5);
-    }
-    if(m.st<3){
-      const bx=P.x+P.face*17, by=P.y-22;
-      ctx.fillStyle=INK; rr(bx-13,by-11,26,22,3); ctx.fillStyle='#d9a066'; rr(bx-11,by-9,22,18,2);
-      ctx.fillStyle='#fff8e6'; rr(bx-8,by-6,16,12,2);
-      ctx.fillStyle=INK; ctx.font='bold 12px Andika, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(String(m.n[m.p[m.st]]),bx,by+.5);
-    }
-  },
-  end:'Alle Pakete sind angekommen! Danke, du bist der schnellste Briefträger der Welt.'});
-
-/* Schatzkarte: Pirat Kiki hat einen Schatz unter einem der fünf Pfähle vergraben. Auf der Karte steht eine Plusaufgabe, das Ergebnis ist die Zahl am richtigen Pfahl. Graben mit Schaufel oder Bagger. Wer zweimal falsch gräbt, bekommt das Ergebnis vorgesagt. */
-function stake(x,n,x0,x1){
-  if(x<x0-40||x>x1+40) return;
-  const gy=ground(x);
-  ctx.fillStyle=INK; ctx.fillRect(x-4,gy-44,8,44); ctx.fillStyle='#a0632f'; ctx.fillRect(x-2.5,gy-43,5,43);
-  ctx.fillStyle=INK; rr(x-13,gy-64,26,22,4); ctx.fillStyle='#fff8e6'; rr(x-11,gy-62,22,18,3);
-  ctx.fillStyle=INK; ctx.font='bold 14px Andika, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(String(n),x,gy-52.5);
-}
-MIS.push({id:'map',e:'🦜',win:[30,2],again:true,
-  hi:function(){ return 'Ahoi! Ich bin Kiki, die Piratin. Ich habe einen Schatz vergraben, aber ich weiß nicht mehr, wo.'; },
-  start:function(m){
-    /* Zahlenraum aus dem Schulstand, ohne Angabe bis 10. Bei „bis 20 ohne Zehnerübergang“ nur Aufgaben wie 12+3. */
-    const zr=SCH.on?SCH.zr:1, mx=[5,10,20,20][zr], pool=[]; for(let i=3;i<=Math.max(mx,8);i++) pool.push(i); shuffle(pool);
-    m.n=pool.slice(0,5).sort(function(a,b){ return a-b; });
-    m.k=ri(0,4); const sum=m.n[m.k];
-    if(sum>10&&zr===2){ const u=ri(0,sum-11); m.a=10+u; m.b=sum-m.a; } else{ m.a=ri(1,Math.min(10,sum-1)); m.b=sum-m.a; if(m.b>10){ m.b=10; m.a=sum-10; } }
-    if(Math.random()<.5&&!(sum>10&&zr===2)){ const t=m.a; m.a=m.b; m.b=t; }
-    m.w=0; m.last=-1;
-    m.y=ground(BOXX[m.k])+ri(40,60);
-    /* Unter allen fünf Pfählen weiche Erde, damit die Schaufel überall durchkommt und die Erde nichts verrät. */
-    for(const x of BOXX){ const c0=Math.floor((x-18)/CELL), r0=Math.floor((ground(x)-TOP)/CELL); for(let cy=r0;cy<r0+17;cy++) for(let cx=c0;cx<c0+6;cx++){ if(!inGrid(cx,cy)) continue; const i=cy*GX+cx, g=grid[i]; if(g>=4&&g!==BED&&g!==CORE&&g!==SHELL&&g!==GOLD&&g!==GEM) grid[i]=EARTH; } }
-  },
-  steps:[{ic:function(m){ return '🗺️'+m.a+'+'+m.b; },
-    say:function(m){ return 'Auf der Karte steht: '+m.a+' plus '+m.b+'. Rechne aus, wie viel das ist. Unter dem Pfahl mit dieser Zahl liegt der Schatz. Grab dort mit der Schaufel.'+(m.w>=2?' Das Ergebnis ist '+(m.a+m.b)+'.':''); },
-    tgt:function(m){ return m.w>=2?[BOXX[m.k],ground(BOXX[m.k])-70]:[BOXX[2],ground(BOXX[2])-100]; },
-    tick:function(m){
-      const kx=BOXX[m.k];
-      if(Math.abs(P.x-kx)<34&&Math.abs(P.y-m.y)<36){ sfx('coin'); confetti(kx,m.y); return true; }
-      let at=-1; for(let i=0;i<BOXX.length;i++) if(Math.abs(P.x-BOXX[i])<26&&P.y>ground(BOXX[i])+30&&P.y<ground(BOXX[i])+120) at=i;
-      if(at<0||at===m.k){ if(at<0) m.last=-1; return false; }
-      if(at!==m.last){ m.last=at; m.w=(m.w|0)+1; tone([262,220],'triangle'); say('🦜','Hier am Pfahl '+m.n[at]+' ist nichts. '+m.a+' plus '+m.b+' ist eine andere Zahl.'+(m.w>=2?' Es ist die '+(m.a+m.b)+'.':'')); misSave(); }
-      return false;
-    }}],
-  draw:function(m,x0,x1){
-    emo('🦜',MISX+40,ground(MISX)-30,28);
-    for(let i=0;i<BOXX.length;i++) stake(BOXX[i],m.n[i],x0,x1);
-    const kx=BOXX[m.k];
-    if(kx>x0-40&&kx<x1+40&&P.y>ground(kx)+10){ ctx.fillStyle=INK; rr(kx-15,m.y-22,30,22,4); ctx.fillStyle='#a0632f'; rr(kx-13,m.y-20,26,18,3); ctx.fillStyle='#ffd23f'; ctx.fillRect(kx-13,m.y-13,26,3); circle(kx,m.y-11,3); }
-  },
-  end:'Mein Schatz! Danke, du hast ihn gefunden. Hier, ein Teil davon gehört dir.'});
-
-/* Obstkorb: Bäuerin Frieda braucht genau so viele Äpfel, wie sie sagt. Gesammelte Äpfel liegen im Korb über dem Kind in Fünferreihen wie im Zehnerfeld. Zu viele gibt sie zurück und sagt, wie viele, zu wenige zählt sie nach. */
-MIS.push({id:'apple',e:'👩‍🌾',win:[25,1],again:true,
-  hi:function(m){ return 'Hallo! Ich backe einen Apfelkuchen.'; },
-  start:function(m){
-    const zr=SCH.on?SCH.zr:1; m.n=ri(4,zr===0?5:10); m.c=0; m.a=[];
-    const k=m.n+ri(4,6);
-    for(let i=0;i<k;i++){ const x=misSpot(180,900)+ri(-40,40); m.a.push([Math.round(x),0]); }
-  },
-  steps:[{ic:function(m){ return '🍎'+m.n; },
-    say:function(m){ return 'Ich brauche genau '+m.n+' Äpfel. Nicht mehr und nicht weniger. Sammle sie und bring sie mir.'; },
-    tgt:function(m){
-      if(m.c>=m.n) return [MISX+40,ground(MISX)-70];
-      let b=null, bd=1e9; for(const a of m.a){ if(a[1]) continue; const d=Math.abs(a[0]-P.x); if(d<bd){ bd=d; b=a; } }
-      return b&&bd>500?[b[0],ground(b[0])-40]:null;
-    },
-    tick:function(m){
-      for(const a of m.a) if(!a[1]&&Math.abs(P.x-a[0])<20&&Math.abs(P.y-ground(a[0]))<34){ a[1]=1; m.c++; sfx('coin'); misSave(); }
-      if(P.mode!=='walk'||Math.abs(P.x-MISX-40)>50||Math.abs(P.y-ground(MISX))>60){ m.at=0; return false; }
-      if(m.at||!m.c) return false;
-      m.at=1;
-      if(m.c===m.n) return true;
-      if(m.c>m.n){ const z=m.c-m.n; say('👩‍🌾','Du hast '+m.c+' Äpfel. Ich brauche nur '+m.n+'. Das sind '+z+' zu viel, die schenke ich dir.'); m.c=m.n; misSave(); return true; }
-      say('👩‍🌾','Du hast '+m.c+' Äpfel. Ich brauche '+m.n+'. Es fehlen noch '+(m.n-m.c)+'.'); return false;
-    }}],
-  draw:function(m,x0,x1){
-    emo('👩‍🌾',MISX+40,ground(MISX)-18,30);
-    for(const a of m.a) if(!a[1]&&a[0]>x0-30&&a[0]<x1+30) emo('🍎',a[0],ground(a[0])-9,18);
-    if(m.c&&P.mode==='walk'){
-      const rows=Math.ceil(m.c/5), bx=P.x-27, by=P.y-62-rows*12;
-      ctx.fillStyle='rgba(255,248,230,.9)'; rr(bx-4,by-4,62,rows*12+8,6);
-      for(let i=0;i<m.c;i++){ const r=(i/5)|0, c=i%5; emo('🍎',bx+6+c*12,by+6+r*12,11); }
-    }
-  },
-  end:'Genau richtig! Jetzt kann ich backen. Danke schön!'});
-
-/* Feuerwehr: Ein Blitz hat Bäume angezündet. Löschen mit Wasser aus dem Werkzeugkasten oder mit Regen: eine Wolke über dem Baum antippen. Die Bäume brennen, bis man kommt, nichts brennt ab. */
-function fireOut(tr){
-  for(const c of clouds) if(c.rain>0&&Math.abs(c.x-tr.x)<70) return true;
-  const c0=Math.floor((tr.x-34)/CELL), c1=Math.floor((tr.x+34)/CELL), r0=Math.floor((tr.gy-tr.h-30-TOP)/CELL), r1=Math.floor((tr.gy-TOP)/CELL);
-  for(let cy=r0;cy<=r1;cy++) for(let cx=c0;cx<=c1;cx++) if(inGrid(cx,cy)&&grid[cy*GX+cx]===WATER) return true;
-  return false;
-}
-MIS.push({id:'fire',e:'🧑‍🚒',win:[35,2],again:true,
-  can:function(){ return fireTrees().length>=3; },
-  hi:function(){ return 'Alarm! Ein Blitz hat Bäume angezündet. Hilf mir löschen!'; },
-  start:function(m){ const t=fireTrees().slice(0,3); if(t.length<3) return false; m.t=t; m.o=[]; for(const i of t){ trees[i].state=1; trees[i].t=1e9; } },
-  steps:[{ic:function(m){ return '🔥'+(m.t.length-m.o.length); },
-    say:function(){ return 'Lösch die brennenden Bäume. Nimm Wasser aus dem Werkzeugkasten und male es auf die Flammen. Oder tippe auf eine Wolke über dem Baum, dann regnet es.'; },
-    tgt:function(m){
-      let b=null, bd=1e9; for(const i of m.t){ const tr=trees[i]; if(!tr||m.o.indexOf(i)>=0) continue; const d=Math.abs(tr.x-P.x); if(d<bd){ bd=d; b=tr; } }
-      return b?[b.x,b.gy-b.h-30]:null;
-    },
-    tick:function(m){
-      let left=0;
-      for(const i of m.t){
-        const tr=trees[i]; if(!tr||m.o.indexOf(i)>=0) continue;
-        tr.state=1; tr.t=1e9;
-        if(fireOut(tr)){ m.o.push(i); tr.state=0; tr.t=0; smoke(tr.x,tr.gy-tr.h,10); steam(Math.floor(tr.x/CELL),Math.floor((tr.gy-tr.h-TOP)/CELL)); shout(tr.x,tr.gy-tr.h-40,'ZISCH!','#bfe9f5'); sfx('pop'); misSave(); }
-        else left++;
-      }
-      return left===0;
-    }}],
-  draw:function(){ emo('🧑‍🚒',MISX+40,ground(MISX)-18,30); },
-  end:'Alle Feuer sind aus! Du bist eine richtige Feuerwehr.'});
-function fireTrees(){
-  const a=[];
-  for(let i=0;i<trees.length;i++){ const t=trees[i], d=Math.abs(t.x-MISX); if(t.state===0&&!t.fir&&d>250&&d<1800&&Math.abs(t.x-VOLC)>600) a.push(i); }
-  return a.sort(function(x,y){ return Math.abs(trees[x].x-MISX)-Math.abs(trees[y].x-MISX); });
-}
-
-/* Flaggen: Auf jedem großen Planeten den höchsten Berg finden und eine Flagge hineinstecken. Die Flagge bleibt für immer stehen. Den Gipfel findet ein Blick auf die Höhe der ganzen Welt. */
-function summitX(){
-  let bx=RX0, by=1e9;
-  for(let x=RX0+200;x<RX0+RW-200;x+=24){ const g=ground(x); if(g<by){ by=g; bx=x; } }
-  return bx;
-}
-const PLN={moon:'den Mond',ice:'den Eisplaneten',jun:'den Blubberplaneten'};
-function flagStep(id){
-  return {realm:id,ic:'🚩'+RLM[id].e,
-    say:function(){ return id==='moon'?'Flieg mit der Rakete zum Mond. Dort zeigt dir der Pfeil den höchsten Berg. Stell dich ganz oben hin.':'Flieg mit der Rakete auf '+PLN[id]+' und stell dich auf den höchsten Berg.'; },
-    away:function(){ const o=orbsOf(id)[0]; return o?[o.x,o.y-o.r-26]:null; },
-    tgt:function(m){ if(!m.sx) m.sx={}; if(typeof m.sx[id]!=='number') m.sx[id]=summitX(); return [m.sx[id],ground(m.sx[id])-60]; },
-    tick:function(m){
-      if(!m.sx||typeof m.sx[id]!=='number') return false;
-      const x=m.sx[id];
-      if(P.mode==='walk'&&P.on&&Math.abs(P.x-x)<60&&P.y<ground(x)+30){ MS.fl[id]=x; confetti(x,ground(x)-40); jingle(); shout(x,ground(x)-90,'GIPFEL!','#ffd23f'); return true; }
-      return false;
-    }};
-}
-MIS.push({id:'flag1',e:'👩‍🚀',win:[40,3],
-  hi:function(){ return 'Hallo, ich bin Astronautin Ada. Weißt du, wo auf dem Mond der höchste Berg ist? Dort soll unsere Flagge stehen.'; },
-  start:function(){},
-  steps:[flagStep('moon')],
-  end:'Unsere Flagge weht auf dem Mondgipfel! Das sieht man bestimmt bis zur Erde.'});
-MIS.push({id:'flag2',e:'👩‍🚀',win:[80,5],
-  can:function(){ return (hero.rk|0)>=2; },
-  hi:function(){ return 'Deine Rakete fliegt jetzt bis zu den fernen Planeten. Stellst du auch dort unsere Flaggen auf?'; },
-  start:function(){},
-  steps:[flagStep('ice'),flagStep('jun')],
-  end:'Flaggen auf dem Eisplaneten und dem Blubberplaneten! Du hast das ganze Weltall erkundet!'});
 
 const OVS=Array.prototype.slice.call(document.querySelectorAll('.ov,#quiz,#pz'));
 function uiOpen(){ for(const o of OVS) if(!o.hidden) return true; return false; }
@@ -4735,7 +4444,6 @@ tap($('btn-map'),function(){ mapPg=0; renderMap(); $('map').hidden=false; render
 tap($('btn-lab'),openLab);
 $('map-cards').addEventListener('click',mapClick);
 $('eggs').addEventListener('click',eggClick);
-tap($('mis'),function(){ misTalk(false); });
 tap($('quest'),function(){ if(quest&&!quest.done){ const d=QDEF[quest.type]; speak(d.say(quest)); pulse(d.hint(quest)); } });
 /* Linkshänder: Laufen rechts, Springen und Aktion links. */
 document.body.classList.toggle('calm',OPT.calm);
@@ -5525,7 +5233,6 @@ function draw(){
     if(!(P.mode==='coaster'&&P.track===T)){ const q=trackAt(T,10); drawCart(q.x,q.y,Math.atan2(q.ty,q.tx),T.dir,false,false); }
   }
   drawZips(x0,x1);
-  drawMis(x0,x1);
   drawWrecks(x0,x1);
   drawHarps(x0,x1);
   drawScope(x0,x1);
@@ -5663,7 +5370,7 @@ function draw(){
   drawSnowfall();
   drawMood();
 
-  { const mp=misPoint(); if(mp) pointTo(mp[0],mp[1],'#e63946'); const qp=questPoint(); if(qp) pointTo(qp[0],qp[1],'#58b548'); }
+  { const qp=questPoint(); if(qp) pointTo(qp[0],qp[1],'#58b548'); }
   if(FX.sonar>0){ const so=sonarTarget(); if(so) pointTo(so[0],so[1],'#ffd23f'); }
   const gp=guidePoint(); if(gp) pointTo(gp[0],gp[1],'#ff8a1f');
   if(hero.up.compass>0&&nearF&&!nearF.got&&nearD<[0,900,2600,1e9][hero.up.compass]) pointTo(nearF.x,nearF.y,'#5fd4e6');
@@ -5671,7 +5378,7 @@ function draw(){
 
 function actIcon(){
   if(P.zip) return 'jump';
-  if(P.mode==='walk'){ if(zipNear()) return 'hook'; if(nearBoard()) return 'mis'; if(nearScope()) return 'scope'; const da=deepIcon(); if(da) return da; }
+  if(P.mode==='walk'){ if(zipNear()) return 'hook'; if(nearScope()) return 'scope'; const da=deepIcon(); if(da) return da; }
   if(P.mode==='walk') return nearLift()?'lift':ST.tool==='bow'?'bow':DIGT[ST.tool]?'dig':(P.chute?'down':(P.on||P.air<.15?'jump':'chute'));
   if(P.mode==='ski') return nearLift()?'lift':(P.on||P.ball>0?'jump':'spin');
   if(P.mode==='dragon') return 'flame';
@@ -5699,7 +5406,6 @@ function resetWorld(seed){
   parts.length=0; ghost=null; stroke=null; strokeId=null;
   for(const tr of trees){ tr.state=0; tr.t=0; }
   ST.tracks=[]; ST.zips=[]; P.zip=null; const d=demoTrack(); if(d) ST.tracks.push(d);
-  if(MS.cur||Object.keys(MS.fl).length){ MS.cur=null; MS.fl={}; misSave(); }
   P.mode='walk'; P.x=820; P.y=surfaceY(820); P.vx=0; P.vy=0; P.on=true; P.face=1; P.chute=false; P.soot=0; P.hurt=0; P.turbo=0; P.track=null; P.load=0; P.arm=.75; P.ball=0; P.spin=0; P.rot=0; P.frost=0;
   for(const k in parked) parked[k]=null;
   heliLoad='';
@@ -6178,7 +5884,7 @@ function frame(t){
   }
 }
 /* Absturzschutz für Nebensysteme: Wirft eins dreimal einen Fehler, wird es für diese Sitzung abgeschaltet und steht im Fehlerprotokoll. Der Rest läuft weiter. */
-const SIDE=[arrowsTick,monTick,geyTick,metTick,wreckTick,flyTick,harpTick,worldTick,deepTick,winterTick,findsTick,questTick,misTick,autosave,drain,fogTick,mkTick];
+const SIDE=[arrowsTick,monTick,geyTick,metTick,wreckTick,flyTick,harpTick,worldTick,deepTick,winterTick,findsTick,questTick,autosave,drain,fogTick,mkTick];
 const SAFE=new Map();
 function safe(f,dt){
   const n=SAFE.get(f)|0; if(n>=3) return;
