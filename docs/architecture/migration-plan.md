@@ -212,6 +212,13 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 - Missionsbrett neben dem Aufzug, alle sieben Missionen (Küken, Post, Karte, Äpfel, Feuerwehr, Mondflaggen), ihr HUD-Knopf `#mis`, der rote Pfeil und die Flaggen entfallen. `lavaland-mis` wird nicht mehr gelesen oder geschrieben. `postMax` bleibt fürs Fernrohr.
 - Golden Master: 1 Eintrag gestrichen (`speichern / leer / ls lavaland-mis`), kein Wert geändert. `golden.mjs` ruft `misSave` nicht mehr auf.
 
+### Streich-PR 3d: Ein Auftrag zeigt auf Tiefe und Höhe (verhaltensändernd, nicht Teil der Migration)
+
+- Nach den sieben Einführungsaufträgen wählt `newQuest` aus einer Kette (`chainQuest`), abwechselnd Tiefe und Weltraum: nächste Zone (`QDEEP`, mit nötiger Bohrerstufe), danach Erdkern (Schutz Stufe 3); Mond, Raumstation, Eisplanet, Blubberplanet, Sternentor (`QSKY`, mit nötiger Raketenstufe).
+- Ist das Ziel zu, nennt der Auftrag das Gerät: bauen in der Werkstatt (`make`), sonst Zahnräder aus Rätselmaschinen (`pz` mit Gerät). Fehlen nur Meistersteine oder ist alles erreicht, kommt wie bisher ein Zufallsauftrag; `core` fällt aus dem Zufall.
+- Besuchte Weltraumziele merkt `hero.mk.o` (Bitmaske, nur gesetzt, wenn es passiert). Alte Spielstände: `ST.orbGot` (nur auf der Erde), `hero.fin`, `hero.rk`. Kein neuer Speicherschlüssel.
+- Golden Master unverändert. Neuer Smoke-Test für die Kette.
+
 ### PR 16: Systemschnittstelle
 
 - **Bewegt:** `SIDE`, `SAFE`, `safe()` → `systems/index.js` mit `{ name, tick }` je Eintrag, gleiche Reihenfolge, `name` = heutiger Funktionsname. Die Tick-Funktionen selbst bleiben noch in `legacy.js` und werden nur registriert.

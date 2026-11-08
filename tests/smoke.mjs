@@ -299,6 +299,25 @@ test('Zonen schenken Feuerwerk, goldene Ski und Drachen', async ({ ev }) => {
   await ev('hero.own=' + own + '; hero.zn=' + zn + '; syncOwn()');
 });
 
+test('Auftrag nach der Einführung zeigt auf die nächste Zone oder ins All', async ({ ev }) => {
+  const keep = await ev('JSON.stringify({q:hero.quest,qn:hero.qn,zn:hero.zn,dr:hero.dr,rk:hero.rk,h:hero.up.heat,zr:hero.mat.zr|0,ms:hero.mat.ms|0,mk:hero.mk,fin:hero.fin})');
+  const q = (s) => ev("(function(){ " + s + "; const q=newQuest(); return q.type+(q.z?':'+q.z:'')+(q.k?':'+q.k:'')+(q.g?':'+q.g:''); })()");
+  const base = "hero.qn=QSCRIPT.length+1; hero.zn=0; hero.dr=0; hero.rk=0; hero.up.heat=0; hero.mat.zr=0; hero.mat.ms=0; hero.mk={}; hero.fin=0";
+  let r;
+  if ((r = await q(base)) !== 'zone:1') throw new Error('gerade Nummer: Zone 1 erwartet, kam ' + r);
+  if ((r = await q(base + '; hero.qn++')) !== 'orb:moon') throw new Error('ungerade Nummer: Mond erwartet, kam ' + r);
+  if ((r = await q(base + '; hero.zn=2')) !== 'pz:dr') throw new Error('ohne Bohrer: Rätsel für den Bohrer erwartet, kam ' + r);
+  if ((r = await q(base + '; hero.zn=2; hero.mat.zr=3')) !== 'make:dr') throw new Error('Bohrer baubar: Werkstatt erwartet, kam ' + r);
+  if ((r = await q(base + '; hero.zn=4; hero.dr=1; hero.mat.zr=9')) !== 'orb:moon') throw new Error('Bohrer 2 wartet auf Meistersteine: Mond erwartet, kam ' + r);
+  if (/^(zone|orb|make|core)/.test(r = await q(base + '; hero.zn=4; hero.dr=1; hero.mat.zr=9; hero.rk=1; hero.mk.o=3'))) throw new Error('beide warten auf Meistersteine: Zufall erwartet, kam ' + r);
+  if ((r = await q(base + '; hero.zn=6; hero.dr=3; hero.up.heat=3; hero.rk=3; hero.mk.o=31')) !== 'core') throw new Error('am Ende Erdkern erwartet, kam ' + r);
+  if (/^(zone|orb|make|core)/.test(r = await q(base + '; hero.zn=6; hero.dr=3; hero.up.heat=3; hero.rk=3; hero.mk.o=31; hero.fin=3'))) throw new Error('alles erreicht: Zufall erwartet, kam ' + r);
+  await ev(base + "; hero.quest={type:'zone',z:1,goal:1,p:0}; showQuest(false); hero.zn=1; questTick(0)");
+  if (!(await ev('quest.done'))) throw new Error('Zonen-Auftrag nicht erledigt');
+  const k = JSON.parse(keep);
+  await ev('hero.qn=' + k.qn + '; hero.zn=' + k.zn + '; hero.dr=' + k.dr + '; hero.rk=' + k.rk + '; hero.up.heat=' + k.h + '; hero.mat.zr=' + k.zr + '; hero.mat.ms=' + k.ms + '; hero.mk=' + JSON.stringify(k.mk) + '; hero.fin=' + k.fin + '; hero.quest=' + JSON.stringify(k.q) + '; qDoneT=0; if(hero.quest) showQuest(false)');
+});
+
 test('Altes Gold wird einmal zu Zahnrädern', async ({ ev }) => {
   await ev('OVS.forEach(o=>o.hidden=true); ST.paused=false; hero.mat.zr=0; ST.gold=120; ST.gems=11; goldSwap()');
   if (await ev('hero.mat.zr') !== 5 || await ev('ST.gold') || await ev('ST.gems')) throw new Error('Tausch falsch: ' + await ev('hero.mat.zr'));
