@@ -1,40 +1,9 @@
 {
-  "pr": 9,
-  "renames": {
-    "stepWith": "step",
-    "scanMobileWith": "scanMobile",
-    "steamWith": "steam"
-  },
-  "params": {
-    "stepWith": [
-      "SP"
-    ],
-    "scanMobileWith": [
-      "SP"
-    ],
-    "steamWith": [
-      "SP"
-    ]
-  },
+  "pr": 10,
+  "renames": { "packRunsWith": "packRuns", "unpackRunsWith": "unpackRuns" },
+  "params": { "packRunsWith": ["grid"], "unpackRunsWith": ["grid"] },
   "wrappers": {},
-  "world": {
-    "param": "SP",
-    "names": [
-      "cam",
-      "trees",
-      "genF",
-      "dust",
-      "spawn",
-      "wc"
-    ]
-  },
-  "changed": [
-    "step",
-    "scanMobile",
-    "steam"
-  ],
-  "added": [
-    "SP"
-  ],
+  "changed": ["packRuns", "unpackRuns"],
+  "added": [],
   "removed": []
 }

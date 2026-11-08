@@ -1887,6 +1887,60 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
   };
 
+  // src/core/world/pack.js
+  function packRunsWith(grid2, f) {
+    let out = new Uint8Array(1 << 20), n = 0;
+    for (let cx = 0; cx < f; cx++) {
+      let i = cx, cy = 0;
+      while (cy < GY) {
+        const m = grid2[i];
+        let r = 1;
+        i += GX;
+        cy++;
+        while (cy < GY && grid2[i] === m) {
+          r++;
+          i += GX;
+          cy++;
+        }
+        if (n + 8 > out.length) {
+          const o = new Uint8Array(out.length * 2);
+          o.set(out);
+          out = o;
+        }
+        out[n++] = m;
+        while (r >= 128) {
+          out[n++] = r & 127 | 128;
+          r >>>= 7;
+        }
+        out[n++] = r;
+      }
+    }
+    return out.slice(0, n);
+  }
+  function unpackRunsWith(grid2, b, f) {
+    let k = 0;
+    for (let cx = 0; cx < f; cx++) {
+      let cy = 0, i = cx;
+      while (cy < GY) {
+        if (k >= b.length) return false;
+        const m = b[k++];
+        let r = 0, sh = 0, c;
+        do {
+          if (k >= b.length) return false;
+          c = b[k++];
+          r |= (c & 127) << sh;
+          sh += 7;
+        } while (c & 128);
+        if (r < 1 || cy + r > GY) return false;
+        for (let e = cy + r; cy < e; cy++, i += GX) grid2[i] = m;
+      }
+    }
+    return k === b.length;
+  }
+  function runsOk(sv) {
+    return sv.v === 5 && sv.gy === GY && sv.f > 0 && sv.f <= GX && sv.runs instanceof Uint8Array;
+  }
+
   // src/core/world/shape.js
   var SNX = 5830;
   var SL0 = 5920;
@@ -4424,58 +4478,12 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
     }
     function packRuns(f) {
-      let out = new Uint8Array(1 << 20), n = 0;
-      for (let cx = 0; cx < f; cx++) {
-        let i = cx, cy = 0;
-        while (cy < GY) {
-          const m = grid[i];
-          let r = 1;
-          i += GX;
-          cy++;
-          while (cy < GY && grid[i] === m) {
-            r++;
-            i += GX;
-            cy++;
-          }
-          if (n + 8 > out.length) {
-            const o = new Uint8Array(out.length * 2);
-            o.set(out);
-            out = o;
-          }
-          out[n++] = m;
-          while (r >= 128) {
-            out[n++] = r & 127 | 128;
-            r >>>= 7;
-          }
-          out[n++] = r;
-        }
-      }
-      return out.slice(0, n);
+      return packRunsWith(grid, f);
     }
     function unpackRuns(b, f) {
-      let k = 0;
-      for (let cx = 0; cx < f; cx++) {
-        let cy = 0, i = cx;
-        while (cy < GY) {
-          if (k >= b.length) return false;
-          const m = b[k++];
-          let r = 0, sh = 0, c;
-          do {
-            if (k >= b.length) return false;
-            c = b[k++];
-            r |= (c & 127) << sh;
-            sh += 7;
-          } while (c & 128);
-          if (r < 1 || cy + r > GY) return false;
-          for (let e = cy + r; cy < e; cy++, i += GX) grid[i] = m;
-        }
-      }
-      return k === b.length;
+      return unpackRunsWith(grid, b, f);
     }
     let cutX = 0;
-    function runsOk(sv) {
-      return sv.v === 5 && sv.gy === GY && sv.f > 0 && sv.f <= GX && sv.runs instanceof Uint8Array;
-    }
     function loadCells(sv) {
       const old = sv.v < 4, f0 = sv.v >= 3 ? sv.f : HOME_GX;
       let f = Math.min(f0, GX);

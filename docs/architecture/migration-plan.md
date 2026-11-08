@@ -119,8 +119,9 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 
 ### PR 10: Packen und Laden der Zellen
 
-- **Bewegt:** `packRuns`, `loadCells`, `runsOk`, `migrateSnow` → `core/world/pack.js`.
-- **Absicherung:** Golden-Master Speicherformat, `save.mjs`, Upgrade-Test.
+- **Bewegt:** `packRuns`, `unpackRuns` als `packRunsWith(grid, …)`/`unpackRunsWith(grid, …)` und `runsOk` → `core/world/pack.js`. Das Gitter kommt als Parameter gleichen Namens, der Körper bleibt unverändert. In `legacy.js` bleiben `packRuns` und `unpackRuns` als Einzeiler (`snapshot`, `loadCells` rufen sie).
+- **Abweichung: `loadCells` und `migrateSnow` bleiben in `legacy.js` und ziehen mit PR 12 (Altstände) um.** Beides sind Abläufe beim Laden, keine Umrechnung von Zellen: `loadCells` schreibt `genF`, `cutX`, `ST.stI`, `ST.seen` … und ruft `genCol`/`build`, `migrateSnow` verschiebt `P`, `parked`, `props`, `hidden` und Bäume. Nach `core/` gingen sie nur mit Weltobjekt und Spielzustand, der erst mit PR 14 ein Modul hat.
+- **Absicherung:** Move-Nachweis (3 bewegt, 2 Einzeiler), Golden Master Speicherformat, `save.mjs`, Upgrade-Test.
 
 ### PR 11: Speichern
 
