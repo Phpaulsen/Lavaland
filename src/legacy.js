@@ -642,7 +642,7 @@ function take(i){
   if(quest&&quest.type==='dig'&&!quest.done) quest.p++;
   if(++digN%60===0) addXp(1);
   if(m===GOLD||m===GEM){
-    const got=1+(Math.random()<hero.up.luck*.34?1:0);
+    const got=1;
     if(m===GOLD){ ST.gold+=got; popG+=got; qEvent('gold',got); } else{ ST.gems+=got; popM+=got; qEvent('gems',got); }
     ST.lootDirty=true; addXp(m===GOLD?1:2); sfx('coin');
     if(Math.random()<.5){ const y=(i/GX)|0; spawn(5,(i-y*GX)*CELL+3,TOP+y*CELL+3,(Math.random()-.5)*120,-80-Math.random()*120,.7,2); }
@@ -1645,7 +1645,6 @@ const SHOP=[
   {id:'motor',e:'🏎️',kind:'up',name:'Motor',say:'alles fährt schneller'},
   {id:'jet',e:'💨',kind:'up',name:'Düse',say:'du fliegst schneller'},
   {id:'compass',e:'🧭',kind:'up',name:'Kompass',say:'ein blauer Pfeil zeigt zum nächsten Fund'},
-  {id:'luck',e:'🍀',kind:'up',name:'Glück',say:'du bekommst öfter doppelt Gold und Edelsteine'},
   {id:'heat',e:'🛡️',kind:'up',name:'Schutz',say:['Feuer tut dir nichts mehr','Lava tut dir nichts mehr','der Erdkern tut dir nichts mehr']},
   {id:'tnt',e:'💣',kind:'use',name:'3 Bomben',g:8,m:0,lv:1,say:'zum Sprengen. Sie liegen bei den Werkzeugen'},
   {id:'carousel',e:'🎠',kind:'prop',name:'Karussell',g:60,m:0,lv:2,say:'es steht jetzt da, wo du stehst'},
@@ -4431,7 +4430,7 @@ function renderLab(){
   }
   $('lab-rcp').innerHTML=h;
   h='';
-  for(const p of PZT){ const l=hero.pz[p.id]|0; h+='<button data-pzt="'+p.id+'" aria-label="'+p.n+': Stufe '+(l+1)+' von 10"><span aria-hidden="true">'+p.e+'</span><i><b style="width:'+((l+1)*10)+'%"></b></i></button>'; }
+  for(const p of PZON){ const l=hero.pz[p.id]|0; h+='<button data-pzt="'+p.id+'" aria-label="'+p.n+': Stufe '+(l+1)+' von 10"><span aria-hidden="true">'+p.e+'</span><i><b style="width:'+((l+1)*10)+'%"></b></i></button>'; }
   $('lab-brain').innerHTML=h;
   $('lab-taf').innerHTML='<span aria-hidden="true">🔢</span><span aria-hidden="true">💠</span>'+(hero.mat.ms|0);
 }
@@ -4725,6 +4724,8 @@ const PZT=[
   {id:'stern',e:'✨',n:'Sternbild',col:'#a8b8ff',make:mkStern,draw:drStern,act:acStern,hint:hiStern,say:syStern}
 ];
 const PZI={}; for(const p of PZT) PZI[p.id]=p;
+/* Arten, die das Kind antrifft: Kristall-Echo und Bilder-Sudoku sind eingefroren und kommen weder in der Welt noch am Akku noch in der Werkstatt vor (Vereinfachungsplan Schritt 1). In der Elternansicht bleiben sie wegen alter Protokolle. */
+const PZON=PZT.filter(function(p){ return p.id!=='echo'&&p.id!=='sudoku'; });
 let pzc=null, pzTm=[];
 function pzLater(ms,fn){ const c=pzc; pzTm.push(setTimeout(function(){ if(pzc===c&&c) fn(); },ms)); }
 function pzClear(){ for(const t of pzTm) clearTimeout(t); pzTm=[]; }
@@ -4821,7 +4822,7 @@ $('pz').addEventListener('click',function(e){
 $('quiz-pz').addEventListener('click',function(){
   LOG.qSwitch();
   $('quiz').hidden=true; ST.paused=false;
-  pzOpen({id:'quiz',t:PZT[(hero.pzn|0)%PZT.length].id,zb:0,quiz:true});
+  pzOpen({id:'quiz',t:PZON[(hero.pzn|0)%PZON.length].id,zb:0,quiz:true});
 });
 
 /* ---------- 1. Muster: Welches Bild fehlt in der Reihe? ---------- */
@@ -5382,7 +5383,7 @@ function openQuiz(then){
   if(then) pending=then;
   ST.paused=true; keys.l=keys.r=keys.u=keys.d=keys.a=false; ST.talkLock=0;
   $('quiz').hidden=false; LOG.qOpen(); nextQ();
-  $('quiz-pz').textContent=PZT[(hero.pzn|0)%PZT.length].e; $('quiz-pz').classList.toggle('near',(hero.pzn|0)<3);
+  $('quiz-pz').textContent=PZON[(hero.pzn|0)%PZON.length].e; $('quiz-pz').classList.toggle('near',(hero.pzn|0)<3);
 }
 function closeQuiz(){
   LOG.qClose();

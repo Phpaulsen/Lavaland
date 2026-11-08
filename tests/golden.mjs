@@ -2,7 +2,8 @@
 // Aufruf: node tests/golden.mjs            vergleicht mit tests/fixtures/golden.json
 //         node tests/golden.mjs --write    legt golden.json einmalig an (nur aus unverändertem main; bricht ab, wenn die Datei schon da ist)
 //         node tests/golden.mjs --input    legt die Eingabe golden-input.json einmalig an: eine Sicherung („Spielstand sichern“) aus einer kurzen Spielrunde
-// Ein Move, der hier rot wird, ist falsch. golden.json und golden-input.json werden nie aktualisiert (ADR 0001, Konsequenzen).
+// Ein Move, der hier rot wird, ist falsch. golden.json und golden-input.json werden für Moves nie aktualisiert (ADR 0001, Konsequenzen).
+// Einzige Ausnahme: ausdrücklich verhaltensändernde PRs (Streich-PRs) ersetzen von Hand genau die Hashes, die sie gewollt ändern, und nennen sie im PR.
 //
 // Drei Teile, jeder mit fester Uhr (keine Bilder laufen), festem Math.random und fester Zeitzone:
 //   welt       Für 3 Seeds und jedes Reich: shapeWorld()+gen() bzw. newRealm(), danach grow() bis ans Ende. Hash über Gitter und alle

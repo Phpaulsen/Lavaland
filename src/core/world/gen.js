@@ -392,7 +392,9 @@ export function deepWorldWith(WD){
   const xr=/** @param {any} near */ function(near){ return near?170+r()*8500:9000+r()*(WW-9900); };
   const types=['muster','spiegel','robo','waage','echo','rohre','sudoku'];
   for(let k=6;k>0;k--){ const j=Math.floor(r()*(k+1)), q=types[k]; types[k]=types[j]; types[j]=q; }
-  const nt=function(){ return types[ti++%7]; };
+  /* Kristall-Echo und Bilder-Sudoku spawnen nicht mehr (Vereinfachungsplan Schritt 1). Gemischt wird weiter über alle sieben, damit der Zufallsstrom und damit die Welt gleich bleiben; nur die Arten der Maschinen ändern sich. */
+  const pzs=types.filter(function(t){ return t!=='echo'&&t!=='sudoku'; });
+  const nt=function(){ return pzs[ti++%5]; };
   const room=/** @param {any} x @param {any} y @param {any} rx @param {any} ry @param {any} hw */ function(x,y,rx,ry,hw){ const s={k:'room',x:x,y:y,rx:rx,ry:ry,hw:hw||0,nw:1,c1:colOf(x+rx+14)}; WD.STR.push(s); return roomY(s); };
   const dm=/** @param {any} x @param {any} row @param {any} zb @param {any} hw */ function(x,row,zb,hw){ const y=room(x,TOP+row*CELL,92,44,hw); WD.MACH.push({id:'d'+(di++),t:nt(),x:x,y:y,zb:zb}); };
   const far=/** @param {any} x */ function(x){ return Math.abs(x-LIFTX)>560; };
@@ -411,7 +413,7 @@ export function deepWorldWith(WD){
   WD.MACH.push({id:'h0',t:'muster',x:1330,y:NaN,sf:1,zb:0},{id:'h1',t:'robo',x:4280,y:NaN,sf:1,zb:0},{id:'h2',t:'spiegel',x:8590,y:NaN,sf:1,zb:0},{id:'n0',t:'stern',x:7010,y:NaN,sf:1,zb:0});
   /* Länder der neuen Hälfte bekommen ihre Maschinen-Arten aus einer eigenen Reihe, damit sich an den alten nichts ändert. */
   let ti2=0;
-  for(const b of WD.BIO) if(b.t!==12) WD.MACH.push({id:'b'+b.i,t:b.i<WD.OLD_N?nt():types[(ti2++)%7],x:b.t===7?b.px-12:b.t===10?b.x0+330:b.qx+150,y:NaN,sf:1,zb:b.i<4?0:1});
+  for(const b of WD.BIO) if(b.t!==12) WD.MACH.push({id:'b'+b.i,t:b.i<WD.OLD_N?nt():pzs[(ti2++)%5],x:b.t===7?b.px-12:b.t===10?b.x0+330:b.qx+150,y:NaN,sf:1,zb:b.i<4?0:1});
   for(let k=1;k<=6;k++) WD.ZN[k].y=room(LIFTX,TOP+WD.ZN[k].row*CELL,124,48,0);
   dm(LIFTX+300,WD.ZN[1].row,0,90); dm(LIFTX+300,WD.ZN[2].row,1,90);
   for(let z=0;z<4;z++){
@@ -497,7 +499,7 @@ export function deepFarWith(WD,hb){
   const mat=/** @param {any} k @param {any} x @param {any} y */ function(k,x,y){ WD.MATS.push({id:mi++,k:k,x:x,y:y}); };
   const yr=/** @param {any} a @param {any} b */ function(a,b){ return TOP+CELL*(a+r()*(b-a)); };
   const xr=function(){ return X0+r()*XW; };
-  const types=['muster','spiegel','robo','waage','echo','rohre','sudoku'];
+  const types=['muster','spiegel','robo','waage','rohre'];
   let di=100, ti=Math.floor(r()*7);
   const room=/** @param {any} x @param {any} y @param {any} rx @param {any} ry */ function(x,y,rx,ry){ const s={k:'room',x:x,y:y,rx:rx,ry:ry,hw:0,nw:1,c1:colOf(x+rx+14)}; WD.STR.push(s); return roomY(s); };
   const ZA=[660,978,1322,1672], ZB=[944,1272,1622,1880], ZBN=[1,1,2,3];
@@ -508,7 +510,7 @@ export function deepFarWith(WD,hb){
   for(let n=0;n<4;n++) mat('fp',xr(),n%2?yr(SEA_L+3,SEA_B-6):yr(ZA[3]+4,ZB[3]));
   for(let z=0;z<4;z++){
     const a=ZA[z], b=ZB[z], x=xr();
-    WD.MACH.push({id:'d'+(di++),t:types[(ti++)%7],x:x,y:room(x,a+24+r()*(b-a-48),92,44),zb:ZBN[z]});
+    WD.MACH.push({id:'d'+(di++),t:types[(ti++)%5],x:x,y:room(x,a+24+r()*(b-a-48),92,44),zb:ZBN[z]});
   }
   for(let n=0;n<8;n++){
     const x=xr(), y=room(x,yr(ZA[0]+12,ZB[0]-12),54+r()*30,34), h=34+r()*40;
