@@ -198,6 +198,15 @@ Je PR: `tick` und `draw(ctx, layer)` ins System, Zeichenaufruf in `draw()` an de
 - `README.md` „Entwicklung“ neu: Quellen in `src/`, `npm ci`, `npm run dev`, `node tools/build.mjs`, „nie `index.html` von Hand ändern“.
 - `CLAUDE.md`: Verzeichnisse, Schichten und Importtabelle, Invarianten (Spielstand, Welt-Determinismus, Fehlerschutz, CSP, Budget, `CACHE`), Build- und Testbefehle, „Golden-Master nie aktualisieren“.
 - ADR 0002: Auslieferung (a) oder (b) neu bewerten.
+- **Endstand dokumentieren:** `docs/architecture/architecture.md` beschreibt die Architektur, wie sie nach der Migration wirklich ist, nicht wie sie geplant war:
+  - Repostruktur als Baum bis auf Dateiebene in `src/`, dazu `tools/`, `tests/`, `docs/`, je Eintrag ein Satz Zweck.
+  - Schichten mit tatsächlicher Importtabelle und allen Ausnahmen aus ADR 0001 (z. B. Punkt 17, Zellautomat in `state/`).
+  - Module je Schicht: Zweck, öffentliche Exporte, Zustand, den sie besitzen.
+  - Ablauf eines Frames (`frame` → `update`/`step` → `draw`) und Start (`start`, Laden, Rettung).
+  - Spielstand: IDB-Namen, `localStorage`-Schlüssel, Formatversionen.
+  - Build und Auslieferung (esbuild → `index.html`, `sw.js`/`CACHE`), Tests und welche Invariante jeder Test schützt.
+  - Baum und Importtabelle erzeugt ein Skript (`tools/arch/doc.mjs`); die CI prüft wie bei „Bundle aktuell“, dass der Abschnitt aktuell ist.
+  - `current.md` und `target.md` bekommen oben einen Hinweis „historisch, Stand vor/während der Migration“ und verweisen auf `architecture.md`. `CLAUDE.md` und `README.md` verlinken `architecture.md` statt sie zu wiederholen.
 
 ## 5. Größter Aufwand und Unsicherheit
 
