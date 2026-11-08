@@ -301,7 +301,7 @@ const RLM={
     mat:[['mo',18,0],['fe',10,1],['kr',5,5]],
     zc:[null,null,null,['🐧','sit',1,'BRRR!','',22],['🐛','sit',1,'GLÜH!','sparkle',18],['👾','sit',1,'PIEP?','sparkle',22],['🤖','sit',1,'BIEP BUUP!','',24]],
     lk:[0,0,0,ICE,WATER,WATER,LAVA],
-    hello:'Du bist auf dem Mond gelandet! Er ist eine ganze Welt mit Bergen, Kratern und tiefen Höhlen. Lauf herum und grab nach Mondsteinen. Wenn du heim willst, flieg mit der Rakete ganz hoch hinauf.'}
+    hello:'Du bist auf dem Mond gelandet! Er ist eine ganze Welt mit Bergen, Kratern und tiefen Höhlen. Lauf herum und grab tiefe Löcher. Wenn du heim willst, flieg mit der Rakete ganz hoch hinauf.'}
 };
 RLM.ice={e:'❄️',n:'den Eisplaneten',w:43200,salt:202,lands:[15,16],exit:-2600,orb:function(){ return SPACE.ice||{x:1900,y:-16000,r:420}; },
   pal:{deep:[96,130,170],hot:[150,90,96],z:[[[150,200,230],[220,240,255],[40,70,100]],[[120,96,80],[190,160,130],[44,32,26]],[[60,140,120],[120,230,170],[14,40,44]],[[130,40,30],[210,90,50],[40,10,8]]]},
@@ -309,7 +309,7 @@ RLM.ice={e:'❄️',n:'den Eisplaneten',w:43200,salt:202,lands:[15,16],exit:-260
   mat:[['ei',20,0],['fe',8,1],['kn',6,3],['fp',5,6]],
   zc:[null,null,null,['🦭','sit',1,'ORK ORK!','',24],['🦣','walk',1,'TÖRÖÖÖ!','bront',40],['🐧','sit',1,'BRRR!','',22],['🐲','sit',1,'FAUCH!','',26]],
   lk:[0,0,0,ICE,WATER,ICE,LAVA],
-  hello:'Du bist auf dem Eisplaneten gelandet! Er ist riesig, mit Gletschern, einem zugefrorenen Meer und Höhlen voller Eis. Hier liegen die Eiskerne. Wenn du heim willst, flieg mit der Rakete ganz hoch hinauf.'};
+  hello:'Du bist auf dem Eisplaneten gelandet! Er ist riesig, mit Gletschern, einem zugefrorenen Meer und Höhlen voller Eis. Wenn du heim willst, flieg mit der Rakete ganz hoch hinauf.'};
 RLM.jun={e:'🫧',n:'den Blubberplaneten',w:36000,salt:303,lands:[17,18],exit:-2600,orb:function(){ return SPACE.jun||{x:6100,y:-19200,r:330}; },
   pal:{deep:[96,70,120],hot:[150,70,100],z:[[[60,130,70],[120,220,110],[16,44,20]],[[150,90,60],[230,170,110],[50,26,16]],[[190,110,170],[255,190,235],[60,24,54]],[[140,40,60],[230,90,90],[44,10,16]]]},
   zn:[['🟣','das Blubbergestein'],['🔥','das Glutgestein'],['🟢','die Schleimhöhlen'],['🍄','die Riesenpilzgrotten'],['🫧','die Seifenblasenhallen'],['🌋','den Glutkern']],
@@ -1684,7 +1684,6 @@ const QDEF={
   poke:{ic:function(){return QI.fisch;},say:function(q){return 'Begrüße '+q.goal+' Tiere. Lauf zu ihnen hin oder tippe sie an.';},hint:function(){return 'btn-map';}},
   egg:{ic:function(){return QI.egg;},say:function(){return 'Finde ein goldenes Ei. In jedem Land ist eins versteckt.';},hint:function(){return 'btn-map';}},
   pz:{ic:function(){return QI.lab;},say:function(q){return (q.goal>1?'Löse '+q.goal+' Rätselmaschinen.':'Löse eine Rätselmaschine.')+' Über ihnen schwebt ein Zahnrad. Folge dem grünen Pfeil.';},hint:function(){return 'btn-lab';}},
-  mat:{ic:function(){return QI.lab;},say:function(q){return 'Sammle '+q.goal+' Bauteile für die Werkstatt. Eisen steckt tief unten im dunklen Gestein, Mondsteine liegen auf dem Mond.';},hint:function(){return 'btn-lab';}}
 };
 let quest=null, qShown='', qDoneT=0, bannerT=0;
 function banner(html,ms){
@@ -1696,7 +1695,7 @@ function newQuest(){
   const n=hero.qn;
   if(n<QSCRIPT.length) return Object.assign({p:0},QSCRIPT[n]);
   const tier=Math.floor((n-QSCRIPT.length)/4), lastT=hero.quest?hero.quest.type:'';
-  const pool=['dig','quiz','drive','deep','high','ride','moon','ski','salto','pz','pz','mat'];
+  const pool=['dig','quiz','drive','deep','high','ride','moon','ski','salto','pz','pz'];
   if(hero.dr>=3) pool.push('core');
   if(nextLand()) pool.push('land','land'); if(eggLand()) pool.push('egg','poke');
   if(ST.hidden.some(function(h){return !h.got;})) pool.push('find','find');
@@ -1713,7 +1712,6 @@ function newQuest(){
   else if(type==='salto') q.goal=1+Math.min(tier,3);
   else if(type==='poke') q.goal=3+Math.min(tier,4);
   else if(type==='pz') q.goal=1+Math.min(tier,2);
-  else if(type==='mat') q.goal=2+Math.min(tier,3);
   return q;
 }
 /* Für einen Such-Auftrag wird ein noch fehlender Fund glitzernd in die Nähe gelegt, damit er sicher zu schaffen ist. */
@@ -4011,8 +4009,7 @@ function eggClick(e){
 }
 
 /* ---------- Tiefe und Höhe: Unter dem heißen Gestein liegen vier neue Zonen, getrennt durch harte Schichten. Über dem Mond geht der Weltraum weiter.
-   Bohrer, Rakete und Lampe werden in der Werkstatt stufenweise besser. Dafür braucht es Material von bestimmten Orten und Zahnräder aus den Rätselmaschinen.
-   So muss man planen: Was fehlt mir, wo gibt es das, und was brauche ich, um dorthin zu kommen? ---------- */
+   Bohrer, Rakete, Lampe und Schutz werden in der Werkstatt stufenweise besser. Dafür braucht es Zahnräder aus den Rätselmaschinen und ab Stufe 2 Meistersteine. ---------- */
 QI.lab='<path d="M14.5 3a5 5 0 0 0-4.6 6.9L3.6 16.2a2.3 2.3 0 0 0 3.2 3.2l6.300-6.300A5 5 0 0 0 20 8.500l-3 3-3.500-1-1-3.500 3-3z" fill="#9aa7b4" '+S1+' stroke-width="1.6"/><circle cx="5.300" cy="17.700" r="1" fill="'+K+'"/>';
 AI.lab='<path d="M14.5 3a5 5 0 0 0-4.6 6.9L3.6 16.2a2.3 2.3 0 0 0 3.2 3.2l6.300-6.300A5 5 0 0 0 20 8.500l-3 3-3.500-1-1-3.500 3-3z" fill="currentColor"/>';
 AI.pz='<path d="M8.300 9a3.700 3.700 0 1 1 5.600 3.200c-1.200.7-1.900 1.500-1.900 2.800" stroke="currentColor" stroke-width="3.200" fill="none" stroke-linecap="round"/><circle cx="12" cy="19.500" r="2" fill="currentColor"/>';
@@ -4026,30 +4023,24 @@ const ZN=[
   {e:'🔮',n:'die Kristalltiefen',s:'Kristalltiefen',row:1360,need:'Sie liegen unter der lila Schicht. Dafür brauchst du den Bohrer Stufe 2.'},
   {e:'🌋',n:'das Lavameer',s:'Lavameer',row:1710,need:'Es liegt unter der schwarzen Schicht. Dafür brauchst du den Bohrer Stufe 3.'}
 ];
-/* Material: Bild, Name, Mehrzahl, wo man es findet */
+/* Werkstatt-Zählstand: Bild, Name, Mehrzahl, wo man es bekommt */
 const MAT={
   ms:['💠','Meisterstein','Meistersteine','Meistersteine bekommst du, wenn eine Aufgabe richtig gut sitzt: Wenn du sie an verschiedenen Tagen immer wieder richtig weißt. Auf der Rechentafel siehst du, welche schon fast so weit sind.'],
   pk:['🪐','Planetenkern','Planetenkerne','Planetenkerne liegen ganz unten in den großen Planeten, unter der schwarzen Schicht: einer im Mond, einer im Eisplaneten und einer im Blubberplaneten. Dafür brauchst du den Bohrer Stufe 3.'],
   zr:['⚙️','Zahnrad','Zahnräder','Zahnräder bekommst du, wenn du eine Rätselmaschine löst. Über jeder schwebt ein Zahnrad.'],
-  fe:['🔩','Eisen','Eisen','Eisen steckt tief unten im dunklen und im roten Gestein. Bohr dich mit der Tunnelbohrmaschine hinunter.'],
-  mo:['🌙','Mondstein','Mondsteine','Mondsteine gibt es auf dem Mond. Er ist eine ganze Welt. Flieg mit der Rakete hin und lande auf ihm.'],
-  pi:['🍄','Leuchtpilz','Leuchtpilze','Leuchtpilze wachsen in den Pilzgrotten, unter der rostroten Schicht. Dafür brauchst du den Bohrer Stufe 1.'],
-  st:['☄️','Sternenerz','Sternenerz','Sternenerz liegt auf den großen Felsbrocken hoch über dem Mond. Dafür brauchst du die Rakete Stufe 1.'],
-  kn:['🐚','Urzeit-Muschel','Urzeit-Muscheln','Urzeit-Muscheln stecken in den Urzeit-Höhlen, noch unter den Pilzgrotten.'],
-  kr:['🔮','Tiefenkristall','Tiefenkristalle','Tiefenkristalle gibt es in den Kristalltiefen, unter der lila Schicht. Dafür brauchst du den Bohrer Stufe 2.'],
-  ei:['❄️','Eiskern','Eiskerne','Eiskerne gibt es auf dem Eisplaneten, weit über den Felsbrocken. Er ist eine ganze Welt. Dafür brauchst du die Rakete Stufe 2.'],
-  fp:['🔥','Feuerperle','Feuerperlen','Feuerperlen liegen im Lavameer ganz unten, manche mitten in der Lava. Dafür brauchst du den Bohrer Stufe 3.']
 };
-const MATK=['zr','ms','pk','fe','mo','pi','st','kn','kr','ei','fp'], MATZ={fe:1,pi:3,kn:4,kr:5,fp:6};
-/* Die drei Geräte und ihre Baupläne. Unten und oben wechseln sich ab: Für den nächsten Bohrer braucht man etwas aus dem Weltraum und umgekehrt. */
+/* Eisen, Mondsteine und die anderen Bauteile gibt es nicht mehr (Vereinfachungsplan Schritt 2). Sie bleiben in der Weltliste MATS,
+   damit die Welt gleich entsteht, werden aber weder gezeigt noch eingesammelt. Gesammelte Stücke bleiben im Spielstand liegen. Planetenkerne bleiben als Fund. */
+const MATK=['zr','ms','pk'], MATON={pk:1};
+/* Die Geräte und ihre Preise: nur Zahnräder (aus Rätseln) und Meistersteine (aus gemeisterten Aufgaben), Vereinfachungsplan Schritt 2. */
 const GEAR={
-  dr:{e:'⛏️',n:'Bohrer',art:'den Bohrer',rc:[{fe:6,zr:1},{pi:4,st:4,zr:2,ms:2},{kr:4,ei:4,zr:3,ms:5}],
+  dr:{e:'⛏️',n:'Bohrer',art:'den Bohrer',rc:[{zr:3},{zr:6,ms:2},{zr:9,ms:5}],
     what:['Er kommt dann durch die rostrote Schicht. Darunter liegen die Pilzgrotten.','Er kommt dann durch die lila Schicht. Darunter liegen die Kristalltiefen.','Er kommt dann durch die schwarze Schicht. Darunter liegt das Lavameer.'],
     done:['Der Eisenbohrer ist fertig! Jetzt kommst du durch die rostrote Schicht unter dem heißen Gestein.','Der Sternenbohrer ist fertig! Jetzt kommst du durch die lila Schicht unter den Urzeit-Höhlen.','Der Kristallbohrer ist fertig! Jetzt kommst du durch die schwarze Schicht bis zum Lavameer.']},
-  rk:{e:'🚀',n:'Rakete',art:'die Rakete',rc:[{fe:4,mo:3,zr:1},{kn:4,st:3,zr:2},{fp:4,ei:3,zr:3}],
+  rk:{e:'🚀',n:'Rakete',art:'die Rakete',rc:[{zr:3},{zr:5,ms:1},{zr:8,ms:3}],
     what:['Sie fliegt dann höher als der Mond, bis zu den Felsbrocken.','Sie fliegt dann bis zu den fernen Planeten.','Sie fliegt dann bis zum Sternentor am Ende des Weltraums.'],
     done:['Die Rakete ist stärker! Sie fliegt jetzt bis zu den Felsbrocken über dem Mond.','Die Rakete ist noch stärker! Sie fliegt jetzt bis zu den fernen Planeten.','Die Rakete ist fertig! Sie fliegt jetzt bis zum Sternentor.']},
-  lp:{e:'🔦',n:'Lampe',art:'die Lampe',rc:[{fe:2,mo:2},{pi:3,kn:3,zr:1},{kr:3,ei:2,zr:2}],
+  lp:{e:'🔦',n:'Lampe',art:'die Lampe',rc:[{zr:1},{zr:2},{zr:4}],
     what:['Sie leuchtet dann weiter.','Sie leuchtet dann noch weiter.','Dann ist es unter der Erde überall hell.'],
     done:['Die Lampe leuchtet jetzt weiter.','Die Lampe leuchtet jetzt noch weiter.','Die Sonnenlampe ist fertig! Jetzt ist es unter der Erde überall hell.']}
 };
@@ -4141,16 +4132,13 @@ function deepRestore(sv){
   deepHome();
 }
 
-/* ---------- Jede Sekunde: Zonen entdecken, Material einsammeln, Maschinen auf den Boden stellen, Ziele erreichen ---------- */
+/* ---------- Jede Sekunde: Zonen entdecken, Planetenkerne einsammeln, Maschinen auf den Boden stellen, Ziele erreichen ---------- */
 function matFound(m){
   const k=m.k, n=(hero.mat[k]|0)+1;
   ST.matGot[m.id]=1; hero.mat[k]=n; ST.heroDirty=true;
-  sfx('coin'); qEvent('mat',1); dayAdd('mat');
+  sfx('coin'); dayAdd('mat');
   for(let i=0;i<10;i++) spawn(5,m.x,m.y,(Math.random()-.5)*180,-60-Math.random()*160,.7,2);
-  banner(MAT[k][0]+' '+n,1500);
-  if(k==='pk'){ hero.mk.pk=1; ST.lootDirty=true; confetti(m.x,m.y); jingle(); banner('🪐 '+n+' / 3',2600); say('',n>=3?'Alle drei Planetenkerne! Du hast jede große Welt bis ganz nach unten erforscht.':'Ein Planetenkern! Er leuchtet wie ein kleiner Stern. In jedem großen Planeten liegt einer.'); dayAdd('z','🪐'); campSoon(); labBadge(true); return; }
-  if(!hero.mk[k]){ hero.mk[k]=1; say('',MAT[k][1]+'! Das kann Professor Zahnrad in der Werkstatt gebrauchen. Tippe oben auf den Schraubenschlüssel, dann siehst du, wofür.'); pulse('btn-lab'); }
-  labBadge(true);
+  hero.mk.pk=1; ST.lootDirty=true; confetti(m.x,m.y); jingle(); banner('🪐 '+n+' / 3',2600); say('',n>=3?'Alle drei Planetenkerne! Du hast jede große Welt bis ganz nach unten erforscht.':'Ein Planetenkern! Er leuchtet wie ein kleiner Stern. In jedem großen Planeten liegt einer.'); dayAdd('z','🪐'); campSoon(); labBadge(true);
 }
 function canBuild(g){
   const t=gearLv(g); if(t>=3) return false;
@@ -4184,7 +4172,7 @@ function deepIntro(){
   pulse('btn-lab');
   tell([['Professor Zahnrad','Hallo! Ich bin Professor Zahnrad. Meine Werkstatt steht jetzt bei dir zu Hause.'],
     ['Professor Zahnrad','Unter der Erde geht es jetzt viel tiefer, und der Weltraum ist riesig. Aber dafür brauchst du einen besseren Bohrer und eine stärkere Rakete.'],
-    ['Professor Zahnrad','Die baue ich dir. Bring mir Material und Zahnräder. Zahnräder bekommst du von meinen Rätselmaschinen. Die erste steht gleich rechts neben dem Aufzug.']]);
+    ['Professor Zahnrad','Die baue ich dir. Bring mir Zahnräder und später Meistersteine. Zahnräder bekommst du von meinen Rätselmaschinen. Die erste steht gleich rechts neben dem Aufzug.']]);
 }
 function deepTick(dt){
   mhT-=dt;
@@ -4201,7 +4189,7 @@ function deepTick(dt){
   const pts=[[P.x,P.y-16]];
   if(P.mode==='bagger') pts.push(bucket()); else if(P.mode==='loader') pts.push(scoop()); else if(P.mode==='tbm') pts.push(drillHead());
   for(const m of MATS){
-    if(ST.matGot[m.id]||Math.abs(m.x-P.x)>260||Math.abs(m.y-P.y)>260) continue;
+    if(ST.matGot[m.id]||!MATON[m.k]||Math.abs(m.x-P.x)>260||Math.abs(m.y-P.y)>260) continue;
     for(const q of pts) if(Math.hypot(q[0]-m.x,q[1]-m.y)<30){ matFound(m); break; }
   }
   if(P.on&&P.y<-6000&&SPACE.gate){
@@ -4209,7 +4197,7 @@ function deepTick(dt){
       const o=SPACE[k];
       if(ST.orbGot[k]||Math.hypot(P.x-o.x,P.y-o.y)>o.r+40) continue;
       ST.orbGot[k]=1; ST.lootDirty=true; confetti(P.x,P.y); jingle(); banner('⭐',2400);
-      say('',k==='stn'?'Du bist auf der Raumstation gelandet! Auf den großen Felsbrocken ringsum liegt Sternenerz.':k==='ice'?'Du bist auf dem Eisplaneten gelandet! Hier liegen Eiskerne.':'Du bist auf dem Blubberplaneten gelandet! Hier wohnt Blubb.');
+      say('',k==='stn'?'Du bist auf der Raumstation gelandet! Ringsum schweben große Felsbrocken.':k==='ice'?'Du bist auf dem Eisplaneten gelandet!':'Du bist auf dem Blubberplaneten gelandet! Hier wohnt Blubb.');
     }
     if(!(hero.fin&1)&&Math.hypot(P.x-SPACE.gate.x,P.y-SPACE.gate.y)<SPACE.gate.r+40) finale(1);
   }
@@ -4261,7 +4249,7 @@ function deepTap(wx,wy){
   }
   return false;
 }
-/* Pfeil zu dem Ort, an dem es ein Material gibt. Erst in der richtigen Zone zeigt er auf das nächste Stück. */
+/* Pfeil zur nächsten Rätselmaschine (Zahnrad), zur Werkstatt oder zum nächsten Planetenkern. */
 function matWhere(k){
   if(k==='zr'){ const m=nextMach(); return m?[m.x,m.y-52]:null; }
   if(realm){
@@ -4271,15 +4259,6 @@ function matWhere(k){
     return b?[b.x,b.y]:[P.x,P.y-500];
   }
   if(k==='lab') return [WSX,ground(WSX)-96];
-  if(k==='mo') return [MOON.x,MOON.y-MOON.r-30];
-  if(k==='ei'&&SPACE.ice) return [SPACE.ice.x,SPACE.ice.y-SPACE.ice.r-30];
-  if(k==='st'){
-    const o=SPACE.stn;
-    if(o&&Math.hypot(P.x-o.x,P.y-o.y)>o.r+(k==='st'?2600:700)) return [o.x,o.y-o.r-30];
-  }else if(zoneAt(P.x,P.y)<MATZ[k]){
-    const gy=ground(LIFTX);
-    return hero.zn>=MATZ[k]&&Math.abs(P.y-gy)<500?[LIFTX,gy-110]:[P.x,P.y+400];
-  }
   let b=null, bd=1e12;
   for(const m of MATS){ if(m.k!==k||ST.matGot[m.id]) continue; const d=Math.hypot(m.x-P.x,m.y-P.y); if(d<bd){ bd=d; b=m; } }
   return b?[b.x,b.y]:null;
@@ -4497,7 +4476,7 @@ function drawDeep(x0,x1,y0,y1){
   for(const d of ZDEC) if(d.x>x0-60&&d.x<x1+60&&d.y>y0-60&&d.y<y1+60){ if(d.k==='bone') drawBone(d); else drawCry(d); }
   for(const m of MACH) if(m.y===m.y&&m.x>x0-30&&m.x<x1+30&&m.y>y0-10&&m.y<y1+90) drawMach(m);
   for(const v of VAULTS) if(v.x-v.rx>x0-40&&v.x-v.rx<x1+40&&v.fy>y0-10&&v.fy<y1+70&&doorShut(v)) drawDoor(v);
-  for(const m of MATS) if(!ST.matGot[m.id]&&m.x>x0-20&&m.x<x1+20&&m.y>y0-20&&m.y<y1+20) drawMat(m);
+  for(const m of MATS) if(!ST.matGot[m.id]&&MATON[m.k]&&m.x>x0-20&&m.x<x1+20&&m.y>y0-20&&m.y<y1+20) drawMat(m);
   for(const m of marks()) if(m[0]>x0-30&&m[0]<x1+30&&m[1]>y0-10&&m[1]<y1+40) drawMark(m[0],m[1]);
 }
 /* Unter der Erde wird es dunkel. Die Lampe und alles, was leuchtet, machen helle Flecken. Ganz schwarz wird es nie. */
@@ -4524,7 +4503,7 @@ function drawDark(){
   };
   hole(P.x,P.y-20,[135,195,275,400][hero.lp|0]+JAR.length*32,1);
   const vw=W/S+200, vh=H/S+200;
-  for(const m of MATS) if(!ST.matGot[m.id]&&Math.abs(m.x-cam.x)<vw&&Math.abs(m.y-cam.y)<vh) hole(m.x,m.y,46,.75);
+  for(const m of MATS) if(!ST.matGot[m.id]&&MATON[m.k]&&Math.abs(m.x-cam.x)<vw&&Math.abs(m.y-cam.y)<vh) hole(m.x,m.y,46,.75);
   for(const m of MACH) if(m.y===m.y&&Math.abs(m.x-cam.x)<vw&&Math.abs(m.y-cam.y)<vh) hole(m.x,m.y-30,90,.9);
   for(const v of VAULTS) if(Math.abs(v.x-cam.x)<vw&&Math.abs(v.y-cam.y)<vh) hole(v.x-v.rx-8,v.fy-28,70,.85);
   for(const m of marks()) if(Math.abs(m[0]-cam.x)<vw&&Math.abs(m[1]-cam.y)<vh) hole(m[0],m[1]-14,150,.9);
