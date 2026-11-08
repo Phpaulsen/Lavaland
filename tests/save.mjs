@@ -73,17 +73,17 @@ test('Datenbank beim Start kurz nicht lesbar: nichts wird überschrieben', async
 
 test('Sichern und Laden bringt alles zurück', async () => {
   await page.goto(url); await ready();
-  await ev("OVS.forEach(o=>o.hidden=true); ST.gold=2468; hero.xp=33; FS.f['2+3']=[4,dayNo()+3]; saveFacts(); fogSet(fogArr(),3,3); fogSave(); LOG.qOpen(); LOG.flush()");
+  await ev("OVS.forEach(o=>o.hidden=true); hero.mat.ms=2468; hero.xp=33; saveHero(); FS.f['2+3']=[4,dayNo()+3]; saveFacts(); fogSet(fogArr(),3,3); fogSave(); LOG.qOpen(); LOG.flush()");
   await page.waitForTimeout(800);
-  const want = await ev("({gold:ST.gold, xp:hero.xp, seed:SEED, f:FS.f['2+3'][0], fog:localStorage.getItem(fogKey())})");
+  const want = await ev("({ms:hero.mat.ms, xp:hero.xp, seed:SEED, f:FS.f['2+3'][0], fog:localStorage.getItem(fogKey())})");
   const bak = await page.evaluate(() => window.__ev('bakMake()').then(b => JSON.stringify(b)));
-  // Danach alles anders: neue Welt, wenig Gold, Lernstand weg.
-  await ev("resetWorld(newSeed()); ST.gold=1; hero.xp=0; FS.f={}; saveFacts(); saveFinds(); saveHero(); saveGame(false); fogSet(fogArr(),9,9); fogDirty=true");
+  // Danach alles anders: neue Welt, andere Heldenwerte, Lernstand weg.
+  await ev("resetWorld(newSeed()); hero.mat.ms=1; hero.xp=0; FS.f={}; saveFacts(); saveFinds(); saveHero(); saveGame(false); fogSet(fogArr(),9,9); fogDirty=true");
   await page.waitForTimeout(1200);
   await page.evaluate(s => { window.__ev('bakIn=' + s + '; bakLoad()'); }, bak);
   await page.waitForEvent('load', { timeout: 20000 }); await ready();
   await page.waitForTimeout(500);
-  const got = await ev("({gold:ST.gold, xp:hero.xp, seed:SEED, f:(FS.f['2+3']||[0])[0], fog:localStorage.getItem(fogKey())})");
+  const got = await ev("({ms:hero.mat.ms, xp:hero.xp, seed:SEED, f:(FS.f['2+3']||[0])[0], fog:localStorage.getItem(fogKey())})");
   for (const k in want) if (got[k] !== want[k]) throw new Error(k + ': ' + JSON.stringify(want[k]).slice(0, 40) + ' -> ' + JSON.stringify(got[k]).slice(0, 40));
   const ev0 = await page.evaluate(() => window.__ev('parGet()').then(o => o.ev.length));
   if (!(ev0 > 0)) throw new Error('Protokoll nicht zurück');

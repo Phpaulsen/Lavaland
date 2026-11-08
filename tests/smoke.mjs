@@ -123,25 +123,24 @@ test('Harte Schicht hält auch beim Graben nach oben ohne Bohrer', async ({ ev, 
   if (!(y0 - await ev('P.y') < 90)) throw new Error('Held gräbt durch die harte Schicht');
 });
 
-test('Sternschnuppe landet und gibt Gold', async ({ ev, page }) => {
+test('Sternschnuppe landet und lässt sich aufheben', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); P.x=1500; P.y=ground(1500); P.on=true; METS=[]; MROCKS=[]; nightOn=true; nightA=1; METS.push({x:P.x-300,y:P.y-400,vx:0,vy:0,t:.05,land:true,tr:[]})");
   await page.waitForTimeout(400);
   if (await ev('MROCKS.length') !== 1) throw new Error('kein Sternstein gelandet');
-  const g = await ev('gold');
   await ev('P.x=MROCKS[0].x; P.y=ground(P.x); P.vy=0'); await page.waitForTimeout(400);
-  if (await ev('MROCKS.length') || !(await ev('gold') > g)) throw new Error('Sternstein nicht aufgehoben');
+  if (await ev('MROCKS.length')) throw new Error('Sternstein nicht aufgehoben');
   await ev('nightOn=false; nightA=0; metNext=time+999');
 });
 
 test('Schiffswrack: Truhe gibt einmal einen Schatz', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); teleport(WRECKS[0].x+400)");
   await page.waitForTimeout(800);
-  const g = await ev('gold');
+  await ev("$('banner-in').innerHTML=''");
   await ev('OVS.forEach(o=>o.hidden=true); ST.paused=false; P.x=WRECKS[0].x; P.y=ground(P.x)-10; P.vy=0'); await page.waitForTimeout(150);
-  const g2 = await ev('gold');
-  if (!(g2 > g) || !(await ev('orbGot[WRECKS[0].k]'))) throw new Error('kein Schatz');
+  if (!(await ev("$('banner-in').innerHTML")).includes('🏴') || !(await ev('orbGot[WRECKS[0].k]'))) throw new Error('kein Schatz');
+  await ev("$('banner-in').innerHTML=''");
   await ev('P.x=WRECKS[0].x+2; P.y=ground(P.x)-10'); await page.waitForTimeout(400);
-  if (await ev('gold') !== g2) throw new Error('Schatz doppelt');
+  if (await ev("$('banner-in').innerHTML")) throw new Error('Schatz doppelt');
   await ev('teleport(1500)'); await page.waitForTimeout(500);
 });
 
@@ -151,9 +150,9 @@ test('Fernrohr: Sterne zählen', async ({ ev, page }) => {
   if (await ev('actIcon()') !== 'scope') throw new Error('Fernrohr-Knopf fehlt: ' + await ev('actIcon()'));
   await ev('doAction()'); await page.waitForTimeout(300);
   if (await ev("$('scope').hidden")) throw new Error('Fernrohr nicht geöffnet');
-  const g = await ev('gold');
+  await ev("$('banner-in').innerHTML=''");
   await ev("$('scope-b').querySelector('[data-sc=\"'+SCQ.n+'\"]').click()");
-  if (!(await ev('gold') > g)) throw new Error('richtige Zahl ohne Belohnung');
+  if (!(await ev("$('banner-in').innerHTML")).includes('🔭')) throw new Error('richtige Zahl ohne Belohnung');
   await ev("$('scope').hidden=true");
 });
 
@@ -167,9 +166,8 @@ test('Glühwürmchen fangen', async ({ ev, page }) => {
 test('Kristallharfe von klein nach groß', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); for(const k in FX) FX[k]=0; teleport(HARPS[0].x0-80)");
   await page.waitForTimeout(800);
-  const g = await ev('gold');
   for (let i = 0; i < 5; i++) { await ev('OVS.forEach(o=>o.hidden=true); P.x=HARPS[0].x0+' + i + '*34; P.y=ground(P.x); P.vy=0'); await page.waitForTimeout(150); }
-  if (!(await ev('gold') > g) || !(await ev('orbGot[HARPS[0].k]'))) throw new Error('Tonleiter nicht erkannt');
+  if (!(await ev('orbGot[HARPS[0].k]'))) throw new Error('Tonleiter nicht erkannt');
   await ev('teleport(1500)'); await page.waitForTimeout(500);
 });
 
@@ -263,12 +261,37 @@ test('Waage hält sich an den Schulstand', async ({ ev }) => {
   if (max[0] > 5 || max[1] > 10 || max[2] > 20 || max[3] > 20) throw new Error('Zahlen zu groß je Zahlenraum: ' + max.join(', '));
 });
 
+test('Bombe kostet 15 Akku, alter Vorrat zuerst', async ({ ev, page }) => {
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); hero.tnt=1; ST.energy=MAXE; setTool('tnt')");
+  await page.waitForTimeout(300);
+  if (await ev('ST.energy') !== await ev('MAXE')) throw new Error('Bombenwerkzeug zieht Akku ohne Bombe');
+  await ev('dropBomb(P.x+200,P.y-300)');
+  if (await ev('hero.tnt') !== 0 || await ev('ST.energy') !== await ev('MAXE')) throw new Error('alte Bombe nicht zuerst verbraucht');
+  await ev('dropBomb(P.x+200,P.y-300)');
+  if (await ev('MAXE-ST.energy') !== 15) throw new Error('Bombe kostet ' + await ev('MAXE-ST.energy'));
+  await ev('setTool(null); ST.energy=MAXE'); await page.waitForTimeout(2200);
+});
+
+test('Schutz wird in der Werkstatt gebaut', async ({ ev }) => {
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); hero.up.heat=0; hero.mat.zr=9; P.x=WSX; P.y=ground(WSX); P.on=true");
+  await ev("openLab(); $('lab-rcp').querySelector('[data-mk=\"hs\"]').click()");
+  if (await ev('hero.up.heat') !== 1 || await ev('hero.mat.zr') !== 7) throw new Error('Schutz nicht gebaut: ' + await ev('hero.up.heat') + ', ' + await ev('hero.mat.zr'));
+  await ev('OVS.forEach(o=>o.hidden=true); hero.up.heat=0');
+});
+
+test('Altes Gold wird einmal zu Zahnrädern', async ({ ev }) => {
+  await ev('OVS.forEach(o=>o.hidden=true); ST.paused=false; hero.mat.zr=0; ST.gold=120; ST.gems=11; goldSwap()');
+  if (await ev('hero.mat.zr') !== 5 || await ev('ST.gold') || await ev('ST.gems')) throw new Error('Tausch falsch: ' + await ev('hero.mat.zr'));
+  await ev('goldSwap()');
+  if (await ev('hero.mat.zr') !== 5) throw new Error('Tausch doppelt');
+});
+
 test('Spielstand übersteht Neuladen', async ({ ev, page }) => {
-  await ev('OVS.forEach(o=>o.hidden=true); ST.paused=false; ST.gold=4321; saveFinds(); saveGame(false)');
+  await ev('OVS.forEach(o=>o.hidden=true); ST.paused=false; hero.mat.ms=4321; saveHero(); saveGame(false)');
   await page.waitForTimeout(1500);
   await page.reload(); await page.waitForFunction(() => window.__ev && window.__ev('ST.ready'), null, { timeout: 20000 });
-  const g = await ev('gold');
-  if (g !== 4321) throw new Error('Gold nach Neuladen: ' + g);
+  const g = await ev('hero.mat.ms');
+  if (g !== 4321) throw new Error('Edelsteine der Rechentafel nach Neuladen: ' + g);
 });
 
 // Echte Wischgeste per Touch (CDP), damit das globale Wisch-Verbot mitgeprüft wird.
@@ -296,14 +319,14 @@ testCdp('Zu hohe Fenster im Querformat lassen sich wischen, die Welt nicht', asy
   const vp = page.viewportSize();
   await page.setViewportSize({ width: 640, height: 360 });
   try {
-    await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; openMarket()");
+    await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; openLab()");
     await page.waitForTimeout(400);
-    const m = await ev("({sh:$('market').scrollHeight, ch:$('market').clientHeight, top:$('market').firstElementChild.getBoundingClientRect().top})");
-    if (m.top < 0) throw new Error('Markt beginnt oberhalb des Bildschirms: ' + m.top);
-    if (!(m.sh > m.ch)) throw new Error('Markt passt doch, Test prüft nichts');
+    const m = await ev("({sh:$('lab').scrollHeight, ch:$('lab').clientHeight, top:$('lab').firstElementChild.getBoundingClientRect().top})");
+    if (m.top < 0) throw new Error('Werkstatt beginnt oberhalb des Bildschirms: ' + m.top);
+    if (!(m.sh > m.ch)) throw new Error('Werkstatt passt doch, Test prüft nichts');
     await swipeUp(page, 320, 250);
     await page.waitForTimeout(300);
-    if (!(await ev("$('market').scrollTop") > 0)) throw new Error('Markt scrollt nicht');
+    if (!(await ev("$('lab').scrollTop") > 0)) throw new Error('Werkstatt scrollt nicht');
     await ev("OVS.forEach(o=>o.hidden=true)");
     const blocked = await page.evaluate(() => { const t = document.getElementById('c'); const e = new TouchEvent('touchmove', { cancelable: true, bubbles: true, touches: [] }); t.dispatchEvent(e); return e.defaultPrevented; });
     if (!blocked) throw new Error('Wischen auf der Spielwelt ist nicht gesperrt');

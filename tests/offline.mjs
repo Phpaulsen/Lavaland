@@ -18,12 +18,12 @@ try {
   // Warten, bis der Service Worker aktiv ist und alle Kerndateien im Speicher liegen.
   await page.evaluate(() => navigator.serviceWorker.ready);
   await page.evaluate(async () => { for (let i = 0; i < 50; i++) { const c = await caches.keys(); if (c.length) { const k = await (await caches.open(c[0])).keys(); if (k.length >= 8) return; } await new Promise(r => setTimeout(r, 200)); } });
-  await page.evaluate(() => window.__ev("gold=777; saveFinds(); saveGame(false)"));
+  await page.evaluate(() => window.__ev("hero.mat.ms=777; saveHero(); saveGame(false)"));
   await page.waitForTimeout(1500);
   await ctx.setOffline(true);
   await page.reload(); await ready();
-  const s = await page.evaluate(() => window.__ev('({g:ST.gold, c:!!navigator.serviceWorker.controller})'));
-  if (s.g !== 777) fail = 'Spielstand offline nicht geladen (Gold ' + s.g + ')';
+  const s = await page.evaluate(() => window.__ev('({g:hero.mat.ms, c:!!navigator.serviceWorker.controller})'));
+  if (s.g !== 777) fail = 'Spielstand offline nicht geladen (Rechentafel ' + s.g + ')';
   else if (!s.c) fail = 'Seite nicht vom Service Worker gesteuert';
   else {
     const font = await page.evaluate(() => document.fonts.load('700 20px Andika').then(f => f.length > 0));

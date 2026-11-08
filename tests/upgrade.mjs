@@ -33,15 +33,18 @@ let fail = '';
 try {
   await page.goto(base + '/old/'); await ready();
   const holes = await ev(DIG);
-  const before = await ev('({gold:'+V('gold')+', gems:'+V('gems')+', lv:hero.lv|0, xp:hero.xp|0, x:Math.round(P.x), gy:GY, top:TOP, seed:SEED})');
+  const before = await ev('({gold:'+V('gold')+', gems:'+V('gems')+', zr:hero.mat.zr|0, lv:hero.lv|0, xp:hero.xp|0, x:Math.round(P.x), gy:GY, top:TOP, seed:SEED})');
   await ev("('gold' in ST?(ST.gold=4242):(gold=4242)); saveFinds(); saveHero(); saveGame(false)");
   await page.waitForTimeout(2000);
   errs.length = 0;
   await page.goto(base + '/'); await ready();
   await page.waitForTimeout(1000);
-  const after = await ev('({gold:'+V('gold')+', gems:'+V('gems')+', lv:hero.lv|0, xp:hero.xp|0, x:Math.round(P.x), gy:GY, top:TOP, seed:SEED})');
+  const after = await ev('({gold:'+V('gold')+', gems:'+V('gems')+', zr:hero.mat.zr|0, lv:hero.lv|0, xp:hero.xp|0, x:Math.round(P.x), gy:GY, top:TOP, seed:SEED})');
   const dug = await ev('(' + JSON.stringify(holes) + ').filter(function(h){ return grid[h[1]*GX+h[0]]!==0; }).length');
-  if (after.gold !== 4242) fail = 'Gold verloren: ' + after.gold;
+  // Seit Streich-PR 2a wird Gold beim Start einmal in Zahnräder getauscht: je angefangene 50 Gold und 10 Edelsteine ein Zahnrad.
+  const zr = before.zr + Math.ceil(4242 / 50) + Math.ceil(before.gems / 10);
+  if (after.gold !== 0 || after.gems !== 0) fail = 'Gold/Edelsteine nicht getauscht: ' + after.gold + '/' + after.gems;
+  else if (after.zr !== zr) fail = 'Zahnräder nach Tausch: ' + after.zr + ' statt ' + zr;
   else if (after.seed !== before.seed) fail = 'Neue Welt statt alter: Seed ' + before.seed + ' -> ' + after.seed;
   else if (after.lv !== before.lv || after.xp !== before.xp) fail = 'Heldenstand verändert';
   else if (Math.abs(after.x - before.x) > 60) fail = 'Position verloren: ' + before.x + ' -> ' + after.x;
