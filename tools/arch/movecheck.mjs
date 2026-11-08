@@ -93,7 +93,8 @@ export function transform(node, moves, own) {
   // "FS": neuer Parameter gleichen Namens, der den Top-Level-Namen verdeckt; der Körper bleibt dafür unverändert.
   const plist = n => { const v = (moves.params || {})[n]; if (!v) return []; return (typeof v === 'string' ? [v + '=Math.random'] : v).map(e => { const [name, src] = e.split('='); return { name, random: src === 'Math.random' }; }); };
   const mine = own ? plist(own) : [], rnd = (mine.find(e => e.random) || {}).name, moved = !!own && own in (moves.renames || {});
-  const wo = moves.world, wn = moved && wo && mine.some(e => e.name === wo.param) ? new Set(wo.names) : null, wf = wn ? new Set(wo.fromNames || []) : null;
+  // world darf eine Liste sein (mehrere Ports in einem Stapel, z. B. LP in PR 13 und SV in PR 14e); es gilt der Port, den die Funktion als Parameter bekommt.
+  const wo = moved ? [].concat(moves.world || []).find(w => mine.some(e => e.name === w.param)) : null, wn = wo ? new Set(wo.names) : null, wf = wn ? new Set(wo.fromNames || []) : null;
   const mem = (o, p) => ({ type: 'MemberExpression', object: id(o), property: id(p), computed: false, optional: false });
   // Bezüge auf umbenannte Namen werden nur innerhalb bewegter Funktionen umgeschrieben; legacy.js ruft weiter den alten Namen (Einzeiler).
   const n0 = clone(node);
@@ -105,7 +106,8 @@ export function transform(node, moves, own) {
     if (SCOPE.has(x.type)) sh = shadow(x, sh);
     // Math.random → Parameter
     if (rnd && x.type === 'MemberExpression' && !x.computed && x.object.type === 'Identifier' && x.object.name === 'Math' && x.property.name === 'random') return id(rnd);
-    if (moved && x.type === 'CallExpression' && x.callee.type === 'Identifier') {
+    // Ein Name, der über den Port kommt (world), bleibt ein Port-Aufruf, auch wenn ein früherer Schritt ihn umbenannt hat (idbDo → SV.idbDo, nicht idbDoWith).
+    if (moved && x.type === 'CallExpression' && x.callee.type === 'Identifier' && !(wn && wn.has(x.callee.name) && !sh.has(x.callee.name))) {
       const c = x.callee.name;
       // Aufruf einer mit Parametern bewegten Funktion: neuer Name, ihre Parameter vorn (gleich benannt wie hier)
       if (ren[c] && plist(ren[c]).length) { x.callee = id(ren[c]); x.arguments = [...plist(ren[c]).map(e => id(e.name)), ...x.arguments.map(a => walk(a, x, 'arguments', sh))]; return x; }
@@ -145,7 +147,16 @@ export function mergeSteps(moves, done = -Infinity) {
   for (const s of steps) for (const [k, v] of Object.entries(s)) {
     if (k === 'pr') continue;
     if (Array.isArray(v)) out[k] = [...new Set([...(out[k] || []), ...v])];
-    else if (k === 'facade' || k === 'world') {
+    else if (k === 'world') {
+      const list = [].concat(out.world || []);
+      for (const w of [].concat(v)) {
+        const o = list.find(x => x.param === w.param);
+        if (!o) list.push(w);
+        else { if (o.from !== w.from) throw new Error(`world ${w.param} in zwei Schritten verschieden`); o.names = [...new Set([...o.names, ...w.names])]; if (w.fromNames) o.fromNames = [...new Set([...(o.fromNames || []), ...w.fromNames])]; }
+      }
+      out.world = list.length === 1 ? list[0] : list;
+    }
+    else if (k === 'facade') {
       // Gleiche Fassade bzw. gleicher Port in zwei Schritten: Namen vereinigen. Sonst ist die Angabe mehrdeutig.
       const key = k === 'facade' ? 'name' : 'param', o = out[k];
       if (o && (o[key] !== v[key] || o.from !== v.from)) throw new Error(`${k} in zwei Schritten verschieden`);
@@ -266,6 +277,8 @@ function selftest() {
   const m1 = JSON.stringify(mergeSteps(st)), m2 = JSON.stringify(mergeSteps(st, doneOf({ pr: 11 })));
   const f2 = mergeSteps({ stack: [{ pr: 1, facade: { name: 'ST', names: ['a'] } }, { pr: 2, facade: { name: 'ST', names: ['b'] } }] });
   if (JSON.stringify(f2.facade) !== JSON.stringify({ name: 'ST', names: ['a', 'b'] })) { console.log('FAIL Selbsttest Stapel Fassade: ' + JSON.stringify(f2)); process.exit(1); }
+  const w2 = mergeSteps({ stack: [{ pr: 1, world: { param: 'LP', names: ['a'] } }, { pr: 2, world: { param: 'SV', names: ['b'] } }] });
+  if (!Array.isArray(w2.world) || w2.world.length !== 2) { console.log('FAIL Selbsttest Stapel Ports: ' + JSON.stringify(w2)); process.exit(1); }
   if (m1 !== JSON.stringify({ renames: { a: 'b', d: 'e' }, added: ['x'], changed: ['c', 'f'] }) || m2 !== JSON.stringify({ renames: { d: 'e' }, changed: ['x', 'f'] }) || doneOf(st) !== 12 || doneOf(null) !== -Infinity) { console.log('FAIL Selbsttest Stapel: ' + m1 + ' | ' + m2); process.exit(1); }
   let bad = 0;
   for (const [name, b, h, m, n] of T) { const r = compare(b, h, m); if (r.err.length !== n) { bad++; console.log(`FAIL Selbsttest „${name}“: erwartet ${n} Fehler, bekommen ${r.err.length}: ${r.err.join('; ')}`); } }

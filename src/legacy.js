@@ -24,6 +24,7 @@ import { winterColWith, carveCaveWith, carveCircleWith, carvePathWith, fillCrate
 import { SNX, SL0, PEAK, BACK, BEND, MH, SNB, CHX, CAVE, SNC0, SNC1, msurf, vnoise, inGrid, ellipse, PX0, PM, PMC, LANDX, PADH, BT, sm, colOf, hBio, craters, roomY, vFloor, WSX, LIFTX, SEA_T, SEA_L, SEA_B, HOUSE, FH } from './core/world/shape.js';
 import { BAK_DBS, BAK_ST, BAK_MAX, TYPED, BADK, bakOk, b64, unb64, enc, dec, dbDump, dbLoad } from './persistence/transfer.js';
 import { K_ALIVE, logWith } from './log/log.js';
+import { snapshotWith, saveGameWith, autosaveWith, packStartWith, packStepWith, saveHeroWith, saveFindsWith, saveFactsWith } from './persistence/save.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -31,6 +32,25 @@ const $=id=>document.getElementById(id);
 const SP={
   get cam(){ return cam; }, get trees(){ return trees; }, get genF(){ return genF; },
   dust, spawn, wc
+};
+/* Port für persistence/save.js: was das Speichern vom übrigen Spiel braucht (Rückmeldung, Welt, Lernkern). */
+const SV={
+  get FS(){ return FS; },
+  get SEED(){ return SEED; },
+  get genF(){ return genF; },
+  get realm(){ return realm; },
+  get trees(){ return trees; },
+  banner,
+  flash,
+  hudLoot,
+  idbDo,
+  packRuns,
+  park,
+  speak,
+  svg24,
+  tone,
+  get $(){ return $; },
+  get QI(){ return QI; }
 };
 /* Weltobjekt für die Weltgenerierung in core/world/gen.js (PR 8b): Felder direkt, neu zugewiesene Namen über get/set, dazu Ports
    für Funktionen, die noch hier stehen. Die Getter lesen erst beim Aufruf, deshalb darf WD vor den Deklarationen stehen. */
@@ -1488,9 +1508,9 @@ const FINDS=[
   ['rainbow','🌈','einen Regenbogen','sky'],['unicorn','🦄','ein Einhorn','sky'],
   ['robot','🤖','einen Roboter','volcano'],['trophy','🏆','einen Pokal','house'],['statue','🗿','eine Steinfigur','edge'],['gift','🎁','ein Geschenk','edge']
 ];
-let nearT=0, saveT=0, lootT=0;
+let nearT=0;
 try{ const o=JSON.parse(localStorage.getItem(K_FINDS)||'{}')||{}; ST.found=o.ids||{}; ST.gold=o.gold|0; ST.gems=o.gems|0; }catch(_){ ST.found={}; }
-function saveFinds(){ if(ST.frozen) return; try{ localStorage.setItem(K_FINDS,JSON.stringify({ids:ST.found,gold:ST.gold,gems:ST.gems})); }catch(_){} }
+function saveFinds(){ return saveFindsWith(SV); }
 function placeFind(zone,r){
   const anyX=function(){
     for(let k=0;k<40;k++){
@@ -1610,58 +1630,11 @@ function renderAlbum(){
 
 /* ---------- Speichern: Die ganze Welt liegt als ein Eintrag in der Browser-Datenbank dieses Geräts. ---------- */
 function idbDo(mode,fn){ return idbDoWith(ST.diskLock,mode,fn); }
-function snapshot(pre,pf){
-  const F=pf==null?genF:pf, g=pre||packRuns(F);
-  const pk={};
-  for(const k in parked) pk[k]=parked[k]?Object.assign({},parked[k]):null;
-  if(P.mode!=='walk'&&P.mode!=='coaster'&&P.mode!=='ski'&&P.mode!=='dragon') pk[P.mode]=park();
-  return {v:5,w:2,vt:1,rl:realm,gy:GY,f:F,snow:1,seed:SEED,runs:g,tracks:ST.tracks.map(function(T){return {raw:T.raw,user:T.user,rb:!!T.rb};}),zips:ST.zips,px:P.x,py:P.y,parked:pk,
-    trees:trees.map(function(t){return t.state===1?2:t.state;}),hidden:ST.hidden,energy:ST.energy,props:ST.props,seen:ST.seen,eggGot:ST.eggGot,lootGot:ST.lootGot,orbGot:ST.orbGot,matGot:ST.matGot,pzGot:ST.pzGot};
-}
-/* Autospeichern in Häppchen: Das Packen der Welt dauert auf einem schwachen Handy bis zu einer halben Sekunde und ruckelt dann sichtbar. Darum packt das Autospeichern pro Bild nur so viele Spalten, wie in 4 ms passen. Jede Spalte ist für sich vollständig, der Stand bleibt also immer lesbar. Ändert sich während des Packens eine schon gepackte Spalte, kommt das beim nächsten Speichern mit. Beim Verlassen, Reisen und Antippen wird weiter sofort am Stück gespeichert. */
-let packJob=null;
-function packStart(){ if(ST.saving||!ST.ready||ST.frozen||ST.traveling||packJob) return; packJob={cx:0,f:genF,rl:realm,out:new Uint8Array(1<<20),n:0}; }
-function packStep(){
-  const J=packJob;
-  if(!J) return;
-  if(J.rl!==realm||ST.traveling||ST.frozen||!ST.ready){ packJob=null; return; }
-  const t0=performance.now(), G=grid, W=GX, end0=GY*W;
-  let out=J.out, n=J.n, cx=J.cx;
-  while(cx<J.f){
-    let i=cx; const end=cx+end0;
-    while(i<end){
-      const m=G[i], st=i; i+=W;
-      while(i<end&&G[i]===m) i+=W;
-      let r=(i-st)/W;
-      if(n+8>out.length){ const o=new Uint8Array(out.length*2); o.set(out); out=o; }
-      out[n++]=m; while(r>=128){ out[n++]=(r&127)|128; r>>>=7; } out[n++]=r;
-    }
-    cx++;
-    if((cx&15)===0&&performance.now()-t0>4) break;
-  }
-  J.out=out; J.n=n; J.cx=cx;
-  if(cx<J.f) return;
-  packJob=null;
-  if(ST.saving) return;
-  ST.saving=true; saveFinds(); saveHero();
-  idbDo('readwrite',function(st){ return st.put(snapshot(out.slice(0,n),J.f),realmKey(J.rl)); }).then(function(){ ST.saving=false; },function(){ ST.saving=false; });
-}
-function saveGame(manual){
-  packJob=null;
-  if(ST.saving||!ST.ready||ST.frozen||ST.traveling) return;
-  ST.saving=true; saveFinds(); saveHero();
-  idbDo('readwrite',function(st){ return st.put(snapshot(),realmKey(realm)); }).then(function(){
-    ST.saving=false; if(manual){ flash('save','ok'); tone([660,880]); speak('Gespeichert.'); banner(svg24(QI.save)+'<svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5" stroke="#2f8f4a" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',1400); setTimeout(function(){ $('menu').hidden=true; },500); }
-  },function(){
-    ST.saving=false; if(manual){ flash('save','warn'); tone([170],'sawtooth'); }
-  });
-}
-function autosave(dt){
-  saveT+=dt; lootT+=dt;
-  if(lootT>.5&&(ST.lootDirty||ST.heroDirty)){ lootT=0; if(ST.lootDirty) saveFinds(); if(ST.heroDirty) saveHero(); ST.lootDirty=false; ST.heroDirty=false; hudLoot(); }
-  if(saveT>40){ saveT=0; packStart(); }
-  packStep();
-}
+function snapshot(pre,pf){ return snapshotWith(SV,pre,pf); }
+function packStart(){ return packStartWith(SV); }
+function packStep(){ return packStepWith(SV); }
+function saveGame(manual){ return saveGameWith(SV,manual); }
+function autosave(dt){ return autosaveWith(SV,dt); }
 function restore(sv){
   SEED=sv.seed; shapeWorld(); loadCells(sv); LIFE.clear(); stamp.fill(0);
   parts.length=0; ghost=null; chest=null; stroke=null; strokeId=null; ST.task=null; $('chip').hidden=true;
@@ -1766,7 +1739,7 @@ try{
 }catch(_){}
 let digN=0, nearF=null, nearD=1e9;
 const bombs=[], pet={x:820,y:0};
-function saveHero(){ if(ST.frozen) return; try{ localStorage.setItem(K_HERO,JSON.stringify(hero)); }catch(_){} }
+function saveHero(){ return saveHeroWith(SV); }
 function xpNeed(l){ return 40+l*30; }
 function addXp(n){
   hero.xp+=n; ST.heroDirty=true;
@@ -5611,7 +5584,7 @@ function loadFacts(){
   if(!FS.dm||typeof FS.dm!=='object'||!FS.dm.c||typeof FS.dm.c!=='object') delete FS.dm;
   for(const k in FS.f){ const r=FS.f[k]; if(!Array.isArray(r)||!(r[0]>=0)||!isFinite(r[1])) delete FS.f[k]; else r[0]=clamp(r[0]|0,0,5); }
 }
-function saveFacts(){ if(ST.frozen) return; try{ localStorage.setItem(K_FACTS,JSON.stringify(FS)); }catch(_){} }
+function saveFacts(){ return saveFactsWith(SV); }
 loadFacts();
 /* Wer schon Fakten in Fach 4 oder 5 hat, bekommt die Meistersteine dafür beim ersten Start nachträglich. */
 (function(){ if(FS.mg) return; FS.mg={}; let n=0; for(const k in FS.f) if(FS.f[k][0]>=MBOX){ FS.mg[k]=1; n++; } if(n){ hero.mat.ms=(hero.mat.ms|0)+n; hero.mk.ms=1; saveHero(); } saveFacts(); })();
