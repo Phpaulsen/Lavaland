@@ -1,8 +1,8 @@
 // Systemschnittstelle (PR 16): Nebensysteme laufen nach update() einmal je Bild, in fester Reihenfolge.
 // Schicht systems: darf core/, state/, audio/ und systems/ importieren. Das Fehlerprotokoll (log/) kommt als Parameter errAdd.
 // Die Tick-Funktionen stehen noch in legacy.js und werden dort registriert; PR 17–21 holen sie einzeln hierher.
-/** Ebenen in draw(), von hinten nach vorn: 'back' (nach den Seilrutschen), 'mid' (nach dem Fernrohr), 'glow' (nach der Dunkelheit).
- * @typedef {'back' | 'mid' | 'glow'} Layer
+/** Ebenen in draw(), von hinten nach vorn: 'back' (nach den Seilrutschen), 'mid' (nach dem Fernrohr), 'mob' (direkt danach), 'glow' (nach der Dunkelheit).
+ * @typedef {'back' | 'mid' | 'mob' | 'glow'} Layer
  * @typedef {{ name: string, tick: (dt: number) => void, draw?: (ctx: CanvasRenderingContext2D, layer: Layer, x0: number, x1: number) => void }} System */
 /** @type {System[]} */
 export const SIDE=[];

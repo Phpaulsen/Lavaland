@@ -1,4 +1,4 @@
-// Bildvergleich (Migrationsplan PR 17): Drei feste Szenen werden mit dem Stand von main (OLD) und dem neuen Testbuild gezeichnet.
+// Bildvergleich (Migrationsplan PR 17, Pfeile und Monster seit PR 18): Feste Szenen werden mit dem Stand von main (OLD) und dem neuen Testbuild gezeichnet.
 // Die Bilder müssen Pixel für Pixel gleich sein. So fällt auf, wenn ein Umzug die Zeichenreihenfolge ändert.
 // Kein fester Hash im Repo: Pixel hängen von der Chromium-Version ab. Verglichen wird im selben Browser.
 // Aufruf: OLD=/pfad/zur/alten/index.html node tests/pixels.mjs   (im CI wie beim Update-Test aus origin/main)
@@ -17,7 +17,7 @@ const SEEDED = `(function(){ let s=12345; Math.random=function(){ s=(s*16807)%21
 const FREEZE = `(function(){
   window.__raf=window.requestAnimationFrame; window.requestAnimationFrame=function(){ return 0; };
 })()`;
-const CLEAN = `parts.length=0; MONS.length=0; ST.CRE.length=0; shake=0; ufo=null; bolt=null; METS.length=0; MROCKS.length=0; FLIES.length=0; JAR.length=0; for(const k in FX) FX[k]=0`;
+const CLEAN = `parts.length=0; MONS.length=0; ARROWS.length=0; ST.CRE.length=0; shake=0; ufo=null; bolt=null; METS.length=0; MROCKS.length=0; FLIES.length=0; JAR.length=0; for(const k in FX) FX[k]=0`;
 const HASH = `(function(){
   const d=ctx.getImageData(0,0,cv.width,cv.height).data; let h=2166136261;
   for(let i=0;i<d.length;i+=4){ h^=d[i]|(d[i+1]<<8)|(d[i+2]<<16); h=Math.imul(h,16777619); }
@@ -34,6 +34,10 @@ const SCENES = [
       MROCKS.push({x:P.x+90,y:ground(P.x+90),t:10});
       FLIES.push({hx:P.x-40,hy:P.y-60,x:P.x-40,y:P.y-60,ph:1,t:0},{hx:P.x+30,hy:P.y-90,x:P.x+30,y:P.y-90,ph:2,t:0});
       JAR.push({t:100,a:1},{t:5,a:3})` },
+  { name: 'Zielscheiben mit Pfeilen und Monstern', go: 'teleport(1790)',
+    set: `P.x=1790; P.y=ground(P.x)-2; time=3; nightA=.6;
+      ARROWS.push({x:1700,y:ground(1700)-60,vx:500,vy:-120,t:.3,stuck:0},{x:1880,y:ground(1880)-30,vx:-300,vy:200,t:1,stuck:.5});
+      MONS.push({x:1720,y:ground(1720),vx:0,vy:0,on:true,hp:2,lv:0,t:1,face:1,sq:0,hit:0},{x:1860,y:ground(1860)-20,vx:0,vy:0,on:false,hp:3,lv:2,t:1,face:-1,sq:.5,hit:.1})` },
 ];
 
 async function shoot(browser, url) {
