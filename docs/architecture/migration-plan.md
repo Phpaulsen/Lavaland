@@ -173,6 +173,12 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 - Glücks-Upgrade aus dem Markt; Gold und Edelsteine kommen immer einfach. `hero.up.luck` bleibt im Spielstand und wird ignoriert.
 - Golden Master: nur `MACH` der Erde (3 Seeds, vor und nach `grow`) ändert sich, die 6 Hashes sind ersetzt (ADR 0001, Ausnahme vom 8.11.). `movecheck.mjs` kennt dafür `stmtsChanged` (der Klick-Handler am Akku-Rätsel).
 
+### Streich-PR 1b: Zauberkasten (verhaltensändernd, nicht Teil der Migration)
+
+- Die sechs Malstoffe (Lava, Feuer, Wasser, Eis, Erde, Schnee) stehen in der Werkzeugkiste hinter einer Karte 🪄, die das Fenster `#magic` öffnet. Die Stoffkarten behalten ihre IDs (`tool-lava` …).
+- Akku (Entscheidung 8.11.): Malen kostet nur noch je Zelle, die neu den Stoff bekommt (`PAINTC` = 0,012), gezählt im Pinselbereich vor und nach dem Tupfer. Wählen und Stillhalten kosten nichts mehr; vorher lief der Akku jede Sekunde, solange ein Stoff gewählt war. Ein bildschirmbreiter Strich kostet 1,5 (Feuer) bis 4,7 (Eis, Schnee) von 375. Leerer Akku: wie bisher Lernfenster, danach ist kein Stoff mehr gewählt.
+- Golden Master unverändert. `movecheck.mjs` kennt `stmtsAdded`.
+
 ### PR 16: Systemschnittstelle
 
 - **Bewegt:** `SIDE`, `SAFE`, `safe()` → `systems/index.js` mit `{ name, tick }` je Eintrag, gleiche Reihenfolge, `name` = heutiger Funktionsname. Die Tick-Funktionen selbst bleiben noch in `legacy.js` und werden nur registriert.

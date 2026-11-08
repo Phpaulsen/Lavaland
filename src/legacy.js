@@ -621,9 +621,10 @@ function syncUI(){
   $('btn-veh').firstChild.innerHTML=IC[P.mode];
   $('btn-tool').firstChild.innerHTML=ST.tool?IC[ST.tool]:QI.hand;
   $('btn-tool').setAttribute('aria-pressed',String(!!ST.tool));
+  $('tool-magic').setAttribute('aria-pressed',String(!!PAINT[ST.tool]));
 }
 function pulse(id){
-  if(id.indexOf('mode-')===0) pulse('btn-veh'); else if(id.indexOf('tool-')===0) pulse('btn-tool');
+  if(id.indexOf('mode-')===0) pulse('btn-veh'); else if(id.indexOf('tool-')===0){ pulse('btn-tool'); if(PAINT[id.slice(5)]) pulse('tool-magic'); }
   const el=$(id); if(!el||el.classList.contains('pulse')) return;
   el.classList.add('pulse');
   setTimeout(function(){el.classList.remove('pulse');},2700);
@@ -1108,8 +1109,26 @@ function erase(wx,wy){
     }
   }
 }
+/* Zauberkasten: Malen kostet Akku je Zelle, die wirklich neu den Stoff bekommt (Entscheidung 8.11.). Gezählt wird im Pinselbereich vorher und nachher;
+   putUp klettert bis zu 8 Zellen nach oben, darum reicht das Fenster 11 Zellen hoch. Wählen und Stillhalten kosten nichts. */
+const PAINTM={lava:LAVA,fire:FIRE,water:WATER,ice:ICE,earth:EARTH,snow:SNOW}, PAINTC=.012;
+function paintCount(cx,cy,m){
+  let n=0;
+  for(let y=cy-11;y<=cy+3;y++) for(let x=cx-3;x<=cx+3;x++) if(inGrid(x,y)&&grid[y*GX+x]===m) n++;
+  return n;
+}
 function paintAt(wx,wy){
   const cx=Math.floor(wx/CELL), cy=Math.floor((wy-TOP)/CELL);
+  const pm=PAINTM[ST.tool], n0=pm===undefined?0:paintCount(cx,cy,pm);
+  paintDo(wx,wy,cx,cy);
+  if(pm!==undefined){ const d=paintCount(cx,cy,pm)-n0; if(d>0) paintPay(d*PAINTC); }
+}
+function paintPay(e){
+  if(ST.energy<=0) return;
+  ST.energy=Math.max(0,ST.energy-e);
+  if(ST.energy<=0) drain(0);
+}
+function paintDo(wx,wy,cx,cy){
   if(ST.tool==='lava'||ST.tool==='water'){
     const t=ST.tool==='lava'?LAVA:WATER;
     if(t===LAVA?lavaCount>=MAX_LAVA:waterCount>=MAX_WATER){ pulse('tool-erase'); return; }
@@ -5167,6 +5186,8 @@ function sySudoku(st){ return 'In jeder Reihe und in jeder Spalte darf jedes Bil
 const VEH=[['walk','Laufen'],['ski','Ski fahren'],['car','Auto'],['plane','Flugzeug'],['rocket','Rakete'],['bagger','Bagger'],['loader','Radlader'],['dumper','Kipper'],['tbm','Tunnelbohrmaschine'],['sub','U-Boot'],['balloon','Heißluftballon'],['heli','Hubschrauber'],['boat','Segelboot'],['bug','Kletterkäfer'],['coaster','Achterbahn fahren'],['dragon','Auf Mama Glut fliegen']];
 const TOOLS=[['tnt','Bombe legen'],['lava','Lava malen'],['fire','Feuer malen'],['water','Wasser malen'],['ice','Eis malen'],['earth','Erde malen'],['blocks','Bauklötze setzen'],['track','Schiene malen'],['erase','Radierer'],['snow','Schnee malen'],['ball','Schneeball werfen'],['man','Schneemann bauen'],['fw','Feuerwerk zünden'],['rope','Seilrutsche spannen'],['shovel','Schaufel'],['pick','Spitzhacke'],['bow','Pfeil und Bogen']];
 const MODES=VEH.map(function(v){return v[0];}), TOOLN=TOOLS.map(function(t){return t[0];});
+/* Zauberkasten (Vereinfachungsplan 1b): Die sechs Malstoffe stecken in einer Karte der Werkzeugkiste und öffnen sich als eigenes Fenster. */
+const PAINT={lava:1,fire:1,water:1,ice:1,earth:1,snow:1};
 function svg24(inner){ return '<svg viewBox="0 0 24 24" aria-hidden="true">'+inner+'</svg>'; }
 const LOCK='<span class="lock">'+svg24(QI.lock)+'</span>';
 $('grid').innerHTML=
@@ -5185,10 +5206,14 @@ $('garage-cards').innerHTML=VEH.map(function(v){
   const cool=v[0]!=='walk';
   return '<button class="card pick'+(cool?' cool':'')+'" id="mode-'+v[0]+'" data-mode="'+v[0]+'" aria-label="'+v[1]+'" aria-pressed="false">'+svg24(IC[v[0]])+(cool?LOCK:'')+'</button>';
 }).join('');
-$('tool-cards').innerHTML=TOOLS.map(function(t){
+const toolCard=function(t){
   const cool=!HANDT[t[0]];
   return '<button class="card pick'+(cool?' cool':'')+'" id="tool-'+t[0]+'" data-tool="'+t[0]+'" aria-label="'+t[1]+'" aria-pressed="false">'+svg24(IC[t[0]])+(cool?LOCK:'')+(t[0]==='tnt'?'<span class="badge" id="tnt-n" hidden>0</span>':'')+'</button>';
+};
+$('tool-cards').innerHTML=TOOLS.filter(function(t){ return !PAINT[t[0]]; }).map(function(t,i){
+  return (i===1?'<button class="card pick cool" id="tool-magic" aria-label="Zauberkasten: Lava, Feuer, Wasser, Eis, Erde oder Schnee malen" aria-pressed="false"><span class="mg" aria-hidden="true">🪄</span>'+LOCK+'</button>':'')+toolCard(t);
 }).join('');
+$('magic-cards').innerHTML=TOOLS.filter(function(t){ return PAINT[t[0]]; }).map(toolCard).join('');
 $('cards').innerHTML=TASKS.map(function(t){
   return '<button class="card" data-task="'+t.id+'" aria-label="'+t.name+'"><svg class="pic" viewBox="0 0 48 48" aria-hidden="true">'+PIC[t.id]+'</svg><svg class="got" viewBox="0 0 24 24" aria-hidden="true" hidden>'+IC.star+'</svg></button>';
 }).join('');
@@ -5224,13 +5249,14 @@ document.querySelectorAll('[data-mode]').forEach(function(b){ b.addEventListener
   if(m==='walk') setMode(m); else need(function(){ setMode(m); });
 }); });
 document.querySelectorAll('[data-tool]').forEach(function(b){ b.addEventListener('click',function(){
-  $('toolbox').hidden=true;
+  $('toolbox').hidden=true; $('magic').hidden=true;
   if(b.dataset.tool==='tnt'&&hero.tnt<=0){ openMarket(); return; }
   if(HANDT[b.dataset.tool]){ if(P.mode!=='walk') setMode('walk'); setTool(b.dataset.tool); return; }
   need(function(){ setTool(b.dataset.tool); });
 }); });
 tap($('btn-veh'),function(){ $('garage').hidden=false; });
 tap($('btn-tool'),function(){ $('toolbox').hidden=false; });
+$('tool-magic').addEventListener('click',function(){ $('toolbox').hidden=true; $('magic').hidden=false; });
 tap($('btn-finds'),function(){ renderAlbum(); $('finds').hidden=false; });
 tap($('save'),function(){ saveGame(true); });
 tap($('mkt'),openMarket);
@@ -5395,7 +5421,7 @@ function closeQuiz(){
   else{ if(!HANDT[ST.tool]) setTool(null,true); if(P.mode!=='walk'){ const air=!P.on; setMode('walk'); if(air){ P.chute=true; P.vy=Math.min(P.vy,0); } } pulse('batt'); }
 }
 function drain(dt){
-  if(P.mode!=='walk'||(ST.tool&&!HANDT[ST.tool])){
+  if(P.mode!=='walk'||(ST.tool&&!HANDT[ST.tool]&&(!PAINT[ST.tool]||ST.energy<=0))){
     ST.energy-=dt;
     if(ST.energy<=0){ ST.energy=0; battLow=false; $('batt').classList.remove('low'); renderBatt(); openQuiz(null); return; }
     /* Kurz vor leer blinkt der Akku und tickt, damit die Lernaufgabe nicht aus dem Nichts kommt. */

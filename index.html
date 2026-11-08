@@ -507,6 +507,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
 /* Winter: Geschichte, Untertitel zum Mitlesen, breitere Auswahl-Fenster */
 .btn.tale{background:#ead9ff}
 .cards.c4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.cards.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.card .mg{font-size:38px;line-height:1}
 .card.pick.gone{display:none}
 .card.story{padding:6px}
 .card.story canvas{display:block;width:100%;max-width:84px;aspect-ratio:1;border-radius:10px}
@@ -658,6 +660,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
 </div>
 <div id="toolbox" class="ov" hidden>
   <div class="sheet" role="dialog" aria-label="Werkzeuge"><button class="xb" aria-label="Schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg></button><div class="cards c4" id="tool-cards"></div></div>
+</div>
+<div id="magic" class="ov" hidden>
+  <div class="sheet" role="dialog" aria-label="Zauberkasten"><button class="xb" aria-label="Schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg></button><div class="cards c3" id="magic-cards"></div></div>
 </div>
 <div id="finds" class="ov" hidden>
   <div class="sheet" role="dialog" aria-label="Funde"><button class="xb" aria-label="Schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg></button>
@@ -6312,10 +6317,14 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       $("btn-veh").firstChild.innerHTML = IC[P.mode];
       $("btn-tool").firstChild.innerHTML = ST.tool ? IC[ST.tool] : QI.hand;
       $("btn-tool").setAttribute("aria-pressed", String(!!ST.tool));
+      $("tool-magic").setAttribute("aria-pressed", String(!!PAINT[ST.tool]));
     }
     function pulse(id) {
       if (id.indexOf("mode-") === 0) pulse("btn-veh");
-      else if (id.indexOf("tool-") === 0) pulse("btn-tool");
+      else if (id.indexOf("tool-") === 0) {
+        pulse("btn-tool");
+        if (PAINT[id.slice(5)]) pulse("tool-magic");
+      }
       const el = $(id);
       if (!el || el.classList.contains("pulse")) return;
       el.classList.add("pulse");
@@ -7093,8 +7102,27 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         }
       }
     }
+    const PAINTM = { lava: LAVA, fire: FIRE, water: WATER, ice: ICE, earth: EARTH, snow: SNOW }, PAINTC = 0.012;
+    function paintCount(cx, cy, m) {
+      let n = 0;
+      for (let y = cy - 11; y <= cy + 3; y++) for (let x = cx - 3; x <= cx + 3; x++) if (inGrid(x, y) && grid[y * GX + x] === m) n++;
+      return n;
+    }
     function paintAt(wx, wy) {
       const cx = Math.floor(wx / CELL), cy = Math.floor((wy - TOP) / CELL);
+      const pm = PAINTM[ST.tool], n0 = pm === void 0 ? 0 : paintCount(cx, cy, pm);
+      paintDo(wx, wy, cx, cy);
+      if (pm !== void 0) {
+        const d = paintCount(cx, cy, pm) - n0;
+        if (d > 0) paintPay(d * PAINTC);
+      }
+    }
+    function paintPay(e) {
+      if (ST.energy <= 0) return;
+      ST.energy = Math.max(0, ST.energy - e);
+      if (ST.energy <= 0) drain(0);
+    }
+    function paintDo(wx, wy, cx, cy) {
       if (ST.tool === "lava" || ST.tool === "water") {
         const t = ST.tool === "lava" ? LAVA : WATER;
         if (t === LAVA ? lavaCount >= MAX_LAVA : waterCount >= MAX_WATER) {
@@ -15664,6 +15692,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }), TOOLN = TOOLS.map(function(t) {
       return t[0];
     });
+    const PAINT = { lava: 1, fire: 1, water: 1, ice: 1, earth: 1, snow: 1 };
     function svg24(inner) {
       return '<svg viewBox="0 0 24 24" aria-hidden="true">' + inner + "</svg>";
     }
@@ -15679,10 +15708,18 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       const cool = v[0] !== "walk";
       return '<button class="card pick' + (cool ? " cool" : "") + '" id="mode-' + v[0] + '" data-mode="' + v[0] + '" aria-label="' + v[1] + '" aria-pressed="false">' + svg24(IC[v[0]]) + (cool ? LOCK : "") + "</button>";
     }).join("");
-    $("tool-cards").innerHTML = TOOLS.map(function(t) {
+    const toolCard = function(t) {
       const cool = !HANDT[t[0]];
       return '<button class="card pick' + (cool ? " cool" : "") + '" id="tool-' + t[0] + '" data-tool="' + t[0] + '" aria-label="' + t[1] + '" aria-pressed="false">' + svg24(IC[t[0]]) + (cool ? LOCK : "") + (t[0] === "tnt" ? '<span class="badge" id="tnt-n" hidden>0</span>' : "") + "</button>";
+    };
+    $("tool-cards").innerHTML = TOOLS.filter(function(t) {
+      return !PAINT[t[0]];
+    }).map(function(t, i) {
+      return (i === 1 ? '<button class="card pick cool" id="tool-magic" aria-label="Zauberkasten: Lava, Feuer, Wasser, Eis, Erde oder Schnee malen" aria-pressed="false"><span class="mg" aria-hidden="true">🪄</span>' + LOCK + "</button>" : "") + toolCard(t);
     }).join("");
+    $("magic-cards").innerHTML = TOOLS.filter(function(t) {
+      return PAINT[t[0]];
+    }).map(toolCard).join("");
     $("cards").innerHTML = TASKS.map(function(t) {
       return '<button class="card" data-task="' + t.id + '" aria-label="' + t.name + '"><svg class="pic" viewBox="0 0 48 48" aria-hidden="true">' + PIC[t.id] + '</svg><svg class="got" viewBox="0 0 24 24" aria-hidden="true" hidden>' + IC.star + "</svg></button>";
     }).join("");
@@ -15778,6 +15815,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     document.querySelectorAll("[data-tool]").forEach(function(b) {
       b.addEventListener("click", function() {
         $("toolbox").hidden = true;
+        $("magic").hidden = true;
         if (b.dataset.tool === "tnt" && hero.tnt <= 0) {
           openMarket();
           return;
@@ -15797,6 +15835,10 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     });
     tap($("btn-tool"), function() {
       $("toolbox").hidden = false;
+    });
+    $("tool-magic").addEventListener("click", function() {
+      $("toolbox").hidden = true;
+      $("magic").hidden = false;
     });
     tap($("btn-finds"), function() {
       renderAlbum();
@@ -16156,7 +16198,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
     }
     function drain(dt) {
-      if (P.mode !== "walk" || ST.tool && !HANDT[ST.tool]) {
+      if (P.mode !== "walk" || ST.tool && !HANDT[ST.tool] && (!PAINT[ST.tool] || ST.energy <= 0)) {
         ST.energy -= dt;
         if (ST.energy <= 0) {
           ST.energy = 0;
