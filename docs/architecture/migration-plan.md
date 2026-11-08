@@ -133,7 +133,8 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 
 ### PR 12: Umzug, Rettung, Altstände
 
-- **Bewegt:** `S56` Spielstand umziehen (`bakMake`, `bakLoad`, `bakIn`), Rettungslogik aus `start` (`rescue`, `tryLoad`), Laden alter Formate `v2`–`v4` → `persistence/transfer.js`, `persistence/rescue.js`.
+- **Bewegt:** aus `S56` die Teile ohne Spielzustand: `BAK_DBS`, `BAK_ST`, `BAK_MAX`, `TYPED`, `BADK`, `bakOk`, `b64`, `unb64`, `enc`, `dec`, `dbDump`, `dbLoad` → `persistence/transfer.js`, Text unverändert (nur JSDoc und AST-neutrale Typ-Casts).
+- **Abweichung:** `bakMake`, `bakLoad`, `bakIn` ziehen mit PR 14d um (`snapshot`, `saveFinds`, `saveHero`, `frozen`, `ready`, `traveling`), `bakSave`/`bakPick`/`bakDone` mit der Oberfläche (PR 24–27). `loadCells` und `migrateSnow` (aus PR 10) ziehen ebenfalls mit PR 14d um. `rescue`, `tryLoad` und das Laden alter Formate sind Closures in `start` und ziehen mit `start` nach `app/` (PR 28); sie herauszulösen hieße `start` umzubauen, ohne dass der Move-Nachweis greift. `persistence/rescue.js` entfällt bis dahin.
 - **Absicherung:** `save.mjs` (Rettung, Datenbankstörung, Sichern/Laden), Upgrade-Test, Golden-Master.
 
 ### PR 13: Spielprotokoll
@@ -146,7 +147,7 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 - **14a:** `hero`, `gold`, `gems`, `lootDirty`, `heroDirty` → `state/game.js`. Benannte Mutation `addGold(n)` noch nicht (wäre 15 Sektionen Umbau), nur `G`.
 - **14b:** `P`, `cam`, `pan`, `parked`, `keys` → `state/game.js`.
 - **14c:** `realm`, `SEED`, `setRealm`, UI-Modus (`paused`, `tool`, `task`, `talkLock`, `OVS`, `uiOpen`) und Speicherschalter (`frozen`, `diskLock`, `saving`, `traveling`, `ready`).
-- **14d (aus PR 11 verschoben):** `snapshot`, `saveGame`, `autosave`, `packStart`/`packStep`, `saveHero`, `saveFinds`, `saveFacts` → `persistence/save.js`. Banner, Ton und Sprache in `saveGame` als Port, gleiche Reihenfolge; `save.mjs`, `offline.mjs`, Golden Master Speicherformat.
+- **14d (aus PR 10–12 verschoben):** `loadCells`, `migrateSnow`, `bakMake`, `bakLoad`, `bakIn`, `snapshot`, `saveGame`, `autosave`, `packStart`/`packStep`, `saveHero`, `saveFinds`, `saveFacts` → `persistence/save.js`. Banner, Ton und Sprache in `saveGame` als Port, gleiche Reihenfolge; `save.mjs`, `offline.mjs`, Golden Master Speicherformat.
 - **Risiken:** Viele Testnamen (`gold`, `hero`, `P`, `paused`, `ready` stehen in fast jedem Test). **Absicherung:** Tests im selben PR auf `G` umstellen; Codemod; Move-Nachweis.
 
 ### PR 15: Ton und Sprache
