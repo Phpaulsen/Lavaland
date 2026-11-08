@@ -151,7 +151,8 @@ export function mergeSteps(moves, done = -Infinity) {
   return out;
 }
 /** Höchste PR-Nummer einer moves.json (alte Form {pr} oder Stapel). */
-export const doneOf = m => m ? Math.max(-Infinity, ...(m.stack || [m]).map(s => s.pr ?? -Infinity)) : -Infinity;
+// pr ist eine Zahl; Teilschritte als Dezimalzahl (14a = 14.1). Alte Einträge wie "7b" zählen nicht.
+export const doneOf = m => m ? Math.max(-Infinity, ...(m.stack || [m]).map(s => typeof s.pr === 'number' ? s.pr : -Infinity)) : -Infinity;
 
 /** Vergleicht zwei Stände ({ Pfad: Code }). Gibt Fehler und Bericht zurück. */
 export function compare(base, head, moves) {

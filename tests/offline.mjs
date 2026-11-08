@@ -22,7 +22,7 @@ try {
   await page.waitForTimeout(1500);
   await ctx.setOffline(true);
   await page.reload(); await ready();
-  const s = await page.evaluate(() => window.__ev('({g:gold, c:!!navigator.serviceWorker.controller})'));
+  const s = await page.evaluate(() => window.__ev('({g:ST.gold, c:!!navigator.serviceWorker.controller})'));
   if (s.g !== 777) fail = 'Spielstand offline nicht geladen (Gold ' + s.g + ')';
   else if (!s.c) fail = 'Seite nicht vom Service Worker gesteuert';
   else {

@@ -15,6 +15,7 @@ import { BOXD, NEWDAY, FASTMS, schoolOkWith, fUnlockWith, mixPreferWith, fParked
 import { mkQWith, mkSeqWith } from './core/learn/tasks.js';
 import { g0, grid, stamp, LIFE, zS1, z4, zS2, zS3, grow0, rA, rB, rD, rH, rC, mtop, bio, bio2, bmx, bix, noCave, liqM, liqY } from './state/world.js';
 import { ST } from './state/facade.js';
+import { hero } from './state/game.js';
 import { ERRK, MISK, SAVEKEY, K_HERO, K_FINDS, K_STARS, K_SKILL, K_FACTS, K_SCHOOL, K_LIMIT, K_DAY, K_REALM, K_FOG, K_MARKS, K_MUTE, K_LEFTY, K_PSST, K_NEWS, K_BAK_AT, K_VOICE, K_VMISS, K_OPT, realmKey } from './persistence/keys.js';
 import { idbOpen, idbDoWith } from './persistence/db.js';
 import { packRunsWith, unpackRunsWith, runsOk } from './core/world/pack.js';
@@ -238,7 +239,7 @@ function migrateSnow(){
     else if(h.zone==='sky'&&h.y>msurf(h.x)-20) h.y=msurf(h.x)-24;
   }
 }
-let SEED=1, gold=0, gems=0, lootDirty=false;
+let SEED=1;
 
 function setCell(cx,cy,m,lf){ if(!inGrid(cx,cy)) return; const i=cy*GX+cx; grid[i]=m; lifeS(i,lf||0); if(m>0&&m<4) ext(cx,cy); }
 function carveCircle(x,y,r){ return carveCircleWith(WD,x,y,r); }
@@ -615,8 +616,8 @@ function take(i){
   if(++digN%60===0) addXp(1);
   if(m===GOLD||m===GEM){
     const got=1+(Math.random()<hero.up.luck*.34?1:0);
-    if(m===GOLD){ gold+=got; popG+=got; qEvent('gold',got); } else{ gems+=got; popM+=got; qEvent('gems',got); }
-    lootDirty=true; addXp(m===GOLD?1:2); sfx('coin');
+    if(m===GOLD){ ST.gold+=got; popG+=got; qEvent('gold',got); } else{ ST.gems+=got; popM+=got; qEvent('gems',got); }
+    ST.lootDirty=true; addXp(m===GOLD?1:2); sfx('coin');
     if(Math.random()<.5){ const y=(i/GX)|0; spawn(5,(i-y*GX)*CELL+3,TOP+y*CELL+3,(Math.random()-.5)*120,-80-Math.random()*120,.7,2); }
   }
   return 1;
@@ -737,7 +738,7 @@ function boundsX(){
 function wrapX(d){
   P.x+=d; cam.x+=d; pet.x+=d; parts.length=0; ghost=null;
   grow(Math.max(P.x,cam.x)+3200); scanMobile();
-  if(!ST.seen.round&&ST.BIO.every(function(b){ return ST.seen[b.i]; })){ ST.seen.round=1; gold+=50; lootDirty=true; confetti(P.x,P.y); jingle(); banner('🌍 +50'+COIN,2400); say('','Du bist einmal ganz um '+rlm().n+' herum gereist!'); }
+  if(!ST.seen.round&&ST.BIO.every(function(b){ return ST.seen[b.i]; })){ ST.seen.round=1; ST.gold+=50; ST.lootDirty=true; confetti(P.x,P.y); jingle(); banner('🌍 +50'+COIN,2400); say('','Du bist einmal ganz um '+rlm().n+' herum gereist!'); }
 }
 function mover(dt,hw,h,step,half){
   let hit=false;
@@ -1463,7 +1464,7 @@ function finishTask(){
   task.done=true; stars[task.id]=1; saveStars(); updateStars();
   $('bar').style.width='100%'; $('chip').classList.add('done');
   confetti(P.x,P.y); jingle(); speak('Geschafft! Super!');
-  gold+=25; lootDirty=true; addXp(50);
+  ST.gold+=25; ST.lootDirty=true; addXp(50);
   if(task.id==='volcano') for(let i=0;i<16;i++) spawn(4,SITE.volb+(Math.random()-.5)*30,siteY.volb-90,(Math.random()-.5)*320,-300-Math.random()*260,2.4,4+Math.random()*3);
   if(task.id==='treasure'&&chest) for(let i=0;i<24;i++) spawn(6,chest.x,chest.y,(Math.random()-.5)*260,-200-Math.random()*300,1.6,3.5,'#ffd23f');
   const mine=task;
@@ -1493,8 +1494,8 @@ const FINDS=[
   ['robot','🤖','einen Roboter','volcano'],['trophy','🏆','einen Pokal','house'],['statue','🗿','eine Steinfigur','edge'],['gift','🎁','ein Geschenk','edge']
 ];
 let found={}, hidden=[], nearT=0, ready=false, saving=false, saveT=0, lootT=0;
-try{ const o=JSON.parse(localStorage.getItem(K_FINDS)||'{}')||{}; found=o.ids||{}; gold=o.gold|0; gems=o.gems|0; }catch(_){ found={}; }
-function saveFinds(){ if(frozen) return; try{ localStorage.setItem(K_FINDS,JSON.stringify({ids:found,gold:gold,gems:gems})); }catch(_){} }
+try{ const o=JSON.parse(localStorage.getItem(K_FINDS)||'{}')||{}; found=o.ids||{}; ST.gold=o.gold|0; ST.gems=o.gems|0; }catch(_){ found={}; }
+function saveFinds(){ if(frozen) return; try{ localStorage.setItem(K_FINDS,JSON.stringify({ids:found,gold:ST.gold,gems:ST.gems})); }catch(_){} }
 function placeFind(zone,r){
   const anyX=function(){
     for(let k=0;k<40;k++){
@@ -1560,7 +1561,7 @@ function findOpen(h){
 function collect(h){
   h.got=true; found[h.id]=1; saveFinds(); renderAlbum();
   confetti(h.x,h.y+20); jingle(); speak('Du hast '+h.name+' gefunden!');
-  gold+=15; lootDirty=true; addXp(40); qEvent('find',1); sfx('pop');
+  ST.gold+=15; ST.lootDirty=true; addXp(40); qEvent('find',1); sfx('pop');
   spawn(8,h.x,h.y,0,-46,2.4,30,h.e); pulse('btn-finds');
 }
 function findsTick(dt){
@@ -1608,7 +1609,7 @@ function renderAlbum(){
     return '<button class="'+(g?'':'q')+'" data-find="'+f[0]+'" aria-label="'+(g?f[2]:'Noch nicht gefunden')+'">'+(g?f[1]:'?')+'</button>';
   }).join('');
   $('found').textContent=String(n); $('found').hidden=n===0; $('found-n').textContent=n+'/'+FINDS.length;
-  $('gold-n').textContent=String(gold); $('gem-n').textContent=String(gems);
+  $('gold-n').textContent=String(ST.gold); $('gem-n').textContent=String(ST.gems);
   renderEggs();
 }
 
@@ -1665,7 +1666,7 @@ function saveGame(manual){
 }
 function autosave(dt){
   saveT+=dt; lootT+=dt;
-  if(lootT>.5&&(lootDirty||heroDirty)){ lootT=0; if(lootDirty) saveFinds(); if(heroDirty) saveHero(); lootDirty=false; heroDirty=false; hudLoot(); }
+  if(lootT>.5&&(ST.lootDirty||ST.heroDirty)){ lootT=0; if(ST.lootDirty) saveFinds(); if(ST.heroDirty) saveHero(); ST.lootDirty=false; ST.heroDirty=false; hudLoot(); }
   if(saveT>40){ saveT=0; packStart(); }
   packStep();
 }
@@ -1767,31 +1768,30 @@ function portalTick(dt){
 }
 
 /* ---------- Held, Verbesserungen und Markt: Gold und Edelsteine kaufen Stufen, Begleiter, Hüte, Bomben und Rummel-Bauten. ---------- */
-let hero={xp:0,lvl:1,up:{dig:0,motor:0,jet:0,compass:0,luck:0,heat:0},own:{},pet:'',hat:'',tnt:0,qn:0,quest:null,day:'',st:{ch:1,on:false},eggs:0,trail:false,ext:false,big:false,dr:0,rk:0,lp:0,zn:0,mat:{},mk:{},pz:{},pzn:0,deep:false,fin:0};
 try{
   const o=JSON.parse(localStorage.getItem(K_HERO)||'null');
   if(o&&o.up){ for(const k in hero.up) hero.up[k]=clamp(o.up[k]|0,0,3); hero.xp=o.xp|0; hero.lvl=Math.max(1,o.lvl|0); hero.own=o.own||{}; hero.pet=o.pet||''; hero.hat=o.hat||''; hero.tnt=o.tnt|0; hero.qn=o.qn|0; hero.quest=o.quest||null; hero.day=o.day||''; if(o.st&&o.st.ch) hero.st={ch:clamp(o.st.ch|0,1,8),on:!!o.st.on}; hero.eggs=o.eggs|0; hero.trail=!!o.trail; hero.ext=!!o.ext; hero.big=!!o.big; hero.dr=clamp(o.dr|0,0,3); hero.rk=clamp(o.rk|0,0,3); hero.lp=clamp(o.lp|0,0,3); hero.zn=clamp(o.zn|0,0,6); hero.mat=o.mat||{}; hero.mk=o.mk||{}; hero.pz=o.pz||{}; hero.pzn=o.pzn|0; hero.deep=!!o.deep; hero.fin=o.fin|0; }
 }catch(_){}
-let heroDirty=false, digN=0, props=[], nearF=null, nearD=1e9;
+let digN=0, props=[], nearF=null, nearD=1e9;
 const bombs=[], pet={x:820,y:0};
 function saveHero(){ if(frozen) return; try{ localStorage.setItem(K_HERO,JSON.stringify(hero)); }catch(_){} }
 function xpNeed(l){ return 40+l*30; }
 function addXp(n){
-  hero.xp+=n; heroDirty=true;
+  hero.xp+=n; ST.heroDirty=true;
   while(hero.xp>=xpNeed(hero.lvl)){
-    hero.xp-=xpNeed(hero.lvl); hero.lvl++; gold+=10*hero.lvl; lootDirty=true;
+    hero.xp-=xpNeed(hero.lvl); hero.lvl++; ST.gold+=10*hero.lvl; ST.lootDirty=true;
     confetti(P.x,P.y); jingle(); speak('Level '+hero.lvl+'!'); spawn(8,P.x,P.y-50,0,-40,2.2,26,'⭐'); pulse('mkt');
     banner('Level '+hero.lvl+' ⭐ +'+(10*hero.lvl)+COIN,2300);
   }
 }
 let hudG=-1;
 function hudLoot(){
-  if(hudG>=0&&gold>hudG){ const el=$('mkt'); el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
-  hudG=gold;
+  if(hudG>=0&&ST.gold>hudG){ const el=$('mkt'); el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+  hudG=ST.gold;
   const w=Math.round(hero.xp/xpNeed(hero.lvl)*100)+'%';
-  $('hud-gold').textContent=String(gold); $('hud-gem').textContent=String(gems); $('lvl').textContent=String(hero.lvl); $('xp').style.width=w;
-  $('m-gold').textContent=String(gold); $('m-gem').textContent=String(gems); $('m-lvl').textContent=String(hero.lvl); $('m-xp').style.width=w;
-  $('gold-n').textContent=String(gold); $('gem-n').textContent=String(gems);
+  $('hud-gold').textContent=String(ST.gold); $('hud-gem').textContent=String(ST.gems); $('lvl').textContent=String(hero.lvl); $('xp').style.width=w;
+  $('m-gold').textContent=String(ST.gold); $('m-gem').textContent=String(ST.gems); $('m-lvl').textContent=String(hero.lvl); $('m-xp').style.width=w;
+  $('gold-n').textContent=String(ST.gold); $('gem-n').textContent=String(ST.gems);
   $('tnt-n').textContent=String(hero.tnt); $('tnt-n').hidden=hero.tnt<=0;
 }
 const SHOP=[
@@ -1824,7 +1824,7 @@ function shopState(it){
   if((it.kind==='pet'||it.kind==='hat')&&hero.own[it.id]) return (hero.pet===it.id||hero.hat===it.id)?'on':'own';
   const q=price(it);
   if(hero.lvl<q.lv) return 'lvl';
-  return (gold>=q.g&&gems>=q.m)?'ok':'poor';
+  return (ST.gold>=q.g&&ST.gems>=q.m)?'ok':'poor';
 }
 function renderShop(){
   $('shop').innerHTML=SHOP.map(function(it){
@@ -1850,7 +1850,7 @@ function buy(id){
   if(stt==='max'){ speak(it.name+' ist schon ganz stark.'); return; }
   if(stt==='lvl'){ tone([170],'sawtooth'); speak(it.name+'. Das gibt es ab Level '+q.lv+'.'); return; }
   if(stt==='poor'){ tone([170],'sawtooth'); speak(it.name+': '+what+'. Das kostet '+q.g+' Gold'+(q.m?' und '+q.m+' Edelsteine':'')+'. Du hast noch nicht genug.'); return; }
-  gold-=q.g; gems-=q.m;
+  ST.gold-=q.g; ST.gems-=q.m;
   if(it.kind==='up') hero.up[id]++;
   else if(it.kind==='use') hero.tnt+=3;
   else if(it.kind==='pet'){ hero.own[id]=1; hero.pet=id; pet.x=P.x; pet.y=P.y-16; }
@@ -1862,7 +1862,7 @@ function buy(id){
 function nearStall(){ return P.mode==='walk'&&P.on&&Math.abs(P.x-STALL_X)<46&&Math.abs(P.y-ground(STALL_X))<50; }
 function dropBomb(x,y){
   if(hero.tnt<=0){ openMarket(); return; }
-  hero.tnt--; heroDirty=true; hudLoot();
+  hero.tnt--; ST.heroDirty=true; hudLoot();
   bombs.push({x:x,y:y,vy:0,t:1.8});
 }
 function blast(x,y){
@@ -2027,7 +2027,7 @@ function questTick(dt){
   renderQuest();
   if(quest.p>=quest.goal){
     const g=10+2*Math.min(hero.qn,15), m=hero.qn%3===2?3:0;
-    quest.done=true; qDoneT=2.3; hero.qn++; gold+=g; gems+=m; lootDirty=true;
+    quest.done=true; qDoneT=2.3; hero.qn++; ST.gold+=g; ST.gems+=m; ST.lootDirty=true;
     $('q-bar').style.width='100%'; $('quest').classList.add('done');
     banner('<svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5" stroke="#2f8f4a" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>+'+g+COIN+(m?' +'+m+GEMI:''),2100);
     confetti(P.x,P.y); jingle(); speak('Auftrag geschafft!'); addXp(25); saveHero();
@@ -2378,7 +2378,7 @@ function tell(lines,done){
   next();
 }
 function reward(g,m){
-  gold+=g; gems+=m||0; lootDirty=true; confetti(P.x,P.y); jingle(); addXp(30);
+  ST.gold+=g; ST.gems+=m||0; ST.lootDirty=true; confetti(P.x,P.y); jingle(); addXp(30);
   banner('⭐ +'+g+COIN+(m?' +'+m+GEMI:''),2300);
 }
 
@@ -2429,7 +2429,7 @@ function updSki(dt,ix,u,d){
       if(Math.abs(P.spin)>.9){ P.ball=1.7; shout(P.x,P.y-52,'PLUMPS!'); sfx('splat'); puff(P.x,P.y-8,12); }
       else{
         const n=Math.round(P.rot/TAU);
-        if(n>0){ shout(P.x,P.y-54,n>1?n+' × SALTO!':'SALTO!','#ffd23f'); gold+=n; popG+=n; lootDirty=true; addXp(2*n); sfx('pop'); qEvent('salto',n); }
+        if(n>0){ shout(P.x,P.y-54,n>1?n+' × SALTO!':'SALTO!','#ffd23f'); ST.gold+=n; popG+=n; ST.lootDirty=true; addXp(2*n); sfx('pop'); qEvent('salto',n); }
         else if(wasAir>1&&!P.jet) shout(P.x,P.y-54,'JUHU!');
         if(pv>260) puff(P.x,P.y-2,7);
         P.ang=Math.atan(P.gs);
@@ -2576,7 +2576,7 @@ function menTick(){
 function pinFly(p,vx){
   p.s=1; p.vx=vx+(Math.random()-.5)*120; p.vy=-240-Math.random()*240; p.vr=(Math.random()<.5?-1:1)*(7+Math.random()*9); sfx('quack');
   if(time-pinT>2.5){ pinT=time; pinN=0; }
-  if(++pinN===6){ shout(PENX+38,p.y-74,'STRIKE!','#ffd23f'); confetti(PENX+38,p.y-20); gold+=5; popG+=5; lootDirty=true; jingle(); }
+  if(++pinN===6){ shout(PENX+38,p.y-74,'STRIKE!','#ffd23f'); confetti(PENX+38,p.y-20); ST.gold+=5; popG+=5; ST.lootDirty=true; jingle(); }
 }
 function pensTick(dt){
   for(const p of N.pen){
@@ -3041,7 +3041,7 @@ function creInit(c){
 function hatch(c){
   c.fl=''; c.e='🐣'; c.say='PIEP!'; confetti(c.x,c.y); jingle();
   if(!hero.own.rex){ hero.own.rex=1; hero.pet='rex'; pet.x=c.x; pet.y=c.y; saveHero(); say('','Knack! Ein Dino-Baby schlüpft. Es will bei dir bleiben.'); }
-  else{ gold+=20; popG+=20; lootDirty=true; }
+  else{ ST.gold+=20; popG+=20; ST.lootDirty=true; }
 }
 /* Der Held stößt ein Tier an oder tippt es an. Jedes sagt etwas, manche schubsen, schenken oder zaubern. */
 function creHit(c,tap){
@@ -3050,8 +3050,8 @@ function creHit(c,tap){
   shout(c.x,c.y-c.sz-12,c.say); sfx(c.sz>30?'roar':'quack');
   if(!c.met){ c.met=true; qEvent('poke',1); }
   const f=c.fl, away=P.x<c.x?-1:1, foot=!tap&&(P.mode==='walk'||P.mode==='ski');
-  if(f==='eat'){ c.gone=time+18; gold+=2; popG+=2; lootDirty=true; sfx('coin'); }
-  else if(f==='gift'){ if(!(c.gt>time)){ c.gt=time+30; gold+=3; popG+=3; lootDirty=true; spawn(8,c.x,c.y-30,0,-30,1.4,18,'🍪'); } }
+  if(f==='eat'){ c.gone=time+18; ST.gold+=2; popG+=2; ST.lootDirty=true; sfx('coin'); }
+  else if(f==='gift'){ if(!(c.gt>time)){ c.gt=time+30; ST.gold+=3; popG+=3; ST.lootDirty=true; spawn(8,c.x,c.y-30,0,-30,1.4,18,'🍪'); } }
   else if(f==='sparkle'){ for(let i=0;i<12;i++) spawn(5,c.x,c.y-10,(Math.random()-.5)*160,-40-Math.random()*120,.7,2); }
   else if(f==='mummy'){ c.k='hop'; c.follow=true; c.rng=60; }
   if(!foot) return;
@@ -3146,7 +3146,7 @@ function drawCres(x0,x1,y0,y1){
 /* ---------- Fundsachen: Jede macht etwas anderes mit dem Helden. ---------- */
 function grab(q){
   const ty=q.ty, y=P.y-54; sfx('pop');
-  if(ty==='food'||ty==='egg1'){ const g=ty==='food'?2:1; gold+=g; popG+=g; lootDirty=true; shout(P.x,y,'MAMPF!'); }
+  if(ty==='food'||ty==='egg1'){ const g=ty==='food'?2:1; ST.gold+=g; popG+=g; ST.lootDirty=true; shout(P.x,y,'MAMPF!'); }
   else if(ty==='chili'){ FX.hot=6; shout(P.x,y,'HEISS!','#ff8a1f'); }
   else if(ty==='peel'){ FX.slip=1.5; shout(P.x,y,'WHOAA!'); }
   else if(ty==='sugar'){ FX.sugar=8; shout(P.x,y,'ZUCKER!','#ff9fd0'); }
@@ -3195,7 +3195,7 @@ function grant(w){
   if(w[1]==='pet'){ hero.pet=w[2]; pet.x=P.x; pet.y=P.y-16; } else if(w[1]==='hat') hero.hat=w[2]; else hero.trail=true;
 }
 function eggFound(e){
-  ST.eggGot[e.b]=1; hero.eggs=(hero.eggs|0)+1; gold+=15; lootDirty=true; addXp(40); qEvent('egg',1);
+  ST.eggGot[e.b]=1; hero.eggs=(hero.eggs|0)+1; ST.gold+=15; ST.lootDirty=true; addXp(40); qEvent('egg',1);
   confetti(e.x,e.y+20); jingle(); pulse('btn-finds');
   banner(EGGSVG+' '+hero.eggs,2400);
   let w=null; for(const q of WEAR) if(q[0]===hero.eggs) w=q;
@@ -3204,7 +3204,7 @@ function eggFound(e){
   saveHero(); renderAlbum();
 }
 function lootFound(l){
-  ST.lootGot[l.id]=1; gold+=l.g; lootDirty=true; addXp(15); sfx('coin'); jingle();
+  ST.lootGot[l.id]=1; ST.gold+=l.g; ST.lootDirty=true; addXp(15); sfx('coin'); jingle();
   for(let i=0;i<22;i++) spawn(6,l.x,l.y,(Math.random()-.5)*240,-180-Math.random()*280,1.4,3.5,'#ffd23f');
   banner('+'+l.g+COIN,2000);
   if(l.tro){ say('','Du hast das Ende der Welt gefunden! Weiter geht es wirklich nicht. Dafür bekommst du den goldenen Pokal.'); for(let i=0;i<6;i++) firework(l.x-200+i*80,l.y-160-Math.random()*120); }
@@ -3230,7 +3230,7 @@ function sonarTarget(){
   return b?[b.x,b.y]:null;
 }
 function discover(b){
-  const T=BT[b.t]; ST.seen[b.i]=1; gold+=10; lootDirty=true; addXp(20); qEvent('land',1); jingle(); confetti(P.x,P.y);
+  const T=BT[b.t]; ST.seen[b.i]=1; ST.gold+=10; ST.lootDirty=true; addXp(20); qEvent('land',1); jingle(); confetti(P.x,P.y);
   banner(T.e+' ⭐ +10'+COIN,2400);
   say('','Du hast '+(b.n?T.n2:T.n)+' entdeckt!');
 }
@@ -3265,7 +3265,7 @@ function shakeTree(tr){
   else if(k==='cactus') shout(tr.x,top-20,'PIEKS!');
   else if(k==='palm') drop('🥥');
   else if(k==='lolly'||k==='cane') drop('🍬');
-  else if(k==='crystal'){ gems+=1; popM+=1; lootDirty=true; sfx('coin'); }
+  else if(k==='crystal'){ ST.gems+=1; popM+=1; ST.lootDirty=true; sfx('coin'); }
   else if(k==='dead') spawn(8,tr.x,top,40,-60,1.6,20,'🦇');
   else if(k==='grave') shout(tr.x,top-24,'BUH!');
   else if(k==='flower') spawn(8,tr.x,top,30,-40,1.6,16,'🐝');
@@ -3524,7 +3524,7 @@ function arrowHit(a){
     if(d<20){
       t.hit=1; const bull=d<7;
       shout(t.x,ty-30,bull?'MITTE!':'TREFFER!',bull?'#ffd23f':'#fff8e6'); sfx('coin'); burst(t.x,ty,bull?'#ffd23f':'#e63946');
-      if(TGT.every(function(q){ return q.hit; })){ tgtT=12; gold+=5; lootDirty=true; confetti(t.x,ty); jingle(); banner('🎯 +5'+COIN,2000); }
+      if(TGT.every(function(q){ return q.hit; })){ tgtT=12; ST.gold+=5; ST.lootDirty=true; confetti(t.x,ty); jingle(); banner('🎯 +5'+COIN,2000); }
       return true;
     }
   }
@@ -3600,9 +3600,9 @@ function monHurt(m,n){
   if(m.hp>0){ m.vx=(m.x>P.x?1:-1)*160; m.vy=-160; m.on=false; return; }
   const i=MONS.indexOf(m); if(i>=0) MONS.splice(i,1);
   burst(m.x,m.y-12,MONC[m.lv][0]); for(let k=0;k<6;k++) spawn(5,m.x,m.y-12,(Math.random()-.5)*260,-90-Math.random()*160,.8,3);
-  const g=2+m.lv; gold+=g; popG+=g; lootDirty=true; sfx('coin');
-  if(m.lv>=2&&Math.random()<.3){ gems++; popM++; }
-  hero.mon=(hero.mon|0)+1; heroDirty=true;
+  const g=2+m.lv; ST.gold+=g; popG+=g; ST.lootDirty=true; sfx('coin');
+  if(m.lv>=2&&Math.random()<.3){ ST.gems++; popM++; }
+  hero.mon=(hero.mon|0)+1; ST.heroDirty=true;
 }
 function monHit(a){
   for(const m of MONS) if(Math.abs(a.x-m.x)<16&&Math.abs(a.y-(m.y-12))<16){ monHurt(m,1); return true; }
@@ -3696,7 +3696,7 @@ function wreckTick(dt){
     if(ST.orbGot[w.k]||Math.abs(w.x-P.x)>W/S+200) continue;
     const gy=ground(w.x);
     if(Math.random()<dt*2.5) spawn(7,w.x+(Math.random()-.5)*8,gy-14,(Math.random()-.5)*10,-60-Math.random()*30,1.6,3+Math.random()*2);
-    if(Math.abs(P.x-w.x)<30&&P.y>gy-70&&P.y<gy+20){ ST.orbGot[w.k]=1; gold+=25; gems+=1; lootDirty=true; confetti(w.x,gy-20); jingle(); banner('🏴‍☠️ +25'+COIN+' +1'+GEMI,2600); shout(w.x,gy-60,'SCHATZ!','#ffd23f'); }
+    if(Math.abs(P.x-w.x)<30&&P.y>gy-70&&P.y<gy+20){ ST.orbGot[w.k]=1; ST.gold+=25; ST.gems+=1; ST.lootDirty=true; confetti(w.x,gy-20); jingle(); banner('🏴‍☠️ +25'+COIN+' +1'+GEMI,2600); shout(w.x,gy-60,'SCHATZ!','#ffd23f'); }
   }
 }
 function drawWrecks(x0,x1){
@@ -3740,7 +3740,7 @@ function scopeRender(cnt){
 }
 function scopePick(v){
   const q=SCQ; if(!q||q.done) return;
-  if(v===q.n){ q.done=true; scopeRender(q.n); speak(q.n+' Sterne! Richtig!'); jingle(); gold+=2; lootDirty=true; banner('🔭 +2'+COIN,1800); return; }
+  if(v===q.n){ q.done=true; scopeRender(q.n); speak(q.n+' Sterne! Richtig!'); jingle(); ST.gold+=2; ST.lootDirty=true; banner('🔭 +2'+COIN,1800); return; }
   q.done=true; $('scope-b').innerHTML='';
   for(let i=1;i<=q.n;i++) setTimeout(function(){ if(SCQ!==q) return; scopeRender(i); speak(String(i)); if(i===q.n) setTimeout(function(){ if(SCQ===q){ scopeRender(q.n); speak('Es sind '+q.n+' Sterne.'); } },700); },i*700);
 }
@@ -3790,7 +3790,7 @@ function harpTick(dt){
     if(Math.abs(P.x-cx)>12||P.y<gy-110||P.y>gy+20||i===h.last) continue;
     h.last=i; h.sh[i]=1; tone([HARPN[i]],'sine'); spawn(6,cx,gy-30-i*10,(Math.random()-.5)*60,-80,.8,3,HARPC[i]);
     h.seq.push(i); if(h.seq.length>5) h.seq.shift();
-    if(h.seq.join('')==='01234'){ h.seq=[]; confetti(cx,gy-60); tone([523,659,784,1046]); if(!ST.orbGot[h.k]){ ST.orbGot[h.k]=1; gold+=3; lootDirty=true; banner('🎶 +3'+COIN,2000); } }
+    if(h.seq.join('')==='01234'){ h.seq=[]; confetti(cx,gy-60); tone([523,659,784,1046]); if(!ST.orbGot[h.k]){ ST.orbGot[h.k]=1; ST.gold+=3; ST.lootDirty=true; banner('🎶 +3'+COIN,2000); } }
   }
 }
 function drawHarps(x0,x1){
@@ -3920,7 +3920,7 @@ function worldTick(dt){
   /* Landung auf einem fremden Planeten */
   if(P.on&&P.y<-3000) for(const o of ORBS){
     if(!o.i||ST.orbGot[o.i]||Math.hypot(P.x-o.x,P.y-o.y)>o.r+30) continue;
-    ST.orbGot[o.i]=1; gold+=30; lootDirty=true; confetti(P.x,P.y); jingle(); banner('⭐ +30'+COIN,2400); say('',ORBN[o.k]);
+    ST.orbGot[o.i]=1; ST.gold+=30; ST.lootDirty=true; confetti(P.x,P.y); jingle(); banner('⭐ +30'+COIN,2400); say('',ORBN[o.k]);
     if(o.k===2) disco(14);
   }
   /* Wolken regnen, wenn man sie antippt. */
@@ -4416,11 +4416,11 @@ function deepRestore(sv){
 /* ---------- Jede Sekunde: Zonen entdecken, Material einsammeln, Maschinen auf den Boden stellen, Ziele erreichen ---------- */
 function matFound(m){
   const k=m.k, n=(hero.mat[k]|0)+1;
-  matGot[m.id]=1; hero.mat[k]=n; heroDirty=true;
+  matGot[m.id]=1; hero.mat[k]=n; ST.heroDirty=true;
   sfx('coin'); addXp(6); qEvent('mat',1); dayAdd('mat');
   for(let i=0;i<10;i++) spawn(5,m.x,m.y,(Math.random()-.5)*180,-60-Math.random()*160,.7,2);
   banner(MAT[k][0]+' '+n,1500);
-  if(k==='pk'){ hero.mk.pk=1; gold+=100; lootDirty=true; confetti(m.x,m.y); jingle(); banner('🪐 '+n+' / 3',2600); say('',n>=3?'Alle drei Planetenkerne! Du hast jede große Welt bis ganz nach unten erforscht.':'Ein Planetenkern! Er leuchtet wie ein kleiner Stern. In jedem großen Planeten liegt einer.'); dayAdd('z','🪐'); campSoon(); labBadge(true); return; }
+  if(k==='pk'){ hero.mk.pk=1; ST.gold+=100; ST.lootDirty=true; confetti(m.x,m.y); jingle(); banner('🪐 '+n+' / 3',2600); say('',n>=3?'Alle drei Planetenkerne! Du hast jede große Welt bis ganz nach unten erforscht.':'Ein Planetenkern! Er leuchtet wie ein kleiner Stern. In jedem großen Planeten liegt einer.'); dayAdd('z','🪐'); campSoon(); labBadge(true); return; }
   if(!hero.mk[k]){ hero.mk[k]=1; say('',MAT[k][1]+'! Das kann Professor Zahnrad in der Werkstatt gebrauchen. Tippe oben auf den Schraubenschlüssel, dann siehst du, wofür.'); pulse('btn-lab'); }
   labBadge(true);
 }
@@ -4439,16 +4439,16 @@ function labBadge(talk){
 function finale(n){
   hero.fin|=n;
   if(n===1){
-    hero.own.alien=1; hero.pet='alien'; pet.x=P.x; pet.y=P.y-16; gold+=200;
+    hero.own.alien=1; hero.pet='alien'; pet.x=P.x; pet.y=P.y-16; ST.gold+=200;
     for(let i=0;i<8;i++) later(i*.35,function(){ firework(P.x-240+Math.random()*480,P.y-140-Math.random()*160); });
     banner('🌟 +200'+COIN,3000);
     say('','Du hast das Sternentor erreicht, ganz am Ende vom Weltraum! Ein kleiner Außerirdischer will bei dir bleiben.');
   }else{
-    hero.own.sala=1; hero.pet='sala'; pet.x=P.x; pet.y=P.y-16; gold+=150; gems+=30;
+    hero.own.sala=1; hero.pet='sala'; pet.x=P.x; pet.y=P.y-16; ST.gold+=150; ST.gems+=30;
     banner('🌋 +150'+COIN+' +30'+GEMI,3000);
     say('','Du stehst auf dem glühenden Erdkern! Tiefer geht es nicht. Ein Feuersalamander will bei dir bleiben.');
   }
-  lootDirty=true; confetti(P.x,P.y); jingle(); addXp(120); saveHero(); renderEggs();
+  ST.lootDirty=true; confetti(P.x,P.y); jingle(); addXp(120); saveHero(); renderEggs();
   if(hero.fin===3) later(10,function(){ banner('🏆',3200); say('','Ganz unten und ganz oben: Du hast alles erforscht. Du bist der größte Forscher von Lavaland!'); });
 }
 function deepIntro(){
@@ -4482,7 +4482,7 @@ function deepTick(dt){
     for(const k of ['stn','ice','jun']){
       const o=SPACE[k];
       if(ST.orbGot[k]||Math.hypot(P.x-o.x,P.y-o.y)>o.r+40) continue;
-      ST.orbGot[k]=1; gold+=30; lootDirty=true; confetti(P.x,P.y); jingle(); banner('⭐ +30'+COIN,2400);
+      ST.orbGot[k]=1; ST.gold+=30; ST.lootDirty=true; confetti(P.x,P.y); jingle(); banner('⭐ +30'+COIN,2400);
       say('',k==='stn'?'Du bist auf der Raumstation gelandet! Auf den großen Felsbrocken ringsum liegt Sternenerz.':k==='ice'?'Du bist auf dem Eisplaneten gelandet! Hier liegen Eiskerne.':'Du bist auf dem Blubberplaneten gelandet! Hier wohnt Blubb.');
     }
     if(!(hero.fin&1)&&Math.hypot(P.x-SPACE.gate.x,P.y-SPACE.gate.y)<SPACE.gate.r+40) finale(1);
@@ -4941,7 +4941,7 @@ function pzWin(){
   hero.pzn=(hero.pzn|0)+1; dayAdd('pz');
   /* Akku: voll nur ohne Fehler und Tipp, sonst ein Strich weniger je Fehler und Tipp, mindestens einer. */
   const segs=clean?5:Math.max(1,5-c.fails-c.hint), full=segs>=5||energy>=MAXE;
-  gold+=g; lootDirty=true; energy=Math.max(energy,segs*SEG); battShown=-1; renderBatt(); addXp(first?20:6); qEvent('pz',1);
+  ST.gold+=g; ST.lootDirty=true; energy=Math.max(energy,segs*SEG); battShown=-1; renderBatt(); addXp(first?20:6); qEvent('pz',1);
   if(first){ pzGot[c.m.id]=1; hero.mat.zr=(hero.mat.zr|0)+1; hero.mk.zr=1; }
   saveHero();
   $('pz-body').classList.add('win');
@@ -5706,7 +5706,7 @@ const MBOX=4;
 function masterGive(k){
   if(!FS.mg) FS.mg={};
   if(FS.mg[k]) return false;
-  FS.mg[k]=1; hero.mat.ms=(hero.mat.ms|0)+1; dayAdd('ms'); hero.mk.ms=1; heroDirty=true; saveHero();
+  FS.mg[k]=1; hero.mat.ms=(hero.mat.ms|0)+1; dayAdd('ms'); hero.mk.ms=1; ST.heroDirty=true; saveHero();
   labBadge(true);
   return true;
 }
@@ -6964,7 +6964,7 @@ function start(){
     showQuest(false); pulse('quest');
     /* Einmal am Tag gibt es ein kleines Geschenk. Kein Zähler, nichts geht verloren, wenn man einen Tag auslässt. */
     const today=new Date().toDateString();
-    if(hero.day!==today){ hero.day=today; gold+=20; saveHero(); saveFinds(); setTimeout(function(){ banner('🎁 +20'+COIN,2400); },1300); }
+    if(hero.day!==today){ hero.day=today; ST.gold+=20; saveHero(); saveFinds(); setTimeout(function(){ banner('🎁 +20'+COIN,2400); },1300); }
     hudG=-1; hudLoot();
     if(energy<=0) pulse('batt');
     requestAnimationFrame(function(t){ last=t; requestAnimationFrame(frame); });

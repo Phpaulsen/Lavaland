@@ -1,10 +1,11 @@
-// Übergangsfassade ST (ADR 0001 Punkt 9): ein Objekt mit get/set je neu zugewiesenem Namen, der aus legacy.js umgezogen ist.
+// Übergangsfassade ST (ADR 0001 Punkt 9): ein Objekt mit get/set je neu zugewiesenem Namen, der aus legacy.js umgezogen ist (Welt: world.js, Spielzustand: game.js).
 // legacy.js schreibt x als ST.x (Codemod, tools/arch/codemod.mjs). Lesen gibt den aktuellen Wert des Moduls, Schreiben ruft den Setter.
 // Name ST statt G: G ist die Schwerkraft (core/world/const.js). Die Fassade wird leer und gelöscht, wenn legacy.js leer ist (PR 29).
 import { BIO, STR, CRE, PICKS, PADS, DECO, EGGS, LOOT, DROPS, stI, NT0, NC0, seen, eggGot, lootGot, orbGot,
   setBIO, setSTR, setCRE, setPICKS, setPADS, setDECO, setEGGS, setLOOT, setDROPS, setStI, setNT0, setNC0, setSeen, setEggGot, setLootGot, setOrbGot } from './world.js';
+import { gold, gems, lootDirty, heroDirty, setGold, setGems, setLootDirty, setHeroDirty } from './game.js';
 
-/** @type {{ BIO: any[], STR: any[], CRE: any[], PICKS: any[], PADS: any[], DECO: any[], EGGS: any[], LOOT: any[], DROPS: any[], stI: number, NT0: number, NC0: number, seen: Record<string, any>, eggGot: Record<string, any>, lootGot: Record<string, any>, orbGot: Record<string, any> }} */
+/** @type {{ BIO: any[], STR: any[], CRE: any[], PICKS: any[], PADS: any[], DECO: any[], EGGS: any[], LOOT: any[], DROPS: any[], stI: number, NT0: number, NC0: number, seen: Record<string, any>, eggGot: Record<string, any>, lootGot: Record<string, any>, orbGot: Record<string, any>, gold: number, gems: number, lootDirty: boolean, heroDirty: boolean }} */
 export const ST={
   get BIO(){ return BIO; }, set BIO(v){ setBIO(v); },
   get STR(){ return STR; }, set STR(v){ setSTR(v); },
@@ -21,5 +22,9 @@ export const ST={
   get seen(){ return seen; }, set seen(v){ setSeen(v); },
   get eggGot(){ return eggGot; }, set eggGot(v){ setEggGot(v); },
   get lootGot(){ return lootGot; }, set lootGot(v){ setLootGot(v); },
-  get orbGot(){ return orbGot; }, set orbGot(v){ setOrbGot(v); }
+  get orbGot(){ return orbGot; }, set orbGot(v){ setOrbGot(v); },
+  get gold(){ return gold; }, set gold(v){ setGold(v); },
+  get gems(){ return gems; }, set gems(v){ setGems(v); },
+  get lootDirty(){ return lootDirty; }, set lootDirty(v){ setLootDirty(v); },
+  get heroDirty(){ return heroDirty; }, set heroDirty(v){ setHeroDirty(v); }
 };
