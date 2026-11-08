@@ -5,5 +5,6 @@
 {"pr":12},
 {"pr": 13, "renames": {"logWith": "LOG"}, "iife": ["logWith"], "params": {"logWith": ["LP"]}, "world": {"param": "LP", "names": ["errAdd", "uiOpen", "energy", "frozen", "paused", "pzc", "ready", "realm", "tool", "$", "MAXE", "P", "SEG", "parts", "fireCount", "lavaCount", "waterCount"]}, "changed": ["LOG"], "added": ["LP"]},
 {"pr": 14.1, "facade": {"name": "ST", "names": ["gold", "gems", "lootDirty", "heroDirty"]}, "changed": ["ST"], "added": ["setGold", "setGems", "setLootDirty", "setHeroDirty"], "removed": []},
-{"pr": 14.2}
+{"pr": 14.2},
+{"pr": 14.3, "facade": {"name": "ST", "names": ["ready", "saving", "frozen", "diskLock", "traveling", "paused", "tool", "task", "talkLock"]}, "changed": ["ST"], "added": ["setReady", "setSaving", "setFrozen", "setDiskLock", "setTraveling", "setPaused", "setToolV", "setTask", "setTalkLock"]}
 ]}

@@ -11,7 +11,7 @@ const test = (name, fn) => tests.push({ name, fn });
 const testCdp = (name, fn) => tests.push({ name, fn, cdp: true });
 
 test('Start ohne Fehler, Welt erzeugt', async ({ ev }) => {
-  const s = await ev('({ready, w:GX, x:P.x, mode:P.mode})');
+  const s = await ev('({ready: ST.ready, w:GX, x:P.x, mode:P.mode})');
   if (!s.ready) throw new Error('Spiel nicht bereit');
   if (s.w < 10000) throw new Error('Welt zu klein: ' + s.w);
 });
@@ -22,7 +22,7 @@ test('Lernschrift kommt aus dem Repo', async ({ page }) => {
 });
 
 test('Laufen bewegt den Helden', async ({ ev, page }) => {
-  await ev('OVS.forEach(o=>o.hidden=true); paused=false');
+  await ev('OVS.forEach(o=>o.hidden=true); ST.paused=false');
   const x0 = await ev('P.x');
   await page.keyboard.down('ArrowRight'); await page.waitForTimeout(1200); await page.keyboard.up('ArrowRight');
   const x1 = await ev('P.x');
@@ -30,7 +30,7 @@ test('Laufen bewegt den Helden', async ({ ev, page }) => {
 });
 
 test('Lernaufgabe mit Ziffernblock richtig lösen', async ({ ev, page }) => {
-  await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=0; pickFact=function(){return '2+3'}; openQuiz(); for(let i=0;i<20&&lastF!=='2+3';i++) nextQ()");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; energy=0; pickFact=function(){return '2+3'}; openQuiz(); for(let i=0;i<20&&lastF!=='2+3';i++) nextQ()");
   await page.waitForTimeout(400);
   if (await ev("$('quiz').hidden")) throw new Error('Aufgabe nicht geöffnet');
   await ev("padKey('5'); padSubmit()");
@@ -40,14 +40,14 @@ test('Lernaufgabe mit Ziffernblock richtig lösen', async ({ ev, page }) => {
 });
 
 test('Escape schließt die Aufgabe und gibt das Spiel frei', async ({ ev, page }) => {
-  await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; openQuiz()");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; energy=MAXE; openQuiz()");
   await page.waitForTimeout(300);
   await page.keyboard.press('Escape'); await page.waitForTimeout(300);
-  if (!(await ev("$('quiz').hidden")) || await ev('paused')) throw new Error('Aufgabe offen oder Spiel pausiert');
+  if (!(await ev("$('quiz').hidden")) || await ev('ST.paused')) throw new Error('Aufgabe offen oder Spiel pausiert');
 });
 
 test('Elternansicht zeigt das Protokoll', async ({ ev, page }) => {
-  await ev("OVS.forEach(o=>o.hidden=true); paused=false; parOpen()");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; parOpen()");
   await page.waitForTimeout(1500);
   if (await ev("$('par').hidden")) throw new Error('Elternansicht nicht geöffnet');
   const t = await ev("$('par-body').textContent");
@@ -57,7 +57,7 @@ test('Elternansicht zeigt das Protokoll', async ({ ev, page }) => {
 });
 
 test('Elternansicht zählt Sandbox-Zeit je Fahrzeug', async ({ ev, page }) => {
-  await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; setMode('car'); for(let i=0;i<40;i++) LOG.tick(1); LOG.flush(); setMode('walk')");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; energy=MAXE; setMode('car'); for(let i=0;i<40;i++) LOG.tick(1); LOG.flush(); setMode('walk')");
   await page.waitForTimeout(500);
   await ev('parOpen()'); await page.waitForTimeout(1500);
   const t = await ev("$('par-body').textContent");
@@ -66,7 +66,7 @@ test('Elternansicht zählt Sandbox-Zeit je Fahrzeug', async ({ ev, page }) => {
 });
 
 test('Mission am Brett: Küken retten', async ({ ev, page }) => {
-  await ev("OVS.forEach(o=>o.hidden=true); paused=false; MS={done:{},cur:null}; P.mode='walk'; P.x=MISX; P.y=ground(MISX); P.on=true");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; MS={done:{},cur:null}; P.mode='walk'; P.x=MISX; P.y=ground(MISX); P.on=true");
   await page.waitForTimeout(300);
   await ev('doAction()');
   if (await ev("!MS.cur||MS.cur.id!=='chick'")) throw new Error('Mission nicht gestartet');
@@ -76,7 +76,7 @@ test('Mission am Brett: Küken retten', async ({ ev, page }) => {
 });
 
 test('Schaufel gräbt zu Fuß ohne Akku', async ({ ev, page }) => {
-  await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=0; setMode('walk'); P.x=1500; P.y=ground(1500); P.on=true; $('tool-cards').querySelector('[data-tool=shovel]').click()");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; energy=0; setMode('walk'); P.x=1500; P.y=ground(1500); P.on=true; $('tool-cards').querySelector('[data-tool=shovel]').click()");
   const y0 = await ev('P.y');
   await ev('keys.d=true; keys.a=true'); await page.waitForTimeout(1500); await ev('keys.a=false; keys.d=false; setTool(null,true)');
   if (!(await ev('P.y') > y0 + 30)) throw new Error('nicht nach unten gegraben');
@@ -84,7 +84,7 @@ test('Schaufel gräbt zu Fuß ohne Akku', async ({ ev, page }) => {
 });
 
 // Ein Hohlraum mitten im Fels, weit weg von allem anderen, damit nur Fels um den Helden ist.
-const ROCKBOX = (x, extra) => `OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; hero.dr=0; OPT.mon=false; tool=null; syncUI(); ${extra || ''};
+const ROCKBOX = (x, extra) => `OVS.forEach(o=>o.hidden=true); ST.paused=false; energy=MAXE; hero.dr=0; OPT.mon=false; ST.tool=null; syncUI(); ${extra || ''};
   const X=${x}, Y=ground(X)+900, c0=Math.floor((X-260)/CELL), c1=Math.floor((X+260)/CELL);
   for(let r=Math.floor((Y-500-TOP)/CELL);r<=Math.floor((Y+200-TOP)/CELL);r++) for(let c=c0;c<=c1;c++) grid[r*GX+c]=ROCK;
   for(let r=Math.floor((Y-60-TOP)/CELL);r<Math.floor((Y-TOP)/CELL);r++) for(let c=Math.floor((X-30)/CELL);c<=Math.floor((X+30)/CELL);c++) grid[r*GX+c]=0;
@@ -124,7 +124,7 @@ test('Harte Schicht hält auch beim Graben nach oben ohne Bohrer', async ({ ev, 
 });
 
 test('Sternschnuppe landet und gibt Gold', async ({ ev, page }) => {
-  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk'); P.x=1500; P.y=ground(1500); P.on=true; METS=[]; MROCKS=[]; nightOn=true; nightA=1; METS.push({x:P.x-300,y:P.y-400,vx:0,vy:0,t:.05,land:true,tr:[]})");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); P.x=1500; P.y=ground(1500); P.on=true; METS=[]; MROCKS=[]; nightOn=true; nightA=1; METS.push({x:P.x-300,y:P.y-400,vx:0,vy:0,t:.05,land:true,tr:[]})");
   await page.waitForTimeout(400);
   if (await ev('MROCKS.length') !== 1) throw new Error('kein Sternstein gelandet');
   const g = await ev('gold');
@@ -134,10 +134,10 @@ test('Sternschnuppe landet und gibt Gold', async ({ ev, page }) => {
 });
 
 test('Schiffswrack: Truhe gibt einmal einen Schatz', async ({ ev, page }) => {
-  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk'); teleport(WRECKS[0].x+400)");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); teleport(WRECKS[0].x+400)");
   await page.waitForTimeout(800);
   const g = await ev('gold');
-  await ev('OVS.forEach(o=>o.hidden=true); paused=false; P.x=WRECKS[0].x; P.y=ground(P.x)-10; P.vy=0'); await page.waitForTimeout(150);
+  await ev('OVS.forEach(o=>o.hidden=true); ST.paused=false; P.x=WRECKS[0].x; P.y=ground(P.x)-10; P.vy=0'); await page.waitForTimeout(150);
   const g2 = await ev('gold');
   if (!(g2 > g) || !(await ev('orbGot[WRECKS[0].k]'))) throw new Error('kein Schatz');
   await ev('P.x=WRECKS[0].x+2; P.y=ground(P.x)-10'); await page.waitForTimeout(400);
@@ -146,7 +146,7 @@ test('Schiffswrack: Truhe gibt einmal einen Schatz', async ({ ev, page }) => {
 });
 
 test('Fernrohr: Sterne zählen', async ({ ev, page }) => {
-  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk'); for(const k in FX) FX[k]=0; P.x=SCOPEX+10; P.y=surfaceY(P.x); P.on=true; P.vy=0");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); for(const k in FX) FX[k]=0; P.x=SCOPEX+10; P.y=surfaceY(P.x); P.on=true; P.vy=0");
   await page.waitForTimeout(300);
   if (await ev('actIcon()') !== 'scope') throw new Error('Fernrohr-Knopf fehlt: ' + await ev('actIcon()'));
   await ev('doAction()'); await page.waitForTimeout(300);
@@ -158,14 +158,14 @@ test('Fernrohr: Sterne zählen', async ({ ev, page }) => {
 });
 
 test('Glühwürmchen fangen', async ({ ev, page }) => {
-  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk'); JAR=[]; FLIES=[{hx:P.x,hy:P.y-20,x:P.x,y:P.y-20,ph:0,t:0}]; nightOn=true; nightA=1");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); JAR=[]; FLIES=[{hx:P.x,hy:P.y-20,x:P.x,y:P.y-20,ph:0,t:0}]; nightOn=true; nightA=1");
   await page.waitForTimeout(300);
   if (await ev('JAR.length') !== 1) throw new Error('Glühwürmchen nicht gefangen');
   await ev('nightOn=false; nightA=0; JAR=[]; FLIES=[]');
 });
 
 test('Kristallharfe von klein nach groß', async ({ ev, page }) => {
-  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk'); for(const k in FX) FX[k]=0; teleport(HARPS[0].x0-80)");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); for(const k in FX) FX[k]=0; teleport(HARPS[0].x0-80)");
   await page.waitForTimeout(800);
   const g = await ev('gold');
   for (let i = 0; i < 5; i++) { await ev('OVS.forEach(o=>o.hidden=true); P.x=HARPS[0].x0+' + i + '*34; P.y=ground(P.x); P.vy=0'); await page.waitForTimeout(150); }
@@ -174,24 +174,24 @@ test('Kristallharfe von klein nach groß', async ({ ev, page }) => {
 });
 
 test('Vulkanausbruch wirft Lavabrocken', async ({ ev, page }) => {
-  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk'); METS=[]; MROCKS=[]; P.x=2380; P.y=surfaceY(P.x); P.vy=0; eruT=0");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); METS=[]; MROCKS=[]; P.x=2380; P.y=surfaceY(P.x); P.vy=0; eruT=0");
   await page.waitForTimeout(2400);
   if (!(await ev('MROCKS.length') >= 1)) throw new Error('kein Lavabrocken gelandet');
   await ev('MROCKS=[]; METS=[]; teleport(1500)'); await page.waitForTimeout(500);
 });
 
 test('Elternansicht: Monster aus, ruhige Darstellung an', async ({ ev, page }) => {
-  await ev("OVS.forEach(o=>o.hidden=true); paused=false; parOpen()"); await page.waitForTimeout(1500);
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; parOpen()"); await page.waitForTimeout(1500);
   await ev("$('par-body').querySelector('[data-opt=mon0]').click()"); await page.waitForTimeout(800);
   await ev("$('par-body').querySelector('[data-opt=calm1]').click()"); await page.waitForTimeout(800);
   if (await ev('OPT.mon') || !(await ev('OPT.calm && reduced && document.body.classList.contains("calm")'))) throw new Error('Optionen nicht übernommen');
-  await ev("$('par').hidden=true; MONS.push({x:P.x,y:P.y,lv:0,face:1,hp:1,hit:0,sq:0,vx:0,vy:0,t:0}); paused=false"); await page.waitForTimeout(300);
+  await ev("$('par').hidden=true; MONS.push({x:P.x,y:P.y,lv:0,face:1,hp:1,hit:0,sq:0,vx:0,vy:0,t:0}); ST.paused=false"); await page.waitForTimeout(300);
   if (await ev('MONS.length')) throw new Error('Monster trotz aus');
   await ev("OPT.mon=true; OPT.calm=false; reduced=reducedSys; document.body.classList.remove('calm'); optSave()");
 });
 
 test('Tastenkürzel: F öffnet Fahrzeuge, X steigt aus', async ({ ev, page }) => {
-  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk')");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk')");
   await page.keyboard.press('f'); await page.waitForTimeout(200);
   if (await ev("$('garage').hidden")) throw new Error('F öffnet die Garage nicht');
   await page.keyboard.press('Escape'); await page.waitForTimeout(200);
@@ -201,7 +201,7 @@ test('Tastenkürzel: F öffnet Fahrzeuge, X steigt aus', async ({ ev, page }) =>
 
 test('Absturzschutz: kaputtes Nebensystem friert das Spiel nicht ein', async ({ ev, page, errs }) => {
   const n = errs.length;
-  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk'); for(const k in FX) FX[k]=0; teleport(1200); window.__keep=SIDE.slice(); SIDE.push(function testKaputt(){ throw new Error('Test: absichtlich kaputt'); })");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); for(const k in FX) FX[k]=0; teleport(1200); window.__keep=SIDE.slice(); SIDE.push(function testKaputt(){ throw new Error('Test: absichtlich kaputt'); })");
   const x0 = await ev('P.x');
   await page.keyboard.down('ArrowRight'); await page.waitForTimeout(1000); await page.keyboard.up('ArrowRight');
   const moved = Math.abs(await ev('P.x') - x0);
@@ -219,17 +219,17 @@ test('Teilchen-Grenze hält, Ausrufe kommen trotzdem', async ({ ev }) => {
 });
 
 test('Reise zum Mond und zurück', async ({ ev, page }) => {
-  await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; travel('moon')");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; energy=MAXE; travel('moon')");
   await page.waitForTimeout(3500);
   if (await ev('realm') !== 'moon') throw new Error('Nicht auf dem Mond: ' + await ev('realm'));
-  await ev("OVS.forEach(o=>o.hidden=true); paused=false; travel('')");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; travel('')");
   await page.waitForTimeout(3500);
   if (await ev('realm') !== '') throw new Error('Nicht zurück auf der Erde');
 });
 
 test('Vorlesen nimmt die Aufnahmen, fehlende Sätze die Browserstimme', async ({ ev, page }) => {
   await page.waitForFunction(() => window.__ev('VCLIP!==null'), null, { timeout: 5000 });
-  const r = await ev(`(function(){ talkLock=0; localStorage.removeItem('lavaland-vmiss');
+  const r = await ev(`(function(){ ST.talkLock=0; localStorage.removeItem('lavaland-vmiss');
     const u=speak('Hallo! Wie viel ist 3 plus 4?'), ids=speakSplit('Hallo! Wie viel ist 3 plus 4?').map(s=>VCLIP[s]);
     speak('Diesen Satz gibt es nicht als Aufnahme.');
     return {clip:!!u&&!('text' in u), ids:ids, miss:localStorage.getItem('lavaland-vmiss')};
@@ -243,7 +243,7 @@ test('Vorlesen nimmt die Aufnahmen, fehlende Sätze die Browserstimme', async ({
 
 test('Rätsel statt Aufgabe: Abbrechen mit Ladung erledigt den Auftrag, ohne Ladung nicht', async ({ ev }) => {
   const r = await ev(`(function(){
-    OVS.forEach(o=>o.hidden=true); paused=false; pzClose(); let n=0;
+    OVS.forEach(o=>o.hidden=true); ST.paused=false; pzClose(); let n=0;
     energy=0; openQuiz(function(){ n++; }); $('quiz-pz').click(); energy=SEG; pzClose();
     const a=n, p1=pending;
     energy=0; openQuiz(function(){ n++; }); $('quiz-pz').click(); pzClose();
@@ -264,9 +264,9 @@ test('Waage hält sich an den Schulstand', async ({ ev }) => {
 });
 
 test('Spielstand übersteht Neuladen', async ({ ev, page }) => {
-  await ev('OVS.forEach(o=>o.hidden=true); paused=false; ST.gold=4321; saveFinds(); saveGame(false)');
+  await ev('OVS.forEach(o=>o.hidden=true); ST.paused=false; ST.gold=4321; saveFinds(); saveGame(false)');
   await page.waitForTimeout(1500);
-  await page.reload(); await page.waitForFunction(() => window.__ev && window.__ev('ready'), null, { timeout: 20000 });
+  await page.reload(); await page.waitForFunction(() => window.__ev && window.__ev('ST.ready'), null, { timeout: 20000 });
   const g = await ev('gold');
   if (g !== 4321) throw new Error('Gold nach Neuladen: ' + g);
 });
@@ -282,7 +282,7 @@ async function swipeUp(page, x, y) {
 }
 
 testCdp('Elternansicht lässt sich bis unten wischen', async ({ ev, page }) => {
-  await ev("OVS.forEach(o=>o.hidden=true); paused=false; parOpen()");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; parOpen()");
   await page.waitForTimeout(1500);
   const r = await page.evaluate(() => { const b = document.querySelector('.pars').getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height * 0.7 }; });
   await swipeUp(page, r.x, r.y);
@@ -296,7 +296,7 @@ testCdp('Zu hohe Fenster im Querformat lassen sich wischen, die Welt nicht', asy
   const vp = page.viewportSize();
   await page.setViewportSize({ width: 640, height: 360 });
   try {
-    await ev("OVS.forEach(o=>o.hidden=true); paused=false; openMarket()");
+    await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; openMarket()");
     await page.waitForTimeout(400);
     const m = await ev("({sh:$('market').scrollHeight, ch:$('market').clientHeight, top:$('market').firstElementChild.getBoundingClientRect().top})");
     if (m.top < 0) throw new Error('Markt beginnt oberhalb des Bildschirms: ' + m.top);
@@ -307,7 +307,7 @@ testCdp('Zu hohe Fenster im Querformat lassen sich wischen, die Welt nicht', asy
     await ev("OVS.forEach(o=>o.hidden=true)");
     const blocked = await page.evaluate(() => { const t = document.getElementById('c'); const e = new TouchEvent('touchmove', { cancelable: true, bubbles: true, touches: [] }); t.dispatchEvent(e); return e.defaultPrevented; });
     if (!blocked) throw new Error('Wischen auf der Spielwelt ist nicht gesperrt');
-  } finally { await page.setViewportSize(vp); await ev("OVS.forEach(o=>o.hidden=true); paused=false"); }
+  } finally { await page.setViewportSize(vp); await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false"); }
 });
 
 test('Dreimal am Tag falsch: Fakt ruht bis morgen', async ({ ev }) => {
@@ -325,7 +325,7 @@ test('Dreimal am Tag falsch: Fakt ruht bis morgen', async ({ ev }) => {
 
 test('Rätsel aus der Welt bleibt nach dem Antippen offen (kein Geister-Klick)', async ({ ev, page }) => {
   // Die Kamera schaut tiefer, damit die Maschine oben im Bild über dem Rätselblatt steht. Dort trifft der Klick nach dem Loslassen den Hintergrund, der das Fenster schließt.
-  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setTool(null,true); setMode('walk'); var m=MACH.find(m=>m.y===m.y); P.x=m.x+20; P.y=m.y; P.vx=P.vy=0; window.__m=m; window.__po=0; if(!window.__pzO){ window.__pzO=pzOpen; pzOpen=function(x){ __po++; return __pzO(x); }; } window.__pan=setInterval(function(){ pan.y=380; },10)");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setTool(null,true); setMode('walk'); var m=MACH.find(m=>m.y===m.y); P.x=m.x+20; P.y=m.y; P.vx=P.vy=0; window.__m=m; window.__po=0; if(!window.__pzO){ window.__pzO=pzOpen; pzOpen=function(x){ __po++; return __pzO(x); }; } window.__pan=setInterval(function(){ pan.y=380; },10)");
   try {
     await page.waitForTimeout(1500);
     const pt = await ev(`(function(){
@@ -339,7 +339,7 @@ test('Rätsel aus der Welt bleibt nach dem Antippen offen (kein Geister-Klick)',
     await page.waitForTimeout(500);
     if (await ev('__po') === n) throw new Error('Antippen hat die Maschine nicht getroffen');
     if (await ev("$('pz').hidden")) throw new Error('Rätsel nach dem Antippen sofort wieder zu ' + await ev('JSON.stringify(window.__dbg)'));
-  } finally { await ev("clearInterval(__pan); pzClose(); pzOpen=__pzO; OVS.forEach(o=>o.hidden=true); paused=false"); }
+  } finally { await ev("clearInterval(__pan); pzClose(); pzOpen=__pzO; OVS.forEach(o=>o.hidden=true); ST.paused=false"); }
 });
 
 const srv = await serve();
@@ -352,7 +352,7 @@ page.on('pageerror', e => errs.push(e.message));
 page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|fonts\.g/.test(m.text())) errs.push(m.text()); });
 const ev = s => page.evaluate(s => window.__ev(s), s);
 await page.goto(url);
-await page.waitForFunction(() => window.__ev && window.__ev('ready'), null, { timeout: 20000 });
+await page.waitForFunction(() => window.__ev && window.__ev('ST.ready'), null, { timeout: 20000 });
 
 // Zum Schluss: Fehler, die das Spiel selbst abgefangen hat, stehen nur im Fehlerprotokoll. Auch die zählen.
 test('Fehlerprotokoll ist leer', async ({ ev }) => {

@@ -19,8 +19,8 @@ page.on('pageerror', e => errs.push(e.message + '\n' + (e.stack || '').split('\n
 page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|fonts\.g/.test(m.text())) errs.push(m.text()); });
 const ev = s => page.evaluate(s => window.__ev(s), s);
 await page.goto(url);
-await page.waitForFunction(() => window.__ev && window.__ev('ready'), null, { timeout: 20000 });
-await ev('OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; ST.gold=500');
+await page.waitForFunction(() => window.__ev && window.__ev('ST.ready'), null, { timeout: 20000 });
+await ev('OVS.forEach(o=>o.hidden=true); ST.paused=false; energy=MAXE; ST.gold=500');
 
 const KEYS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'f', 't', 'k', 'e', 'x', 'Escape'];
 const MODES = ['walk', 'car', 'plane', 'ski', 'bagger', 'loader', 'dumper', 'tbm', 'rocket', 'sub', 'balloon', 'heli', 'boat', 'bug'];
@@ -33,16 +33,16 @@ while (Date.now() - t0 < SEC * 1000 && !errs.length) {
   try {
     if (r < .35) { const k = pick(KEYS); last = 'Taste ' + k; await page.keyboard.down(k); await page.waitForTimeout(40 + rnd() * 400); await page.keyboard.up(k); }
     else if (r < .55) { const x = 20 + rnd() * (vp.width - 40), y = 200 + rnd() * (vp.height - 400); last = 'Tipp ' + Math.round(x) + ',' + Math.round(y); await page.mouse.click(x, y); }
-    else if (r < .65) { const m = pick(MODES); last = 'Modus ' + m; await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; MODES.indexOf('" + m + "')>=0&&setMode('" + m + "')"); }
-    else if (r < .75) { const t = pick(TOOLS); last = 'Werkzeug ' + t; await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; setMode('walk'); setTool(" + (t ? "'" + t + "'" : 'null') + ',true)'); }
-    else if (r < .83) { const p = pick(PLACES); last = 'Ort ' + p; await ev("OVS.forEach(o=>o.hidden=true); paused=false; { const x=" + p + "; if(x>0) teleport(x); }"); await page.waitForTimeout(300); }
+    else if (r < .65) { const m = pick(MODES); last = 'Modus ' + m; await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; energy=MAXE; MODES.indexOf('" + m + "')>=0&&setMode('" + m + "')"); }
+    else if (r < .75) { const t = pick(TOOLS); last = 'Werkzeug ' + t; await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; energy=MAXE; setMode('walk'); setTool(" + (t ? "'" + t + "'" : 'null') + ',true)'); }
+    else if (r < .83) { const p = pick(PLACES); last = 'Ort ' + p; await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; { const x=" + p + "; if(x>0) teleport(x); }"); await page.waitForTimeout(300); }
     else if (r < .87) { last = 'Nacht'; await ev('nightOn=!nightOn'); }
-    else if (r < .89) { const w = pick(['moon', '', 'ice', '']); last = 'Reise ' + w; await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; RLM['" + w + "']||'" + w + "'===''?travel('" + w + "'):0"); await page.waitForTimeout(3500); }
-    else if (r < .92) { last = 'Mission'; await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk'); teleport(MISX); P.x=MISX; P.y=ground(MISX); P.on=true; doAction()"); await page.waitForTimeout(500); }
-    else if (r < .95) { last = 'Fernrohr'; await ev("OVS.forEach(o=>o.hidden=true); paused=false; realm===''&&scopeOpen()"); await page.waitForTimeout(200); await page.mouse.click(vp.width / 2, vp.height * .62); }
-    else if (r < .96) { last = 'Seilrutsche'; await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('walk'); zipAdd&&zipAdd(P.x-40,P.y-120,P.x+260,P.y-20); doAction()"); }
-    else if (r < .97) { last = 'Haken'; await ev("OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; setMode('heli'); doAction(); doAction()"); }
-    else if (r < .98) { last = 'Neuladen'; await ev('saveGame(false)'); await page.waitForTimeout(800); await page.reload(); await page.waitForFunction(() => window.__ev && window.__ev('ready'), null, { timeout: 20000 }); await ev('OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE'); }
+    else if (r < .89) { const w = pick(['moon', '', 'ice', '']); last = 'Reise ' + w; await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; energy=MAXE; RLM['" + w + "']||'" + w + "'===''?travel('" + w + "'):0"); await page.waitForTimeout(3500); }
+    else if (r < .92) { last = 'Mission'; await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); teleport(MISX); P.x=MISX; P.y=ground(MISX); P.on=true; doAction()"); await page.waitForTimeout(500); }
+    else if (r < .95) { last = 'Fernrohr'; await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; realm===''&&scopeOpen()"); await page.waitForTimeout(200); await page.mouse.click(vp.width / 2, vp.height * .62); }
+    else if (r < .96) { last = 'Seilrutsche'; await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); zipAdd&&zipAdd(P.x-40,P.y-120,P.x+260,P.y-20); doAction()"); }
+    else if (r < .97) { last = 'Haken'; await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; energy=MAXE; setMode('heli'); doAction(); doAction()"); }
+    else if (r < .98) { last = 'Neuladen'; await ev('saveGame(false)'); await page.waitForTimeout(800); await page.reload(); await page.waitForFunction(() => window.__ev && window.__ev('ST.ready'), null, { timeout: 20000 }); await ev('OVS.forEach(o=>o.hidden=true); ST.paused=false; energy=MAXE'); }
     else { last = 'Warten'; await page.waitForTimeout(600); }
   } catch (e) { errs.push('Testschritt „' + last + '“: ' + e.message); }
 }
