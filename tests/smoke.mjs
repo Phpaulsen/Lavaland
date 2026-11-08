@@ -30,17 +30,17 @@ test('Laufen bewegt den Helden', async ({ ev, page }) => {
 });
 
 test('Lernaufgabe mit Ziffernblock richtig lösen', async ({ ev, page }) => {
-  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; energy=0; pickFact=function(){return '2+3'}; openQuiz(); for(let i=0;i<20&&lastF!=='2+3';i++) nextQ()");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; ST.energy=0; pickFact=function(){return '2+3'}; openQuiz(); for(let i=0;i<20&&lastF!=='2+3';i++) nextQ()");
   await page.waitForTimeout(400);
   if (await ev("$('quiz').hidden")) throw new Error('Aufgabe nicht geöffnet');
   await ev("padKey('5'); padSubmit()");
   await page.waitForTimeout(2500);
-  const e = await ev('energy');
+  const e = await ev('ST.energy');
   if (!(e > 0)) throw new Error('Akku nicht geladen: ' + e);
 });
 
 test('Escape schließt die Aufgabe und gibt das Spiel frei', async ({ ev, page }) => {
-  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; energy=MAXE; openQuiz()");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; ST.energy=MAXE; openQuiz()");
   await page.waitForTimeout(300);
   await page.keyboard.press('Escape'); await page.waitForTimeout(300);
   if (!(await ev("$('quiz').hidden")) || await ev('ST.paused')) throw new Error('Aufgabe offen oder Spiel pausiert');
@@ -57,7 +57,7 @@ test('Elternansicht zeigt das Protokoll', async ({ ev, page }) => {
 });
 
 test('Elternansicht zählt Sandbox-Zeit je Fahrzeug', async ({ ev, page }) => {
-  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; energy=MAXE; setMode('car'); for(let i=0;i<40;i++) LOG.tick(1); LOG.flush(); setMode('walk')");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; ST.energy=MAXE; setMode('car'); for(let i=0;i<40;i++) LOG.tick(1); LOG.flush(); setMode('walk')");
   await page.waitForTimeout(500);
   await ev('parOpen()'); await page.waitForTimeout(1500);
   const t = await ev("$('par-body').textContent");
@@ -76,7 +76,7 @@ test('Mission am Brett: Küken retten', async ({ ev, page }) => {
 });
 
 test('Schaufel gräbt zu Fuß ohne Akku', async ({ ev, page }) => {
-  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; energy=0; setMode('walk'); P.x=1500; P.y=ground(1500); P.on=true; $('tool-cards').querySelector('[data-tool=shovel]').click()");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; ST.energy=0; setMode('walk'); P.x=1500; P.y=ground(1500); P.on=true; $('tool-cards').querySelector('[data-tool=shovel]').click()");
   const y0 = await ev('P.y');
   await ev('keys.d=true; keys.a=true'); await page.waitForTimeout(1500); await ev('keys.a=false; keys.d=false; setTool(null,true)');
   if (!(await ev('P.y') > y0 + 30)) throw new Error('nicht nach unten gegraben');
@@ -84,7 +84,7 @@ test('Schaufel gräbt zu Fuß ohne Akku', async ({ ev, page }) => {
 });
 
 // Ein Hohlraum mitten im Fels, weit weg von allem anderen, damit nur Fels um den Helden ist.
-const ROCKBOX = (x, extra) => `OVS.forEach(o=>o.hidden=true); ST.paused=false; energy=MAXE; hero.dr=0; OPT.mon=false; ST.tool=null; syncUI(); ${extra || ''};
+const ROCKBOX = (x, extra) => `OVS.forEach(o=>o.hidden=true); ST.paused=false; ST.energy=MAXE; hero.dr=0; OPT.mon=false; ST.tool=null; syncUI(); ${extra || ''};
   const X=${x}, Y=ground(X)+900, c0=Math.floor((X-260)/CELL), c1=Math.floor((X+260)/CELL);
   for(let r=Math.floor((Y-500-TOP)/CELL);r<=Math.floor((Y+200-TOP)/CELL);r++) for(let c=c0;c<=c1;c++) grid[r*GX+c]=ROCK;
   for(let r=Math.floor((Y-60-TOP)/CELL);r<Math.floor((Y-TOP)/CELL);r++) for(let c=Math.floor((X-30)/CELL);c<=Math.floor((X+30)/CELL);c++) grid[r*GX+c]=0;
@@ -195,7 +195,7 @@ test('Tastenkürzel: F öffnet Fahrzeuge, X steigt aus', async ({ ev, page }) =>
   await page.keyboard.press('f'); await page.waitForTimeout(200);
   if (await ev("$('garage').hidden")) throw new Error('F öffnet die Garage nicht');
   await page.keyboard.press('Escape'); await page.waitForTimeout(200);
-  await ev("energy=MAXE; setMode('car')"); await page.keyboard.press('x'); await page.waitForTimeout(200);
+  await ev("ST.energy=MAXE; setMode('car')"); await page.keyboard.press('x'); await page.waitForTimeout(200);
   if (await ev('P.mode') !== 'walk') throw new Error('X steigt nicht aus');
 });
 
@@ -219,7 +219,7 @@ test('Teilchen-Grenze hält, Ausrufe kommen trotzdem', async ({ ev }) => {
 });
 
 test('Reise zum Mond und zurück', async ({ ev, page }) => {
-  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; energy=MAXE; travel('moon')");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; ST.energy=MAXE; travel('moon')");
   await page.waitForTimeout(3500);
   if (await ev('realm') !== 'moon') throw new Error('Nicht auf dem Mond: ' + await ev('realm'));
   await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; travel('')");
@@ -244,10 +244,10 @@ test('Vorlesen nimmt die Aufnahmen, fehlende Sätze die Browserstimme', async ({
 test('Rätsel statt Aufgabe: Abbrechen mit Ladung erledigt den Auftrag, ohne Ladung nicht', async ({ ev }) => {
   const r = await ev(`(function(){
     OVS.forEach(o=>o.hidden=true); ST.paused=false; pzClose(); let n=0;
-    energy=0; openQuiz(function(){ n++; }); $('quiz-pz').click(); energy=SEG; pzClose();
+    ST.energy=0; openQuiz(function(){ n++; }); $('quiz-pz').click(); ST.energy=SEG; pzClose();
     const a=n, p1=pending;
-    energy=0; openQuiz(function(){ n++; }); $('quiz-pz').click(); pzClose();
-    const b=n, p2=pending; energy=SEG; closeQuiz();
+    ST.energy=0; openQuiz(function(){ n++; }); $('quiz-pz').click(); pzClose();
+    const b=n, p2=pending; ST.energy=SEG; closeQuiz();
     return {a, b, p1, p2, c:n};
   })()`);
   if (r.a !== 1) throw new Error('Auftrag nach Rätselabbruch mit Ladung nicht ausgeführt');
