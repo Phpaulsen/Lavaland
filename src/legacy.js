@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { SIDE, register, safeWith } from './systems/index.js';
 import { rng, hash2, riWith, shuffleWith } from './core/rng.js';
 import { HOME_W, HOME_GX, WORLD_W0, WORLD_W, CELL, GX, GY, GY0, KEEPR, WINW, SW, ROWW, SH, TOP, VOLC, G, TAU, LAVA, FIRE, WATER, EARTH, ROCK, ICE, WOOD, BED, DEEP, HOT, CORE, GOLD, GEM, SNOW, SHELL, MAX_LAVA, MAX_WATER, MAX_FIRE, SKY_TOP, SKYL, SKY_END, MOON, STALL_X, SITE, FLAT, clamp, baseG, bump, siteY, rawH, B0, EXT_X, EXC, HOME_END, WL, WLR } from './core/world/const.js';
 import { idxs } from './core/puzzles/util.js';
@@ -5927,12 +5928,23 @@ function frame(t){
   }
 }
 /* Absturzschutz für Nebensysteme: Wirft eins dreimal einen Fehler, wird es für diese Sitzung abgeschaltet und steht im Fehlerprotokoll. Der Rest läuft weiter. */
-const SIDE=[arrowsTick,monTick,geyTick,metTick,wreckTick,flyTick,harpTick,worldTick,deepTick,winterTick,findsTick,questTick,autosave,drain,fogTick,mkTick];
-const SAFE=new Map();
-function safe(f,dt){
-  const n=SAFE.get(f)|0; if(n>=3) return;
-  try{ f(dt); }catch(e){ SAFE.set(f,n+1); errAdd((e&&e.message)||e,f.name+(n+1>=3?' (abgeschaltet)':'')); console.error(e); }
-}
+register('arrowsTick',arrowsTick);
+register('monTick',monTick);
+register('geyTick',geyTick);
+register('metTick',metTick);
+register('wreckTick',wreckTick);
+register('flyTick',flyTick);
+register('harpTick',harpTick);
+register('worldTick',worldTick);
+register('deepTick',deepTick);
+register('winterTick',winterTick);
+register('findsTick',findsTick);
+register('questTick',questTick);
+register('autosave',autosave);
+register('drain',drain);
+register('fogTick',fogTick);
+register('mkTick',mkTick);
+function safe(s,dt){ safeWith(errAdd,s,dt); }
 
 /* Gold und Edelsteine gibt es nicht mehr (Vereinfachungsplan Schritt 2). Was noch da ist, wird einmal in Zahnräder getauscht:
    je angefangene GOLDZ Gold und je angefangene GEMZ Edelsteine ein Zahnrad. Danach stehen beide auf 0, also passiert es nur einmal. */

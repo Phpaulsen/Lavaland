@@ -188,8 +188,10 @@ test('Tastenkürzel: F öffnet Fahrzeuge, X steigt aus', async ({ ev, page }) =>
 });
 
 test('Absturzschutz: kaputtes Nebensystem friert das Spiel nicht ein', async ({ ev, page, errs }) => {
+  const names = await ev("SIDE.map(s=>s.name).join(' ')");
+  if (names !== 'arrowsTick monTick geyTick metTick wreckTick flyTick harpTick worldTick deepTick winterTick findsTick questTick autosave drain fogTick mkTick') throw new Error('SIDE: ' + names);
   const n = errs.length;
-  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); for(const k in FX) FX[k]=0; teleport(1200); window.__keep=SIDE.slice(); SIDE.push(function testKaputt(){ throw new Error('Test: absichtlich kaputt'); })");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); for(const k in FX) FX[k]=0; teleport(1200); window.__keep=SIDE.slice(); SIDE.push({name:'testKaputt',tick:function(){ throw new Error('Test: absichtlich kaputt'); }})");
   const x0 = await ev('P.x');
   await page.keyboard.down('ArrowRight'); await page.waitForTimeout(1000); await page.keyboard.up('ArrowRight');
   const moved = Math.abs(await ev('P.x') - x0);
