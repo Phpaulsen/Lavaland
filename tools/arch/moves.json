@@ -4,5 +4,6 @@
  "added":["K_HERO","K_FINDS","K_STARS","K_SKILL","K_FACTS","K_SCHOOL","K_LIMIT","K_DAY","K_REALM","K_FOG","K_MARKS","K_MUTE","K_LEFTY","K_PSST","K_NEWS","K_BAK_AT","K_VOICE","K_VMISS","K_OPT","K_ALIVE"],"removed":[]},
 {"pr":12},
 {"pr": 13, "renames": {"logWith": "LOG"}, "iife": ["logWith"], "params": {"logWith": ["LP"]}, "world": {"param": "LP", "names": ["errAdd", "uiOpen", "energy", "frozen", "paused", "pzc", "ready", "realm", "tool", "$", "MAXE", "P", "SEG", "parts", "fireCount", "lavaCount", "waterCount"]}, "changed": ["LOG"], "added": ["LP"]},
-{"pr": 14.1, "facade": {"name": "ST", "names": ["gold", "gems", "lootDirty", "heroDirty"]}, "changed": ["ST"], "added": ["setGold", "setGems", "setLootDirty", "setHeroDirty"], "removed": []}
+{"pr": 14.1, "facade": {"name": "ST", "names": ["gold", "gems", "lootDirty", "heroDirty"]}, "changed": ["ST"], "added": ["setGold", "setGems", "setLootDirty", "setHeroDirty"], "removed": []},
+{"pr": 14.2}
 ]}

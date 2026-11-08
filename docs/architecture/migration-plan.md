@@ -147,7 +147,7 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 ### PR 14a/b/c: Spielzustand
 
 - **14a:** `hero`, `gold`, `gems`, `lootDirty`, `heroDirty` → `state/game.js`. Benannte Mutation `addGold(n)` noch nicht (wäre 15 Sektionen Umbau), nur `ST`. Umgesetzt: `hero` wird nie neu zugewiesen und kommt als Live-Binding direkt aus `game.js` (278 Bezüge bleiben unverändert); die vier anderen über `ST` (91 Bezüge, Codemod). Tests schreiben `ST.gold`; `upgrade.mjs` liest auf der alten Seite `gold` oder `ST.gold`, je nachdem, was es dort gibt. Grundsatz für 14b/c: Was nur verändert, nie neu zugewiesen wird, braucht keine Fassade.
-- **14b:** `P`, `cam`, `pan`, `parked`, `keys` → `state/game.js`.
+- **14b:** `P`, `cam`, `pan`, `parked`, `keys` → `state/game.js`. Umgesetzt: alle fünf sind `const` und werden nur verändert, also reine Moves ohne Fassade und ohne Teständerung; esbuild legt Module in einen Gültigkeitsbereich, der Zugriff in `step`/`update`/`draw` kostet nichts.
 - **14c:** `realm`, `SEED`, `setRealm`, UI-Modus (`paused`, `tool`, `task`, `talkLock`, `OVS`, `uiOpen`) und Speicherschalter (`frozen`, `diskLock`, `saving`, `traveling`, `ready`).
 - **14d (aus PR 10–12 verschoben):** `loadCells`, `migrateSnow`, `bakMake`, `bakLoad`, `bakIn`, `snapshot`, `saveGame`, `autosave`, `packStart`/`packStep`, `saveHero`, `saveFinds`, `saveFacts` → `persistence/save.js`. Banner, Ton und Sprache in `saveGame` als Port, gleiche Reihenfolge; `save.mjs`, `offline.mjs`, Golden Master Speicherformat.
 - **Risiken:** Viele Testnamen (`gold`, `hero`, `P`, `paused`, `ready` stehen in fast jedem Test). **Absicherung:** Tests im selben PR auf `G` umstellen; Codemod; Move-Nachweis.
