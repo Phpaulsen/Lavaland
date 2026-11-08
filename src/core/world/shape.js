@@ -150,3 +150,11 @@ export function craters(b,x,k){
 export function roomY(s){ return TOP+Math.floor((s.y+s.ry*.5-TOP)/CELL)*CELL; }
 /** @param {{y: number, ry: number}} v @returns {number} */
 export function vFloor(v){ return Math.floor((v.y+v.ry*.5-TOP)/CELL); }
+
+// Nachtrag (PR 8a): weitere Tabellen ohne Zustand, die die Weltgenerierung liest.
+/** Aufzug und Meer in der Tiefe (x bzw. Zeilen). */
+export const WSX=1032, LIFTX=1152, SEA_T=1905, SEA_L=1936, SEA_B=1962;
+/** Steine eines Hauses (Spalte, Zeile). */
+export const HOUSE=[[0,0],[1,0],[3,0],[4,0],[0,1],[1,1],[3,1],[4,1],[0,2],[1,2],[2,2],[3,2],[4,2],[1,3],[2,3],[3,3],[2,4]];
+/** Baumhöhen je Art: Grundhöhe und Streuung. @type {Record<string, number[]>} */
+export const FH={fir:[62,40],cactus:[34,26],palm:[72,30],jungle:[110,60],giant:[250,0],lolly:[46,30],cane:[40,14],shroom:[12,12],dead:[60,40],grave:[20,6],fern:[30,18],crystal:[30,44],flower:[14,10],bush:[16,10],tree:[62,40]};

@@ -15,7 +15,7 @@ import { BOXD, NEWDAY, FASTMS, schoolOkWith, fUnlockWith, mixPreferWith, fParked
 import { mkQWith, mkSeqWith } from './core/learn/tasks.js';
 import { g0, grid, stamp, LIFE, zS1, z4, zS2, zS3, grow0, rA, rB, rD, rH, rC, mtop, bio, bio2, bmx, bix, noCave, liqM, liqY } from './state/world.js';
 import { ST } from './state/facade.js';
-import { SNX, SL0, PEAK, BACK, BEND, MH, SNB, CHX, CAVE, SNC0, SNC1, msurf, vnoise, inGrid, ellipse, PX0, PM, PMC, LANDX, PADH, BT, sm, colOf, hBio, craters, roomY, vFloor } from './core/world/shape.js';
+import { SNX, SL0, PEAK, BACK, BEND, MH, SNB, CHX, CAVE, SNC0, SNC1, msurf, vnoise, inGrid, ellipse, PX0, PM, PMC, LANDX, PADH, BT, sm, colOf, hBio, craters, roomY, vFloor, WSX, LIFTX, SEA_T, SEA_L, SEA_B, HOUSE, FH } from './core/world/shape.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -244,7 +244,6 @@ function fillPond(){
   for(let cx=Math.floor((SITE.pond-170)/CELL);cx<=Math.floor((SITE.pond+170)/CELL);cx++)
     for(let cy=lv;cy<grow0[cx];cy++) if(grid[cy*GX+cx]===0) setCell(cx,cy,WATER);
 }
-const HOUSE=[[0,0],[1,0],[3,0],[4,0],[0,1],[1,1],[3,1],[4,1],[0,2],[1,2],[2,2],[3,2],[4,2],[1,3],[2,3],[3,3],[2,4]];
 function houseBlocks(site){
   const k=grow0[Math.floor(SITE[site]/CELL)]>>2, b0=Math.round(SITE[site]/24)-2;
   return HOUSE.map(function(h){return [b0+h[0],k-1-h[1]];});
@@ -304,7 +303,6 @@ function setRealm(id){
 /* Spalte, deren Boden eine Randspalte zeigt: links das Ende der Welt, rechts der Anfang. */
 function wc(cx){ return !realm?cx:cx<RC0?cx+(RC1-RC0):cx>=RC1?cx-(RC1-RC0):cx; }
 
-const FH={fir:[62,40],cactus:[34,26],palm:[72,30],jungle:[110,60],giant:[250,0],lolly:[46,30],cane:[40,14],shroom:[12,12],dead:[60,40],grave:[20,6],fern:[30,18],crystal:[30,44],flower:[14,10],bush:[16,10],tree:[62,40]};
 
 function rawX(x){
   let k=bix[clamp(Math.floor(x/CELL),0,GX-1)]-1; if(k<0) k=0;
@@ -4758,7 +4756,6 @@ function eggClick(e){
 QI.lab='<path d="M14.5 3a5 5 0 0 0-4.6 6.9L3.6 16.2a2.3 2.3 0 0 0 3.2 3.2l6.300-6.300A5 5 0 0 0 20 8.500l-3 3-3.500-1-1-3.500 3-3z" fill="#9aa7b4" '+S1+' stroke-width="1.6"/><circle cx="5.300" cy="17.700" r="1" fill="'+K+'"/>';
 AI.lab='<path d="M14.5 3a5 5 0 0 0-4.6 6.9L3.6 16.2a2.3 2.3 0 0 0 3.2 3.2l6.300-6.300A5 5 0 0 0 20 8.500l-3 3-3.500-1-1-3.500 3-3z" fill="currentColor"/>';
 AI.pz='<path d="M8.300 9a3.700 3.700 0 1 1 5.600 3.200c-1.200.7-1.900 1.500-1.900 2.800" stroke="currentColor" stroke-width="3.200" fill="none" stroke-linecap="round"/><circle cx="12" cy="19.500" r="2" fill="currentColor"/>';
-const WSX=1032, LIFTX=1152, SEA_T=1905, SEA_L=1936, SEA_B=1962;
 /* Stationen vom Aufzug, von oben nach unten */
 const ZN=[
   {e:'🏠',n:'dein Zuhause',need:''},
