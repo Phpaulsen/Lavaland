@@ -139,8 +139,10 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 
 ### PR 13: Spielprotokoll
 
-- **Bewegt:** `S61` (`LOG`, eine Deklaration, eigene Datenbank) → `log/`.
-- **Risiken:** `LOG` liest Spielzustand (`paused`, `energy`, `P`, `tool`, `realm`) für die Zeitzuordnung. **Absicherung:** über `G` gelesen; Rauchtest Elternansicht, `save.mjs` (Protokoll im Export).
+- **Bewegt:** `S61` → `log/log.js`: `const LOG=(function(){…})()` wird `export function logWith(LP){…}`, `legacy.js` ruft `const LOG=logWith(LP)`. Dazu `K_ALIVE` aus `persistence/keys.js` (der Herzschlag gehört dem Protokoll).
+- **Abweichung:** Gelesen wird nicht über die Fassade, sondern über einen Port `LP` (Getter für `energy`, `frozen`, `paused`, `pzc`, `ready`, `realm`, `tool`, `P`, `parts`, `MAXE`, `SEG`, die Zähler aus `state/sim.js`, dazu `errAdd`, `uiOpen`, `$`). `log/` darf nach der Importtabelle `state/` nicht importieren, der Port ist also die Endform, kein Übergang. `movecheck.mjs` kennt dafür `iife`.
+- **Offen für PR 14d:** `bakMake` (dann in `persistence/`) braucht `K_ALIVE`, um den Herzschlag nicht mitzusichern, darf aber `log/` nicht importieren. Lösung dort: als Parameter übergeben oder die Schlüssel nach `core/` legen.
+- **Risiken:** `LOG.tick` läuft jedes Bild und liest jetzt etwa zehn Getter. **Absicherung:** Rauchtest Elternansicht, `save.mjs` (Protokoll im Export), Absturzerkennung in `save.mjs`.
 
 ### PR 14a/b/c: Spielzustand
 

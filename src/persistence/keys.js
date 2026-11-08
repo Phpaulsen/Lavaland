@@ -21,7 +21,6 @@ export const K_BAK_AT='lavaland-bak-at';
 export const K_VOICE='lavaland-voice';
 export const K_VMISS='lavaland-vmiss';
 export const K_OPT='lavaland-opt';
-export const K_ALIVE='lavaland-alive';
 /* Fehlerprotokoll (Elternansicht) und Missionen */
 export const ERRK='lavaland-err';
 export const MISK='lavaland-mis';
