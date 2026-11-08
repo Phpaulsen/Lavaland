@@ -279,6 +279,20 @@ test('Schutz wird in der Werkstatt gebaut', async ({ ev }) => {
   await ev('OVS.forEach(o=>o.hidden=true); hero.up.heat=0');
 });
 
+test('Werkstatt braucht nur Zahnräder und Meistersteine, Eisen bleibt liegen', async ({ ev, page }) => {
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); hero.dr=0; hero.mat.zr=3; hero.mat.ms=0; hero.mat.fe=0");
+  if (!(await ev("canBuild('dr')"))) throw new Error('Bohrer 1 nicht für 3 Zahnräder baubar');
+  await ev("hero.dr=1; hero.mat.zr=99");
+  if (await ev("canBuild('dr')")) throw new Error('Bohrer 2 ohne Meistersteine baubar');
+  await ev("hero.mat.ms=2");
+  if (!(await ev("canBuild('dr')"))) throw new Error('Bohrer 2 mit 6 Zahnrädern und 2 Meistersteinen nicht baubar');
+  const m = await ev("(function(){ const m=MATS.find(function(q){ return q.k==='fe'&&!q.off; }); if(!m) return null; P.x=m.x; P.y=m.y+16; P.vy=0; return m.id; })()");
+  if (m === null) throw new Error('kein Eisen in der Welt (Weltliste soll gleich bleiben)');
+  await page.waitForTimeout(1300);
+  if (await ev('hero.mat.fe') || await ev('ST.matGot[' + m + ']')) throw new Error('Eisen wurde eingesammelt');
+  await ev("hero.dr=0; hero.mat.zr=0; hero.mat.ms=0; teleport(1500)"); await page.waitForTimeout(500);
+});
+
 test('Altes Gold wird einmal zu Zahnrädern', async ({ ev }) => {
   await ev('OVS.forEach(o=>o.hidden=true); ST.paused=false; hero.mat.zr=0; ST.gold=120; ST.gems=11; goldSwap()');
   if (await ev('hero.mat.zr') !== 5 || await ev('ST.gold') || await ev('ST.gems')) throw new Error('Tausch falsch: ' + await ev('hero.mat.zr'));

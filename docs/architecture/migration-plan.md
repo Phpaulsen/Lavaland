@@ -189,6 +189,12 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 - Aufträge: kein Kauf-, Gold- oder Edelstein-Auftrag mehr, Bombenauftrag immer im Topf, Einführungsauftrag 5 ist eine Rätselmaschine.
 - Golden Master: 17 Speicher-Hashes ersetzt (siehe PR), Welt-, Generator- und MACH-Hashes unverändert. `movecheck.mjs` kennt `stmtsRemoved`.
 
+### Streich-PR 2b: Bauteile weg, neue Werkstattpreise (verhaltensändernd, nicht Teil der Migration)
+
+- Eisen, Mondsteine, Leuchtpilze, Sternenerz, Urzeit-Muscheln, Tiefenkristalle, Eiskerne, Feuerperlen werden weder gezeigt noch eingesammelt (`MATON` = nur Planetenkern). Sie bleiben in `MATS`, damit die Welt gleich entsteht. Gesammelte Stücke bleiben im Spielstand, zählen nicht mehr. Planetenkerne bleiben als Fund.
+- Preise (Entscheidung 8.11.): Bohrer 3⚙ / 6⚙+2💠 / 9⚙+5💠, Rakete 3⚙ / 5⚙+1💠 / 8⚙+3💠, Lampe 1/2/4⚙, Schutz 2/3/4⚙ (aus 2a).
+- Bauteil-Auftrag entfällt. Golden Master unverändert.
+
 ### PR 16: Systemschnittstelle
 
 - **Bewegt:** `SIDE`, `SAFE`, `safe()` → `systems/index.js` mit `{ name, tick }` je Eintrag, gleiche Reihenfolge, `name` = heutiger Funktionsname. Die Tick-Funktionen selbst bleiben noch in `legacy.js` und werden nur registriert.
