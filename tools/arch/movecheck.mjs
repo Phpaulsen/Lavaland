@@ -49,6 +49,32 @@ const norm = n => JSON.stringify(n, (k, v) => SKIP.has(k) ? undefined : v);
 const clone = n => JSON.parse(JSON.stringify(n));
 const id = name => ({ type: 'Identifier', name });
 
+const SCOPE = new Set(['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression', 'BlockStatement', 'ForStatement', 'ForInStatement', 'ForOfStatement', 'SwitchStatement', 'CatchClause', 'ClassExpression']);
+/** Namen, die ein Gültigkeitsbereich selbst deklariert: Parameter, var (gehoben bis zur Funktion), Funktionen, let/const/class im Block, catch. */
+export function localDecl(x) {
+  const out = [];
+  const pat = p => { if (!p) return; if (p.type === 'Identifier') out.push(p.name); else if (p.type === 'ObjectPattern') p.properties.forEach(q => pat(q.type === 'RestElement' ? q.argument : q.value)); else if (p.type === 'ArrayPattern') p.elements.forEach(pat); else if (p.type === 'RestElement') pat(p.argument); else if (p.type === 'AssignmentPattern') pat(p.left); };
+  const vars = n => { // var-Deklarationen bis zur nächsten Funktion
+    if (!n || typeof n !== 'object') return;
+    if (Array.isArray(n)) { n.forEach(vars); return; }
+    if (n.type === 'FunctionDeclaration' || n.type === 'FunctionExpression' || n.type === 'ArrowFunctionExpression') return;
+    if (n.type === 'VariableDeclaration' && n.kind === 'var') n.declarations.forEach(d => pat(d.id));
+    for (const k of Object.keys(n)) if (!SKIP.has(k) && k !== 'type') vars(n[k]);
+  };
+  const lex = list => { for (const c of list || []) { if (c.type === 'VariableDeclaration' && c.kind !== 'var') c.declarations.forEach(d => pat(d.id)); else if ((c.type === 'FunctionDeclaration' || c.type === 'ClassDeclaration') && c.id) out.push(c.id.name); } };
+  if (x.type === 'FunctionDeclaration' || x.type === 'FunctionExpression' || x.type === 'ArrowFunctionExpression') {
+    if (x.type === 'FunctionExpression' && x.id) out.push(x.id.name);
+    x.params.forEach(pat);
+    if (x.body.type === 'BlockStatement') { vars(x.body.body); lex(x.body.body); }
+  } else if (x.type === 'BlockStatement') lex(x.body);
+  else if (x.type === 'SwitchStatement') x.cases.forEach(c => lex(c.consequent));
+  else if (x.type === 'ForStatement') { if (x.init && x.init.type === 'VariableDeclaration' && x.init.kind !== 'var') x.init.declarations.forEach(d => pat(d.id)); }
+  else if (x.type === 'ForInStatement' || x.type === 'ForOfStatement') { if (x.left.type === 'VariableDeclaration' && x.left.kind !== 'var') x.left.declarations.forEach(d => pat(d.id)); }
+  else if (x.type === 'CatchClause') pat(x.param);
+  else if (x.type === 'ClassExpression' && x.id) out.push(x.id.name);
+  return out;
+}
+
 /** Wendet die erlaubten Umschreibungen auf einen alten Knoten an. */
 export function transform(node, moves, own) {
   const ren = {}; for (const [n, o] of Object.entries(moves.renames || {})) ren[o] = n;
@@ -59,34 +85,38 @@ export function transform(node, moves, own) {
   const mine = own ? plist(own) : [], rnd = (mine.find(e => e.random) || {}).name, moved = !!own && own in (moves.renames || {});
   // Bezüge auf umbenannte Namen werden nur innerhalb bewegter Funktionen umgeschrieben; legacy.js ruft weiter den alten Namen (Einzeiler).
   const n0 = clone(node);
-  const walk = (x, parent, key) => {
+  // Fassade nur für Bezüge, die nicht auf eine gleichnamige lokale Deklaration zeigen (wie codemod.mjs). sh = verdeckte Namen.
+  const shadow = (x, sh) => { if (!fac) return sh; const d = localDecl(x).filter(n => fac.has(n)); return d.length ? new Set([...sh, ...d]) : sh; };
+  const walk = (x, parent, key, sh = new Set()) => {
     if (!x || typeof x !== 'object') return x;
-    if (Array.isArray(x)) { for (let i = 0; i < x.length; i++) x[i] = walk(x[i], parent, key); return x; }
+    if (Array.isArray(x)) { for (let i = 0; i < x.length; i++) x[i] = walk(x[i], parent, key, sh); return x; }
+    if (SCOPE.has(x.type)) sh = shadow(x, sh);
     // Math.random → Parameter
     if (rnd && x.type === 'MemberExpression' && !x.computed && x.object.type === 'Identifier' && x.object.name === 'Math' && x.property.name === 'random') return id(rnd);
     if (moved && x.type === 'CallExpression' && x.callee.type === 'Identifier') {
       const c = x.callee.name;
       // Aufruf einer mit Parametern bewegten Funktion: neuer Name, ihre Parameter vorn (gleich benannt wie hier)
-      if (ren[c] && plist(ren[c]).length) { x.callee = id(ren[c]); x.arguments = [...plist(ren[c]).map(e => id(e.name)), ...x.arguments.map(a => walk(a, x, 'arguments'))]; return x; }
+      if (ren[c] && plist(ren[c]).length) { x.callee = id(ren[c]); x.arguments = [...plist(ren[c]).map(e => id(e.name)), ...x.arguments.map(a => walk(a, x, 'arguments', sh))]; return x; }
       // Aufruf eines Einzeilers aus legacy.js (z. B. ri → riWith): die core-Fassung mit dem Zufallsparameter vorn
-      if (wrap[c] && rnd) { x.callee = id(wrap[c]); x.arguments = [id(rnd), ...x.arguments.map(a => walk(a, x, 'arguments'))]; return x; }
+      if (wrap[c] && rnd) { x.callee = id(wrap[c]); x.arguments = [id(rnd), ...x.arguments.map(a => walk(a, x, 'arguments', sh))]; return x; }
     }
-    if (x.type === 'Property' && !x.computed) { if (x.shorthand) { x.value = walk(x.value, x, 'value'); if (x.value.type !== 'Identifier' || x.value.name !== x.key.name) x.shorthand = false; return x; } x.value = walk(x.value, x, 'value'); return x; }
-    if (x.type === 'MemberExpression' && !x.computed) { x.object = walk(x.object, x, 'object'); return x; }
-    if (x.type === 'MethodDefinition' || x.type === 'PropertyDefinition') { if (x.computed) x.key = walk(x.key, x, 'key'); x.value = walk(x.value, x, 'value'); return x; }
-    if (x.type === 'LabeledStatement' || x.type === 'BreakStatement' || x.type === 'ContinueStatement') { if (x.body) x.body = walk(x.body, x, 'body'); return x; }
+    if (x.type === 'Property' && !x.computed) { if (x.shorthand) { x.value = walk(x.value, x, 'value', sh); if (x.value.type !== 'Identifier' || x.value.name !== x.key.name) x.shorthand = false; return x; } x.value = walk(x.value, x, 'value', sh); return x; }
+    if (x.type === 'MemberExpression' && !x.computed) { x.object = walk(x.object, x, 'object', sh); return x; }
+    if (x.type === 'MethodDefinition' || x.type === 'PropertyDefinition') { if (x.computed) x.key = walk(x.key, x, 'key', sh); x.value = walk(x.value, x, 'value', sh); return x; }
+    if (x.type === 'LabeledStatement' || x.type === 'BreakStatement' || x.type === 'ContinueStatement') { if (x.body) x.body = walk(x.body, x, 'body', sh); return x; }
     if (x.type === 'Identifier') {
-      if (fac && fac.has(x.name)) return { type: 'MemberExpression', object: id(moves.facade.name), property: id(x.name), computed: false, optional: false };
+      if (fac && fac.has(x.name) && !sh.has(x.name)) return { type: 'MemberExpression', object: id(moves.facade.name), property: id(x.name), computed: false, optional: false };
       if (moved && ren[x.name]) return id(ren[x.name]);
       return x;
     }
-    for (const k of Object.keys(x)) if (!SKIP.has(k) && k !== 'type') x[k] = walk(x[k], x, k);
+    for (const k of Object.keys(x)) if (!SKIP.has(k) && k !== 'type') x[k] = walk(x[k], x, k, sh);
     return x;
   };
   // Eigener Name und eigene Parameter sind Deklarationen, keine Bezüge.
   if ((n0.type === 'FunctionDeclaration' || n0.type === 'ClassDeclaration') && n0.id) { n0.id = id(own || n0.id.name); }
+  const sh0 = SCOPE.has(n0.type) ? shadow(n0, new Set()) : new Set(); // vor dem Abnehmen der Parameter, die verdecken auch
   const params = n0.params; if (params) n0.params = [];
-  walk(n0);
+  walk(n0, null, null, sh0);
   if (params) n0.params = mine.map(e => id(e.name)).concat(params);
   return n0;
 }
@@ -152,6 +182,13 @@ function selftest() {
       { 'legacy.js': L('let FS={u:1};\nfunction mk(lv){return mkW(FS,lv)}'), 'core/m.js': 'export function mkW(FS,lv){return FS.u-lv}' },
       { renames: { mkW: 'mk' }, params: { mkW: ['FS'] }, changed: ['mk'] }, 1],
     ['Fassade', { 'legacy.js': L('let x=1;\nfunction f(){x++;return {x,y:x}}') }, { 'legacy.js': L('function f(){W.x++;return {x:W.x,y:W.x}}'), 'state/w.js': 'export const W={x:1}' },
+      { facade: { name: 'W', names: ['x'] }, removed: ['x'], added: ['W'] }, 0],
+    ['Fassade, lokaler Name verdeckt', { 'legacy.js': L('let x=1;\nfunction f(){const x=2;return x}\nfunction g(x){return x}\nfunction h(){if(1){let x=3;x++}return x}\nfunction k(){try{}catch(x){x}for(const x of[]){x}return [1].map(x=>x)}') },
+      { 'legacy.js': L('function f(){const x=2;return x}\nfunction g(x){return x}\nfunction h(){if(1){let x=3;x++}return W.x}\nfunction k(){try{}catch(x){x}for(const x of[]){x}return [1].map(x=>x)}'), 'state/w.js': 'export const W={x:1}' },
+      { facade: { name: 'W', names: ['x'] }, removed: ['x'], added: ['W'] }, 0],
+    ['Fassade, lokaler Name fälschlich umgeschrieben', { 'legacy.js': L('let x=1;\nfunction f(){const x=2;return x}') }, { 'legacy.js': L('function f(){const x=2;return W.x}'), 'state/w.js': 'export const W={x:1}' },
+      { facade: { name: 'W', names: ['x'] }, removed: ['x'], added: ['W'] }, 1],
+    ['Fassade, var gehoben', { 'legacy.js': L('let x=1;\nfunction f(){if(1){var x=2}return x}') }, { 'legacy.js': L('function f(){if(1){var x=2}return x}'), 'state/w.js': 'export const W={x:1}' },
       { facade: { name: 'W', names: ['x'] }, removed: ['x'], added: ['W'] }, 0],
     ['Fassade vergessen', { 'legacy.js': L('let x=1;\nfunction f(){return x}') }, { 'legacy.js': L('let x=1;\nfunction f(){return W.x}') }, {}, 1],
     ['still gelöscht', { 'legacy.js': L('function a(){}\nfunction b(){}') }, { 'legacy.js': L('function a(){}') }, {}, 1],

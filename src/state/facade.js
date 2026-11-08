@@ -1,0 +1,25 @@
+// Übergangsfassade ST (ADR 0001 Punkt 9): ein Objekt mit get/set je neu zugewiesenem Namen, der aus legacy.js umgezogen ist.
+// legacy.js schreibt x als ST.x (Codemod, tools/arch/codemod.mjs). Lesen gibt den aktuellen Wert des Moduls, Schreiben ruft den Setter.
+// Name ST statt G: G ist die Schwerkraft (core/world/const.js). Die Fassade wird leer und gelöscht, wenn legacy.js leer ist (PR 29).
+import { BIO, STR, CRE, PICKS, PADS, DECO, EGGS, LOOT, DROPS, stI, NT0, NC0, seen, eggGot, lootGot, orbGot,
+  setBIO, setSTR, setCRE, setPICKS, setPADS, setDECO, setEGGS, setLOOT, setDROPS, setStI, setNT0, setNC0, setSeen, setEggGot, setLootGot, setOrbGot } from './world.js';
+
+/** @type {{ BIO: any[], STR: any[], CRE: any[], PICKS: any[], PADS: any[], DECO: any[], EGGS: any[], LOOT: any[], DROPS: any[], stI: number, NT0: number, NC0: number, seen: Record<string, any>, eggGot: Record<string, any>, lootGot: Record<string, any>, orbGot: Record<string, any> }} */
+export const ST={
+  get BIO(){ return BIO; }, set BIO(v){ setBIO(v); },
+  get STR(){ return STR; }, set STR(v){ setSTR(v); },
+  get CRE(){ return CRE; }, set CRE(v){ setCRE(v); },
+  get PICKS(){ return PICKS; }, set PICKS(v){ setPICKS(v); },
+  get PADS(){ return PADS; }, set PADS(v){ setPADS(v); },
+  get DECO(){ return DECO; }, set DECO(v){ setDECO(v); },
+  get EGGS(){ return EGGS; }, set EGGS(v){ setEGGS(v); },
+  get LOOT(){ return LOOT; }, set LOOT(v){ setLOOT(v); },
+  get DROPS(){ return DROPS; }, set DROPS(v){ setDROPS(v); },
+  get stI(){ return stI; }, set stI(v){ setStI(v); },
+  get NT0(){ return NT0; }, set NT0(v){ setNT0(v); },
+  get NC0(){ return NC0; }, set NC0(v){ setNC0(v); },
+  get seen(){ return seen; }, set seen(v){ setSeen(v); },
+  get eggGot(){ return eggGot; }, set eggGot(v){ setEggGot(v); },
+  get lootGot(){ return lootGot; }, set lootGot(v){ setLootGot(v); },
+  get orbGot(){ return orbGot; }, set orbGot(v){ setOrbGot(v); }
+};

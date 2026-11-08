@@ -1,9 +1,16 @@
 {
-  "pr": "7a",
+  "pr": "7b",
   "renames": {},
   "params": {},
   "wrappers": {},
+  "facade": {
+    "name": "ST",
+    "names": ["BIO", "STR", "CRE", "PICKS", "PADS", "DECO", "EGGS", "LOOT", "DROPS", "stI", "NT0", "NC0", "seen", "eggGot", "lootGot", "orbGot"]
+  },
   "changed": [],
-  "added": [],
+  "added": [
+    "ST", "setBIO", "setSTR", "setCRE", "setPICKS", "setPADS", "setDECO", "setEGGS", "setLOOT", "setDROPS",
+    "setStI", "setNT0", "setNC0", "setSeen", "setEggGot", "setLootGot", "setOrbGot"
+  ],
   "removed": []
 }

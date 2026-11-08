@@ -1,6 +1,8 @@
 // Welt-Felder: die Zellen und die Spaltenwerte der Welt als Typed Arrays mit fester Größe. Bewegt aus legacy.js (PR 7a).
 // Die Bindungen sind const und werden nie neu zugewiesen; geschrieben wird nur über den Index (Weltgenerierung, Zellautomat, Graben, Laden).
-// Gefüllt werden sie weiter in legacy.js, in derselben Reihenfolge wie vorher. Neu zugewiesene Welt-Namen (BIO, STR, rx0 …) folgen in PR 7b.
+// Gefüllt werden sie weiter in legacy.js, in derselben Reihenfolge wie vorher.
+// Darunter die neu zugewiesenen Welt-Namen (PR 7b): export let mit je einem Setter. legacy.js liest und schreibt sie über die Fassade ST (state/facade.js).
+// genF und winC bleiben vorerst in legacy.js: Sie werden in heißen Schleifen gelesen (step, Nebel), dort keine Getter (ADR 0001 Punkt 9).
 import { GX, GY, SW } from '../core/world/const.js';
 
 /** Bodenhöhe je Spalte (Pixel), mit einem Rand rechts für die Interpolation in ground(). */
@@ -19,3 +21,55 @@ export const grow0=new Int16Array(GX), rA=new Int16Array(GX), rB=new Int16Array(
 export const mtop=new Int16Array(GX);
 /** Länder je Spalte: Land, zweites Land, Mischung, Index, keine Höhle, Flüssigkeit und ihre Höhe. */
 export const bio=new Uint8Array(GX), bio2=new Uint8Array(GX), bmx=new Uint8Array(GX), bix=new Uint8Array(GX), noCave=new Uint8Array(GX), liqM=new Uint8Array(GX), liqY=new Int16Array(GX);
+
+// Neu zugewiesene Welt-Namen, bewegt aus legacy.js (PR 7b). Werte und Reihenfolge wie vorher.
+/** Länder der Welt, nach Spalten geordnet. @type {any[]} */
+export let BIO=[];
+/** Bauwerke, die nach und nach gebaut werden (stI). @type {any[]} */
+export let STR=[];
+/** Tiere und Wesen. @type {any[]} */
+export let CRE=[];
+/** Dinge zum Aufsammeln. @type {any[]} */
+export let PICKS=[];
+/** Sprungpilze und Heuballen. @type {any[]} */
+export let PADS=[];
+/** Deko: Mast, Mühle, Schilder … @type {any[]} */
+export let DECO=[];
+/** Versteckte Eier. @type {any[]} */
+export let EGGS=[];
+/** Schätze. @type {any[]} */
+export let LOOT=[];
+/** Was Tiere fallen lassen. @type {any[]} */
+export let DROPS=[];
+/** Nächstes Bauwerk in STR, das noch gebaut werden muss. */
+export let stI=0;
+/** Anzahl Bäume nach der Erzeugung. */
+export let NT0=0;
+/** Anzahl Wolken nach der Erzeugung. */
+export let NC0=0;
+/** Schon gesehene Dinge je Schlüssel. @type {Record<string, any>} */
+export let seen={};
+/** Gefundene Eier je Schlüssel. @type {Record<string, any>} */
+export let eggGot={};
+/** Gefundene Schätze je Schlüssel. @type {Record<string, any>} */
+export let lootGot={};
+/** Gefundene Kugeln je Schlüssel. @type {Record<string, any>} */
+export let orbGot={};
+
+// Setter: Ein importierter Name kann nicht zugewiesen werden. Nur die Fassade ruft sie auf.
+/** @param {any[]} v */ export function setBIO(v){ BIO=v; }
+/** @param {any[]} v */ export function setSTR(v){ STR=v; }
+/** @param {any[]} v */ export function setCRE(v){ CRE=v; }
+/** @param {any[]} v */ export function setPICKS(v){ PICKS=v; }
+/** @param {any[]} v */ export function setPADS(v){ PADS=v; }
+/** @param {any[]} v */ export function setDECO(v){ DECO=v; }
+/** @param {any[]} v */ export function setEGGS(v){ EGGS=v; }
+/** @param {any[]} v */ export function setLOOT(v){ LOOT=v; }
+/** @param {any[]} v */ export function setDROPS(v){ DROPS=v; }
+/** @param {number} v */ export function setStI(v){ stI=v; }
+/** @param {number} v */ export function setNT0(v){ NT0=v; }
+/** @param {number} v */ export function setNC0(v){ NC0=v; }
+/** @param {Record<string, any>} v */ export function setSeen(v){ seen=v; }
+/** @param {Record<string, any>} v */ export function setEggGot(v){ eggGot=v; }
+/** @param {Record<string, any>} v */ export function setLootGot(v){ lootGot=v; }
+/** @param {Record<string, any>} v */ export function setOrbGot(v){ orbGot=v; }
