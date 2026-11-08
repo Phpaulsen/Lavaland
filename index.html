@@ -3826,8 +3826,11 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       types[k] = types[j];
       types[j] = q;
     }
+    const pzs = types.filter(function(t) {
+      return t !== "echo" && t !== "sudoku";
+    });
     const nt = function() {
-      return types[ti++ % 7];
+      return pzs[ti++ % 5];
     };
     const room = (
       /** @param {any} x @param {any} y @param {any} rx @param {any} ry @param {any} hw */
@@ -3862,7 +3865,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     WD.MACH.push({ id: "h0", t: "muster", x: 1330, y: NaN, sf: 1, zb: 0 }, { id: "h1", t: "robo", x: 4280, y: NaN, sf: 1, zb: 0 }, { id: "h2", t: "spiegel", x: 8590, y: NaN, sf: 1, zb: 0 }, { id: "n0", t: "stern", x: 7010, y: NaN, sf: 1, zb: 0 });
     let ti2 = 0;
-    for (const b of WD.BIO) if (b.t !== 12) WD.MACH.push({ id: "b" + b.i, t: b.i < WD.OLD_N ? nt() : types[ti2++ % 7], x: b.t === 7 ? b.px - 12 : b.t === 10 ? b.x0 + 330 : b.qx + 150, y: NaN, sf: 1, zb: b.i < 4 ? 0 : 1 });
+    for (const b of WD.BIO) if (b.t !== 12) WD.MACH.push({ id: "b" + b.i, t: b.i < WD.OLD_N ? nt() : pzs[ti2++ % 5], x: b.t === 7 ? b.px - 12 : b.t === 10 ? b.x0 + 330 : b.qx + 150, y: NaN, sf: 1, zb: b.i < 4 ? 0 : 1 });
     for (let k = 1; k <= 6; k++) WD.ZN[k].y = room(LIFTX, TOP + WD.ZN[k].row * CELL, 124, 48, 0);
     dm(LIFTX + 300, WD.ZN[1].row, 0, 90);
     dm(LIFTX + 300, WD.ZN[2].row, 1, 90);
@@ -3975,7 +3978,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     const xr = function() {
       return X0 + r() * XW;
     };
-    const types = ["muster", "spiegel", "robo", "waage", "echo", "rohre", "sudoku"];
+    const types = ["muster", "spiegel", "robo", "waage", "rohre"];
     let di = 100, ti = Math.floor(r() * 7);
     const room = (
       /** @param {any} x @param {any} y @param {any} rx @param {any} ry */
@@ -3993,7 +3996,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     for (let n = 0; n < 4; n++) mat("fp", xr(), n % 2 ? yr(SEA_L + 3, SEA_B - 6) : yr(ZA[3] + 4, ZB[3]));
     for (let z = 0; z < 4; z++) {
       const a = ZA[z], b = ZB[z], x = xr();
-      WD.MACH.push({ id: "d" + di++, t: types[ti++ % 7], x, y: room(x, a + 24 + r() * (b - a - 48), 92, 44), zb: ZBN[z] });
+      WD.MACH.push({ id: "d" + di++, t: types[ti++ % 5], x, y: room(x, a + 24 + r() * (b - a - 48), 92, 44), zb: ZBN[z] });
     }
     for (let n = 0; n < 8; n++) {
       const x = xr(), y = room(x, yr(ZA[0] + 12, ZB[0] - 12), 54 + r() * 30, 34), h = 34 + r() * 40;
@@ -6348,7 +6351,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (quest && quest.type === "dig" && !quest.done) quest.p++;
       if (++digN % 60 === 0) addXp(1);
       if (m === GOLD || m === GEM) {
-        const got = 1 + (Math.random() < hero.up.luck * 0.34 ? 1 : 0);
+        const got = 1;
         if (m === GOLD) {
           ST.gold += got;
           popG += got;
@@ -8179,7 +8182,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       { id: "motor", e: "🏎️", kind: "up", name: "Motor", say: "alles fährt schneller" },
       { id: "jet", e: "💨", kind: "up", name: "Düse", say: "du fliegst schneller" },
       { id: "compass", e: "🧭", kind: "up", name: "Kompass", say: "ein blauer Pfeil zeigt zum nächsten Fund" },
-      { id: "luck", e: "🍀", kind: "up", name: "Glück", say: "du bekommst öfter doppelt Gold und Edelsteine" },
       { id: "heat", e: "🛡️", kind: "up", name: "Schutz", say: ["Feuer tut dir nichts mehr", "Lava tut dir nichts mehr", "der Erdkern tut dir nichts mehr"] },
       { id: "tnt", e: "💣", kind: "use", name: "3 Bomben", g: 8, m: 0, lv: 1, say: "zum Sprengen. Sie liegen bei den Werkzeugen" },
       { id: "carousel", e: "🎠", kind: "prop", name: "Karussell", g: 60, m: 0, lv: 2, say: "es steht jetzt da, wo du stehst" },
@@ -14256,7 +14258,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
       $("lab-rcp").innerHTML = h;
       h = "";
-      for (const p of PZT) {
+      for (const p of PZON) {
         const l = hero.pz[p.id] | 0;
         h += '<button data-pzt="' + p.id + '" aria-label="' + p.n + ": Stufe " + (l + 1) + ' von 10"><span aria-hidden="true">' + p.e + '</span><i><b style="width:' + (l + 1) * 10 + '%"></b></i></button>';
       }
@@ -14891,6 +14893,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     ];
     const PZI = {};
     for (const p of PZT) PZI[p.id] = p;
+    const PZON = PZT.filter(function(p) {
+      return p.id !== "echo" && p.id !== "sudoku";
+    });
     let pzc = null, pzTm = [];
     function pzLater(ms, fn) {
       const c = pzc;
@@ -15065,7 +15070,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       LOG.qSwitch();
       $("quiz").hidden = true;
       ST.paused = false;
-      pzOpen({ id: "quiz", t: PZT[(hero.pzn | 0) % PZT.length].id, zb: 0, quiz: true });
+      pzOpen({ id: "quiz", t: PZON[(hero.pzn | 0) % PZON.length].id, zb: 0, quiz: true });
     });
     function tkHtml(t) {
       return t.n !== void 0 ? '<span class="pzn">' + t.n + "</span>" : tok(t.s, t.c);
@@ -16123,7 +16128,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       $("quiz").hidden = false;
       LOG.qOpen();
       nextQ();
-      $("quiz-pz").textContent = PZT[(hero.pzn | 0) % PZT.length].e;
+      $("quiz-pz").textContent = PZON[(hero.pzn | 0) % PZON.length].e;
       $("quiz-pz").classList.toggle("near", (hero.pzn | 0) < 3);
     }
     function closeQuiz() {

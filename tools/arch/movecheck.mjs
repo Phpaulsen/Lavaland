@@ -18,6 +18,7 @@
 //                                             (Körper gleich, mit params/world wie oben; PR 13, LOG → logWith(LP))
 //   changed  [...]                            Name bleibt, Inhalt ändert sich bewusst (z. B. Einzeiler, der an core/ weitergibt)
 //   added, removed [...]                      neue bzw. gelöschte Namen
+//   stmtsChanged N                            so viele Anweisungen ohne Namen ändern sich bewusst (nur verhaltensändernde PRs)
 // Gestapelte PRs (jeder zielt auf main und enthält den vorigen): moves.json ist dann { "stack": [ {pr:11, …}, {pr:12, …} ] }.
 //   Verglichen wird gegen main mit allen Schritten, deren pr größer ist als der höchste in der moves.json von main (schon gemergte fallen weg).
 // Verglichen wird der AST ohne Positionen und ohne Schreibweise von Literalen. Anweisungen auf oberster Ebene, die nichts deklarieren
@@ -150,6 +151,7 @@ export function mergeSteps(moves, done = -Infinity) {
   for (const s of steps) for (const [k, v] of Object.entries(s)) {
     if (k === 'pr') continue;
     if (Array.isArray(v)) out[k] = [...new Set([...(out[k] || []), ...v])];
+    else if (typeof v === 'number') out[k] = (out[k] || 0) + v; // stmtsChanged addiert sich über den Stapel
     else if (k === 'world') {
       const list = [].concat(out.world || []);
       for (const w of [].concat(v)) {
@@ -214,7 +216,13 @@ export function compare(base, head, moves) {
   }
   for (const [n, h] of H.decl) if (!B.decl.has(n) && !(n in renames)) { if (added.has(n)) rep.added.push(`${n} (${h.file})`); else err.push(`${n} (${h.file}) ist neu und steht nicht unter added`); }
   const ms = s => s.map(x => norm(transform(x.node, moves))).sort(), hs = H.stmts.map(x => norm(x.node)).sort(), bs = ms(B.stmts);
-  if (bs.join('\n') !== hs.join('\n')) err.push(`Anweisungen auf oberster Ebene verschieden (${bs.length} vorher, ${hs.length} nachher)`);
+  if (bs.join('\n') !== hs.join('\n')) {
+    // stmtsChanged: so viele Anweisungen ohne Namen (Handler, try-Blöcke) dürfen sich ändern, nur in verhaltensändernden PRs (Streich-PRs).
+    const left = [...hs], gone = bs.filter(x => { const i = left.indexOf(x); if (i < 0) return true; left.splice(i, 1); return false; });
+    const n = moves.stmtsChanged || 0;
+    if (gone.length === n && left.length === n && n) rep.changed.push(`${n} Anweisung(en) auf oberster Ebene`);
+    else err.push(`Anweisungen auf oberster Ebene verschieden (${bs.length} vorher, ${hs.length} nachher, ${gone.length} anders, erlaubt ${n})`);
+  }
   return { err, rep };
 }
 
@@ -282,6 +290,8 @@ function selftest() {
     ['Fassade mit Eigentümer', { 'legacy.js': L('let m=false;\nfunction t(){return m}\nfunction u(){m=true}') },
       { 'legacy.js': L('function u(){AU.m=true}'), 'audio/s.js': 'export let m=false;\nexport const AU={get m(){return m},set m(v){m=v}};\nexport function t(){return m}' },
       { facade: [{ name: 'AU', names: ['m'], own: 'audio/s.js' }], added: ['AU'] }, 0],
+    ['Handler bewusst geändert', { 'legacy.js': L('let a=1;\nf(a);') }, { 'legacy.js': L('let a=1;\nf(a+1);') }, { stmtsChanged: 1 }, 0],
+    ['Handler geändert, nicht angegeben', { 'legacy.js': L('let a=1;\nf(a);') }, { 'legacy.js': L('let a=1;\nf(a+1);') }, {}, 1],
     ['changed, aber gleich', { 'legacy.js': L('function a(){}') }, { 'legacy.js': L('function a(){}') }, { changed: ['a'] }, 1],
   ];
   const st = { stack: [{ pr: 11, renames: { a: 'b' }, added: ['x'], changed: ['c'] }, { pr: 12, renames: { d: 'e' }, changed: ['x', 'f'] }] };
