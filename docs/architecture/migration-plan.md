@@ -240,6 +240,8 @@ Je PR: `tick` und `draw(ctx, layer)` ins System, Zeichenaufruf in `draw()` an de
 
 **Umgesetzt PR 18:** `systems/mobs.js` (Pfeile, Zielscheiben, Höhlenmonster) mit Port `MP`, Ebene `mob` nach `mid`, Monsteraugen auf `glow`. `shoot` und `monStrike` bleiben als Einzeiler in `legacy.js`. **Tiere** (`creTick`, `drawCres`) sind keine eigenen `SIDE`-Einträge, sondern laufen in `worldTick` und im Weltzeichnen; sie ziehen darum mit `worldTick` in PR 19 um. Bildvergleich um eine vierte Szene ergänzt (Zielscheiben, Pfeile, Monster).
 
+**Umgesetzt PR 19a (Abweichung: PR 19 geteilt):** PR 19 wäre mit Tieren, Fundsachen, U-Boot und `worldTick` zu groß für einen prüfbaren Umzug. 19a bringt nur die Tiere (`creInit`, `hatch`, `creHit`, `creTick`, `drawCres`, dazu `throws` und `trexT`) nach `systems/creatures.js` mit Port `CR`. Sie bleiben ohne eigenen `SIDE`-Eintrag; `creTick`, `drawCres` und `creHit` stehen als Einzeiler in `legacy.js`, weil `worldTick`, `draw` und das Antippen sie aufrufen. `shake` schreibt das Tier über einen Setter im Port. Bildvergleich um eine fünfte Szene ergänzt (Tiere mit Banane). 19b: Fundsachen, U-Boot, `worldTick`.
+
 ### PR 22–23: Rendering
 
 - **22:** Paletten, Hintergrund, Stimmung, Flora, Deko (`S35`, `S36`, `S44`) → `render/`.

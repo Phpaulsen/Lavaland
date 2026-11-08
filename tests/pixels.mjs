@@ -1,4 +1,4 @@
-// Bildvergleich (Migrationsplan PR 17, Pfeile und Monster seit PR 18): Feste Szenen werden mit dem Stand von main (OLD) und dem neuen Testbuild gezeichnet.
+// Bildvergleich (Migrationsplan PR 17, Pfeile und Monster seit PR 18, Tiere seit PR 19a): Feste Szenen werden mit dem Stand von main (OLD) und dem neuen Testbuild gezeichnet.
 // Die Bilder müssen Pixel für Pixel gleich sein. So fällt auf, wenn ein Umzug die Zeichenreihenfolge ändert.
 // Kein fester Hash im Repo: Pixel hängen von der Chromium-Version ab. Verglichen wird im selben Browser.
 // Aufruf: OLD=/pfad/zur/alten/index.html node tests/pixels.mjs   (im CI wie beim Update-Test aus origin/main)
@@ -38,6 +38,13 @@ const SCENES = [
     set: `P.x=1790; P.y=ground(P.x)-2; time=3; nightA=.6;
       ARROWS.push({x:1700,y:ground(1700)-60,vx:500,vy:-120,t:.3,stuck:0},{x:1880,y:ground(1880)-30,vx:-300,vy:200,t:1,stuck:.5});
       MONS.push({x:1720,y:ground(1720),vx:0,vy:0,on:true,hp:2,lv:0,t:1,face:1,sq:0,hit:0},{x:1860,y:ground(1860)-20,vx:0,vy:0,on:false,hp:3,lv:2,t:1,face:-1,sq:.5,hit:.1})` },
+  { name: 'Tiere mit Banane', go: 'teleport(1300)',
+    set: `P.x=1300; P.y=ground(P.x)-2; time=4; nightA=0; discoT=0; throws.length=0;
+      ST.CRE.push({ok:true,e:'🐄',x:1210,y:ground(1210),sz:34,k:'walk',fl:'cow',t:0,hop:0,dir:1,ph:0,idle:0},
+        {ok:true,e:'🐇',x:1260,y:ground(1260),sz:22,k:'hop',fl:'',t:1.3,hop:0,dir:-1,ph:.5,idle:0},
+        {ok:true,e:'🐔',x:1350,y:ground(1350),sz:20,k:'walk',fl:'hen',t:2,hop:.2,dir:-1,ph:1,idle:0},
+        {ok:true,e:'👻',x:1400,y:ground(1400)-90,sz:28,k:'fly',fl:'ghost',t:3,hop:0,dir:1,ph:2,shy:true});
+      throws.push({e:'🍌',x:1320,y:ground(1320)-70,vx:0,vy:0})` },
 ];
 
 async function shoot(browser, url) {
