@@ -1,5 +1,5 @@
-// Spielzustand, Teil 1 (PR 14a): Held, Gold, Edelsteine und die Merker fürs Speichern. Bewegt aus legacy.js.
-// hero wird nie neu zugewiesen, nur verändert: legacy.js importiert ihn direkt (Live-Binding), ohne Fassade.
+// Spielzustand (PR 14a/b): Held, Gold, Edelsteine, Merker fürs Speichern; Spielfigur P, geparkte Fahrzeuge, Kamera, Verschieben, Tasten. Bewegt aus legacy.js.
+// hero, P, parked, cam, pan und keys werden nie neu zugewiesen, nur verändert: legacy.js importiert sie direkt (Live-Binding), ohne Fassade.
 // gold, gems, lootDirty und heroDirty werden neu zugewiesen: legacy.js schreibt sie als ST.x, die Fassade ruft die Setter.
 
 /** @type {any} */
@@ -10,3 +10,9 @@ export let gold=0, gems=0, lootDirty=false, heroDirty=false;
 /** @param {number} v */ export function setGems(v){ gems=v; }
 /** @param {boolean} v */ export function setLootDirty(v){ lootDirty=v; }
 /** @param {boolean} v */ export function setHeroDirty(v){ heroDirty=v; }
+
+/* Spielfigur, geparkte Fahrzeuge, Kamera, Verschieben der Ansicht, gedrückte Tasten (PR 14b) */
+export const P={mode:'walk',x:820,y:0,vx:0,vy:0,on:true,landed:false,gs:0,face:1,chute:false,air:0,run:0,ang:0,turbo:0,soot:0,hurt:0,track:null,s:0,v:0,arm:.75,load:0,digT:0,climb:0,lift:0,da:0,bed:0,ball:0,spin:0,rot:0,frost:0,jet:false,back:false,balT:0,wall:false,zip:null,swing:0,aim:0};
+export const parked={car:null,plane:null,rocket:null,bagger:null,loader:null,dumper:null,tbm:null,sub:null,balloon:null,heli:null,boat:null,bug:null};
+export const cam={x:820,y:-60}, pan={x:0,y:0};
+export const keys={l:false,r:false,u:false,d:false,a:false};
