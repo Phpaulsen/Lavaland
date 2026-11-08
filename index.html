@@ -1846,6 +1846,50 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
   function setTalkLock(v) {
     talkLock = v;
   }
+  var energy = 0;
+  var found = {};
+  var hidden = (
+    /** @type {any[]} */
+    []
+  );
+  var props = (
+    /** @type {any[]} */
+    []
+  );
+  var tracks = (
+    /** @type {any[]} */
+    []
+  );
+  var zips = (
+    /** @type {any[]} */
+    []
+  );
+  var matGot = {};
+  var pzGot = {};
+  function setEnergy(v) {
+    energy = v;
+  }
+  function setFound(v) {
+    found = v;
+  }
+  function setHidden(v) {
+    hidden = v;
+  }
+  function setProps(v) {
+    props = v;
+  }
+  function setTracks(v) {
+    tracks = v;
+  }
+  function setZips(v) {
+    zips = v;
+  }
+  function setMatGot(v) {
+    matGot = v;
+  }
+  function setPzGot(v) {
+    pzGot = v;
+  }
 
   // src/state/facade.js
   var ST = {
@@ -2022,6 +2066,54 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     },
     set talkLock(v) {
       setTalkLock(v);
+    },
+    get energy() {
+      return energy;
+    },
+    set energy(v) {
+      setEnergy(v);
+    },
+    get found() {
+      return found;
+    },
+    set found(v) {
+      setFound(v);
+    },
+    get hidden() {
+      return hidden;
+    },
+    set hidden(v) {
+      setHidden(v);
+    },
+    get props() {
+      return props;
+    },
+    set props(v) {
+      setProps(v);
+    },
+    get tracks() {
+      return tracks;
+    },
+    set tracks(v) {
+      setTracks(v);
+    },
+    get zips() {
+      return zips;
+    },
+    set zips(v) {
+      setZips(v);
+    },
+    get matGot() {
+      return matGot;
+    },
+    set matGot(v) {
+      setMatGot(v);
+    },
+    get pzGot() {
+      return pzGot;
+    },
+    set pzGot(v) {
+      setPzGot(v);
     }
   };
 
@@ -4784,7 +4876,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         return realm;
       },
       get tracks() {
-        return tracks;
+        return ST.tracks;
       },
       get BUILD() {
         return BUILD;
@@ -5014,9 +5106,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         if (o && o.x > SL0 && o.x < BEND && o.y > msurf(o.x)) o.y = msurf(o.x);
       };
       for (const k in parked) up(parked[k]);
-      props.forEach(up);
+      ST.props.forEach(up);
       if (P.x > SL0 && P.y > msurf(P.x) && P.y < rawH(P.x) + 8) P.y = msurf(P.x) - 2;
-      for (const h of hidden) {
+      for (const h of ST.hidden) {
         if (h.got || h.x < SL0) continue;
         if (h.tree >= 0 && trees[h.tree]) {
           const t = trees[h.tree];
@@ -5402,7 +5494,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     ST.NC0 = clouds.length;
     for (const t of trees) HOME_T.push(Object.assign({}, t));
     for (const c of clouds) HOME_C.push(Object.assign({}, c));
-    let tracks = [], zips = [];
     function makeTrack(raw, user) {
       return makeTrackWith(WD, raw, user);
     }
@@ -5473,7 +5564,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       return P.y < -1700 ? G * 0.3 : G;
     }
     let ghost = null, chest = null;
-    let time = 0, volT = 3, stroke = null, strokeId = null, strokeExt = null, energy = 0;
+    let time = 0, volT = 3, stroke = null, strokeId = null, strokeExt = null;
     function park() {
       return { x: P.x, y: P.y, vy: P.vy, ang: P.mode === "rocket" ? 0 : P.ang, face: P.face, arm: P.arm, lift: P.lift, da: P.da, load: P.load };
     }
@@ -5491,14 +5582,14 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function setMode(m) {
       if (m === P.mode && m !== "coaster") return;
       if (m === "coaster") {
-        if (!tracks.length) {
+        if (!ST.tracks.length) {
           setTool("track", true);
           pulse("tool-track");
           return;
         }
         leaveVehicle();
-        let best = tracks[0], bd = 1e12;
-        for (const T of tracks) {
+        let best = ST.tracks[0], bd = 1e12;
+        for (const T of ST.tracks) {
           const d = Math.abs(T.pts[0][0] - P.x) + Math.abs(T.pts[0][1] - P.y) - (T.user ? 4e3 : 0);
           if (d < bd) {
             bd = d;
@@ -6322,17 +6413,17 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
           lifeS(y * GX + x, 0);
         }
       }
-      props = props.filter(function(o) {
+      ST.props = ST.props.filter(function(o) {
         return Math.abs(o.x - wx) > 30 || wy > o.y + 10 || wy < o.y - 110;
       });
-      for (let k = tracks.length - 1; k >= 0; k--) {
-        const T = tracks[k];
+      for (let k = ST.tracks.length - 1; k >= 0; k--) {
+        const T = ST.tracks[k];
         if (wx < T.minX - 20 || wx > T.maxX + 20) continue;
         for (let i = 0; i < T.pts.length; i += 2) {
           const p = T.pts[i];
           if (Math.abs(p[0] - wx) < 18 && Math.abs(p[1] - wy) < 18) {
             if (P.mode === "coaster" && P.track === T) setMode("walk");
-            tracks.splice(k, 1);
+            ST.tracks.splice(k, 1);
             break;
           }
         }
@@ -6432,7 +6523,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         strokeId = e.pointerId;
         strokeExt = null;
         stroke = [w];
-        for (const T of tracks) {
+        for (const T of ST.tracks) {
           const a = T.pts[0], b = T.pts[T.pts.length - 1];
           if (Math.hypot(w[0] - b[0], w[1] - b[1]) < 46) {
             strokeExt = { T, end: true };
@@ -6465,7 +6556,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
       pointers.delete(e.pointerId);
       if (e.pointerId === strokeId) {
-        const ex = strokeExt, k = ex ? tracks.indexOf(ex.T) : -1;
+        const ex = strokeExt, k = ex ? ST.tracks.indexOf(ex.T) : -1;
         if (ex && k >= 0) {
           if (stroke && stroke.length > 2) {
             const add = stroke.slice(1);
@@ -6477,15 +6568,15 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
                 if (!ex.end) P.s += N2.len - ex.T.len;
                 P.track = N2;
               }
-              tracks[k] = N2;
+              ST.tracks[k] = N2;
               pulse("mode-coaster");
             }
           }
         } else {
           const T = makeTrack(stroke, true);
           if (T) {
-            tracks.push(T);
-            if (tracks.length > 12) tracks.shift();
+            ST.tracks.push(T);
+            if (ST.tracks.length > 12) ST.tracks.shift();
             pulse("mode-coaster");
           } else if (stroke && stroke.length > 1) pulse("tool-track");
         }
@@ -6970,7 +7061,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
       if (id === "park") {
         let has = false;
-        for (const T of tracks) if (T.user && T.len >= 400) has = true;
+        for (const T of ST.tracks) if (T.user && T.len >= 400) has = true;
         if (has && !d.stage2) {
           d.stage2 = true;
           setChipTool("coaster");
@@ -7100,19 +7191,19 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       ["statue", "🗿", "eine Steinfigur", "edge"],
       ["gift", "🎁", "ein Geschenk", "edge"]
     ];
-    let found = {}, hidden = [], nearT = 0, saveT = 0, lootT = 0;
+    let nearT = 0, saveT = 0, lootT = 0;
     try {
       const o = JSON.parse(localStorage.getItem(K_FINDS) || "{}") || {};
-      found = o.ids || {};
+      ST.found = o.ids || {};
       ST.gold = o.gold | 0;
       ST.gems = o.gems | 0;
     } catch (_) {
-      found = {};
+      ST.found = {};
     }
     function saveFinds() {
       if (ST.frozen) return;
       try {
-        localStorage.setItem(K_FINDS, JSON.stringify({ ids: found, gold: ST.gold, gems: ST.gems }));
+        localStorage.setItem(K_FINDS, JSON.stringify({ ids: ST.found, gold: ST.gold, gems: ST.gems }));
       } catch (_) {
       }
     }
@@ -7210,18 +7301,18 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         order[j] = t;
       }
       order.sort(function(a, b) {
-        return (found[a[0]] ? 1 : 0) - (found[b[0]] ? 1 : 0);
+        return (ST.found[a[0]] ? 1 : 0) - (ST.found[b[0]] ? 1 : 0);
       });
-      hidden = [];
+      ST.hidden = [];
       for (const f of order) {
-        if (hidden.length >= 14) break;
+        if (ST.hidden.length >= 14) break;
         const q = placeFind(f[3], r);
         if (q && f[3] === "sky" && solidW(q[0], q[1])) q[1] = surfaceY(q[0]) - 22;
-        if (q) hidden.push({ id: f[0], e: f[1], name: f[2], zone: f[3], x: q[0], y: q[1], hint: !!q[2], tree: q[3] === void 0 ? -1 : q[3], got: false });
+        if (q) ST.hidden.push({ id: f[0], e: f[1], name: f[2], zone: f[3], x: q[0], y: q[1], hint: !!q[2], tree: q[3] === void 0 ? -1 : q[3], got: false });
       }
-      const first = hidden.find(function(h) {
+      const first = ST.hidden.find(function(h) {
         return h.zone === "shallow";
-      }) || hidden.find(function(h) {
+      }) || ST.hidden.find(function(h) {
         return h.zone === "deep";
       });
       if (first) {
@@ -7238,7 +7329,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     function collect(h) {
       h.got = true;
-      found[h.id] = 1;
+      ST.found[h.id] = 1;
       saveFinds();
       renderAlbum();
       confetti(h.x, h.y + 20);
@@ -7258,7 +7349,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       else if (P.mode === "loader") pts.push(scoop());
       else if (P.mode === "tbm") pts.push(drillHead());
       let best = 1e9, nf = null;
-      for (const h of hidden) {
+      for (const h of ST.hidden) {
         if (h.got) continue;
         let d = 1e9;
         for (const q of pts) d = Math.min(d, Math.hypot(q[0] - h.x, q[1] - h.y));
@@ -7270,7 +7361,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
       nearF = nf;
       nearD = best;
-      if (cellAt(P.x, P.y + 3) === CORE && !found.crystal) collect({ id: "crystal", e: "🔮", name: "den Kristall vom Erdkern", zone: "core", x: P.x, y: P.y - 30, tree: -1, got: false });
+      if (cellAt(P.x, P.y + 3) === CORE && !ST.found.crystal) collect({ id: "crystal", e: "🔮", name: "den Kristall vom Erdkern", zone: "core", x: P.x, y: P.y - 30, tree: -1, got: false });
       nearT -= dt;
       if (nearT <= 0) {
         nearT = 0.3;
@@ -7291,7 +7382,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function drawFinds(front, x0, x1, y0, y1) {
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      for (const h of hidden) {
+      for (const h of ST.hidden) {
         if (h.got || h.x < x0 - 40 || h.x > x1 + 40) continue;
         const behind = h.zone === "sky" || h.tree >= 0 && trees[h.tree].state === 0, vis = h.y > y0 - 40 && h.y < y1 + 40;
         if (!front) {
@@ -7325,7 +7416,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function renderAlbum() {
       let n = 0;
       $("album").innerHTML = FINDS.map(function(f) {
-        const g = !!found[f[0]];
+        const g = !!ST.found[f[0]];
         if (g) n++;
         return '<button class="' + (g ? "" : "q") + '" data-find="' + f[0] + '" aria-label="' + (g ? f[2] : "Noch nicht gefunden") + '">' + (g ? f[1] : "?") + "</button>";
       }).join("");
@@ -7354,25 +7445,25 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         snow: 1,
         seed: SEED,
         runs: g,
-        tracks: tracks.map(function(T) {
+        tracks: ST.tracks.map(function(T) {
           return { raw: T.raw, user: T.user, rb: !!T.rb };
         }),
-        zips,
+        zips: ST.zips,
         px: P.x,
         py: P.y,
         parked: pk,
         trees: trees.map(function(t) {
           return t.state === 1 ? 2 : t.state;
         }),
-        hidden,
-        energy,
-        props,
+        hidden: ST.hidden,
+        energy: ST.energy,
+        props: ST.props,
         seen: ST.seen,
         eggGot: ST.eggGot,
         lootGot: ST.lootGot,
         orbGot: ST.orbGot,
-        matGot,
-        pzGot
+        matGot: ST.matGot,
+        pzGot: ST.pzGot
       };
     }
     let packJob = null;
@@ -7490,23 +7581,23 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         t.state = (sv.trees && sv.trees[i]) | 0;
         t.t = 0;
       });
-      zips = Array.isArray(sv.zips) ? sv.zips.filter(zipOk).slice(-ZIPMAX) : [];
+      ST.zips = Array.isArray(sv.zips) ? sv.zips.filter(zipOk).slice(-ZIPMAX) : [];
       P.zip = null;
       MONS.length = 0;
       METS = [];
       MROCKS = [];
       FLIES = [];
       ARROWS.length = 0;
-      tracks = [];
+      ST.tracks = [];
       (sv.tracks || []).forEach(function(t) {
         const T = makeTrack(t.raw, t.user);
         if (T) {
           if (t.rb) T.rb = true;
-          tracks.push(T);
+          ST.tracks.push(T);
         }
       });
-      hidden = sv.hidden || [];
-      props = sv.props || [];
+      ST.hidden = sv.hidden || [];
+      ST.props = sv.props || [];
       bombs.length = 0;
       for (const k in parked) parked[k] = sv.parked && sv.parked[k] || null;
       heliLoad = "";
@@ -7530,7 +7621,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       deepRestore(sv);
       if (!sv.snow) migrateSnow();
       grow(Math.max(HOME_END * CELL, P.x + 3200));
-      energy = sv.energy || 0;
+      ST.energy = sv.energy || 0;
       cam.x = P.x;
       cam.y = P.y - 80;
       ST.tool = null;
@@ -7551,8 +7642,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       ST.eggGot = {};
       ST.lootGot = {};
       ST.orbGot = {};
-      matGot = {};
-      pzGot = {};
+      ST.matGot = {};
+      ST.pzGot = {};
       shapeWorld();
       planetGen();
       parts.length = 0;
@@ -7566,17 +7657,17 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         tr.state = 0;
         tr.t = 0;
       }
-      tracks = [];
-      zips = [];
+      ST.tracks = [];
+      ST.zips = [];
       P.zip = null;
       MONS.length = 0;
       METS = [];
       MROCKS = [];
       FLIES = [];
       ARROWS.length = 0;
-      props = [];
+      ST.props = [];
       bombs.length = 0;
-      hidden = [];
+      ST.hidden = [];
       guide = null;
       for (const k in parked) parked[k] = null;
       P.x = LANDX;
@@ -7587,7 +7678,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (ST.traveling || to === realm || to && !RLM[to]) return;
       ST.traveling = true;
       portalT = 0;
-      const from = realm, m = P.mode, en = energy, f = $("fade");
+      const from = realm, m = P.mode, en = ST.energy, f = $("fade");
       f.hidden = false;
       void f.offsetWidth;
       f.classList.add("on");
@@ -7625,12 +7716,12 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
               restore(sv0);
             } catch (_) {
             }
-            energy = en;
+            ST.energy = en;
             done();
             tone([170], "sawtooth");
             return;
           }
-          energy = en;
+          ST.energy = en;
           arrive(from, to, m);
           try {
             if (to) localStorage.setItem(K_REALM, to);
@@ -7751,7 +7842,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
     } catch (_) {
     }
-    let digN = 0, props = [], nearF = null, nearD = 1e9;
+    let digN = 0, nearF = null, nearD = 1e9;
     const bombs = [], pet = { x: 820, y: 0 };
     function saveHero() {
       if (ST.frozen) return;
@@ -7899,7 +7990,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         hero.own[id] = 1;
         hero.hat = id;
       } else {
-        props.push({ type: id, x: P.x, y: surfaceY(P.x) });
+        ST.props.push({ type: id, x: P.x, y: surfaceY(P.x) });
         $("market").hidden = true;
       }
       tone([523, 659, 784]);
@@ -8215,7 +8306,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (hero.dr >= 3) pool.push("core");
       if (nextLand()) pool.push("land", "land");
       if (eggLand()) pool.push("egg", "poke");
-      if (hidden.some(function(h) {
+      if (ST.hidden.some(function(h) {
         return !h.got;
       })) pool.push("find", "find");
       if (hero.tnt > 0) pool.push("bomb");
@@ -8240,7 +8331,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     function prepFind() {
       let h = null;
-      for (const q of hidden) if (!q.got && (q.zone === "shallow" || q.zone === "deep" || q.zone === "deeper" || q.zone === "hot")) {
+      for (const q of ST.hidden) if (!q.got && (q.zone === "shallow" || q.zone === "deep" || q.zone === "deeper" || q.zone === "hot")) {
         h = q;
         if (q.zone === "shallow") break;
       }
@@ -8341,7 +8432,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
       if (quest.type === "find") {
         let b = null, bd = 1e9;
-        for (const h of hidden) {
+        for (const h of ST.hidden) {
           if (h.got) continue;
           const d = Math.hypot(h.x - P.x, h.y - P.y) * (h.hint ? 1 : 3);
           if (d < bd) {
@@ -9416,12 +9507,12 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function addMan(x) {
       x = clamp(x, 60, WORLD_W - 60);
       let n = 0;
-      for (const o of props) if (o.type === "man") n++;
-      if (n >= 24) props.splice(props.findIndex(function(o) {
+      for (const o of ST.props) if (o.type === "man") n++;
+      if (n >= 24) ST.props.splice(ST.props.findIndex(function(o) {
         return o.type === "man";
       }), 1);
       const y = surfaceY(x);
-      props.push({ type: "man", x, y });
+      ST.props.push({ type: "man", x, y });
       puff(x, y - 24, 12);
       sfx("pop");
       shout(x, y - 72, "HALLO!");
@@ -9431,12 +9522,12 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       drawSnowman(o.x, o.y, 0.92, true, near ? Math.sin(time * 11) : 0, CONF[Math.floor(o.x) % 6], false);
     }
     function menTick() {
-      for (let i = props.length - 1; i >= 0; i--) {
-        const o = props[i];
+      for (let i = ST.props.length - 1; i >= 0; i--) {
+        const o = ST.props[i];
         if (o.type !== "man") continue;
         o.y = floorAt(o.x, o.y, 12);
         if (hotAt(o.x, o.y - 6) || hotAt(o.x - 9, o.y - 3) || hotAt(o.x + 9, o.y - 3) || hotAt(o.x, o.y + 4)) {
-          props.splice(i, 1);
+          ST.props.splice(i, 1);
           for (let k = 0; k < 8; k++) steam(Math.floor(o.x / CELL) + k % 3 - 1, Math.floor((o.y - TOP) / CELL) - (k >> 1));
           shout(o.x, o.y - 62, "OH NEIN!");
           spawn(8, o.x, o.y - 30, 0, -30, 1.6, 20, "🥕");
@@ -10833,7 +10924,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         return true;
       };
       for (const p of ST.PADS) if (Math.abs(p.x - P.x) < 60 && hit(p.x, p.y, p.w, p.pow, p)) return;
-      for (const o of props) if (o.type === "tramp" && hit(o.x, o.y - 12, 24, 650, o)) return;
+      for (const o of ST.props) if (o.type === "tramp" && hit(o.x, o.y - 12, 24, 650, o)) return;
     }
     function grant(w) {
       hero.own[w[2]] = 1;
@@ -11268,13 +11359,13 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         return;
       }
       const z = y0 <= y1 ? { a: [x0, y0], b: [x1, y1] } : { a: [x1, y1], b: [x0, y0] };
-      zips.push(z);
-      if (zips.length > ZIPMAX) zips.shift();
+      ST.zips.push(z);
+      if (ST.zips.length > ZIPMAX) ST.zips.shift();
       sfx("pop");
     }
     function zipNear() {
       if (P.mode !== "walk" || P.zip) return null;
-      for (const z of zips) {
+      for (const z of ST.zips) {
         const dx = P.x - z.a[0], dy = P.y - 46 - z.a[1];
         if (Math.abs(dx) < 44 && dy > -40 && dy < 140) return z;
       }
@@ -11304,7 +11395,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
     }
     function drawZips(x0, x1) {
-      for (const z of zips) {
+      for (const z of ST.zips) {
         if (Math.max(z.a[0], z.b[0]) < x0 - 40 || Math.min(z.a[0], z.b[0]) > x1 + 40) continue;
         for (const e of [z.a, z.b]) {
           const cx = Math.floor(e[0] / CELL), r0 = Math.floor((e[1] - TOP) / CELL);
@@ -13315,7 +13406,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         if (tx < c0 || tx > c1 || !fogHas(a, tx, ty)) return;
         g.fillText(e, (tx - c0 + 0.5) * S3, ty * S3 + S3 / 2 - 4);
       };
-      for (const m of MACH) if (!pzGot[m.id] && !m.gone && m.y === m.y) mark2(m.x, m.y - 20, "⚙️");
+      for (const m of MACH) if (!ST.pzGot[m.id] && !m.gone && m.y === m.y) mark2(m.x, m.y - 20, "⚙️");
       for (const v2 of VAULTS) if (doorShut(v2)) mark2(v2.x, v2.fy - 20, "🚪");
       for (const m of marks()) mark2(m[0], m[1] - 14, "🔆");
       if (!realm) mark2(WSX, ground(WSX) - 30, "🏠");
@@ -13445,7 +13536,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
     };
     const GEARK = ["dr", "rk", "lp"];
-    let MATS = [], MACH = [], ZDEC = [], SPACE = {}, matGot = {}, pzGot = {}, guide = null, klT = 0, klS = 0, klN = 0, labHi = false, dkA = 0, mhT = 0, liftBusy = false;
+    let MATS = [], MACH = [], ZDEC = [], SPACE = {}, guide = null, klT = 0, klS = 0, klN = 0, labHi = false, dkA = 0, mhT = 0, liftBusy = false;
     const dkc = document.createElement("canvas"), dkx = dkc.getContext("2d");
     function skyLim() {
       return SKYL[hero.rk | 0];
@@ -13538,8 +13629,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
     }
     function deepRestore(sv) {
-      matGot = sv.matGot || {};
-      pzGot = sv.pzGot || {};
+      ST.matGot = sv.matGot || {};
+      ST.pzGot = sv.pzGot || {};
       guide = null;
       dkA = 0;
       if (sv.v < 4) {
@@ -13567,13 +13658,13 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
             k++;
           }
         }
-        props = props.filter(function(o) {
+        ST.props = ST.props.filter(function(o) {
           return o.x < lim;
         });
-        tracks = tracks.filter(function(T) {
+        ST.tracks = ST.tracks.filter(function(T) {
           return T.maxX < lim;
         });
-        hidden = hidden.filter(function(h) {
+        ST.hidden = ST.hidden.filter(function(h) {
           return h.x < lim;
         });
       }
@@ -13581,7 +13672,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     function matFound(m) {
       const k = m.k, n = (hero.mat[k] | 0) + 1;
-      matGot[m.id] = 1;
+      ST.matGot[m.id] = 1;
       hero.mat[k] = n;
       ST.heroDirty = true;
       sfx("coin");
@@ -13714,7 +13805,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       else if (P.mode === "loader") pts.push(scoop());
       else if (P.mode === "tbm") pts.push(drillHead());
       for (const m of MATS) {
-        if (matGot[m.id] || Math.abs(m.x - P.x) > 260 || Math.abs(m.y - P.y) > 260) continue;
+        if (ST.matGot[m.id] || Math.abs(m.x - P.x) > 260 || Math.abs(m.y - P.y) > 260) continue;
         for (const q of pts) if (Math.hypot(q[0] - m.x, q[1] - m.y) < 30) {
           matFound(m);
           break;
@@ -13742,7 +13833,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       let b = null, bd = 1e12;
       const lim = (genF - 8) * CELL;
       for (const m of MACH) {
-        if (pzGot[m.id] || m.y !== m.y || m.x > lim) continue;
+        if (ST.pzGot[m.id] || m.y !== m.y || m.x > lim) continue;
         const d = Math.abs(m.x - P.x) + 2.5 * Math.abs(m.y - P.y);
         if (d < bd) {
           bd = d;
@@ -13824,7 +13915,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (realm) {
         let b2 = null, bd2 = 1e12;
         if (k !== "lab") for (const m of MATS) {
-          if (m.k !== k || matGot[m.id]) continue;
+          if (m.k !== k || ST.matGot[m.id]) continue;
           const d = Math.hypot(m.x - P.x, m.y - P.y);
           if (d < bd2) {
             bd2 = d;
@@ -13845,7 +13936,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
       let b = null, bd = 1e12;
       for (const m of MATS) {
-        if (m.k !== k || matGot[m.id]) continue;
+        if (m.k !== k || ST.matGot[m.id]) continue;
         const d = Math.hypot(m.x - P.x, m.y - P.y);
         if (d < bd) {
           bd = d;
@@ -14105,7 +14196,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       circle(x, y - 51, 3.6);
     }
     function drawMach(m) {
-      const x = m.x, y = m.y, done = !!pzGot[m.id], T = PZI[m.t], b = reduced ? 0 : 2.5 * Math.sin(time * 3 + x);
+      const x = m.x, y = m.y, done = !!ST.pzGot[m.id], T = PZI[m.t], b = reduced ? 0 : 2.5 * Math.sin(time * 3 + x);
       ctx.strokeStyle = INK;
       ctx.lineWidth = 2.5;
       ctx.lineCap = "round";
@@ -14325,7 +14416,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
       for (const m of MACH) if (m.y === m.y && m.x > x0 - 30 && m.x < x1 + 30 && m.y > y0 - 10 && m.y < y1 + 90) drawMach(m);
       for (const v of VAULTS) if (v.x - v.rx > x0 - 40 && v.x - v.rx < x1 + 40 && v.fy > y0 - 10 && v.fy < y1 + 70 && doorShut(v)) drawDoor(v);
-      for (const m of MATS) if (!matGot[m.id] && m.x > x0 - 20 && m.x < x1 + 20 && m.y > y0 - 20 && m.y < y1 + 20) drawMat(m);
+      for (const m of MATS) if (!ST.matGot[m.id] && m.x > x0 - 20 && m.x < x1 + 20 && m.y > y0 - 20 && m.y < y1 + 20) drawMat(m);
       for (const m of marks()) if (m[0] > x0 - 30 && m[0] < x1 + 30 && m[1] > y0 - 10 && m[1] < y1 + 40) drawMark(m[0], m[1]);
     }
     function darkAt(y) {
@@ -14358,7 +14449,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       };
       hole(P.x, P.y - 20, [135, 195, 275, 400][hero.lp | 0] + JAR.length * 32, 1);
       const vw = W / S + 200, vh = H / S + 200;
-      for (const m of MATS) if (!matGot[m.id] && Math.abs(m.x - cam.x) < vw && Math.abs(m.y - cam.y) < vh) hole(m.x, m.y, 46, 0.75);
+      for (const m of MATS) if (!ST.matGot[m.id] && Math.abs(m.x - cam.x) < vw && Math.abs(m.y - cam.y) < vh) hole(m.x, m.y, 46, 0.75);
       for (const m of MACH) if (m.y === m.y && Math.abs(m.x - cam.x) < vw && Math.abs(m.y - cam.y) < vh) hole(m.x, m.y - 30, 90, 0.9);
       for (const v of VAULTS) if (Math.abs(v.x - cam.x) < vw && Math.abs(v.y - cam.y) < vh) hole(v.x - v.rx - 8, v.fy - 28, 70, 0.85);
       for (const m of marks()) if (Math.abs(m[0] - cam.x) < vw && Math.abs(m[1] - cam.y) < vh) hole(m[0], m[1] - 14, 150, 0.9);
@@ -14575,7 +14666,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (c && c.m.quiz && !c.won) {
         const f = pending;
         pending = null;
-        if (energy > 0) {
+        if (ST.energy > 0) {
           if (f) f();
         } else {
           setTool(null, true);
@@ -14616,22 +14707,22 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       c.busy = true;
       pzClear();
       LOG.pWin(c);
-      const id = c.T.id, first = !c.m.quiz && !pzGot[c.m.id], clean = c.fails <= 1 && !c.hint, g = first ? 8 + 2 * c.lv : 3;
+      const id = c.T.id, first = !c.m.quiz && !ST.pzGot[c.m.id], clean = c.fails <= 1 && !c.hint, g = first ? 8 + 2 * c.lv : 3;
       tone([523, 659, 784, 1047]);
       if (clean) hero.pz[id] = Math.min(9, (hero.pz[id] | 0) + 1);
       else if (c.fails >= 5 || c.hint >= 2) hero.pz[id] = Math.max(0, (hero.pz[id] | 0) - 1);
       hero.pzn = (hero.pzn | 0) + 1;
       dayAdd("pz");
-      const segs = clean ? 5 : Math.max(1, 5 - c.fails - c.hint), full = segs >= 5 || energy >= MAXE;
+      const segs = clean ? 5 : Math.max(1, 5 - c.fails - c.hint), full = segs >= 5 || ST.energy >= MAXE;
       ST.gold += g;
       ST.lootDirty = true;
-      energy = Math.max(energy, segs * SEG);
+      ST.energy = Math.max(ST.energy, segs * SEG);
       battShown = -1;
       renderBatt();
       addXp(first ? 20 : 6);
       qEvent("pz", 1);
       if (first) {
-        pzGot[c.m.id] = 1;
+        ST.pzGot[c.m.id] = 1;
         hero.mat.zr = (hero.mat.zr | 0) + 1;
         hero.mk.zr = 1;
       }
@@ -15435,7 +15526,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     });
     $("album").addEventListener("click", function(e) {
       const b = e.target.closest("[data-find]");
-      if (b && found[b.dataset.find]) {
+      if (b && ST.found[b.dataset.find]) {
         const f = FINDS.find(function(q) {
           return q[0] === b.dataset.find;
         });
@@ -15776,18 +15867,18 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     const SEG = 75, MAXE = 5 * SEG;
     let qcur = null, pending = null, battShown = -1, battLow = false, warnS = 0;
     function renderBatt() {
-      const k = Math.ceil(energy / SEG * 8);
+      const k = Math.ceil(ST.energy / SEG * 8);
       if (k === battShown) return;
       battShown = k;
       for (const id of ["batt-cells", "quiz-cells"]) {
         const cells = $(id).children;
-        for (let i = 0; i < 5; i++) cells[i].firstChild.style.height = Math.round(clamp((energy - i * SEG) / SEG, 0, 1) * 100) + "%";
+        for (let i = 0; i < 5; i++) cells[i].firstChild.style.height = Math.round(clamp((ST.energy - i * SEG) / SEG, 0, 1) * 100) + "%";
       }
-      document.body.classList.toggle("locked", energy <= 0);
-      $("quiz-go").hidden = energy <= 0;
+      document.body.classList.toggle("locked", ST.energy <= 0);
+      $("quiz-go").hidden = ST.energy <= 0;
     }
     function need(fn) {
-      if (energy > 0) fn();
+      if (ST.energy > 0) fn();
       else openQuiz(fn);
     }
     function openQuiz(then) {
@@ -15810,7 +15901,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       speakStop();
       const f = pending;
       pending = null;
-      if (energy > 0) {
+      if (ST.energy > 0) {
         if (f) f();
       } else {
         if (!HANDT[ST.tool]) setTool(null, true);
@@ -15827,21 +15918,21 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     function drain(dt) {
       if (P.mode !== "walk" || ST.tool && !HANDT[ST.tool]) {
-        energy -= dt;
-        if (energy <= 0) {
-          energy = 0;
+        ST.energy -= dt;
+        if (ST.energy <= 0) {
+          ST.energy = 0;
           battLow = false;
           $("batt").classList.remove("low");
           renderBatt();
           openQuiz(null);
           return;
         }
-        if (energy < 6 && Math.ceil(energy) !== warnS) {
-          warnS = Math.ceil(energy);
+        if (ST.energy < 6 && Math.ceil(ST.energy) !== warnS) {
+          warnS = Math.ceil(ST.energy);
           blip(660, 660, 0.06, "square", 0.05);
         }
       }
-      const low = energy > 0 && energy < 12;
+      const low = ST.energy > 0 && ST.energy < 12;
       if (low !== battLow) {
         battLow = low;
         $("batt").classList.toggle("low", low);
@@ -16243,7 +16334,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         labBadge(false);
       }
       dayAdd("q");
-      energy = Math.min(MAXE, energy + SEG);
+      ST.energy = Math.min(MAXE, ST.energy + SEG);
       tone(how === "ok" ? [660, 880] : [520, 660]);
       addXp(how === "ok" ? 8 : 4);
       qEvent("quiz", 1);
@@ -16264,7 +16355,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
       setTimeout(function() {
         if ($("quiz").hidden || qcur !== q) return;
-        if (energy >= MAXE && !doorQ) closeQuiz();
+        if (ST.energy >= MAXE && !doorQ) closeQuiz();
         else nextQ();
       }, 800);
     }
@@ -17278,11 +17369,11 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (chest) drawChest();
       drawFinds(true, x0, x1, y0, y1);
       if (STALL_X > x0 - 50 && STALL_X < x1 + 50) drawStall();
-      for (const o2 of props) if (o2.x > x0 - 60 && o2.x < x1 + 60) drawProp(o2);
+      for (const o2 of ST.props) if (o2.x > x0 - 60 && o2.x < x1 + 60) drawProp(o2);
       drawWinter(x0, x1);
       drawWorldBack(x0, x1, y0, y1);
       drawDeep(x0, x1, y0, y1);
-      for (const T of tracks) {
+      for (const T of ST.tracks) {
         if (T.maxX < x0 || T.minX > x1) continue;
         if (T.rb) {
           ctx.lineWidth = 3.2;
@@ -17337,7 +17428,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       drawArrows();
       drawMons(false);
       if (ST.tool === "track") {
-        for (const T of tracks) {
+        for (const T of ST.tracks) {
           const a = T.pts[0], b = T.pts[T.pts.length - 1];
           knob(a[0], a[1], 8);
           knob(b[0], b[1], 11);
@@ -17618,8 +17709,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       ST.eggGot = {};
       ST.lootGot = {};
       ST.orbGot = {};
-      matGot = {};
-      pzGot = {};
+      ST.matGot = {};
+      ST.pzGot = {};
       shapeWorld();
       gen();
       parts.length = 0;
@@ -17633,11 +17724,11 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         tr.state = 0;
         tr.t = 0;
       }
-      tracks = [];
-      zips = [];
+      ST.tracks = [];
+      ST.zips = [];
       P.zip = null;
       const d = demoTrack();
-      if (d) tracks.push(d);
+      if (d) ST.tracks.push(d);
       if (MS.cur || Object.keys(MS.fl).length) {
         MS.cur = null;
         MS.fl = {};
@@ -17671,7 +17762,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       ST.tool = null;
       pan.x = 0;
       pan.y = 0;
-      props = [];
+      ST.props = [];
       bombs.length = 0;
       deepHome();
       hideFinds();
@@ -17681,7 +17772,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     const LP = {
       get energy() {
-        return energy;
+        return ST.energy;
       },
       get frozen() {
         return ST.frozen;
@@ -18699,7 +18790,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         }
         hudG = -1;
         hudLoot();
-        if (energy <= 0) pulse("batt");
+        if (ST.energy <= 0) pulse("batt");
         requestAnimationFrame(function(t) {
           last = t;
           requestAnimationFrame(frame);

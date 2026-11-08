@@ -30,3 +30,14 @@ export let ready=false, saving=false, frozen=false, diskLock=false, traveling=fa
 /** @param {any} v (setTool gibt es schon in legacy.js: Werkzeug wählen) */ export function setToolV(v){ tool=v; }
 /** @param {any} v */ export function setTask(v){ task=v; }
 /** @param {number} v */ export function setTalkLock(v){ talkLock=v; }
+
+/* Was der Spielstand außer Welt und Held enthält (PR 14d): Energie, Funde, versteckte Dinge, Bauteile, Bahnen, Seilrutschen, gesammeltes Material und Rätselfunde */
+export let energy=0, found={}, hidden=/** @type {any[]} */ ([]), props=/** @type {any[]} */ ([]), tracks=/** @type {any[]} */ ([]), zips=/** @type {any[]} */ ([]), matGot={}, pzGot={};
+/** @param {number} v */ export function setEnergy(v){ energy=v; }
+/** @param {any} v */ export function setFound(v){ found=v; }
+/** @param {any[]} v */ export function setHidden(v){ hidden=v; }
+/** @param {any[]} v */ export function setProps(v){ props=v; }
+/** @param {any[]} v */ export function setTracks(v){ tracks=v; }
+/** @param {any[]} v */ export function setZips(v){ zips=v; }
+/** @param {any} v */ export function setMatGot(v){ matGot=v; }
+/** @param {any} v */ export function setPzGot(v){ pzGot=v; }

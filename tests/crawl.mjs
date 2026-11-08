@@ -25,7 +25,7 @@ page.on('dialog', d => d.dismiss());
 const ev = s => page.evaluate(s => window.__ev(s), s);
 await page.goto(url);
 await page.waitForFunction(() => window.__ev && window.__ev('ST.ready'), null, { timeout: 20000 });
-await ev("localStorage.removeItem(ERRK); ST.gold=5000; ST.gems=50; for(const k in MAT) hero.mat[k]=20; energy=MAXE");
+await ev("localStorage.removeItem(ERRK); ST.gold=5000; ST.gems=50; for(const k in MAT) hero.mat[k]=20; ST.energy=MAXE");
 
 // Was nicht geklickt wird: Dateiauswahl, Teilen/Herunterladen, Löschen des Protokolls.
 const SKIP = '#imp,#exp,#par-del,#par-dl,#par-exp,#imp-yes';
@@ -78,10 +78,10 @@ try {
     await ev('pzClose()');
     if (errs.length) break;
   }
-  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; energy=MAXE");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; ST.energy=MAXE");
   // 2. Zufällig tippen.
   for (let i = 0; i < N && !errs.length; i++) {
-    if (i % 80 === 0) await ev("OVS.forEach(o=>o.hidden=true); pzClose(); ST.paused=false; energy=MAXE; ST.gold=Math.max(ST.gold,500)");
+    if (i % 80 === 0) await ev("OVS.forEach(o=>o.hidden=true); pzClose(); ST.paused=false; ST.energy=MAXE; ST.gold=Math.max(ST.gold,500)");
     if (i % 150 === 75) { mark('Elternansicht'); await ev("OVS.forEach(o=>o.hidden=true); parOpen()"); await page.waitForTimeout(800); }
     await step();
   }

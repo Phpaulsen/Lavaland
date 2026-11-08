@@ -59,7 +59,7 @@ const WD={
   get ZDEC(){ return ZDEC; }, set ZDEC(v){ ZDEC=v; },
   get genF(){ return genF; }, set genF(v){ genF=v; },
   get realm(){ return realm; },
-  get tracks(){ return tracks; },
+  get tracks(){ return ST.tracks; },
   get BUILD(){ return BUILD; },
   get HOME_C(){ return HOME_C; },
   get HOME_T(){ return HOME_T; },
@@ -230,9 +230,9 @@ function migrateSnow(){
   carveCave();
   const up=function(o){ if(o&&o.x>SL0&&o.x<BEND&&o.y>msurf(o.x)) o.y=msurf(o.x); };
   for(const k in parked) up(parked[k]);
-  props.forEach(up);
+  ST.props.forEach(up);
   if(P.x>SL0&&P.y>msurf(P.x)&&P.y<rawH(P.x)+8) P.y=msurf(P.x)-2;
-  for(const h of hidden){
+  for(const h of ST.hidden){
     if(h.got||h.x<SL0) continue;
     if(h.tree>=0&&trees[h.tree]){ const t=trees[h.tree]; h.y=t.gy-t.h-4; }
     else if(h.zone==='shallow'||h.zone==='edge') h.y-=rawH(h.x)-msurf(h.x);
@@ -500,7 +500,6 @@ for(const t of trees) HOME_T.push(Object.assign({},t));
 for(const c of clouds) HOME_C.push(Object.assign({},c));
 
 /* ---------- Schienen ---------- */
-let tracks=[], zips=[];
 function makeTrack(raw,user){ return makeTrackWith(WD,raw,user); }
 const Q={x:0,y:0,tx:1,ty:0};
 function trackAt(T,s){
@@ -547,7 +546,7 @@ function explode(x,y){
 /* ---------- Spielfigur ---------- */
 function grav(){ return P.y<-1700?G*.3:G; }
 let ghost=null, chest=null;
-let time=0, volT=3, stroke=null, strokeId=null, strokeExt=null, energy=0;
+let time=0, volT=3, stroke=null, strokeId=null, strokeExt=null;
 
 function park(){ return {x:P.x,y:P.y,vy:P.vy,ang:P.mode==='rocket'?0:P.ang,face:P.face,arm:P.arm,lift:P.lift,da:P.da,load:P.load}; }
 function leaveVehicle(){
@@ -561,10 +560,10 @@ function leaveVehicle(){
 function setMode(m){
   if(m===P.mode&&m!=='coaster') return;
   if(m==='coaster'){
-    if(!tracks.length){ setTool('track',true); pulse('tool-track'); return; }
+    if(!ST.tracks.length){ setTool('track',true); pulse('tool-track'); return; }
     leaveVehicle();
-    let best=tracks[0], bd=1e12;
-    for(const T of tracks){ const d=Math.abs(T.pts[0][0]-P.x)+Math.abs(T.pts[0][1]-P.y)-(T.user?4000:0); if(d<bd){bd=d;best=T;} }
+    let best=ST.tracks[0], bd=1e12;
+    for(const T of ST.tracks){ const d=Math.abs(T.pts[0][0]-P.x)+Math.abs(T.pts[0][1]-P.y)-(T.user?4000:0); if(d<bd){bd=d;best=T;} }
     P.track=best; P.s=0; P.v=130;
   }else{
     const jumped=(P.mode==='plane'||P.mode==='rocket'||P.mode==='dragon'||P.mode==='balloon')&&!P.on;
@@ -1064,15 +1063,15 @@ function erase(wx,wy){
     const m=grid[y*GX+x];
     if(m===LAVA||m===FIRE||m===WATER||m===ICE||m===WOOD||m===SNOW){ grid[y*GX+x]=0; lifeS(y*GX+x,0); }
   }
-  props=props.filter(function(o){ return Math.abs(o.x-wx)>30||wy>o.y+10||wy<o.y-110; });
-  for(let k=tracks.length-1;k>=0;k--){
-    const T=tracks[k];
+  ST.props=ST.props.filter(function(o){ return Math.abs(o.x-wx)>30||wy>o.y+10||wy<o.y-110; });
+  for(let k=ST.tracks.length-1;k>=0;k--){
+    const T=ST.tracks[k];
     if(wx<T.minX-20||wx>T.maxX+20) continue;
     for(let i=0;i<T.pts.length;i+=2){
       const p=T.pts[i];
       if(Math.abs(p[0]-wx)<18&&Math.abs(p[1]-wy)<18){
         if(P.mode==='coaster'&&P.track===T) setMode('walk');
-        tracks.splice(k,1); break;
+        ST.tracks.splice(k,1); break;
       }
     }
   }
@@ -1118,7 +1117,7 @@ cv.addEventListener('pointerdown',function(e){
   if(ST.tool==='track'&&strokeId===null){
     const w=toWorld(e.clientX,e.clientY);
     strokeId=e.pointerId; strokeExt=null; stroke=[w];
-    for(const T of tracks){
+    for(const T of ST.tracks){
       const a=T.pts[0], b=T.pts[T.pts.length-1];
       if(Math.hypot(w[0]-b[0],w[1]-b[1])<46){ strokeExt={T:T,end:true}; stroke=[[b[0],b[1]]]; break; }
       if(Math.hypot(w[0]-a[0],w[1]-a[1])<46){ strokeExt={T:T,end:false}; stroke=[[a[0],a[1]]]; break; }
@@ -1138,7 +1137,7 @@ function endPointer(e){
   if(pp&&pp.rs&&ST.tool==='rope'){ const w=toWorld(pp.x,pp.y); zipAdd(pp.rs[0],pp.rs[1],w[0],w[1]); }
   pointers.delete(e.pointerId);
   if(e.pointerId===strokeId){
-    const ex=strokeExt, k=ex?tracks.indexOf(ex.T):-1;
+    const ex=strokeExt, k=ex?ST.tracks.indexOf(ex.T):-1;
     if(ex&&k>=0){
       if(stroke&&stroke.length>2){
         const add=stroke.slice(1);
@@ -1147,12 +1146,12 @@ function endPointer(e){
         const N=makeTrack(raw,true);
         if(N){
           if(P.mode==='coaster'&&P.track===ex.T){ if(!ex.end) P.s+=N.len-ex.T.len; P.track=N; }
-          tracks[k]=N; pulse('mode-coaster');
+          ST.tracks[k]=N; pulse('mode-coaster');
         }
       }
     }else{
       const T=makeTrack(stroke,true);
-      if(T){ tracks.push(T); if(tracks.length>12) tracks.shift(); pulse('mode-coaster'); }
+      if(T){ ST.tracks.push(T); if(ST.tracks.length>12) ST.tracks.shift(); pulse('mode-coaster'); }
       else if(stroke&&stroke.length>1) pulse('tool-track');
     }
     stroke=null; strokeId=null; strokeExt=null;
@@ -1413,7 +1412,7 @@ function progress(){
     return n===0?1:Math.min(.95,1-n/d.max);
   }
   if(id==='park'){
-    let has=false; for(const T of tracks) if(T.user&&T.len>=400) has=true;
+    let has=false; for(const T of ST.tracks) if(T.user&&T.len>=400) has=true;
     if(has&&!d.stage2){ d.stage2=true; setChipTool('coaster'); pulse('mode-coaster'); speak(ST.task.def.say2); }
     return d.rode?1:(has?.5:0);
   }
@@ -1489,9 +1488,9 @@ const FINDS=[
   ['rainbow','🌈','einen Regenbogen','sky'],['unicorn','🦄','ein Einhorn','sky'],
   ['robot','🤖','einen Roboter','volcano'],['trophy','🏆','einen Pokal','house'],['statue','🗿','eine Steinfigur','edge'],['gift','🎁','ein Geschenk','edge']
 ];
-let found={}, hidden=[], nearT=0, saveT=0, lootT=0;
-try{ const o=JSON.parse(localStorage.getItem(K_FINDS)||'{}')||{}; found=o.ids||{}; ST.gold=o.gold|0; ST.gems=o.gems|0; }catch(_){ found={}; }
-function saveFinds(){ if(ST.frozen) return; try{ localStorage.setItem(K_FINDS,JSON.stringify({ids:found,gold:ST.gold,gems:ST.gems})); }catch(_){} }
+let nearT=0, saveT=0, lootT=0;
+try{ const o=JSON.parse(localStorage.getItem(K_FINDS)||'{}')||{}; ST.found=o.ids||{}; ST.gold=o.gold|0; ST.gems=o.gems|0; }catch(_){ ST.found={}; }
+function saveFinds(){ if(ST.frozen) return; try{ localStorage.setItem(K_FINDS,JSON.stringify({ids:ST.found,gold:ST.gold,gems:ST.gems})); }catch(_){} }
 function placeFind(zone,r){
   const anyX=function(){
     for(let k=0;k<40;k++){
@@ -1537,16 +1536,16 @@ function placeFind(zone,r){
 function hideFinds(){
   const r=rng(SEED*7+13), order=FINDS.slice();
   for(let i=order.length-1;i>0;i--){ const j=Math.floor(r()*(i+1)), t=order[i]; order[i]=order[j]; order[j]=t; }
-  order.sort(function(a,b){ return (found[a[0]]?1:0)-(found[b[0]]?1:0); });
-  hidden=[];
+  order.sort(function(a,b){ return (ST.found[a[0]]?1:0)-(ST.found[b[0]]?1:0); });
+  ST.hidden=[];
   for(const f of order){
-    if(hidden.length>=14) break;
+    if(ST.hidden.length>=14) break;
     const q=placeFind(f[3],r);
     if(q&&f[3]==='sky'&&solidW(q[0],q[1])) q[1]=surfaceY(q[0])-22;
-    if(q) hidden.push({id:f[0],e:f[1],name:f[2],zone:f[3],x:q[0],y:q[1],hint:!!q[2],tree:q[3]===undefined?-1:q[3],got:false});
+    if(q) ST.hidden.push({id:f[0],e:f[1],name:f[2],zone:f[3],x:q[0],y:q[1],hint:!!q[2],tree:q[3]===undefined?-1:q[3],got:false});
   }
   /* Ein Fund liegt immer glitzernd gleich neben dem Start, damit der erste Schatz sicher gelingt. */
-  const first=hidden.find(function(h){return h.zone==='shallow';})||hidden.find(function(h){return h.zone==='deep';});
+  const first=ST.hidden.find(function(h){return h.zone==='shallow';})||ST.hidden.find(function(h){return h.zone==='deep';});
   if(first){ first.zone='shallow'; first.x=772; first.y=ground(772)+58; first.hint=true; }
 }
 function findOpen(h){
@@ -1555,7 +1554,7 @@ function findOpen(h){
   return !solidW(h.x,h.y);
 }
 function collect(h){
-  h.got=true; found[h.id]=1; saveFinds(); renderAlbum();
+  h.got=true; ST.found[h.id]=1; saveFinds(); renderAlbum();
   confetti(h.x,h.y+20); jingle(); speak('Du hast '+h.name+' gefunden!');
   ST.gold+=15; ST.lootDirty=true; addXp(40); qEvent('find',1); sfx('pop');
   spawn(8,h.x,h.y,0,-46,2.4,30,h.e); pulse('btn-finds');
@@ -1564,7 +1563,7 @@ function findsTick(dt){
   const pts=[[P.x,P.y-18]];
   if(P.mode==='bagger') pts.push(bucket()); else if(P.mode==='loader') pts.push(scoop()); else if(P.mode==='tbm') pts.push(drillHead());
   let best=1e9, nf=null;
-  for(const h of hidden){
+  for(const h of ST.hidden){
     if(h.got) continue;
     let d=1e9;
     for(const q of pts) d=Math.min(d,Math.hypot(q[0]-h.x,q[1]-h.y));
@@ -1572,7 +1571,7 @@ function findsTick(dt){
     if(d<36&&(findOpen(h)||(h.tree>=0&&d<24))) collect(h);
   }
   nearF=nf; nearD=best;
-  if(cellAt(P.x,P.y+3)===CORE&&!found.crystal) collect({id:'crystal',e:'🔮',name:'den Kristall vom Erdkern',zone:'core',x:P.x,y:P.y-30,tree:-1,got:false});
+  if(cellAt(P.x,P.y+3)===CORE&&!ST.found.crystal) collect({id:'crystal',e:'🔮',name:'den Kristall vom Erdkern',zone:'core',x:P.x,y:P.y-30,tree:-1,got:false});
   nearT-=dt;
   if(nearT<=0){
     nearT=.3;
@@ -1582,7 +1581,7 @@ function findsTick(dt){
 function star4(x,y,r){ ctx.beginPath(); ctx.moveTo(x,y-r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.quadraticCurveTo(x,y,x,y+r); ctx.quadraticCurveTo(x,y,x-r,y); ctx.quadraticCurveTo(x,y,x,y-r); ctx.fill(); }
 function drawFinds(front,x0,x1,y0,y1){
   ctx.textAlign='center'; ctx.textBaseline='middle';
-  for(const h of hidden){
+  for(const h of ST.hidden){
     if(h.got||h.x<x0-40||h.x>x1+40) continue;
     const behind=h.zone==='sky'||(h.tree>=0&&trees[h.tree].state===0), vis=h.y>y0-40&&h.y<y1+40;
     if(!front){ if(behind&&vis){ ctx.font='26px serif'; ctx.fillStyle='#000'; ctx.fillText(h.e,h.x,h.y); } continue; }
@@ -1601,7 +1600,7 @@ function drawFinds(front,x0,x1,y0,y1){
 function renderAlbum(){
   let n=0;
   $('album').innerHTML=FINDS.map(function(f){
-    const g=!!found[f[0]]; if(g) n++;
+    const g=!!ST.found[f[0]]; if(g) n++;
     return '<button class="'+(g?'':'q')+'" data-find="'+f[0]+'" aria-label="'+(g?f[2]:'Noch nicht gefunden')+'">'+(g?f[1]:'?')+'</button>';
   }).join('');
   $('found').textContent=String(n); $('found').hidden=n===0; $('found-n').textContent=n+'/'+FINDS.length;
@@ -1616,8 +1615,8 @@ function snapshot(pre,pf){
   const pk={};
   for(const k in parked) pk[k]=parked[k]?Object.assign({},parked[k]):null;
   if(P.mode!=='walk'&&P.mode!=='coaster'&&P.mode!=='ski'&&P.mode!=='dragon') pk[P.mode]=park();
-  return {v:5,w:2,vt:1,rl:realm,gy:GY,f:F,snow:1,seed:SEED,runs:g,tracks:tracks.map(function(T){return {raw:T.raw,user:T.user,rb:!!T.rb};}),zips:zips,px:P.x,py:P.y,parked:pk,
-    trees:trees.map(function(t){return t.state===1?2:t.state;}),hidden:hidden,energy:energy,props:props,seen:ST.seen,eggGot:ST.eggGot,lootGot:ST.lootGot,orbGot:ST.orbGot,matGot:matGot,pzGot:pzGot};
+  return {v:5,w:2,vt:1,rl:realm,gy:GY,f:F,snow:1,seed:SEED,runs:g,tracks:ST.tracks.map(function(T){return {raw:T.raw,user:T.user,rb:!!T.rb};}),zips:ST.zips,px:P.x,py:P.y,parked:pk,
+    trees:trees.map(function(t){return t.state===1?2:t.state;}),hidden:ST.hidden,energy:ST.energy,props:ST.props,seen:ST.seen,eggGot:ST.eggGot,lootGot:ST.lootGot,orbGot:ST.orbGot,matGot:ST.matGot,pzGot:ST.pzGot};
 }
 /* Autospeichern in Häppchen: Das Packen der Welt dauert auf einem schwachen Handy bis zu einer halben Sekunde und ruckelt dann sichtbar. Darum packt das Autospeichern pro Bild nur so viele Spalten, wie in 4 ms passen. Jede Spalte ist für sich vollständig, der Stand bleibt also immer lesbar. Ändert sich während des Packens eine schon gepackte Spalte, kommt das beim nächsten Speichern mit. Beim Verlassen, Reisen und Antippen wird weiter sofort am Stück gespeichert. */
 let packJob=null;
@@ -1667,16 +1666,16 @@ function restore(sv){
   SEED=sv.seed; shapeWorld(); loadCells(sv); LIFE.clear(); stamp.fill(0);
   parts.length=0; ghost=null; chest=null; stroke=null; strokeId=null; ST.task=null; $('chip').hidden=true;
   trees.forEach(function(t,i){ t.state=(sv.trees&&sv.trees[i])|0; t.t=0; });
-  zips=Array.isArray(sv.zips)?sv.zips.filter(zipOk).slice(-ZIPMAX):[]; P.zip=null; MONS.length=0; METS=[]; MROCKS=[]; FLIES=[]; ARROWS.length=0;
-  tracks=[]; (sv.tracks||[]).forEach(function(t){ const T=makeTrack(t.raw,t.user); if(T){ if(t.rb) T.rb=true; tracks.push(T); } });
-  hidden=sv.hidden||[]; props=sv.props||[]; bombs.length=0;
+  ST.zips=Array.isArray(sv.zips)?sv.zips.filter(zipOk).slice(-ZIPMAX):[]; P.zip=null; MONS.length=0; METS=[]; MROCKS=[]; FLIES=[]; ARROWS.length=0;
+  ST.tracks=[]; (sv.tracks||[]).forEach(function(t){ const T=makeTrack(t.raw,t.user); if(T){ if(t.rb) T.rb=true; ST.tracks.push(T); } });
+  ST.hidden=sv.hidden||[]; ST.props=sv.props||[]; bombs.length=0;
   for(const k in parked) parked[k]=(sv.parked&&sv.parked[k])||null; heliLoad='';
   P.mode='walk'; P.x=sv.px; P.y=sv.py; P.vx=0; P.vy=0; P.on=false; P.face=1; P.chute=false; P.soot=0; P.hurt=0; P.turbo=0; P.track=null; P.load=0;
   P.ball=0; P.spin=0; P.rot=0; P.frost=0;
   deepRestore(sv);
   if(!sv.snow) migrateSnow();
   grow(Math.max(HOME_END*CELL,P.x+3200));
-  energy=sv.energy||0; cam.x=P.x; cam.y=P.y-80; ST.tool=null; pan.x=0; pan.y=0;
+  ST.energy=sv.energy||0; cam.x=P.x; cam.y=P.y-80; ST.tool=null; pan.x=0; pan.y=0;
   scanMobile();
 }
 function newSeed(){ return 1+Math.floor(Math.random()*999983); }
@@ -1685,11 +1684,11 @@ function newSeed(){ return 1+Math.floor(Math.random()*999983); }
 let portalT=0, portalOff='', exitHint=false, portO=null;
 function orbsOf(id){ const R=RLM[id]; return R.orb?[R.orb()]:R.orbs(); }
 function newRealm(){
-  ST.seen={}; ST.eggGot={}; ST.lootGot={}; ST.orbGot={}; matGot={}; pzGot={};
+  ST.seen={}; ST.eggGot={}; ST.lootGot={}; ST.orbGot={}; ST.matGot={}; ST.pzGot={};
   shapeWorld(); planetGen();
   parts.length=0; ghost=null; chest=null; stroke=null; strokeId=null; ST.task=null; $('chip').hidden=true;
   for(const tr of trees){ tr.state=0; tr.t=0; }
-  tracks=[]; zips=[]; P.zip=null; MONS.length=0; METS=[]; MROCKS=[]; FLIES=[]; ARROWS.length=0; props=[]; bombs.length=0; hidden=[]; guide=null;
+  ST.tracks=[]; ST.zips=[]; P.zip=null; MONS.length=0; METS=[]; MROCKS=[]; FLIES=[]; ARROWS.length=0; ST.props=[]; bombs.length=0; ST.hidden=[]; guide=null;
   for(const k in parked) parked[k]=null;
   P.x=LANDX; P.y=surfaceY(LANDX);
   scanMobile();
@@ -1697,7 +1696,7 @@ function newRealm(){
 function travel(to){
   if(ST.traveling||to===realm||(to&&!RLM[to])) return;
   ST.traveling=true; portalT=0;
-  const from=realm, m=P.mode, en=energy, f=$('fade');
+  const from=realm, m=P.mode, en=ST.energy, f=$('fade');
   f.hidden=false; void f.offsetWidth; f.classList.add('on'); sfx('whoosh');
   const done=function(){ f.classList.remove('on'); setTimeout(function(){ f.hidden=true; },380); ST.traveling=false; };
   setTimeout(function(){
@@ -1713,9 +1712,9 @@ function travel(to){
         else throw new Error('earth');
       }catch(e){
         setRealm(from); try{ restore(sv0); }catch(_){}
-        energy=en; done(); tone([170],'sawtooth'); return;
+        ST.energy=en; done(); tone([170],'sawtooth'); return;
       }
-      energy=en; arrive(from,to,m);
+      ST.energy=en; arrive(from,to,m);
       try{ if(to) localStorage.setItem(K_REALM,to); else localStorage.removeItem(K_REALM); }catch(_){}
       ST.traveling=false; saveGame(false); ST.traveling=true;
       done();
@@ -1765,7 +1764,7 @@ try{
   const o=JSON.parse(localStorage.getItem(K_HERO)||'null');
   if(o&&o.up){ for(const k in hero.up) hero.up[k]=clamp(o.up[k]|0,0,3); hero.xp=o.xp|0; hero.lvl=Math.max(1,o.lvl|0); hero.own=o.own||{}; hero.pet=o.pet||''; hero.hat=o.hat||''; hero.tnt=o.tnt|0; hero.qn=o.qn|0; hero.quest=o.quest||null; hero.day=o.day||''; if(o.st&&o.st.ch) hero.st={ch:clamp(o.st.ch|0,1,8),on:!!o.st.on}; hero.eggs=o.eggs|0; hero.trail=!!o.trail; hero.ext=!!o.ext; hero.big=!!o.big; hero.dr=clamp(o.dr|0,0,3); hero.rk=clamp(o.rk|0,0,3); hero.lp=clamp(o.lp|0,0,3); hero.zn=clamp(o.zn|0,0,6); hero.mat=o.mat||{}; hero.mk=o.mk||{}; hero.pz=o.pz||{}; hero.pzn=o.pzn|0; hero.deep=!!o.deep; hero.fin=o.fin|0; }
 }catch(_){}
-let digN=0, props=[], nearF=null, nearD=1e9;
+let digN=0, nearF=null, nearD=1e9;
 const bombs=[], pet={x:820,y:0};
 function saveHero(){ if(ST.frozen) return; try{ localStorage.setItem(K_HERO,JSON.stringify(hero)); }catch(_){} }
 function xpNeed(l){ return 40+l*30; }
@@ -1848,7 +1847,7 @@ function buy(id){
   else if(it.kind==='use') hero.tnt+=3;
   else if(it.kind==='pet'){ hero.own[id]=1; hero.pet=id; pet.x=P.x; pet.y=P.y-16; }
   else if(it.kind==='hat'){ hero.own[id]=1; hero.hat=id; }
-  else{ props.push({type:id,x:P.x,y:surfaceY(P.x)}); $('market').hidden=true; }
+  else{ ST.props.push({type:id,x:P.x,y:surfaceY(P.x)}); $('market').hidden=true; }
   tone([523,659,784]); speak(it.name+' gekauft: '+what+'.'); qEvent('buy',1);
   saveHero(); saveFinds(); renderShop();
 }
@@ -1955,7 +1954,7 @@ function newQuest(){
   const pool=['gold','gems','dig','quiz','drive','deep','high','ride','moon','ski','salto','pz','pz','mat'];
   if(hero.dr>=3) pool.push('core');
   if(nextLand()) pool.push('land','land'); if(eggLand()) pool.push('egg','poke');
-  if(hidden.some(function(h){return !h.got;})) pool.push('find','find');
+  if(ST.hidden.some(function(h){return !h.got;})) pool.push('find','find');
   if(hero.tnt>0) pool.push('bomb');
   let type=pool[ri(0,pool.length-1)], guard=0;
   while(type===lastT&&guard++<20) type=pool[ri(0,pool.length-1)];
@@ -1977,7 +1976,7 @@ function newQuest(){
 /* Für einen Such-Auftrag wird ein noch fehlender Fund glitzernd in die Nähe gelegt, damit er sicher zu schaffen ist. */
 function prepFind(){
   let h=null;
-  for(const q of hidden) if(!q.got&&(q.zone==='shallow'||q.zone==='deep'||q.zone==='deeper'||q.zone==='hot')){ h=q; if(q.zone==='shallow') break; }
+  for(const q of ST.hidden) if(!q.got&&(q.zone==='shallow'||q.zone==='deep'||q.zone==='deeper'||q.zone==='hot')){ h=q; if(q.zone==='shallow') break; }
   if(!h) return;
   if(h.hint&&h.zone==='shallow'&&Math.abs(h.x-P.x)<700) return;
   const offs=[170,-170,260,-260,360,-360,480,-480];
@@ -2036,7 +2035,7 @@ function questPoint(){
   if(quest.type==='land'||quest.type==='egg'){ const b=quest.type==='land'?nextLand():eggLand(); return b?[b.x0+240,ground(b.x0+240)-70]:null; }
   if(quest.type==='find'){
     let b=null, bd=1e9;
-    for(const h of hidden){ if(h.got) continue; const d=Math.hypot(h.x-P.x,h.y-P.y)*(h.hint?1:3); if(d<bd){bd=d;b=h;} }
+    for(const h of ST.hidden){ if(h.got) continue; const d=Math.hypot(h.x-P.x,h.y-P.y)*(h.hint?1:3); if(d<bd){bd=d;b=h;} }
     return b?[b.x,b.y]:null;
   }
   return null;
@@ -2544,21 +2543,21 @@ function fwsTick(dt){
 /* ---------- Schneemänner zum Hinstellen. Sie winken, wenn der Held kommt, und schmelzen neben Feuer und Lava. ---------- */
 function addMan(x){
   x=clamp(x,60,WORLD_W-60);
-  let n=0; for(const o of props) if(o.type==='man') n++;
-  if(n>=24) props.splice(props.findIndex(function(o){return o.type==='man';}),1);
+  let n=0; for(const o of ST.props) if(o.type==='man') n++;
+  if(n>=24) ST.props.splice(ST.props.findIndex(function(o){return o.type==='man';}),1);
   const y=surfaceY(x);
-  props.push({type:'man',x:x,y:y}); puff(x,y-24,12); sfx('pop'); shout(x,y-72,'HALLO!');
+  ST.props.push({type:'man',x:x,y:y}); puff(x,y-24,12); sfx('pop'); shout(x,y-72,'HALLO!');
 }
 function drawMan(o){
   const near=!reduced&&Math.abs(P.x-o.x)<80&&Math.abs(P.y-o.y)<90;
   drawSnowman(o.x,o.y,.92,true,near?Math.sin(time*11):0,CONF[Math.floor(o.x)%6],false);
 }
 function menTick(){
-  for(let i=props.length-1;i>=0;i--){
-    const o=props[i]; if(o.type!=='man') continue;
+  for(let i=ST.props.length-1;i>=0;i--){
+    const o=ST.props[i]; if(o.type!=='man') continue;
     o.y=floorAt(o.x,o.y,12);
     if(hotAt(o.x,o.y-6)||hotAt(o.x-9,o.y-3)||hotAt(o.x+9,o.y-3)||hotAt(o.x,o.y+4)){
-      props.splice(i,1);
+      ST.props.splice(i,1);
       for(let k=0;k<8;k++) steam(Math.floor(o.x/CELL)+k%3-1,Math.floor((o.y-TOP)/CELL)-(k>>1));
       shout(o.x,o.y-62,'OH NEIN!'); spawn(8,o.x,o.y-30,0,-30,1.6,20,'🥕'); sfx('splat');
     }
@@ -3180,7 +3179,7 @@ function padsTick(){
     shout(x,y-30,'BOING!'); sfx('jump'); return true;
   };
   for(const p of ST.PADS) if(Math.abs(p.x-P.x)<60&&hit(p.x,p.y,p.w,p.pow,p)) return;
-  for(const o of props) if(o.type==='tramp'&&hit(o.x,o.y-12,24,650,o)) return;
+  for(const o of ST.props) if(o.type==='tramp'&&hit(o.x,o.y-12,24,650,o)) return;
 }
 /* Goldene Eier und Schätze */
 function grant(w){
@@ -3407,11 +3406,11 @@ function zipAdd(x0,y0,x1,y1){
   const L=Math.hypot(x1-x0,y1-y0);
   if(L<120||L>2400||Math.abs(y1-y0)<10){ pulse('tool-rope'); tone([200],'triangle'); return; }
   const z=y0<=y1?{a:[x0,y0],b:[x1,y1]}:{a:[x1,y1],b:[x0,y0]};
-  zips.push(z); if(zips.length>ZIPMAX) zips.shift(); sfx('pop');
+  ST.zips.push(z); if(ST.zips.length>ZIPMAX) ST.zips.shift(); sfx('pop');
 }
 function zipNear(){
   if(P.mode!=='walk'||P.zip) return null;
-  for(const z of zips){ const dx=P.x-z.a[0], dy=P.y-46-z.a[1]; if(Math.abs(dx)<44&&dy>-40&&dy<140) return z; }
+  for(const z of ST.zips){ const dx=P.x-z.a[0], dy=P.y-46-z.a[1]; if(Math.abs(dx)<44&&dy>-40&&dy<140) return z; }
   return null;
 }
 function zipGo(z){ P.zip={z:z,s:0,v:120}; P.chute=false; P.on=false; sfx('whoosh'); }
@@ -3424,7 +3423,7 @@ function zipRide(dt){
   if(end){ P.vx=ux*P.zip.v*.8; P.vy=uy*P.zip.v*.5-(keys.u?160:40); P.zip=null; P.air=0; if(keys.u) sfx('jump'); }
 }
 function drawZips(x0,x1){
-  for(const z of zips){
+  for(const z of ST.zips){
     if(Math.max(z.a[0],z.b[0])<x0-40||Math.min(z.a[0],z.b[0])>x1+40) continue;
     for(const e of [z.a,z.b]){
       const cx=Math.floor(e[0]/CELL), r0=Math.floor((e[1]-TOP)/CELL);
@@ -4246,7 +4245,7 @@ function renderFog(){
   }
   g.font='12px sans-serif'; g.textAlign='center'; g.textBaseline='middle';
   const mark=function(x,y,e){ const tx=Math.floor(x/CELL/FGT), ty=fRow(y); if(tx<c0||tx>c1||!fogHas(a,tx,ty)) return; g.fillText(e,(tx-c0+.5)*S,ty*S+S/2-4); };
-  for(const m of MACH) if(!pzGot[m.id]&&!m.gone&&m.y===m.y) mark(m.x,m.y-20,'⚙️');
+  for(const m of MACH) if(!ST.pzGot[m.id]&&!m.gone&&m.y===m.y) mark(m.x,m.y-20,'⚙️');
   for(const v of VAULTS) if(doorShut(v)) mark(v.x,v.fy-20,'🚪');
   for(const m of marks()) mark(m[0],m[1]-14,'🔆');
   if(!realm) mark(WSX,ground(WSX)-30,'🏠'); else mark(LANDX,ground(LANDX)-30,'🚀');
@@ -4325,7 +4324,7 @@ const GEAR={
     done:['Die Lampe leuchtet jetzt weiter.','Die Lampe leuchtet jetzt noch weiter.','Die Sonnenlampe ist fertig! Jetzt ist es unter der Erde überall hell.']}
 };
 const GEARK=['dr','rk','lp'];
-let MATS=[], MACH=[], ZDEC=[], SPACE={}, matGot={}, pzGot={}, guide=null, klT=0, klS=0, klN=0, labHi=false, dkA=0, mhT=0, liftBusy=false;
+let MATS=[], MACH=[], ZDEC=[], SPACE={}, guide=null, klT=0, klS=0, klN=0, labHi=false, dkA=0, mhT=0, liftBusy=false;
 const dkc=document.createElement('canvas'), dkx=dkc.getContext('2d');
 
 function skyLim(){ return SKYL[hero.rk|0]; }
@@ -4387,7 +4386,7 @@ function drawDoor(v){
 function deepHome(){ for(let i=0;i<ST.NT0&&i<trees.length;i++){ const t=trees[i]; if(Math.abs(t.x-WSX)<64||Math.abs(t.x-LIFTX)<50||Math.abs(t.x-1330)<30) t.state=3; } }
 /* Nach dem Laden: Was in der alten, breiteren Welt hinter der neuen Grenze lag, kommt nach Hause. */
 function deepRestore(sv){
-  matGot=sv.matGot||{}; pzGot=sv.pzGot||{}; guide=null; dkA=0;
+  ST.matGot=sv.matGot||{}; ST.pzGot=sv.pzGot||{}; guide=null; dkA=0;
   if(sv.v<4){
     /* Wer auf dem alten Erdkern stand, steht jetzt knapp über der neuen harten Schicht. */
     const deep=TOP+KEEPR*CELL-14;
@@ -4399,9 +4398,9 @@ function deepRestore(sv){
     if(P.x>lim){ P.x=820; P.y=surfaceY(820)-2; }
     let k=0;
     for(const n in parked){ const o=parked[n]; if(o&&o.x>lim){ o.x=560+k*46; o.y=surfaceY(o.x); o.vy=0; o.ang=0; k++; } }
-    props=props.filter(function(o){ return o.x<lim; });
-    tracks=tracks.filter(function(T){ return T.maxX<lim; });
-    hidden=hidden.filter(function(h){ return h.x<lim; });
+    ST.props=ST.props.filter(function(o){ return o.x<lim; });
+    ST.tracks=ST.tracks.filter(function(T){ return T.maxX<lim; });
+    ST.hidden=ST.hidden.filter(function(h){ return h.x<lim; });
   }
   deepHome();
 }
@@ -4409,7 +4408,7 @@ function deepRestore(sv){
 /* ---------- Jede Sekunde: Zonen entdecken, Material einsammeln, Maschinen auf den Boden stellen, Ziele erreichen ---------- */
 function matFound(m){
   const k=m.k, n=(hero.mat[k]|0)+1;
-  matGot[m.id]=1; hero.mat[k]=n; ST.heroDirty=true;
+  ST.matGot[m.id]=1; hero.mat[k]=n; ST.heroDirty=true;
   sfx('coin'); addXp(6); qEvent('mat',1); dayAdd('mat');
   for(let i=0;i<10;i++) spawn(5,m.x,m.y,(Math.random()-.5)*180,-60-Math.random()*160,.7,2);
   banner(MAT[k][0]+' '+n,1500);
@@ -4468,7 +4467,7 @@ function deepTick(dt){
   const pts=[[P.x,P.y-16]];
   if(P.mode==='bagger') pts.push(bucket()); else if(P.mode==='loader') pts.push(scoop()); else if(P.mode==='tbm') pts.push(drillHead());
   for(const m of MATS){
-    if(matGot[m.id]||Math.abs(m.x-P.x)>260||Math.abs(m.y-P.y)>260) continue;
+    if(ST.matGot[m.id]||Math.abs(m.x-P.x)>260||Math.abs(m.y-P.y)>260) continue;
     for(const q of pts) if(Math.hypot(q[0]-m.x,q[1]-m.y)<30){ matFound(m); break; }
   }
   if(P.on&&P.y<-6000&&SPACE.gate){
@@ -4487,7 +4486,7 @@ function deepTick(dt){
 function nextMach(){
   let b=null, bd=1e12; const lim=(genF-8)*CELL;
   for(const m of MACH){
-    if(pzGot[m.id]||m.y!==m.y||m.x>lim) continue;
+    if(ST.pzGot[m.id]||m.y!==m.y||m.x>lim) continue;
     const d=Math.abs(m.x-P.x)+2.5*Math.abs(m.y-P.y);
     if(d<bd){ bd=d; b=m; }
   }
@@ -4534,7 +4533,7 @@ function matWhere(k){
   if(realm){
     /* Auf fremden Welten: zum nächsten Stück, sonst nach oben, heim zur Erde. */
     let b=null, bd=1e12;
-    if(k!=='lab') for(const m of MATS){ if(m.k!==k||matGot[m.id]) continue; const d=Math.hypot(m.x-P.x,m.y-P.y); if(d<bd){ bd=d; b=m; } }
+    if(k!=='lab') for(const m of MATS){ if(m.k!==k||ST.matGot[m.id]) continue; const d=Math.hypot(m.x-P.x,m.y-P.y); if(d<bd){ bd=d; b=m; } }
     return b?[b.x,b.y]:[P.x,P.y-500];
   }
   if(k==='lab') return [WSX,ground(WSX)-96];
@@ -4548,7 +4547,7 @@ function matWhere(k){
     return hero.zn>=MATZ[k]&&Math.abs(P.y-gy)<500?[LIFTX,gy-110]:[P.x,P.y+400];
   }
   let b=null, bd=1e12;
-  for(const m of MATS){ if(m.k!==k||matGot[m.id]) continue; const d=Math.hypot(m.x-P.x,m.y-P.y); if(d<bd){ bd=d; b=m; } }
+  for(const m of MATS){ if(m.k!==k||ST.matGot[m.id]) continue; const d=Math.hypot(m.x-P.x,m.y-P.y); if(d<bd){ bd=d; b=m; } }
   return b?[b.x,b.y]:null;
 }
 function guidePoint(){ return guide?matWhere(guide.k):null; }
@@ -4675,7 +4674,7 @@ function drawCab(x,y,top){
   ctx.fillStyle=INK; circle(x,y-51,5.5); ctx.fillStyle=reduced||(time*2|0)%2?'#58b548':'#c9f5b8'; circle(x,y-51,3.6);
 }
 function drawMach(m){
-  const x=m.x, y=m.y, done=!!pzGot[m.id], T=PZI[m.t], b=reduced?0:2.5*Math.sin(time*3+x);
+  const x=m.x, y=m.y, done=!!ST.pzGot[m.id], T=PZI[m.t], b=reduced?0:2.5*Math.sin(time*3+x);
   ctx.strokeStyle=INK; ctx.lineWidth=2.5; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(x,y-40); ctx.lineTo(x,y-50); ctx.stroke();
   ctx.fillStyle=done?'#58b548':((time*3|0)%2&&!reduced?'#ffd23f':'#ff5a1f'); circle(x,y-52,3.6);
   ctx.fillStyle=INK; rr(x-17,y-42,34,40,7); rr(x-13,y-4,8,6,2); rr(x+5,y-4,8,6,2);
@@ -4764,7 +4763,7 @@ function drawDeep(x0,x1,y0,y1){
   for(const d of ZDEC) if(d.x>x0-60&&d.x<x1+60&&d.y>y0-60&&d.y<y1+60){ if(d.k==='bone') drawBone(d); else drawCry(d); }
   for(const m of MACH) if(m.y===m.y&&m.x>x0-30&&m.x<x1+30&&m.y>y0-10&&m.y<y1+90) drawMach(m);
   for(const v of VAULTS) if(v.x-v.rx>x0-40&&v.x-v.rx<x1+40&&v.fy>y0-10&&v.fy<y1+70&&doorShut(v)) drawDoor(v);
-  for(const m of MATS) if(!matGot[m.id]&&m.x>x0-20&&m.x<x1+20&&m.y>y0-20&&m.y<y1+20) drawMat(m);
+  for(const m of MATS) if(!ST.matGot[m.id]&&m.x>x0-20&&m.x<x1+20&&m.y>y0-20&&m.y<y1+20) drawMat(m);
   for(const m of marks()) if(m[0]>x0-30&&m[0]<x1+30&&m[1]>y0-10&&m[1]<y1+40) drawMark(m[0],m[1]);
 }
 /* Unter der Erde wird es dunkel. Die Lampe und alles, was leuchtet, machen helle Flecken. Ganz schwarz wird es nie. */
@@ -4791,7 +4790,7 @@ function drawDark(){
   };
   hole(P.x,P.y-20,[135,195,275,400][hero.lp|0]+JAR.length*32,1);
   const vw=W/S+200, vh=H/S+200;
-  for(const m of MATS) if(!matGot[m.id]&&Math.abs(m.x-cam.x)<vw&&Math.abs(m.y-cam.y)<vh) hole(m.x,m.y,46,.75);
+  for(const m of MATS) if(!ST.matGot[m.id]&&Math.abs(m.x-cam.x)<vw&&Math.abs(m.y-cam.y)<vh) hole(m.x,m.y,46,.75);
   for(const m of MACH) if(m.y===m.y&&Math.abs(m.x-cam.x)<vw&&Math.abs(m.y-cam.y)<vh) hole(m.x,m.y-30,90,.9);
   for(const v of VAULTS) if(Math.abs(v.x-cam.x)<vw&&Math.abs(v.y-cam.y)<vh) hole(v.x-v.rx-8,v.fy-28,70,.85);
   for(const m of marks()) if(Math.abs(m[0]-cam.x)<vw&&Math.abs(m[1]-cam.y)<vh) hole(m[0],m[1]-14,150,.9);
@@ -4908,7 +4907,7 @@ function pzClose(){
   /* Wer nach vielen Fehlversuchen aufgibt, bekommt beim nächsten Mal ein leichteres Rätsel dieser Art. */
   if(c&&!c.won&&c.fails>=3){ hero.pz[c.T.id]=Math.max(0,(hero.pz[c.T.id]|0)-1); saveHero(); }
   /* Vom Akku aus geöffnet: wie beim Schließen der Lernaufgabe. Ist schon etwas geladen, geht es mit dem weiter, wofür der Akku gebraucht wurde. Sonst bliebe der Auftrag liegen und käme viel später aus dem Nichts. */
-  if(c&&c.m.quiz&&!c.won){ const f=pending; pending=null; if(energy>0){ if(f) f(); } else{ setTool(null,true); if(P.mode!=='walk') setMode('walk'); pulse('batt'); } }
+  if(c&&c.m.quiz&&!c.won){ const f=pending; pending=null; if(ST.energy>0){ if(f) f(); } else{ setTool(null,true); if(P.mode!=='walk') setMode('walk'); pulse('batt'); } }
 }
 /* Tipps: erst nach dem ersten Fehlversuch, einer pro Rätsel (ab Stufe 7 zwei). So hilft der Tipp beim Hängenbleiben, löst aber nicht das Rätsel. */
 function pzHintMax(c){ return c.lv>=6?2:1; }
@@ -4927,15 +4926,15 @@ function pzReveal(text){
 function pzWin(){
   const c=pzc; if(!c||c.won) return;
   c.won=true; c.busy=true; pzClear(); LOG.pWin(c);
-  const id=c.T.id, first=!c.m.quiz&&!pzGot[c.m.id], clean=c.fails<=1&&!c.hint, g=first?8+2*c.lv:3;
+  const id=c.T.id, first=!c.m.quiz&&!ST.pzGot[c.m.id], clean=c.fails<=1&&!c.hint, g=first?8+2*c.lv:3;
   tone([523,659,784,1047]);
   if(clean) hero.pz[id]=Math.min(9,(hero.pz[id]|0)+1);
   else if(c.fails>=5||c.hint>=2) hero.pz[id]=Math.max(0,(hero.pz[id]|0)-1);
   hero.pzn=(hero.pzn|0)+1; dayAdd('pz');
   /* Akku: voll nur ohne Fehler und Tipp, sonst ein Strich weniger je Fehler und Tipp, mindestens einer. */
-  const segs=clean?5:Math.max(1,5-c.fails-c.hint), full=segs>=5||energy>=MAXE;
-  ST.gold+=g; ST.lootDirty=true; energy=Math.max(energy,segs*SEG); battShown=-1; renderBatt(); addXp(first?20:6); qEvent('pz',1);
-  if(first){ pzGot[c.m.id]=1; hero.mat.zr=(hero.mat.zr|0)+1; hero.mk.zr=1; }
+  const segs=clean?5:Math.max(1,5-c.fails-c.hint), full=segs>=5||ST.energy>=MAXE;
+  ST.gold+=g; ST.lootDirty=true; ST.energy=Math.max(ST.energy,segs*SEG); battShown=-1; renderBatt(); addXp(first?20:6); qEvent('pz',1);
+  if(first){ ST.pzGot[c.m.id]=1; hero.mat.zr=(hero.mat.zr|0)+1; hero.mk.zr=1; }
   saveHero();
   $('pz-body').classList.add('win');
   banner((first?'⚙️ +1 &nbsp;':'')+'+'+g+COIN,2000);
@@ -5383,7 +5382,7 @@ tap($('mkt'),openMarket);
 $('shop').addEventListener('click',function(e){ const b=e.target.closest('[data-shop]'); if(b) buy(b.dataset.shop); });
 $('album').addEventListener('click',function(e){
   const b=e.target.closest('[data-find]');
-  if(b&&found[b.dataset.find]){ const f=FINDS.find(function(q){return q[0]===b.dataset.find;}); speak(f[2].replace(/^(einen|eine|ein|den|zwei) /,'')); }
+  if(b&&ST.found[b.dataset.find]){ const f=FINDS.find(function(q){return q[0]===b.dataset.find;}); speak(f[2].replace(/^(einen|eine|ein|den|zwei) /,'')); }
 });
 document.querySelectorAll('.ov').forEach(function(o){
   o.addEventListener('click',function(e){ if(e.target===o||e.target.closest('.xb')) o.hidden=true; });
@@ -5535,17 +5534,17 @@ $('yes').addEventListener('click',function(){
 const SEG=75, MAXE=5*SEG;
 let qcur=null, pending=null, battShown=-1, battLow=false, warnS=0;
 function renderBatt(){
-  const k=Math.ceil(energy/SEG*8);
+  const k=Math.ceil(ST.energy/SEG*8);
   if(k===battShown) return;
   battShown=k;
   for(const id of ['batt-cells','quiz-cells']){
     const cells=$(id).children;
-    for(let i=0;i<5;i++) cells[i].firstChild.style.height=Math.round(clamp((energy-i*SEG)/SEG,0,1)*100)+'%';
+    for(let i=0;i<5;i++) cells[i].firstChild.style.height=Math.round(clamp((ST.energy-i*SEG)/SEG,0,1)*100)+'%';
   }
-  document.body.classList.toggle('locked',energy<=0);
-  $('quiz-go').hidden=energy<=0;
+  document.body.classList.toggle('locked',ST.energy<=0);
+  $('quiz-go').hidden=ST.energy<=0;
 }
-function need(fn){ if(energy>0) fn(); else openQuiz(fn); }
+function need(fn){ if(ST.energy>0) fn(); else openQuiz(fn); }
 function openQuiz(then){
   if(then) pending=then;
   ST.paused=true; keys.l=keys.r=keys.u=keys.d=keys.a=false; ST.talkLock=0;
@@ -5558,17 +5557,17 @@ function closeQuiz(){
   $('quiz').hidden=true; ST.paused=false;
   speakStop();
   const f=pending; pending=null;
-  if(energy>0){ if(f) f(); }
+  if(ST.energy>0){ if(f) f(); }
   else{ if(!HANDT[ST.tool]) setTool(null,true); if(P.mode!=='walk'){ const air=!P.on; setMode('walk'); if(air){ P.chute=true; P.vy=Math.min(P.vy,0); } } pulse('batt'); }
 }
 function drain(dt){
   if(P.mode!=='walk'||(ST.tool&&!HANDT[ST.tool])){
-    energy-=dt;
-    if(energy<=0){ energy=0; battLow=false; $('batt').classList.remove('low'); renderBatt(); openQuiz(null); return; }
+    ST.energy-=dt;
+    if(ST.energy<=0){ ST.energy=0; battLow=false; $('batt').classList.remove('low'); renderBatt(); openQuiz(null); return; }
     /* Kurz vor leer blinkt der Akku und tickt, damit die Lernaufgabe nicht aus dem Nichts kommt. */
-    if(energy<6&&Math.ceil(energy)!==warnS){ warnS=Math.ceil(energy); blip(660,660,.06,'square',.05); }
+    if(ST.energy<6&&Math.ceil(ST.energy)!==warnS){ warnS=Math.ceil(ST.energy); blip(660,660,.06,'square',.05); }
   }
-  const low=energy>0&&energy<12;
+  const low=ST.energy>0&&ST.energy<12;
   if(low!==battLow){ battLow=low; $('batt').classList.toggle('low',low); }
   renderBatt();
 }
@@ -5785,13 +5784,13 @@ function win(q,how){
   const mg=!q.free&&factDone(q,how,fast);
   if(mg){ banner('💠 '+(hero.mat.ms|0),2400); setTimeout(function(){ jingle(); speak('Meisterstein! '+fName(q.f)+' sitzt jetzt richtig gut.'); },350); labBadge(false); }
   dayAdd('q');
-  energy=Math.min(MAXE,energy+SEG); tone(how==='ok'?[660,880]:[520,660]); addXp(how==='ok'?8:4); qEvent('quiz',1);
+  ST.energy=Math.min(MAXE,ST.energy+SEG); tone(how==='ok'?[660,880]:[520,660]); addXp(how==='ok'?8:4); qEvent('quiz',1);
   battShown=-1; renderBatt();
   if(doorQ){
     doorQ.n++; banner('🚪 '+'●'.repeat(doorQ.n)+'○'.repeat(Math.max(0,3-doorQ.n)),1500);
     if(doorQ.n>=3){ const v=doorQ.v; setTimeout(function(){ if(qcur!==q) return; closeQuiz(); doorOpen(v); },800); return; }
   }
-  setTimeout(function(){ if($('quiz').hidden||qcur!==q) return; if(energy>=MAXE&&!doorQ) closeQuiz(); else nextQ(); },800);
+  setTimeout(function(){ if($('quiz').hidden||qcur!==q) return; if(ST.energy>=MAXE&&!doorQ) closeQuiz(); else nextQ(); },800);
 }
 /* Falsch: Die Lösung wird gezeigt und vorgelesen, beim Rechnen mit Punkten. Keine Strafe, der Fakt kommt bald wieder. */
 function lose(q){
@@ -6257,12 +6256,12 @@ function draw(){
   if(chest) drawChest();
   drawFinds(true,x0,x1,y0,y1);
   if(STALL_X>x0-50&&STALL_X<x1+50) drawStall();
-  for(const o of props) if(o.x>x0-60&&o.x<x1+60) drawProp(o);
+  for(const o of ST.props) if(o.x>x0-60&&o.x<x1+60) drawProp(o);
   drawWinter(x0,x1);
   drawWorldBack(x0,x1,y0,y1);
   drawDeep(x0,x1,y0,y1);
 
-  for(const T of tracks){
+  for(const T of ST.tracks){
     if(T.maxX<x0||T.minX>x1) continue;
     if(T.rb){ ctx.lineWidth=3.2; ctx.lineCap='round'; ctx.lineJoin='round'; for(let k=0;k<6;k++){ ctx.strokeStyle=RBC[k]; ctx.beginPath(); ctx.moveTo(T.pts[0][0],T.pts[0][1]+k*3-8); for(let i=2;i<T.pts.length;i+=2) ctx.lineTo(T.pts[i][0],T.pts[i][1]+k*3-8); ctx.stroke(); } continue; }
     ctx.strokeStyle='#7d8a99'; ctx.lineWidth=3; ctx.lineCap='butt'; ctx.beginPath();
@@ -6289,7 +6288,7 @@ function draw(){
   drawArrows();
   drawMons(false);
   if(ST.tool==='track'){
-    for(const T of tracks){ const a=T.pts[0], b=T.pts[T.pts.length-1]; knob(a[0],a[1],8); knob(b[0],b[1],11); }
+    for(const T of ST.tracks){ const a=T.pts[0], b=T.pts[T.pts.length-1]; knob(a[0],a[1],8); knob(b[0],b[1],11); }
   }
   if(stroke&&stroke.length>1){
     ctx.strokeStyle='#e0304a'; ctx.lineWidth=5; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.setLineDash([10,9]);
@@ -6450,12 +6449,12 @@ function resetWorld(seed){
   setRealm('');
   try{ localStorage.removeItem(K_REALM); for(const k in FOG) delete FOG[k]; for(const k in MKS) delete MKS[k]; Object.keys(localStorage).forEach(function(k){ if(k.indexOf(K_FOG)===0||k.indexOf(K_MARKS)===0) localStorage.removeItem(k); }); }catch(_){}
   idbDo('readwrite',function(st){ for(const id in RLM) st.delete(realmKey(id)); return st.count(); }).catch(function(){});
-  ST.seen={}; ST.eggGot={}; ST.lootGot={}; ST.orbGot={}; matGot={}; pzGot={};
+  ST.seen={}; ST.eggGot={}; ST.lootGot={}; ST.orbGot={}; ST.matGot={}; ST.pzGot={};
   shapeWorld();
   gen();
   parts.length=0; ghost=null; chest=null; stroke=null; strokeId=null; ST.task=null; $('chip').hidden=true;
   for(const tr of trees){ tr.state=0; tr.t=0; }
-  tracks=[]; zips=[]; P.zip=null; const d=demoTrack(); if(d) tracks.push(d);
+  ST.tracks=[]; ST.zips=[]; P.zip=null; const d=demoTrack(); if(d) ST.tracks.push(d);
   if(MS.cur||Object.keys(MS.fl).length){ MS.cur=null; MS.fl={}; misSave(); }
   P.mode='walk'; P.x=820; P.y=surfaceY(820); P.vx=0; P.vy=0; P.on=true; P.face=1; P.chute=false; P.soot=0; P.hurt=0; P.turbo=0; P.track=null; P.load=0; P.arm=.75; P.ball=0; P.spin=0; P.rot=0; P.frost=0;
   for(const k in parked) parked[k]=null;
@@ -6463,7 +6462,7 @@ function resetWorld(seed){
   parked.car={x:720,y:surfaceY(720),vy:0,ang:0,face:1,arm:0,load:0};
   parked.plane={x:630,y:surfaceY(630),vy:0,ang:0,face:1};
   parked.rocket={x:556,y:surfaceY(556),vy:0,ang:0,face:1,load:0};
-  cam.x=P.x; cam.y=P.y-80; ST.tool=null; pan.x=0; pan.y=0; props=[]; bombs.length=0;
+  cam.x=P.x; cam.y=P.y-80; ST.tool=null; pan.x=0; pan.y=0; ST.props=[]; bombs.length=0;
   deepHome();
   hideFinds();
   stEnter();
@@ -6474,7 +6473,7 @@ function resetWorld(seed){
 /* ---------- Spielprotokoll für Eltern: Was er wann spielt und wie er Aufgaben löst. Liegt nur auf diesem Gerät, in einer eigenen Datenbank, damit ein Fehler hier nie den Spielstand trifft. Das Protokoll schaut nur zu: Nichts davon ändert Belohnung oder Schwierigkeit. ---------- */
 /* Was das Protokoll vom Spiel liest (log/ darf state/ nicht importieren, ADR 0001). */
 const LP={
-  get energy(){ return energy; },
+  get energy(){ return ST.energy; },
   get frozen(){ return ST.frozen; },
   get paused(){ return ST.paused; },
   get pzc(){ return pzc; },
@@ -6959,7 +6958,7 @@ function start(){
     const today=new Date().toDateString();
     if(hero.day!==today){ hero.day=today; ST.gold+=20; saveHero(); saveFinds(); setTimeout(function(){ banner('🎁 +20'+COIN,2400); },1300); }
     hudG=-1; hudLoot();
-    if(energy<=0) pulse('batt');
+    if(ST.energy<=0) pulse('batt');
     requestAnimationFrame(function(t){ last=t; requestAnimationFrame(frame); });
   };
   const tryLoad=function(sv){
