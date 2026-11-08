@@ -167,6 +167,12 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 
 *Hier greift die Weiche aus Abschnitt 3.*
 
+### Streich-PR 1: Totholz (verhaltensändernd, nicht Teil der Migration)
+
+- Kristall-Echo und Bilder-Sudoku spawnen nicht mehr: `deepWorldWith` mischt weiter über alle sieben Arten (gleicher Zufallsstrom), vergibt aber nur die fünf übrigen; `deepFarWith` ebenso mit unverändertem `r()`-Aufruf. Akku-Rätsel und Werkstatt nutzen `PZON` (ohne die beiden), die Elternansicht zeigt weiter alle wegen alter Protokolle. Code, Zeichnung und Sprachtexte der beiden bleiben bis zum Aufräumen (Vereinfachungsplan Schritt 7).
+- Glücks-Upgrade aus dem Markt; Gold und Edelsteine kommen immer einfach. `hero.up.luck` bleibt im Spielstand und wird ignoriert.
+- Golden Master: nur `MACH` der Erde (3 Seeds, vor und nach `grow`) ändert sich, die 6 Hashes sind ersetzt (ADR 0001, Ausnahme vom 8.11.). `movecheck.mjs` kennt dafür `stmtsChanged` (der Klick-Handler am Akku-Rätsel).
+
 ### PR 16: Systemschnittstelle
 
 - **Bewegt:** `SIDE`, `SAFE`, `safe()` → `systems/index.js` mit `{ name, tick }` je Eintrag, gleiche Reihenfolge, `name` = heutiger Funktionsname. Die Tick-Funktionen selbst bleiben noch in `legacy.js` und werden nur registriert.

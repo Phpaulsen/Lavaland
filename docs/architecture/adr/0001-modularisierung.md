@@ -61,5 +61,6 @@ Vom Maintainer am 8.11.2026 entschieden:
 - PR-Diffs enthalten das Bundle zusätzlich (zugeklappt). Parallele PRs konfligieren in `index.html`; Lösung ist neu bauen.
 - Während der Migration keine Feature-PRs auf `legacy.js`-Teilen, die gerade umziehen. Offene PRs gegen `index.html` (derzeit #92) werden vor PR 1 gemergt oder danach auf `src/legacy.js` übertragen.
 - Golden-Master-Fixtures für Welt und Speicherformat sind ab PR 2 eingefroren. Ein Move, der sie ändert, ist falsch.
+- Ausnahme (entschieden 8.11.2026, Maintainer): Ausdrücklich verhaltensändernde PRs (Streich-PRs aus dem Vereinfachungsplan) ersetzen genau die Hashes, die sie gewollt ändern, und nennen jeden davon im PR-Text. Der Zufallsstrom der Welt bleibt dabei gleich, sonst ist es eine eigene Entscheidung (`migration-plan.md` Abschnitt 3).
 - Die Fassade `G` kostet in kalten Pfaden Getter-Aufrufe. Heiße Schleifen sind davon ausgenommen; ein Leistungsvergleich gehört in jeden PR, der `step`, `draw` oder `update` berührt.
 - Der Speicherverbrauch der Welt (78,6 MB) und die geplante Vereinfachung sind nicht Teil dieses ADR. Die Struktur (`state/world.js`) ist so gewählt, dass beides danach lokal möglich ist.
