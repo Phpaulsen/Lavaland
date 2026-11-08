@@ -238,6 +238,8 @@ Je PR: `tick` und `draw(ctx, layer)` ins System, Zeichenaufruf in `draw()` an de
 
 **Umgesetzt PR 17:** `systems/sights.js` (Geysire, Sternschnuppen, Wrack, Glühwürmchen, Harfe) mit Port `SY`; `draw(ctx, layer, x0, x1)` auf den Ebenen `back`, `mid`, `glow` über `drawLayer` in `systems/index.js`. Der Bildvergleich ist `tests/pixels.mjs`: Er zeichnet die Szenen mit main und dem neuen Stand im selben Browser, statt feste Hashes zu speichern, weil Pixel von der Chromium-Version abhängen.
 
+**Umgesetzt PR 18:** `systems/mobs.js` (Pfeile, Zielscheiben, Höhlenmonster) mit Port `MP`, Ebene `mob` nach `mid`, Monsteraugen auf `glow`. `shoot` und `monStrike` bleiben als Einzeiler in `legacy.js`. **Tiere** (`creTick`, `drawCres`) sind keine eigenen `SIDE`-Einträge, sondern laufen in `worldTick` und im Weltzeichnen; sie ziehen darum mit `worldTick` in PR 19 um. Bildvergleich um eine vierte Szene ergänzt (Zielscheiben, Pfeile, Monster).
+
 ### PR 22–23: Rendering
 
 - **22:** Paletten, Hintergrund, Stimmung, Flora, Deko (`S35`, `S36`, `S44`) → `render/`.
