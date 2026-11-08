@@ -1,9 +1,5 @@
-{
-  "pr": 10,
-  "renames": { "packRunsWith": "packRuns", "unpackRunsWith": "unpackRuns" },
-  "params": { "packRunsWith": ["grid"], "unpackRunsWith": ["grid"] },
-  "wrappers": {},
-  "changed": ["packRuns", "unpackRuns"],
-  "added": [],
-  "removed": []
-}
+{"stack":[
+{"pr":11,"literals":{"lavaland-hero":"K_HERO","lavaland-finds":"K_FINDS","lavaland-stars":"K_STARS","lavaland-skill":"K_SKILL","lavaland-facts":"K_FACTS","lavaland-school":"K_SCHOOL","lavaland-limit":"K_LIMIT","lavaland-day":"K_DAY","lavaland-realm":"K_REALM","lavaland-fog":"K_FOG","lavaland-marks":"K_MARKS","lavaland-mute":"K_MUTE","lavaland-lefty":"K_LEFTY","lavaland-psst":"K_PSST","lavaland-news":"K_NEWS","lavaland-bak-at":"K_BAK_AT","lavaland-voice":"K_VOICE","lavaland-vmiss":"K_VMISS","lavaland-opt":"K_OPT","lavaland-alive":"K_ALIVE"},
+ "renames":{"idbDoWith":"idbDo"},"params":{"idbDoWith":["diskLock"]},"changed":["idbDo"],
+ "added":["K_HERO","K_FINDS","K_STARS","K_SKILL","K_FACTS","K_SCHOOL","K_LIMIT","K_DAY","K_REALM","K_FOG","K_MARKS","K_MUTE","K_LEFTY","K_PSST","K_NEWS","K_BAK_AT","K_VOICE","K_VMISS","K_OPT","K_ALIVE"],"removed":[]}
+]}

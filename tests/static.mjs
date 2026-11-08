@@ -57,6 +57,7 @@ check('Keine doppelten IDs in src/', () => {
 check('Jeder localStorage-Schlüssel beginnt mit lavaland', () => {
   const lit = [...src.matchAll(/localStorage\.(?:setItem|getItem|removeItem)\('([^']*)'/g)].map(m => m[1]);
   const con = [...src.matchAll(/[\s,](\w+)='([^']*)'/g)].reduce((o, m) => (o[m[1]] = m[2], o), {});
+  for (const m of src.matchAll(/[\s,](\w+)=([A-Z]\w*)[;,]/g)) if (m[2] in con) con[m[1]] = con[m[2]]; // const ALK=K_ALIVE
   const named = [...src.matchAll(/localStorage\.(?:setItem|getItem|removeItem)\(([A-Z]\w*)[,)]/g)].map(m => con[m[1]] ?? '?' + m[1]);
   const bad = lit.concat(named).filter(k => k.indexOf('lavaland') !== 0);
   if (bad.length) throw new Error(bad.join(', '));

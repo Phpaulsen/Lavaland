@@ -1887,6 +1887,72 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
   };
 
+  // src/persistence/keys.js
+  var K_HERO = "lavaland-hero";
+  var K_FINDS = "lavaland-finds";
+  var K_STARS = "lavaland-stars";
+  var K_SKILL = "lavaland-skill";
+  var K_FACTS = "lavaland-facts";
+  var K_SCHOOL = "lavaland-school";
+  var K_LIMIT = "lavaland-limit";
+  var K_DAY = "lavaland-day";
+  var K_REALM = "lavaland-realm";
+  var K_FOG = "lavaland-fog";
+  var K_MARKS = "lavaland-marks";
+  var K_MUTE = "lavaland-mute";
+  var K_LEFTY = "lavaland-lefty";
+  var K_PSST = "lavaland-psst";
+  var K_NEWS = "lavaland-news";
+  var K_BAK_AT = "lavaland-bak-at";
+  var K_VOICE = "lavaland-voice";
+  var K_VMISS = "lavaland-vmiss";
+  var K_OPT = "lavaland-opt";
+  var K_ALIVE = "lavaland-alive";
+  var ERRK = "lavaland-err";
+  var MISK = "lavaland-mis";
+  var SAVEKEY = "world2";
+  function realmKey(id) {
+    return id ? "planet-" + id : SAVEKEY;
+  }
+
+  // src/persistence/db.js
+  function idbOpen() {
+    return new Promise(function(res, rej) {
+      let rq;
+      try {
+        rq = indexedDB.open("lavaland", 1);
+      } catch (e) {
+        rej(e);
+        return;
+      }
+      rq.onupgradeneeded = function() {
+        rq.result.createObjectStore("save");
+      };
+      rq.onsuccess = function() {
+        res(rq.result);
+      };
+      rq.onerror = function() {
+        rej(rq.error);
+      };
+    });
+  }
+  function idbDoWith(diskLock, mode, fn) {
+    if (diskLock && mode !== "readonly") return Promise.reject(new Error("diskLock"));
+    return idbOpen().then(function(db) {
+      return new Promise(function(res, rej) {
+        const tx = db.transaction("save", mode), rq = fn(tx.objectStore("save"));
+        tx.oncomplete = function() {
+          db.close();
+          res(rq.result);
+        };
+        tx.onerror = tx.onabort = function() {
+          db.close();
+          rej(tx.error);
+        };
+      });
+    });
+  }
+
   // src/core/world/pack.js
   function packRunsWith(grid2, f) {
     let out = new Uint8Array(1 << 20), n = 0;
@@ -4018,7 +4084,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       skyLim,
       wc
     };
-    const ERRK = "lavaland-err";
     function errLoad() {
       try {
         const a = JSON.parse(localStorage.getItem(ERRK) || "[]");
@@ -4058,14 +4123,14 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     let ctx = cv.getContext("2d");
     let OPT = { mon: true, calm: false };
     try {
-      const o = JSON.parse(localStorage.getItem("lavaland-opt") || "{}") || {};
+      const o = JSON.parse(localStorage.getItem(K_OPT) || "{}") || {};
       OPT.mon = o.mon !== false;
       OPT.calm = o.calm === true;
     } catch (_) {
     }
     function optSave() {
       try {
-        localStorage.setItem("lavaland-opt", JSON.stringify(OPT));
+        localStorage.setItem(K_OPT, JSON.stringify(OPT));
       } catch (_) {
       }
     }
@@ -5737,7 +5802,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     const VRATES = [0.75, 0.95, 1.1];
     let VOICE = { v: "", r: 0.95 };
     try {
-      const o = JSON.parse(localStorage.getItem("lavaland-voice") || "null");
+      const o = JSON.parse(localStorage.getItem(K_VOICE) || "null");
       if (o && typeof o === "object") {
         if (typeof o.v === "string") VOICE.v = o.v.slice(0, 120);
         if (VRATES.indexOf(o.r) >= 0) VOICE.r = o.r;
@@ -5767,7 +5832,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     function voiceSave() {
       try {
-        localStorage.setItem("lavaland-voice", JSON.stringify(VOICE));
+        localStorage.setItem(K_VOICE, JSON.stringify(VOICE));
       } catch (_) {
       }
     }
@@ -5790,10 +5855,10 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     function vcMiss(t) {
       try {
-        const a = JSON.parse(localStorage.getItem("lavaland-vmiss") || "[]");
+        const a = JSON.parse(localStorage.getItem(K_VMISS) || "[]");
         if (!Array.isArray(a) || a.indexOf(t) >= 0) return;
         a.push(String(t).slice(0, 300));
-        localStorage.setItem("lavaland-vmiss", JSON.stringify(a.slice(-40)));
+        localStorage.setItem(K_VMISS, JSON.stringify(a.slice(-40)));
       } catch (_) {
       }
     }
@@ -5909,7 +5974,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     let muted = false, fxOff = false, noiseBuf = null, coinT = 0, coinN = 0, digSfxT = 0, flameSfx = 0;
     try {
-      const mv = localStorage.getItem("lavaland-mute");
+      const mv = localStorage.getItem(K_MUTE);
       muted = mv === "1";
       fxOff = mv === "s";
     } catch (_) {
@@ -6011,13 +6076,13 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     ];
     let stars = {};
     try {
-      stars = JSON.parse(localStorage.getItem("lavaland-stars") || "{}") || {};
+      stars = JSON.parse(localStorage.getItem(K_STARS) || "{}") || {};
     } catch (_) {
       stars = {};
     }
     function saveStars() {
       try {
-        localStorage.setItem("lavaland-stars", JSON.stringify(stars));
+        localStorage.setItem(K_STARS, JSON.stringify(stars));
       } catch (_) {
       }
     }
@@ -6305,7 +6370,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     ];
     let found = {}, hidden = [], nearT = 0, ready = false, saving = false, saveT = 0, lootT = 0;
     try {
-      const o = JSON.parse(localStorage.getItem("lavaland-finds") || "{}") || {};
+      const o = JSON.parse(localStorage.getItem(K_FINDS) || "{}") || {};
       found = o.ids || {};
       gold = o.gold | 0;
       gems = o.gems | 0;
@@ -6315,7 +6380,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function saveFinds() {
       if (frozen) return;
       try {
-        localStorage.setItem("lavaland-finds", JSON.stringify({ ids: found, gold, gems }));
+        localStorage.setItem(K_FINDS, JSON.stringify({ ids: found, gold, gems }));
       } catch (_) {
       }
     }
@@ -6541,43 +6606,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     let frozen = false;
     let diskLock = false;
-    function idbOpen() {
-      return new Promise(function(res, rej) {
-        let rq;
-        try {
-          rq = indexedDB.open("lavaland", 1);
-        } catch (e) {
-          rej(e);
-          return;
-        }
-        rq.onupgradeneeded = function() {
-          rq.result.createObjectStore("save");
-        };
-        rq.onsuccess = function() {
-          res(rq.result);
-        };
-        rq.onerror = function() {
-          rej(rq.error);
-        };
-      });
-    }
     function idbDo(mode, fn) {
-      if (diskLock && mode !== "readonly") return Promise.reject(new Error("diskLock"));
-      return idbOpen().then(function(db) {
-        return new Promise(function(res, rej) {
-          const tx = db.transaction("save", mode), rq = fn(tx.objectStore("save"));
-          tx.oncomplete = function() {
-            db.close();
-            res(rq.result);
-          };
-          tx.onerror = tx.onabort = function() {
-            db.close();
-            rej(tx.error);
-          };
-        });
-      });
+      return idbDoWith(diskLock, mode, fn);
     }
-    const SAVEKEY = "world2";
     function snapshot(pre, pf) {
       const F = pf == null ? genF : pf, g = pre || packRuns(F);
       const pk = {};
@@ -6613,9 +6644,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         matGot,
         pzGot
       };
-    }
-    function realmKey(id) {
-      return id ? "planet-" + id : SAVEKEY;
     }
     let packJob = null;
     function packStart() {
@@ -6875,8 +6903,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
           energy = en;
           arrive(from, to, m);
           try {
-            if (to) localStorage.setItem("lavaland-realm", to);
-            else localStorage.removeItem("lavaland-realm");
+            if (to) localStorage.setItem(K_REALM, to);
+            else localStorage.removeItem(K_REALM);
           } catch (_) {
           }
           traveling = false;
@@ -6964,7 +6992,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     let hero = { xp: 0, lvl: 1, up: { dig: 0, motor: 0, jet: 0, compass: 0, luck: 0, heat: 0 }, own: {}, pet: "", hat: "", tnt: 0, qn: 0, quest: null, day: "", st: { ch: 1, on: false }, eggs: 0, trail: false, ext: false, big: false, dr: 0, rk: 0, lp: 0, zn: 0, mat: {}, mk: {}, pz: {}, pzn: 0, deep: false, fin: 0 };
     try {
-      const o = JSON.parse(localStorage.getItem("lavaland-hero") || "null");
+      const o = JSON.parse(localStorage.getItem(K_HERO) || "null");
       if (o && o.up) {
         for (const k in hero.up) hero.up[k] = clamp(o.up[k] | 0, 0, 3);
         hero.xp = o.xp | 0;
@@ -6999,7 +7027,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function saveHero() {
       if (frozen) return;
       try {
-        localStorage.setItem("lavaland-hero", JSON.stringify(hero));
+        localStorage.setItem(K_HERO, JSON.stringify(hero));
       } catch (_) {
       }
     }
@@ -7596,7 +7624,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
       return null;
     }
-    const MISX = 1262, MISK = "lavaland-mis";
+    const MISX = 1262;
     let MS = { done: {}, cur: null, fl: {} }, misShown = "";
     try {
       const o = JSON.parse(localStorage.getItem(MISK) || "null");
@@ -12446,7 +12474,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     let fogDirty = false, fogT = 0;
     function fogKey() {
-      return "lavaland-fog" + (realm ? "-" + realm : "");
+      return K_FOG + (realm ? "-" + realm : "");
     }
     function fogArr() {
       const k = fogKey();
@@ -13474,7 +13502,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     const MKMAX = 8, MKS = {};
     function mkKey() {
-      return "lavaland-marks" + (realm ? "-" + realm : "");
+      return K_MARKS + (realm ? "-" + realm : "");
     }
     function marks() {
       const k = mkKey();
@@ -14768,7 +14796,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     document.body.classList.toggle("calm", OPT.calm);
     let lefty = false;
     try {
-      lefty = localStorage.getItem("lavaland-lefty") === "1";
+      lefty = localStorage.getItem(K_LEFTY) === "1";
     } catch (_) {
     }
     function syncHand() {
@@ -14779,7 +14807,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     $("hand").addEventListener("click", function() {
       lefty = !lefty;
       try {
-        localStorage.setItem("lavaland-lefty", lefty ? "1" : "0");
+        localStorage.setItem(K_LEFTY, lefty ? "1" : "0");
       } catch (_) {
       }
       syncHand();
@@ -14796,7 +14824,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         fxOff = false;
       } else fxOff = true;
       try {
-        localStorage.setItem("lavaland-mute", muted ? "1" : fxOff ? "s" : "0");
+        localStorage.setItem(K_MUTE, muted ? "1" : fxOff ? "s" : "0");
       } catch (_) {
       }
       if (muted) speakStop();
@@ -14979,7 +15007,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         try {
           for (let i = 0; i < localStorage.length; i++) {
             const k = localStorage.key(i);
-            if (k && k.indexOf("lavaland") === 0 && k !== "lavaland-alive") ls[k] = localStorage.getItem(k);
+            if (k && k.indexOf("lavaland") === 0 && k !== K_ALIVE) ls[k] = localStorage.getItem(k);
           }
         } catch (_) {
         }
@@ -14994,7 +15022,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         flash("exp", "ok");
         tone([660, 880]);
         try {
-          localStorage.setItem("lavaland-bak-at", String(Date.now()));
+          localStorage.setItem(K_BAK_AT, String(Date.now()));
         } catch (_) {
         }
       } else {
@@ -15292,14 +15320,14 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     let FS = null;
     function loadFacts() {
       try {
-        FS = JSON.parse(localStorage.getItem("lavaland-facts") || "null");
+        FS = JSON.parse(localStorage.getItem(K_FACTS) || "null");
       } catch (_) {
         FS = null;
       }
       if (!FS || FS.v !== 1 || !FS.f) {
         let sk = 0;
         try {
-          sk = parseInt(localStorage.getItem("lavaland-skill") || "0", 10) || 0;
+          sk = parseInt(localStorage.getItem(K_SKILL) || "0", 10) || 0;
         } catch (_) {
         }
         const t = sk >= 22 ? 2 : sk >= 8 ? 1 : 0;
@@ -15323,7 +15351,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function saveFacts() {
       if (frozen) return;
       try {
-        localStorage.setItem("lavaland-facts", JSON.stringify(FS));
+        localStorage.setItem(K_FACTS, JSON.stringify(FS));
       } catch (_) {
       }
     }
@@ -15346,7 +15374,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     const ZRN = ["bis 5", "bis 10", "bis 20 ohne Zehnerübergang", "bis 20 mit Zehnerübergang"], ABC = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
     let SCH = { on: false, zr: 3, l: "", at: 0 };
     try {
-      const o = JSON.parse(localStorage.getItem("lavaland-school") || "null");
+      const o = JSON.parse(localStorage.getItem(K_SCHOOL) || "null");
       if (o && typeof o === "object") {
         SCH.on = !!o.on;
         SCH.zr = clamp(o.zr | 0, 0, 3);
@@ -15358,7 +15386,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function saveSchool() {
       SCH.at = Date.now();
       try {
-        localStorage.setItem("lavaland-school", JSON.stringify(SCH));
+        localStorage.setItem(K_SCHOOL, JSON.stringify(SCH));
       } catch (_) {
       }
     }
@@ -17004,11 +17032,11 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       SEED = seed || newSeed();
       setRealm("");
       try {
-        localStorage.removeItem("lavaland-realm");
+        localStorage.removeItem(K_REALM);
         for (const k in FOG) delete FOG[k];
         for (const k in MKS) delete MKS[k];
         Object.keys(localStorage).forEach(function(k) {
-          if (k.indexOf("lavaland-fog") === 0 || k.indexOf("lavaland-marks") === 0) localStorage.removeItem(k);
+          if (k.indexOf(K_FOG) === 0 || k.indexOf(K_MARKS) === 0) localStorage.removeItem(k);
         });
       } catch (_) {
       }
@@ -17230,7 +17258,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
           lastIn = performance.now();
         }, true);
       });
-      const ALK = "lavaland-alive";
+      const ALK = K_ALIVE;
       let beatT2 = 0, beatJ = 0, beat0 = Date.now(), beatSkip = false;
       function aliveW(ok) {
         try {
@@ -17667,12 +17695,12 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (newsOpen === null) {
         let seen2 = 0;
         try {
-          seen2 = +localStorage.getItem("lavaland-news") || 0;
+          seen2 = +localStorage.getItem(K_NEWS) || 0;
         } catch (_) {
         }
         newsOpen = seen2 < NEWS.v;
         if (newsOpen) try {
-          localStorage.setItem("lavaland-news", String(NEWS.v));
+          localStorage.setItem(K_NEWS, String(NEWS.v));
         } catch (_) {
         }
       }
@@ -17685,7 +17713,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function parSafe() {
       let at = 0;
       try {
-        at = +localStorage.getItem("lavaland-bak-at") || 0;
+        at = +localStorage.getItem(K_BAK_AT) || 0;
       } catch (_) {
       }
       const d = at ? Math.floor((Date.now() - at) / 864e5) : -1;
@@ -17721,7 +17749,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       const vs = voicesDe();
       let miss = [];
       try {
-        miss = JSON.parse(localStorage.getItem("lavaland-vmiss") || "[]");
+        miss = JSON.parse(localStorage.getItem(K_VMISS) || "[]");
         if (!Array.isArray(miss)) miss = [];
       } catch (_) {
       }
@@ -17932,7 +17960,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       const d = (/* @__PURE__ */ new Date()).toDateString();
       if (!DAY) {
         try {
-          DAY = JSON.parse(localStorage.getItem("lavaland-day") || "null");
+          DAY = JSON.parse(localStorage.getItem(K_DAY) || "null");
         } catch (_) {
           DAY = null;
         }
@@ -17949,7 +17977,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     function daySave() {
       try {
-        localStorage.setItem("lavaland-day", JSON.stringify(DAY));
+        localStorage.setItem(K_DAY, JSON.stringify(DAY));
       } catch (_) {
       }
     }
@@ -17974,7 +18002,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     const LIMS = [0, 20, 30, 45, 60, 90];
     let LIM = 0;
     try {
-      LIM = LIMS.indexOf(+localStorage.getItem("lavaland-limit")) > 0 ? +localStorage.getItem("lavaland-limit") : 0;
+      LIM = LIMS.indexOf(+localStorage.getItem(K_LIMIT)) > 0 ? +localStorage.getItem(K_LIMIT) : 0;
     } catch (_) {
     }
     function limCheck() {
@@ -18154,7 +18182,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (e.target.closest("#par-vmc")) {
         let t = "";
         try {
-          t = JSON.parse(localStorage.getItem("lavaland-vmiss") || "[]").join("\n");
+          t = JSON.parse(localStorage.getItem(K_VMISS) || "[]").join("\n");
         } catch (_) {
         }
         if (navigator.clipboard) navigator.clipboard.writeText(t).then(function() {
@@ -18195,7 +18223,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (lm) {
         LIM = +lm.dataset.lim;
         try {
-          localStorage.setItem("lavaland-limit", String(LIM));
+          localStorage.setItem(K_LIMIT, String(LIM));
         } catch (_) {
         }
         dayLoad();
@@ -18324,14 +18352,14 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         renderStory();
         let psst = 0;
         try {
-          psst = +localStorage.getItem("lavaland-psst") || 0;
+          psst = +localStorage.getItem(K_PSST) || 0;
         } catch (_) {
         }
         if (!hero.st.on) {
           if (psst < 3) setTimeout(function() {
             if (!hero.st.on && !uiOpen() && !paused) {
               try {
-                localStorage.setItem("lavaland-psst", String(psst + 1));
+                localStorage.setItem(K_PSST, String(psst + 1));
               } catch (_) {
               }
               say("", "Psst! Über Nacht ist etwas Seltsames passiert. Tippe auf das Buch!");
@@ -18414,7 +18442,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       };
       let rl = "";
       try {
-        rl = localStorage.getItem("lavaland-realm") || "";
+        rl = localStorage.getItem(K_REALM) || "";
       } catch (_) {
       }
       const load = function(retry2) {

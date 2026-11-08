@@ -12,8 +12,12 @@
 //   world    { "param": "WD", "names": [...], "from": "ST", "fromNames": [...] }
 //                                             nur in bewegten Funktionen, die param als Parameter bekommen: x wird zu WD.x,
 //                                             ST.x (für x in fromNames) ebenfalls zu WD.x (Weltobjekt statt globaler Felder, PR 8b)
+//   literals { "wert": "NAME" }               überall (auch außerhalb bewegter Funktionen): das String-Literal 'wert' wird zur Konstante NAME
+//                                             (Schlüsselnamen an einer Stelle, PR 11). Schlüssel in Objektliteralen bleiben Literale.
 //   changed  [...]                            Name bleibt, Inhalt ändert sich bewusst (z. B. Einzeiler, der an core/ weitergibt)
 //   added, removed [...]                      neue bzw. gelöschte Namen
+// Gestapelte PRs (jeder zielt auf main und enthält den vorigen): moves.json ist dann { "stack": [ {pr:11, …}, {pr:12, …} ] }.
+//   Verglichen wird gegen main mit allen Schritten, deren pr größer ist als der höchste in der moves.json von main (schon gemergte fallen weg).
 // Verglichen wird der AST ohne Positionen und ohne Schreibweise von Literalen. Anweisungen auf oberster Ebene, die nichts deklarieren
 // (Ereignis-Handler, try-Blöcke beim Laden), müssen als Menge gleich bleiben. Import-Deklarationen werden nicht verglichen.
 import fs from 'fs';
@@ -82,6 +86,7 @@ export function localDecl(x) {
 export function transform(node, moves, own) {
   const ren = {}; for (const [n, o] of Object.entries(moves.renames || {})) ren[o] = n;
   const fac = moves.facade ? new Set(moves.facade.names) : null, wrap = moves.wrappers || {};
+  const lit = moves.literals || null;
   // params: "rand" (kurz für ["rand=Math.random"]) oder eine Liste. "rand=Math.random": Math.random im alten Körper wird zu rand.
   // "FS": neuer Parameter gleichen Namens, der den Top-Level-Namen verdeckt; der Körper bleibt dafür unverändert.
   const plist = n => { const v = (moves.params || {})[n]; if (!v) return []; return (typeof v === 'string' ? [v + '=Math.random'] : v).map(e => { const [name, src] = e.split('='); return { name, random: src === 'Math.random' }; }); };
@@ -110,6 +115,7 @@ export function transform(node, moves, own) {
     if (x.type === 'MemberExpression' && !x.computed) { x.object = walk(x.object, x, 'object', sh); return x; }
     if (x.type === 'MethodDefinition' || x.type === 'PropertyDefinition') { if (x.computed) x.key = walk(x.key, x, 'key', sh); x.value = walk(x.value, x, 'value', sh); return x; }
     if (x.type === 'LabeledStatement' || x.type === 'BreakStatement' || x.type === 'ContinueStatement') { if (x.body) x.body = walk(x.body, x, 'body', sh); return x; }
+    if (lit && x.type === 'Literal' && typeof x.value === 'string' && Object.hasOwn(lit, x.value)) return id(lit[x.value]);
     if (x.type === 'Identifier') {
       if (wn && wn.has(x.name) && !sh.has(x.name)) return mem(wo.param, x.name);
       if (fac && fac.has(x.name) && !sh.has(x.name)) return { type: 'MemberExpression', object: id(moves.facade.name), property: id(x.name), computed: false, optional: false };
@@ -127,6 +133,23 @@ export function transform(node, moves, own) {
   if (params) n0.params = mine.map(e => id(e.name)).concat(params);
   return n0;
 }
+
+/** Fasst die noch nicht gemergten Schritte eines Stapels zu einer Angabe zusammen. done = höchste PR-Nummer im Basisstand. */
+export function mergeSteps(moves, done = -Infinity) {
+  const steps = (moves.stack || [moves]).filter(s => !(s.pr <= done));
+  const out = {};
+  for (const s of steps) for (const [k, v] of Object.entries(s)) {
+    if (k === 'pr') continue;
+    if (Array.isArray(v)) out[k] = [...new Set([...(out[k] || []), ...v])];
+    else if (k === 'facade' || k === 'world') { if (out[k] && JSON.stringify(out[k]) !== JSON.stringify(v)) throw new Error(`${k} in zwei Schritten verschieden`); out[k] = v; }
+    else out[k] = Object.assign(out[k] || {}, v);
+  }
+  // Neu in einem Schritt und in einem späteren geändert: im Ganzen nur neu.
+  if (out.added && out.changed) out.changed = out.changed.filter(n => !out.added.includes(n));
+  return out;
+}
+/** Höchste PR-Nummer einer moves.json (alte Form {pr} oder Stapel). */
+export const doneOf = m => m ? Math.max(-Infinity, ...(m.stack || [m]).map(s => s.pr ?? -Infinity)) : -Infinity;
 
 /** Vergleicht zwei Stände ({ Pfad: Code }). Gibt Fehler und Bericht zurück. */
 export function compare(base, head, moves) {
@@ -207,8 +230,16 @@ function selftest() {
     ['still gelöscht', { 'legacy.js': L('function a(){}\nfunction b(){}') }, { 'legacy.js': L('function a(){}') }, {}, 1],
     ['neu ohne Angabe', { 'legacy.js': L('function a(){}') }, { 'legacy.js': L('function a(){}\nfunction b(){}') }, {}, 1],
     ['Anweisung geändert', { 'legacy.js': L('go(1);') }, { 'legacy.js': L('go(2);') }, {}, 1],
+    ['Literal wird Konstante', { 'legacy.js': L("function a(){return get('k-x')+({'k-x':1})['k-x']}\ngo('k-x');") },
+      { 'legacy.js': L("function a(){return get(KX)+({'k-x':1})[KX]}\ngo(KX);"), 'persistence/k.js': "export const KX='k-x'" },
+      { literals: { 'k-x': 'KX' }, added: ['KX'] }, 0],
+    ['Literal vergessen', { 'legacy.js': L("function a(){return get('k-x')}") }, { 'legacy.js': L("function a(){return get('k-y')}") },
+      { literals: { 'k-x': 'KX' } }, 1],
     ['changed, aber gleich', { 'legacy.js': L('function a(){}') }, { 'legacy.js': L('function a(){}') }, { changed: ['a'] }, 1],
   ];
+  const st = { stack: [{ pr: 11, renames: { a: 'b' }, added: ['x'], changed: ['c'] }, { pr: 12, renames: { d: 'e' }, changed: ['x', 'f'] }] };
+  const m1 = JSON.stringify(mergeSteps(st)), m2 = JSON.stringify(mergeSteps(st, doneOf({ pr: 11 })));
+  if (m1 !== JSON.stringify({ renames: { a: 'b', d: 'e' }, added: ['x'], changed: ['c', 'f'] }) || m2 !== JSON.stringify({ renames: { d: 'e' }, changed: ['x', 'f'] }) || doneOf(st) !== 12 || doneOf(null) !== -Infinity) { console.log('FAIL Selbsttest Stapel: ' + m1 + ' | ' + m2); process.exit(1); }
   let bad = 0;
   for (const [name, b, h, m, n] of T) { const r = compare(b, h, m); if (r.err.length !== n) { bad++; console.log(`FAIL Selbsttest „${name}“: erwartet ${n} Fehler, bekommen ${r.err.length}: ${r.err.join('; ')}`); } }
   if (bad) process.exit(1);
@@ -220,7 +251,9 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   else {
     const ref = arg('--base', 'origin/main');
     const mf = path.resolve(ROOT, arg('--moves', 'tools/arch/moves.json'));
-    const moves = fs.existsSync(mf) ? JSON.parse(fs.readFileSync(mf, 'utf8')) : {};
+    const all = fs.existsSync(mf) ? JSON.parse(fs.readFileSync(mf, 'utf8')) : {};
+    let baseMoves = null; try { baseMoves = JSON.parse(execFileSync('git', ['show', ref + ':' + path.relative(ROOT, mf)], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })); } catch (_) {}
+    const moves = mergeSteps(all, doneOf(baseMoves));
     const base = filesAt(ref), head = filesNow();
     // Auf main selbst (nach dem Merge) gibt es nichts zu vergleichen; moves.json beschreibt dann den schon gemergten PR.
     if (JSON.stringify(Object.entries(base).sort()) === JSON.stringify(Object.entries(head).sort())) { console.log('ok   src/ gleich ' + ref + ', nichts bewegt'); process.exit(0); }

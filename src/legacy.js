@@ -15,6 +15,8 @@ import { BOXD, NEWDAY, FASTMS, schoolOkWith, fUnlockWith, mixPreferWith, fParked
 import { mkQWith, mkSeqWith } from './core/learn/tasks.js';
 import { g0, grid, stamp, LIFE, zS1, z4, zS2, zS3, grow0, rA, rB, rD, rH, rC, mtop, bio, bio2, bmx, bix, noCave, liqM, liqY } from './state/world.js';
 import { ST } from './state/facade.js';
+import { ERRK, MISK, SAVEKEY, K_HERO, K_FINDS, K_STARS, K_SKILL, K_FACTS, K_SCHOOL, K_LIMIT, K_DAY, K_REALM, K_FOG, K_MARKS, K_MUTE, K_LEFTY, K_PSST, K_NEWS, K_BAK_AT, K_VOICE, K_VMISS, K_OPT, K_ALIVE, realmKey } from './persistence/keys.js';
+import { idbOpen, idbDoWith } from './persistence/db.js';
 import { packRunsWith, unpackRunsWith, runsOk } from './core/world/pack.js';
 import { bx0, bx1, by0, by1, lavaCount, waterCount, fireCount, tick, sx0, winR, rx0, rx1, qx0, qx1, px0, px1, py0, py1, winC, ext, extI, react, cellAt, hotAt, lifeS, put, stepWith, scanMobileWith, steamWith } from './state/sim.js';
 import { winterColWith, carveCaveWith, carveCircleWith, carvePathWith, fillCraterWith, fillPondWith, houseBlocksWith, fillBlockWith, rawXWith, rawGWith, layoutWith, addTreeWith, addCreWith, populateWith, zoneColsWith, shapeWorldWith, blkWith, buildWith, genColWith, genWith, makeTrackWith, deepWorldWith, deepFarWith, planetDeepWith, vaultPlanWith } from './core/world/gen.js';
@@ -66,7 +68,6 @@ const WD={
   colTop, ext, ground, lifeS, rlm, scanMobile, setCell, skyLim, wc
 };
 /* Fehlerprotokoll: Technische Fehler bleiben nur auf diesem Gerät (höchstens 20, gleiche zusammengefasst) und stehen in der Elternansicht. So lässt sich ein Problem auf dem Handy des Kindes nachvollziehen. */
-const ERRK='lavaland-err';
 function errLoad(){ try{ const a=JSON.parse(localStorage.getItem(ERRK)||'[]'); return Array.isArray(a)?a.filter(function(e){ return e&&typeof e.m==='string'; }):[]; }catch(_){ return []; } }
 function errAdd(m,w){
   m=String(m||'Unbekannter Fehler').slice(0,200); w=String(w||'').slice(0,80);
@@ -78,8 +79,8 @@ window.addEventListener('error',function(e){ if(e&&e.message) errAdd(e.message,(
 window.addEventListener('unhandledrejection',function(e){ const r=e&&e.reason; errAdd('Promise: '+(r&&r.message||r),''); });
 const cv=$('c'); let ctx=cv.getContext('2d');
 /* Elternoptionen: Höhlenmonster an/aus, ruhige Darstellung (wie „Bewegung reduzieren“ im System). */
-let OPT={mon:true,calm:false}; try{ const o=JSON.parse(localStorage.getItem('lavaland-opt')||'{}')||{}; OPT.mon=o.mon!==false; OPT.calm=o.calm===true; }catch(_){}
-function optSave(){ try{ localStorage.setItem('lavaland-opt',JSON.stringify(OPT)); }catch(_){} }
+let OPT={mon:true,calm:false}; try{ const o=JSON.parse(localStorage.getItem(K_OPT)||'{}')||{}; OPT.mon=o.mon!==false; OPT.calm=o.calm===true; }catch(_){}
+function optSave(){ try{ localStorage.setItem(K_OPT,JSON.stringify(OPT)); }catch(_){} }
 const reducedSys=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
 let reduced=reducedSys||OPT.calm;
 const K='#1d2a3a';
@@ -1182,11 +1183,11 @@ function jingle(){
 /* Vorlesestimme: Feste Sätze kommen als Aufnahme aus audio/ (eine natürliche deutsche Stimme, erzeugt mit tools/voice). Nur Sätze ohne Aufnahme spricht die Browserstimme, deren Stimme Eltern in der Elternansicht wählen können. Das Tempo gilt für beide. */
 const VRATES=[.75,.95,1.1];
 let VOICE={v:'',r:.95};
-try{ const o=JSON.parse(localStorage.getItem('lavaland-voice')||'null'); if(o&&typeof o==='object'){ if(typeof o.v==='string') VOICE.v=o.v.slice(0,120); if(VRATES.indexOf(o.r)>=0) VOICE.r=o.r; } }catch(_){}
+try{ const o=JSON.parse(localStorage.getItem(K_VOICE)||'null'); if(o&&typeof o==='object'){ if(typeof o.v==='string') VOICE.v=o.v.slice(0,120); if(VRATES.indexOf(o.r)>=0) VOICE.r=o.r; } }catch(_){}
 function voicesDe(){ try{ return speechSynthesis.getVoices().filter(function(v){ return /^de([-_]|$)/i.test(v.lang); }); }catch(_){ return []; } }
 function voiceGet(){ if(!VOICE.v) return null; return voicesDe().find(function(v){ return v.name===VOICE.v; })||null; }
 try{ if('speechSynthesis' in window) speechSynthesis.addEventListener('voiceschanged',function(){ if(typeof parLoad==='function'&&!$('par').hidden) parLoad(); }); }catch(_){}
-function voiceSave(){ try{ localStorage.setItem('lavaland-voice',JSON.stringify(VOICE)); }catch(_){} }
+function voiceSave(){ try{ localStorage.setItem(K_VOICE,JSON.stringify(VOICE)); }catch(_){} }
 /* Aufnahmen: audio/index.json ordnet jedem Satz eine Datei zu. Ein Text wird in Sätze geteilt. Nur wenn es für jeden Satz eine Aufnahme gibt, kommen die Aufnahmen, sonst spricht die Browserstimme den ganzen Text. So stecken nie zwei Stimmen in einer Ansage. */
 let VCLIP=null, vcSeq=0, vcAud=null;
 const vcUrl={};
@@ -1196,7 +1197,7 @@ try{
   if(a.canPlayType&&a.canPlayType('audio/ogg; codecs=opus')) fetch('audio/index.json').then(function(r){ return r.ok?r.json():null; }).then(function(j){ if(j&&j.v===1&&j.c) VCLIP=j.c; }).catch(function(){});
 }catch(_){}
 /* Sätze ohne Aufnahme merken (die letzten 40), damit sie beim nächsten Erzeugen dazukommen. Sie stehen in der Elternansicht. */
-function vcMiss(t){ try{ const a=JSON.parse(localStorage.getItem('lavaland-vmiss')||'[]'); if(!Array.isArray(a)||a.indexOf(t)>=0) return; a.push(String(t).slice(0,300)); localStorage.setItem('lavaland-vmiss',JSON.stringify(a.slice(-40))); }catch(_){} }
+function vcMiss(t){ try{ const a=JSON.parse(localStorage.getItem(K_VMISS)||'[]'); if(!Array.isArray(a)||a.indexOf(t)>=0) return; a.push(String(t).slice(0,300)); localStorage.setItem(K_VMISS,JSON.stringify(a.slice(-40))); }catch(_){} }
 function clipGet(id){
   if(!vcUrl[id]){ vcUrl[id]=fetch('audio/'+id+'.ogg').then(function(r){ if(!r.ok) throw new Error('clip'); return r.blob(); }).then(function(b){ return URL.createObjectURL(b); }); vcUrl[id].catch(function(){ delete vcUrl[id]; }); }
   return vcUrl[id];
@@ -1259,7 +1260,7 @@ function speak(text){
 }
 let muted=false, fxOff=false, noiseBuf=null, coinT=0, coinN=0, digSfxT=0, flameSfx=0;
 /* Drei Stufen: alles an, nur Sprache (ohne Piepen und Klänge), alles aus. Sprache braucht das Kind, Effekte nerven manchmal die Großen. */
-try{ const mv=localStorage.getItem('lavaland-mute'); muted=mv==='1'; fxOff=mv==='s'; }catch(_){}
+try{ const mv=localStorage.getItem(K_MUTE); muted=mv==='1'; fxOff=mv==='s'; }catch(_){}
 function blip(f0,f1,dur,type,vol){
   if(!AC||muted||fxOff) return;
   try{
@@ -1320,8 +1321,8 @@ const TASKS=[
   {id:'moon',name:'Zum Mond fliegen',mode:'plane',say:'Flieg hoch in den Weltraum und lande auf dem Mond.'}
 ];
 let stars={};
-try{ stars=JSON.parse(localStorage.getItem('lavaland-stars')||'{}')||{}; }catch(_){ stars={}; }
-function saveStars(){ try{ localStorage.setItem('lavaland-stars',JSON.stringify(stars)); }catch(_){} }
+try{ stars=JSON.parse(localStorage.getItem(K_STARS)||'{}')||{}; }catch(_){ stars={}; }
+function saveStars(){ try{ localStorage.setItem(K_STARS,JSON.stringify(stars)); }catch(_){} }
 function boxCount(x0,x1,y0,y1,fn){
   const c0=clamp(Math.floor(x0/CELL),1,GX-2), c1=clamp(Math.floor(x1/CELL),1,GX-2), r0=clamp(Math.floor((y0-TOP)/CELL),1,GY-4), r1=clamp(Math.floor((y1-TOP)/CELL),1,GY-4);
   let n=0;
@@ -1490,8 +1491,8 @@ const FINDS=[
   ['robot','🤖','einen Roboter','volcano'],['trophy','🏆','einen Pokal','house'],['statue','🗿','eine Steinfigur','edge'],['gift','🎁','ein Geschenk','edge']
 ];
 let found={}, hidden=[], nearT=0, ready=false, saving=false, saveT=0, lootT=0;
-try{ const o=JSON.parse(localStorage.getItem('lavaland-finds')||'{}')||{}; found=o.ids||{}; gold=o.gold|0; gems=o.gems|0; }catch(_){ found={}; }
-function saveFinds(){ if(frozen) return; try{ localStorage.setItem('lavaland-finds',JSON.stringify({ids:found,gold:gold,gems:gems})); }catch(_){} }
+try{ const o=JSON.parse(localStorage.getItem(K_FINDS)||'{}')||{}; found=o.ids||{}; gold=o.gold|0; gems=o.gems|0; }catch(_){ found={}; }
+function saveFinds(){ if(frozen) return; try{ localStorage.setItem(K_FINDS,JSON.stringify({ids:found,gold:gold,gems:gems})); }catch(_){} }
 function placeFind(zone,r){
   const anyX=function(){
     for(let k=0;k<40;k++){
@@ -1613,27 +1614,7 @@ function renderAlbum(){
 let frozen=false; /* true, solange ein geladener Spielstand eingespielt wird: dann schreibt das Spiel nichts mehr. */
 /* true, wenn die Datenbank beim Start nicht lesbar war: Dann läuft das Spiel mit einer Ersatzwelt, schreibt aber nichts in die Datenbank, damit der echte Spielstand beim nächsten Start wieder da ist. */
 let diskLock=false;
-function idbOpen(){
-  return new Promise(function(res,rej){
-    let rq;
-    try{ rq=indexedDB.open('lavaland',1); }catch(e){ rej(e); return; }
-    rq.onupgradeneeded=function(){ rq.result.createObjectStore('save'); };
-    rq.onsuccess=function(){ res(rq.result); };
-    rq.onerror=function(){ rej(rq.error); };
-  });
-}
-function idbDo(mode,fn){
-  if(diskLock&&mode!=='readonly') return Promise.reject(new Error('diskLock'));
-  return idbOpen().then(function(db){
-    return new Promise(function(res,rej){
-      const tx=db.transaction('save',mode), rq=fn(tx.objectStore('save'));
-      tx.oncomplete=function(){ db.close(); res(rq.result); };
-      tx.onerror=tx.onabort=function(){ db.close(); rej(tx.error); };
-    });
-  });
-}
-/* Der Spielstand liegt unter 'world2'. Unter 'world' bleibt der letzte Stand im alten Format liegen, falls eine ältere Spielversion ihn noch braucht. */
-const SAVEKEY='world2';
+function idbDo(mode,fn){ return idbDoWith(diskLock,mode,fn); }
 function snapshot(pre,pf){
   const F=pf==null?genF:pf, g=pre||packRuns(F);
   const pk={};
@@ -1642,7 +1623,6 @@ function snapshot(pre,pf){
   return {v:5,w:2,vt:1,rl:realm,gy:GY,f:F,snow:1,seed:SEED,runs:g,tracks:tracks.map(function(T){return {raw:T.raw,user:T.user,rb:!!T.rb};}),zips:zips,px:P.x,py:P.y,parked:pk,
     trees:trees.map(function(t){return t.state===1?2:t.state;}),hidden:hidden,energy:energy,props:props,seen:ST.seen,eggGot:ST.eggGot,lootGot:ST.lootGot,orbGot:ST.orbGot,matGot:matGot,pzGot:pzGot};
 }
-function realmKey(id){ return id?'planet-'+id:SAVEKEY; }
 /* Autospeichern in Häppchen: Das Packen der Welt dauert auf einem schwachen Handy bis zu einer halben Sekunde und ruckelt dann sichtbar. Darum packt das Autospeichern pro Bild nur so viele Spalten, wie in 4 ms passen. Jede Spalte ist für sich vollständig, der Stand bleibt also immer lesbar. Ändert sich während des Packens eine schon gepackte Spalte, kommt das beim nächsten Speichern mit. Beim Verlassen, Reisen und Antippen wird weiter sofort am Stück gespeichert. */
 let packJob=null;
 function packStart(){ if(saving||!ready||frozen||traveling||packJob) return; packJob={cx:0,f:genF,rl:realm,out:new Uint8Array(1<<20),n:0}; }
@@ -1740,7 +1720,7 @@ function travel(to){
         energy=en; done(); tone([170],'sawtooth'); return;
       }
       energy=en; arrive(from,to,m);
-      try{ if(to) localStorage.setItem('lavaland-realm',to); else localStorage.removeItem('lavaland-realm'); }catch(_){}
+      try{ if(to) localStorage.setItem(K_REALM,to); else localStorage.removeItem(K_REALM); }catch(_){}
       traveling=false; saveGame(false); traveling=true;
       done();
     },function(){ done(); tone([170],'sawtooth'); });
@@ -1787,12 +1767,12 @@ function portalTick(dt){
 /* ---------- Held, Verbesserungen und Markt: Gold und Edelsteine kaufen Stufen, Begleiter, Hüte, Bomben und Rummel-Bauten. ---------- */
 let hero={xp:0,lvl:1,up:{dig:0,motor:0,jet:0,compass:0,luck:0,heat:0},own:{},pet:'',hat:'',tnt:0,qn:0,quest:null,day:'',st:{ch:1,on:false},eggs:0,trail:false,ext:false,big:false,dr:0,rk:0,lp:0,zn:0,mat:{},mk:{},pz:{},pzn:0,deep:false,fin:0};
 try{
-  const o=JSON.parse(localStorage.getItem('lavaland-hero')||'null');
+  const o=JSON.parse(localStorage.getItem(K_HERO)||'null');
   if(o&&o.up){ for(const k in hero.up) hero.up[k]=clamp(o.up[k]|0,0,3); hero.xp=o.xp|0; hero.lvl=Math.max(1,o.lvl|0); hero.own=o.own||{}; hero.pet=o.pet||''; hero.hat=o.hat||''; hero.tnt=o.tnt|0; hero.qn=o.qn|0; hero.quest=o.quest||null; hero.day=o.day||''; if(o.st&&o.st.ch) hero.st={ch:clamp(o.st.ch|0,1,8),on:!!o.st.on}; hero.eggs=o.eggs|0; hero.trail=!!o.trail; hero.ext=!!o.ext; hero.big=!!o.big; hero.dr=clamp(o.dr|0,0,3); hero.rk=clamp(o.rk|0,0,3); hero.lp=clamp(o.lp|0,0,3); hero.zn=clamp(o.zn|0,0,6); hero.mat=o.mat||{}; hero.mk=o.mk||{}; hero.pz=o.pz||{}; hero.pzn=o.pzn|0; hero.deep=!!o.deep; hero.fin=o.fin|0; }
 }catch(_){}
 let heroDirty=false, digN=0, props=[], nearF=null, nearD=1e9;
 const bombs=[], pet={x:820,y:0};
-function saveHero(){ if(frozen) return; try{ localStorage.setItem('lavaland-hero',JSON.stringify(hero)); }catch(_){} }
+function saveHero(){ if(frozen) return; try{ localStorage.setItem(K_HERO,JSON.stringify(hero)); }catch(_){} }
 function xpNeed(l){ return 40+l*30; }
 function addXp(n){
   hero.xp+=n; heroDirty=true;
@@ -2067,7 +2047,7 @@ function questPoint(){
   return null;
 }
 /* ---------- Missionen: kleine Geschichten mit mehreren Schritten. Am Missionsbrett neben dem Aufzug holt man sich die nächste. Immer nur eine auf einmal, nichts läuft ab, man kann jederzeit etwas anderes machen. ---------- */
-const MISX=1262, MISK='lavaland-mis';
+const MISX=1262;
 let MS={done:{},cur:null,fl:{}}, misShown='';
 try{ const o=JSON.parse(localStorage.getItem(MISK)||'null'); if(o&&typeof o==='object'){ if(o.done&&typeof o.done==='object'&&!Array.isArray(o.done)) MS.done=o.done; if(o.cur&&typeof o.cur==='object'&&typeof o.cur.id==='string'&&(o.cur.st|0)===o.cur.st) MS.cur=o.cur; if(o.fl&&typeof o.fl==='object'&&!Array.isArray(o.fl)) MS.fl=o.fl; } }catch(_){}
 function misSave(){ if(frozen) return; try{ localStorage.setItem(MISK,JSON.stringify(MS)); }catch(_){} }
@@ -4218,7 +4198,7 @@ function renderMap(){
 const FGT=40, FGW=Math.ceil(GX/FGT), FGH=Math.ceil(GY/FGT), FOG={};
 function fRow(y){ return clamp(Math.floor((y-TOP)/CELL/FGT),0,FGH-1); }
 let fogDirty=false, fogT=0;
-function fogKey(){ return 'lavaland-fog'+(realm?'-'+realm:''); }
+function fogKey(){ return K_FOG+(realm?'-'+realm:''); }
 function fogArr(){
   const k=fogKey(); if(FOG[k]) return FOG[k];
   const a=new Uint8Array(Math.ceil(FGW*FGH/8)); let got=false;
@@ -4749,7 +4729,7 @@ function drawCry(d){
 }
 /* ---------- Leuchtmarken: Unter der Erde kann man bis zu acht Lichter setzen, um sich Stellen zu merken. Sie leuchten im Dunkeln und stehen auf der Karte. ---------- */
 const MKMAX=8, MKS={};
-function mkKey(){ return 'lavaland-marks'+(realm?'-'+realm:''); }
+function mkKey(){ return K_MARKS+(realm?'-'+realm:''); }
 function marks(){
   const k=mkKey(); if(MKS[k]) return MKS[k];
   let a=[]; try{ a=JSON.parse(localStorage.getItem(k)||'[]'); }catch(_){}
@@ -5446,13 +5426,13 @@ tap($('mis'),function(){ misTalk(false); });
 tap($('quest'),function(){ if(quest&&!quest.done){ const d=QDEF[quest.type]; speak(d.say(quest)); pulse(d.hint(quest)); } });
 /* Linkshänder: Laufen rechts, Springen und Aktion links. */
 document.body.classList.toggle('calm',OPT.calm);
-let lefty=false; try{ lefty=localStorage.getItem('lavaland-lefty')==='1'; }catch(_){}
+let lefty=false; try{ lefty=localStorage.getItem(K_LEFTY)==='1'; }catch(_){}
 function syncHand(){ document.body.classList.toggle('lefty',lefty); $('hand').innerHTML='<span style="font-size:34px;display:inline-block;transform:scaleX('+(lefty?-1:1)+')" aria-hidden="true">🫲</span>'; $('hand').setAttribute('aria-pressed',String(lefty)); }
-$('hand').addEventListener('click',function(){ lefty=!lefty; try{ localStorage.setItem('lavaland-lefty',lefty?'1':'0'); }catch(_){} syncHand(); sfx('pop'); speak(lefty?'Steuerung gespiegelt: Laufen jetzt rechts.':'Steuerung wie vorher: Laufen links.'); });
+$('hand').addEventListener('click',function(){ lefty=!lefty; try{ localStorage.setItem(K_LEFTY,lefty?'1':'0'); }catch(_){} syncHand(); sfx('pop'); speak(lefty?'Steuerung gespiegelt: Laufen jetzt rechts.':'Steuerung wie vorher: Laufen links.'); });
 syncHand();
 $('sound').addEventListener('click',function(){
   if(muted){ muted=false; fxOff=false; } else if(fxOff){ muted=true; fxOff=false; } else fxOff=true;
-  try{ localStorage.setItem('lavaland-mute',muted?'1':fxOff?'s':'0'); }catch(_){} if(muted) speakStop();
+  try{ localStorage.setItem(K_MUTE,muted?'1':fxOff?'s':'0'); }catch(_){} if(muted) speakStop();
   syncSound(); sfx('pop');
   if(fxOff) speak('Nur Sprache.');
 });
@@ -5549,13 +5529,13 @@ function bakMake(){
   saveFinds(); saveHero();
   return fresh.then(function(){ return Promise.all(BAK_DBS.map(dbDump)); }).then(function(rs){
     const ls={}, db={};
-    try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.indexOf('lavaland')===0&&k!=='lavaland-alive') ls[k]=localStorage.getItem(k); } }catch(_){}
+    try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.indexOf('lavaland')===0&&k!==K_ALIVE) ls[k]=localStorage.getItem(k); } }catch(_){}
     BAK_DBS.forEach(function(n,i){ if(rs[i]) db[n]=enc(rs[i]); });
     return {app:'lavaland',bak:1,at:new Date().toISOString(),ls:ls,db:db};
   });
 }
 function bakDone(ok){
-  if(ok){ flash('exp','ok'); tone([660,880]); try{ localStorage.setItem('lavaland-bak-at',String(Date.now())); }catch(_){} }
+  if(ok){ flash('exp','ok'); tone([660,880]); try{ localStorage.setItem(K_BAK_AT,String(Date.now())); }catch(_){} }
   else { flash('exp','warn'); tone([170],'sawtooth'); }
 }
 function bakSave(){
@@ -5708,10 +5688,10 @@ function numOpts(ans,n,max){
 function dayNo(t){ const d=t?new Date(t):new Date(); return Math.floor((d.getTime()-d.getTimezoneOffset()*6e4)/864e5); }
 let FS=null;
 function loadFacts(){
-  try{ FS=JSON.parse(localStorage.getItem('lavaland-facts')||'null'); }catch(_){ FS=null; }
+  try{ FS=JSON.parse(localStorage.getItem(K_FACTS)||'null'); }catch(_){ FS=null; }
   if(!FS||FS.v!==1||!FS.f){
     /* Wer schon mit dem alten Zähler weit war, startet eine Stufe höher. Den Rest erledigt der Schnellaufstieg. */
-    let sk=0; try{ sk=parseInt(localStorage.getItem('lavaland-skill')||'0',10)||0; }catch(_){}
+    let sk=0; try{ sk=parseInt(localStorage.getItem(K_SKILL)||'0',10)||0; }catch(_){}
     const t=sk>=22?2:sk>=8?1:0;
     FS={v:1,u:{m:t,l:t},f:{},nd:0,nn:{m:0,l:0},ft:{m:0,l:0}};
   }
@@ -5723,7 +5703,7 @@ function loadFacts(){
   if(!FS.dm||typeof FS.dm!=='object'||!FS.dm.c||typeof FS.dm.c!=='object') delete FS.dm;
   for(const k in FS.f){ const r=FS.f[k]; if(!Array.isArray(r)||!(r[0]>=0)||!isFinite(r[1])) delete FS.f[k]; else r[0]=clamp(r[0]|0,0,5); }
 }
-function saveFacts(){ if(frozen) return; try{ localStorage.setItem('lavaland-facts',JSON.stringify(FS)); }catch(_){} }
+function saveFacts(){ if(frozen) return; try{ localStorage.setItem(K_FACTS,JSON.stringify(FS)); }catch(_){} }
 loadFacts();
 /* Wer schon Fakten in Fach 4 oder 5 hat, bekommt die Meistersteine dafür beim ersten Start nachträglich. */
 (function(){ if(FS.mg) return; FS.mg={}; let n=0; for(const k in FS.f) if(FS.f[k][0]>=MBOX){ FS.mg[k]=1; n++; } if(n){ hero.mat.ms=(hero.mat.ms|0)+n; hero.mk.ms=1; saveHero(); } saveFacts(); })();
@@ -5731,8 +5711,8 @@ loadFacts();
    Schon Geübtes wird weiter wiederholt. Ohne Eintrag gilt alles wie bisher. */
 const ZRN=['bis 5','bis 10','bis 20 ohne Zehnerübergang','bis 20 mit Zehnerübergang'], ABC='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 let SCH={on:false,zr:3,l:'',at:0};
-try{ const o=JSON.parse(localStorage.getItem('lavaland-school')||'null'); if(o&&typeof o==='object'){ SCH.on=!!o.on; SCH.zr=clamp(o.zr|0,0,3); SCH.l=String(o.l||'').replace(/[^A-Z]/g,''); SCH.at=+o.at||0; } }catch(_){}
-function saveSchool(){ SCH.at=Date.now(); try{ localStorage.setItem('lavaland-school',JSON.stringify(SCH)); }catch(_){} }
+try{ const o=JSON.parse(localStorage.getItem(K_SCHOOL)||'null'); if(o&&typeof o==='object'){ SCH.on=!!o.on; SCH.zr=clamp(o.zr|0,0,3); SCH.l=String(o.l||'').replace(/[^A-Z]/g,''); SCH.at=+o.at||0; } }catch(_){}
+function saveSchool(){ SCH.at=Date.now(); try{ localStorage.setItem(K_SCHOOL,JSON.stringify(SCH)); }catch(_){} }
 function schoolOk(k,s){ return schoolOkWith(SCH,k,s); }
 function fUnlock(d){ return fUnlockWith(FS,d); }
 const retry=[];
@@ -6559,7 +6539,7 @@ function resetWorld(seed){
   SEED=seed||newSeed();
   /* Eine neue Erde: Mond und Planeten werden dann auch neu. */
   setRealm('');
-  try{ localStorage.removeItem('lavaland-realm'); for(const k in FOG) delete FOG[k]; for(const k in MKS) delete MKS[k]; Object.keys(localStorage).forEach(function(k){ if(k.indexOf('lavaland-fog')===0||k.indexOf('lavaland-marks')===0) localStorage.removeItem(k); }); }catch(_){}
+  try{ localStorage.removeItem(K_REALM); for(const k in FOG) delete FOG[k]; for(const k in MKS) delete MKS[k]; Object.keys(localStorage).forEach(function(k){ if(k.indexOf(K_FOG)===0||k.indexOf(K_MARKS)===0) localStorage.removeItem(k); }); }catch(_){}
   idbDo('readwrite',function(st){ for(const id in RLM) st.delete(realmKey(id)); return st.count(); }).catch(function(){});
   ST.seen={}; ST.eggGot={}; ST.lootGot={}; ST.orbGot={}; matGot={}; pzGot={};
   shapeWorld();
@@ -6670,7 +6650,7 @@ const LOG=(function(){
   /* Absturzerkennung: Solange das Spiel sichtbar läuft, steht alle 2 s ein kurzer Zwischenstand im localStorage (geht auch bei einem Absturz nicht verloren).
      Wird das Spiel ordentlich verlassen (in den Hintergrund, Neuladen), steht dort ok:1. Steht beim nächsten Start ok:0, wurde es mitten im Spiel beendet:
      vom Betriebssystem (meist Speichermangel) oder weil es hing. Dann kommt ein Eintrag ins Protokoll und ins Fehlerprotokoll, mit dem, was zuletzt lief. */
-  const ALK='lavaland-alive';
+  const ALK=K_ALIVE;
   let beatT=0, beatJ=0, beat0=Date.now(), beatSkip=false;
   function aliveW(ok){
     try{
@@ -6885,14 +6865,14 @@ const NEWS={v:4,t:'Fahrzeuge, Missionen, Werkzeuge',items:[
   'Unter der Haube: Fehler in einem Teil des Spiels halten nicht mehr das ganze Spiel an, weniger Rechenlast bei vielen Funken.']};
 let newsOpen=null;
 function parNews(){
-  if(newsOpen===null){ let seen=0; try{ seen=+localStorage.getItem('lavaland-news')||0; }catch(_){} newsOpen=seen<NEWS.v; if(newsOpen) try{ localStorage.setItem('lavaland-news',String(NEWS.v)); }catch(_){} }
+  if(newsOpen===null){ let seen=0; try{ seen=+localStorage.getItem(K_NEWS)||0; }catch(_){} newsOpen=seen<NEWS.v; if(newsOpen) try{ localStorage.setItem(K_NEWS,String(NEWS.v)); }catch(_){} }
   const fresh=newsOpen;
   return '<details class="par-news"'+(fresh?' open':'')+'><summary>Neu: '+NEWS.t+'</summary><ul>'+NEWS.items.map(function(t){ return '<li>'+t+'</li>'; }).join('')+'</ul></details>';
 }
 /* Spielstand absichern: Der Stand liegt nur in diesem Browser. Wann zuletzt gesichert wurde und ob der Browser den Speicher schützt, steht hier. */
 let parStore='';
 function parSafe(){
-  let at=0; try{ at=+localStorage.getItem('lavaland-bak-at')||0; }catch(_){}
+  let at=0; try{ at=+localStorage.getItem(K_BAK_AT)||0; }catch(_){}
   const d=at?Math.floor((Date.now()-at)/864e5):-1;
   let h='<h3>Spielstand</h3>';
   if(d<0||d>=14) h+='<p class="par-note">'+(d<0?'Noch nie als Datei gesichert.':'Letzte Sicherung vor '+d+' Tagen.')+' Wird der Browser-Speicher gelöscht, ist sonst alles weg.</p>';
@@ -6920,7 +6900,7 @@ function parErr(){
 }
 function parVoice(){
   const vs=voicesDe();
-  let miss=[]; try{ miss=JSON.parse(localStorage.getItem('lavaland-vmiss')||'[]'); if(!Array.isArray(miss)) miss=[]; }catch(_){}
+  let miss=[]; try{ miss=JSON.parse(localStorage.getItem(K_VMISS)||'[]'); if(!Array.isArray(miss)) miss=[]; }catch(_){}
   let h='<h3>Vorlesen</h3>'+(VCLIP?'<p>Vorgelesen wird mit Aufnahmen einer natürlichen Stimme ('+Object.keys(VCLIP).length+' Sätze). Die Browserstimme springt nur bei Sätzen ohne Aufnahme ein'+(miss.length?', bisher '+miss.length+'. <button id="par-vmc">Sätze kopieren</button>':'.')+'</p>':'')+'<p>Tempo der Vorlesestimme:</p><div class="par-tabs">'+VRATES.map(function(r,i){ return '<button data-vr="'+r+'"'+(VOICE.r===r?' class="on"':'')+'>'+['langsam','normal','schnell'][i]+'</button>'; }).join('')+'</div>';
   if(vs.length>1){
     h+='<p>'+(VCLIP?'Browserstimme für Sätze ohne Aufnahme:':'Stimme:')+'</p><div class="par-tabs par-voices"><button data-vv=""'+(!VOICE.v?' class="on"':'')+'>Standard</button>';
@@ -7024,19 +7004,19 @@ $('tafel').addEventListener('click',function(e){
 let DAY=null;
 function dayLoad(){
   const d=new Date().toDateString();
-  if(!DAY){ try{ DAY=JSON.parse(localStorage.getItem('lavaland-day')||'null'); }catch(_){ DAY=null; } }
+  if(!DAY){ try{ DAY=JSON.parse(localStorage.getItem(K_DAY)||'null'); }catch(_){ DAY=null; } }
   if(!DAY||typeof DAY!=='object'||DAY.d!==d) DAY={d:d,q:0,pz:0,ms:0,mat:0,z:[],t:0,fire:0};
   if(!Array.isArray(DAY.z)) DAY.z=[];
   ['q','pz','ms','mat','t','fire','lim'].forEach(function(k){ DAY[k]=+DAY[k]||0; }); DAY.z=DAY.z.filter(function(z){ return typeof z==='string'&&z.length<9; }).slice(0,12);
   return DAY;
 }
-function daySave(){ try{ localStorage.setItem('lavaland-day',JSON.stringify(DAY)); }catch(_){} }
+function daySave(){ try{ localStorage.setItem(K_DAY,JSON.stringify(DAY)); }catch(_){} }
 function dayAdd(k,v){ dayLoad(); if(k==='z'){ if(DAY.z.length<12) DAY.z.push(v); } else DAY[k]=(DAY[k]|0)+1; daySave(); }
 let dayT=0;
 function dayTick(dt){ dayT+=dt; if(dayT>=5){ dayLoad(); DAY.t+=dayT; dayT=0; daySave(); limCheck(); } }
 /* Elternlimit (optional): Ist die eingestellte Zeit erreicht, kommt das Lagerfeuer mit Gute-Nacht-Ansage, danach alle zehn Minuten wieder. Gesperrt wird nichts. */
 const LIMS=[0,20,30,45,60,90];
-let LIM=0; try{ LIM=LIMS.indexOf(+localStorage.getItem('lavaland-limit'))>0?+localStorage.getItem('lavaland-limit'):0; }catch(_){}
+let LIM=0; try{ LIM=LIMS.indexOf(+localStorage.getItem(K_LIMIT))>0?+localStorage.getItem(K_LIMIT):0; }catch(_){}
 function limCheck(){
   if(!LIM||DAY.t<LIM*60||$('camp').hidden===false) return;
   if(DAY.lim&&DAY.t-DAY.lim<CAMPGAP) return;
@@ -7118,7 +7098,7 @@ $('par-body').addEventListener('click',function(e){
   if(e.target.closest('#par-vt')){ speak('Hallo! Wie viel ist 3 plus 4?'); return; }
   if(e.target.closest('#par-vs')){ speakStop(); synth('Hallo! Wie viel ist 3 plus 4?'); return; }
   if(e.target.closest('#par-vmc')){
-    let t=''; try{ t=JSON.parse(localStorage.getItem('lavaland-vmiss')||'[]').join('\n'); }catch(_){}
+    let t=''; try{ t=JSON.parse(localStorage.getItem(K_VMISS)||'[]').join('\n'); }catch(_){}
     if(navigator.clipboard) navigator.clipboard.writeText(t).then(function(){ flash('par-vmc','ok'); },function(){});
     return;
   }
@@ -7128,7 +7108,7 @@ $('par-body').addEventListener('click',function(e){
   const op=e.target.closest('[data-opt]');
   if(op){ const k=op.dataset.opt; if(k==='mon1'||k==='mon0') OPT.mon=k==='mon1'; else { OPT.calm=k==='calm1'; reduced=reducedSys||OPT.calm; document.body.classList.toggle('calm',OPT.calm); } optSave(); parLoad(); return; }
   const lm=e.target.closest('[data-lim]');
-  if(lm){ LIM=+lm.dataset.lim; try{ localStorage.setItem('lavaland-limit',String(LIM)); }catch(_){} dayLoad(); DAY.lim=0; daySave(); parLoad(); return; }
+  if(lm){ LIM=+lm.dataset.lim; try{ localStorage.setItem(K_LIMIT,String(LIM)); }catch(_){} dayLoad(); DAY.lim=0; daySave(); parLoad(); return; }
   if(e.target.closest('#par-exp')){
     parGet().then(function(o){
       const b=new Blob([JSON.stringify({app:'lavaland-log',at:new Date().toISOString(),ev:o.ev,day:o.day,err:errLoad(),dev:{ua:navigator.userAgent,mem:navigator.deviceMemory||null,w:innerWidth,h:innerHeight,dpr:devicePixelRatio}})],{type:'application/json'});
@@ -7188,8 +7168,8 @@ function start(){
   const go=function(){
     ready=true; LOG.start(); updateStars(); renderAlbum(); syncUI(); syncSound(); battShown=-1; renderBatt();
     stEnter(); syncOwn(); renderStory();
-    let psst=0; try{ psst=+localStorage.getItem('lavaland-psst')||0; }catch(_){}
-    if(!hero.st.on){ if(psst<3) setTimeout(function(){ if(!hero.st.on&&!uiOpen()&&!paused){ try{ localStorage.setItem('lavaland-psst',String(psst+1)); }catch(_){} say('','Psst! Über Nacht ist etwas Seltsames passiert. Tippe auf das Buch!'); pulse('btn-story'); } },2800); else pulse('btn-story'); }
+    let psst=0; try{ psst=+localStorage.getItem(K_PSST)||0; }catch(_){}
+    if(!hero.st.on){ if(psst<3) setTimeout(function(){ if(!hero.st.on&&!uiOpen()&&!paused){ try{ localStorage.setItem(K_PSST,String(psst+1)); }catch(_){} say('','Psst! Über Nacht ist etwas Seltsames passiert. Tippe auf das Buch!'); pulse('btn-story'); } },2800); else pulse('btn-story'); }
     else if(!hero.big) setTimeout(function(){ if(!uiOpen()&&!paused){ hero.big=true; if(nextLand()){ hero.quest={type:'land',goal:1,p:0}; showQuest(false); } saveHero(); say('','Neu! Hinter dem Schneeberg liegen jetzt viele fremde Länder. Fahr hinten am Berg hinunter und entdecke sie!'); pulse('btn-map'); } },2800);
     if(hero.quest&&hero.quest.type==='core'&&hero.dr<3) hero.quest=null;
     if(hero.st.on&&hero.big&&!hero.deep) setTimeout(function(){ if(!uiOpen()&&!paused) deepIntro(); },2800);
@@ -7229,7 +7209,7 @@ function start(){
   };
   const planets=function(){ return Object.keys(RLM).map(realmKey); };
   /* War das Kind zuletzt auf dem Mond oder einem Planeten, geht es dort weiter. Klappt das nicht, geht es auf der Erde weiter. */
-  let rl=''; try{ rl=localStorage.getItem('lavaland-realm')||''; }catch(_){}
+  let rl=''; try{ rl=localStorage.getItem(K_REALM)||''; }catch(_){}
   const load=function(retry){
     const away=RLM[rl]?idbDo('readonly',function(st){ return st.get(realmKey(rl)); }).then(function(sv){
       if(sv===undefined) return false;
