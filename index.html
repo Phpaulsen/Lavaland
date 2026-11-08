@@ -3883,6 +3883,211 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
   }
 
+  // src/persistence/transfer.js
+  var BAK_DBS = ["lavaland", "lavaland-log"];
+  var BAK_ST = (
+    /** @type {Record<string,string[]>} */
+    { "lavaland": ["save"], "lavaland-log": ["ev", "day"] }
+  );
+  var BAK_MAX = 64e6;
+  var TYPED = ["Uint8Array", "Int8Array", "Uint8ClampedArray", "Uint16Array", "Int16Array", "Uint32Array", "Int32Array", "Float32Array", "Float64Array"];
+  var BADK = ["__proto__", "constructor", "prototype"];
+  function bakOk(b) {
+    if (!b || b.app !== "lavaland" || !b.db || typeof b.db !== "object" || Array.isArray(b.db)) return false;
+    for (const n in b.db) {
+      const d = b.db[n];
+      if (!BAK_ST[n] || !d || typeof d !== "object" || !d.st || typeof d.st !== "object") return false;
+      for (const t in d.st) {
+        const e = d.st[t];
+        if (BAK_ST[n].indexOf(t) < 0 || !e || !Array.isArray(e.r) || !Array.isArray(e.k)) return false;
+      }
+    }
+    if (b.ls != null) {
+      if (typeof b.ls !== "object") return false;
+      for (const k in b.ls) if (k.indexOf("lavaland") !== 0 || typeof b.ls[k] !== "string" || b.ls[k].length > 4e6) return false;
+    }
+    return true;
+  }
+  function b64(u8) {
+    let s = "";
+    for (let i = 0; i < u8.length; i += 32768) s += String.fromCharCode.apply(null, u8.subarray(i, i + 32768));
+    return btoa(s);
+  }
+  function unb64(s) {
+    const b = atob(s), u = new Uint8Array(b.length);
+    for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
+    return u;
+  }
+  function enc(v) {
+    if (ArrayBuffer.isView(v)) return { $t: v.constructor.name, $b: b64(new Uint8Array(v.buffer, v.byteOffset, v.byteLength)) };
+    if (v instanceof ArrayBuffer) return { $t: "ArrayBuffer", $b: b64(new Uint8Array(v)) };
+    if (v instanceof Date) return { $t: "Date", $d: v.getTime() };
+    if (Array.isArray(v)) return v.map(enc);
+    if (v && typeof v === "object") {
+      const o = (
+        /** @type {any} */
+        {}
+      );
+      for (const k in v) o[k] = enc(v[k]);
+      return o;
+    }
+    return v;
+  }
+  function dec(v) {
+    if (Array.isArray(v)) return v.map(dec);
+    if (v && typeof v === "object") {
+      if (typeof v.$t === "string") {
+        if (v.$t === "Date") return new Date(v.$d);
+        const u = unb64(v.$b);
+        if (v.$t === "ArrayBuffer") return u.buffer;
+        if (TYPED.indexOf(v.$t) >= 0) return new /** @type {any} */
+        window[v.$t](u.buffer);
+      }
+      const o = (
+        /** @type {any} */
+        {}
+      );
+      for (const k in v) if (BADK.indexOf(k) < 0) o[k] = dec(v[k]);
+      return o;
+    }
+    return v;
+  }
+  function dbDump(name) {
+    return new Promise(
+      /** @param {any} res */
+      function(res) {
+        let rq;
+        try {
+          rq = indexedDB.open(name);
+        } catch (_) {
+          res(null);
+          return;
+        }
+        rq.onupgradeneeded = function() {
+          try {
+            rq.transaction.abort();
+          } catch (_) {
+          }
+        };
+        rq.onerror = /** @param {any} e */
+        function(e) {
+          if (e && e.preventDefault) e.preventDefault();
+          res(null);
+        };
+        rq.onsuccess = function() {
+          const db = rq.result, names = Array.prototype.slice.call(db.objectStoreNames);
+          if (!names.length) {
+            db.close();
+            res(null);
+            return;
+          }
+          const out = (
+            /** @type {any} */
+            { v: db.version, st: {} }
+          ), tx = db.transaction(names, "readonly");
+          names.forEach(
+            /** @param {any} n */
+            function(n) {
+              const os = tx.objectStore(n), e = { kp: os.keyPath, ai: os.autoIncrement, k: [], r: [] };
+              out.st[n] = e;
+              os.getAllKeys().onsuccess = /** @param {any} ev */
+              function(ev) {
+                e.k = ev.target.result;
+              };
+              os.getAll().onsuccess = /** @param {any} ev */
+              function(ev) {
+                e.r = ev.target.result;
+              };
+            }
+          );
+          tx.oncomplete = function() {
+            db.close();
+            res(out);
+          };
+          tx.onerror = tx.onabort = function() {
+            db.close();
+            res(null);
+          };
+        };
+      }
+    );
+  }
+  function dbLoad(name, d) {
+    const go = (
+      /** @param {any} ver */
+      function(ver) {
+        return new Promise(
+          /** @param {any} res @param {any} rej */
+          function(res, rej) {
+            let rq;
+            try {
+              rq = ver ? indexedDB.open(name, ver) : indexedDB.open(name);
+            } catch (e) {
+              rej(e);
+              return;
+            }
+            rq.onupgradeneeded = function() {
+              const db = rq.result;
+              for (const n in d.st) if (!db.objectStoreNames.contains(n)) {
+                const o = (
+                  /** @type {any} */
+                  { autoIncrement: !!d.st[n].ai }
+                );
+                if (d.st[n].kp != null) o.keyPath = d.st[n].kp;
+                db.createObjectStore(n, o);
+              }
+            };
+            rq.onerror = /** @param {any} e */
+            function(e) {
+              if (e && e.preventDefault) e.preventDefault();
+              rej(rq.error);
+            };
+            rq.onsuccess = function() {
+              const db = rq.result, names = Object.keys(d.st).filter(
+                /** @param {any} n */
+                function(n) {
+                  return db.objectStoreNames.contains(n);
+                }
+              );
+              if (!names.length) {
+                db.close();
+                res();
+                return;
+              }
+              const tx = db.transaction(names, "readwrite");
+              names.forEach(
+                /** @param {any} n */
+                function(n) {
+                  const os = tx.objectStore(n), e = d.st[n];
+                  os.clear();
+                  for (let i = 0; i < e.r.length; i++) {
+                    if (os.keyPath != null) os.put(e.r[i]);
+                    else os.put(e.r[i], e.k[i]);
+                  }
+                }
+              );
+              tx.oncomplete = function() {
+                db.close();
+                res();
+              };
+              tx.onerror = tx.onabort = function() {
+                db.close();
+                rej(tx.error);
+              };
+            };
+          }
+        );
+      }
+    );
+    return go(d.v).catch(
+      /** @param {any} e */
+      function(e) {
+        if (e && e.name === "VersionError") return go(0);
+        throw e;
+      }
+    );
+  }
+
   // src/legacy.js
   (function() {
     "use strict";
@@ -14832,167 +15037,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       sfx("pop");
       if (fxOff) speak("Nur Sprache.");
     });
-    const BAK_DBS = ["lavaland", "lavaland-log"];
-    const BAK_ST = { "lavaland": ["save"], "lavaland-log": ["ev", "day"] }, BAK_MAX = 64e6;
-    const TYPED = ["Uint8Array", "Int8Array", "Uint8ClampedArray", "Uint16Array", "Int16Array", "Uint32Array", "Int32Array", "Float32Array", "Float64Array"], BADK = ["__proto__", "constructor", "prototype"];
-    function bakOk(b) {
-      if (!b || b.app !== "lavaland" || !b.db || typeof b.db !== "object" || Array.isArray(b.db)) return false;
-      for (const n in b.db) {
-        const d = b.db[n];
-        if (!BAK_ST[n] || !d || typeof d !== "object" || !d.st || typeof d.st !== "object") return false;
-        for (const t in d.st) {
-          const e = d.st[t];
-          if (BAK_ST[n].indexOf(t) < 0 || !e || !Array.isArray(e.r) || !Array.isArray(e.k)) return false;
-        }
-      }
-      if (b.ls != null) {
-        if (typeof b.ls !== "object") return false;
-        for (const k in b.ls) if (k.indexOf("lavaland") !== 0 || typeof b.ls[k] !== "string" || b.ls[k].length > 4e6) return false;
-      }
-      return true;
-    }
     let bakIn = null;
-    function b64(u8) {
-      let s = "";
-      for (let i = 0; i < u8.length; i += 32768) s += String.fromCharCode.apply(null, u8.subarray(i, i + 32768));
-      return btoa(s);
-    }
-    function unb64(s) {
-      const b = atob(s), u = new Uint8Array(b.length);
-      for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
-      return u;
-    }
-    function enc(v) {
-      if (ArrayBuffer.isView(v)) return { $t: v.constructor.name, $b: b64(new Uint8Array(v.buffer, v.byteOffset, v.byteLength)) };
-      if (v instanceof ArrayBuffer) return { $t: "ArrayBuffer", $b: b64(new Uint8Array(v)) };
-      if (v instanceof Date) return { $t: "Date", $d: v.getTime() };
-      if (Array.isArray(v)) return v.map(enc);
-      if (v && typeof v === "object") {
-        const o = {};
-        for (const k in v) o[k] = enc(v[k]);
-        return o;
-      }
-      return v;
-    }
-    function dec(v) {
-      if (Array.isArray(v)) return v.map(dec);
-      if (v && typeof v === "object") {
-        if (typeof v.$t === "string") {
-          if (v.$t === "Date") return new Date(v.$d);
-          const u = unb64(v.$b);
-          if (v.$t === "ArrayBuffer") return u.buffer;
-          if (TYPED.indexOf(v.$t) >= 0) return new window[v.$t](u.buffer);
-        }
-        const o = {};
-        for (const k in v) if (BADK.indexOf(k) < 0) o[k] = dec(v[k]);
-        return o;
-      }
-      return v;
-    }
-    function dbDump(name) {
-      return new Promise(function(res) {
-        let rq;
-        try {
-          rq = indexedDB.open(name);
-        } catch (_) {
-          res(null);
-          return;
-        }
-        rq.onupgradeneeded = function() {
-          try {
-            rq.transaction.abort();
-          } catch (_) {
-          }
-        };
-        rq.onerror = function(e) {
-          if (e && e.preventDefault) e.preventDefault();
-          res(null);
-        };
-        rq.onsuccess = function() {
-          const db = rq.result, names = Array.prototype.slice.call(db.objectStoreNames);
-          if (!names.length) {
-            db.close();
-            res(null);
-            return;
-          }
-          const out = { v: db.version, st: {} }, tx = db.transaction(names, "readonly");
-          names.forEach(function(n) {
-            const os = tx.objectStore(n), e = { kp: os.keyPath, ai: os.autoIncrement, k: [], r: [] };
-            out.st[n] = e;
-            os.getAllKeys().onsuccess = function(ev) {
-              e.k = ev.target.result;
-            };
-            os.getAll().onsuccess = function(ev) {
-              e.r = ev.target.result;
-            };
-          });
-          tx.oncomplete = function() {
-            db.close();
-            res(out);
-          };
-          tx.onerror = tx.onabort = function() {
-            db.close();
-            res(null);
-          };
-        };
-      });
-    }
-    function dbLoad(name, d) {
-      const go = function(ver) {
-        return new Promise(function(res, rej) {
-          let rq;
-          try {
-            rq = ver ? indexedDB.open(name, ver) : indexedDB.open(name);
-          } catch (e) {
-            rej(e);
-            return;
-          }
-          rq.onupgradeneeded = function() {
-            const db = rq.result;
-            for (const n in d.st) if (!db.objectStoreNames.contains(n)) {
-              const o = { autoIncrement: !!d.st[n].ai };
-              if (d.st[n].kp != null) o.keyPath = d.st[n].kp;
-              db.createObjectStore(n, o);
-            }
-          };
-          rq.onerror = function(e) {
-            if (e && e.preventDefault) e.preventDefault();
-            rej(rq.error);
-          };
-          rq.onsuccess = function() {
-            const db = rq.result, names = Object.keys(d.st).filter(function(n) {
-              return db.objectStoreNames.contains(n);
-            });
-            if (!names.length) {
-              db.close();
-              res();
-              return;
-            }
-            const tx = db.transaction(names, "readwrite");
-            names.forEach(function(n) {
-              const os = tx.objectStore(n), e = d.st[n];
-              os.clear();
-              for (let i = 0; i < e.r.length; i++) {
-                if (os.keyPath != null) os.put(e.r[i]);
-                else os.put(e.r[i], e.k[i]);
-              }
-            });
-            tx.oncomplete = function() {
-              db.close();
-              res();
-            };
-            tx.onerror = tx.onabort = function() {
-              db.close();
-              rej(tx.error);
-            };
-          };
-        });
-      };
-      return go(d.v).catch(function(e) {
-        if (e && e.name === "VersionError") return go(0);
-        throw e;
-      });
-    }
     function bakMake() {
       const fresh = ready && !traveling ? idbDo("readwrite", function(st) {
         return st.put(snapshot(), realmKey(realm));
