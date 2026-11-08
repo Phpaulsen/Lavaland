@@ -1,199 +1,40 @@
 {
-  "pr": "8b",
+  "pr": 9,
   "renames": {
-    "addCreWith": "addCre",
-    "addTreeWith": "addTree",
-    "blkWith": "blk",
-    "buildWith": "build",
-    "carveCaveWith": "carveCave",
-    "carveCircleWith": "carveCircle",
-    "carvePathWith": "carvePath",
-    "deepFarWith": "deepFar",
-    "deepWorldWith": "deepWorld",
-    "fillBlockWith": "fillBlock",
-    "fillCraterWith": "fillCrater",
-    "fillPondWith": "fillPond",
-    "genWith": "gen",
-    "genColWith": "genCol",
-    "houseBlocksWith": "houseBlocks",
-    "layoutWith": "layout",
-    "makeTrackWith": "makeTrack",
-    "planetDeepWith": "planetDeep",
-    "populateWith": "populate",
-    "rawGWith": "rawG",
-    "rawXWith": "rawX",
-    "shapeWorldWith": "shapeWorld",
-    "vaultPlanWith": "vaultPlan",
-    "winterColWith": "winterCol",
-    "zoneColsWith": "zoneCols"
+    "stepWith": "step",
+    "scanMobileWith": "scanMobile",
+    "steamWith": "steam"
   },
   "params": {
-    "addCreWith": [
-      "WD"
+    "stepWith": [
+      "SP"
     ],
-    "addTreeWith": [
-      "WD"
+    "scanMobileWith": [
+      "SP"
     ],
-    "blkWith": [
-      "WD"
-    ],
-    "buildWith": [
-      "WD"
-    ],
-    "carveCaveWith": [
-      "WD"
-    ],
-    "carveCircleWith": [
-      "WD"
-    ],
-    "carvePathWith": [
-      "WD"
-    ],
-    "deepFarWith": [
-      "WD"
-    ],
-    "deepWorldWith": [
-      "WD"
-    ],
-    "fillBlockWith": [
-      "WD"
-    ],
-    "fillCraterWith": [
-      "WD"
-    ],
-    "fillPondWith": [
-      "WD"
-    ],
-    "genWith": [
-      "WD"
-    ],
-    "genColWith": [
-      "WD"
-    ],
-    "houseBlocksWith": [
-      "WD"
-    ],
-    "layoutWith": [
-      "WD"
-    ],
-    "makeTrackWith": [
-      "WD"
-    ],
-    "planetDeepWith": [
-      "WD"
-    ],
-    "populateWith": [
-      "WD"
-    ],
-    "rawGWith": [
-      "WD"
-    ],
-    "rawXWith": [
-      "WD"
-    ],
-    "shapeWorldWith": [
-      "WD"
-    ],
-    "vaultPlanWith": [
-      "WD"
-    ],
-    "winterColWith": [
-      "WD"
-    ],
-    "zoneColsWith": [
-      "WD"
+    "steamWith": [
+      "SP"
     ]
   },
   "wrappers": {},
   "world": {
-    "param": "WD",
+    "param": "SP",
     "names": [
-      "LIFE",
-      "bio",
-      "bio2",
-      "bix",
-      "bmx",
-      "g0",
-      "grid",
-      "grow0",
-      "liqM",
-      "liqY",
-      "mtop",
-      "noCave",
-      "rA",
-      "rB",
-      "rC",
-      "rD",
-      "rH",
-      "stamp",
-      "z4",
-      "zS1",
-      "zS2",
-      "zS3",
-      "MACH",
-      "MATS",
-      "OLD_END",
-      "OLD_N",
-      "RC0",
-      "RC1",
-      "RW",
-      "SEED",
-      "SPACE",
-      "VAULTS",
-      "ZDEC",
-      "genF",
-      "realm",
-      "tracks",
-      "BUILD",
-      "HOME_C",
-      "HOME_T",
-      "ORBS",
-      "RLM",
-      "ZN",
-      "clouds",
+      "cam",
       "trees",
-      "colTop",
-      "ext",
-      "ground",
-      "lifeS",
-      "rlm",
-      "scanMobile",
-      "setCell",
-      "skyLim",
+      "genF",
+      "dust",
+      "spawn",
       "wc"
-    ],
-    "from": "ST",
-    "fromNames": [
-      "BIO",
-      "CRE",
-      "DECO",
-      "PICKS",
-      "LOOT",
-      "PADS",
-      "EGGS",
-      "STR",
-      "DROPS",
-      "stI"
     ]
   },
   "changed": [
-    "addCre",
-    "addTree",
-    "build",
-    "carveCave",
-    "carveCircle",
-    "fillBlock",
-    "fillCrater",
-    "fillPond",
-    "gen",
-    "genCol",
-    "houseBlocks",
-    "makeTrack",
-    "shapeWorld",
-    "winterCol"
+    "step",
+    "scanMobile",
+    "steam"
   ],
   "added": [
-    "WD"
+    "SP"
   ],
   "removed": []
 }
