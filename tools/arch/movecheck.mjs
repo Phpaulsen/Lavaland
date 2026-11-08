@@ -9,6 +9,9 @@
 //            { neuerName: ["rand=Math.random", "FS"] }  mehrere; "FS" ist ein Parameter gleichen Namens statt des Top-Level-Namens
 //   wrappers { alterName: neuerName }         in bewegten Funktionen wird alterName(…) zu neuerName(rand, …) (Einzeiler wie ri → riWith)
 //   facade   { "name": "W", "names": [...] }  Bezug x wird zu W.x (Übergangsfassade, ADR 0001 Punkt 9)
+//   world    { "param": "WD", "names": [...], "from": "ST", "fromNames": [...] }
+//                                             nur in bewegten Funktionen, die param als Parameter bekommen: x wird zu WD.x,
+//                                             ST.x (für x in fromNames) ebenfalls zu WD.x (Weltobjekt statt globaler Felder, PR 8b)
 //   changed  [...]                            Name bleibt, Inhalt ändert sich bewusst (z. B. Einzeiler, der an core/ weitergibt)
 //   added, removed [...]                      neue bzw. gelöschte Namen
 // Verglichen wird der AST ohne Positionen und ohne Schreibweise von Literalen. Anweisungen auf oberster Ebene, die nichts deklarieren
@@ -83,10 +86,12 @@ export function transform(node, moves, own) {
   // "FS": neuer Parameter gleichen Namens, der den Top-Level-Namen verdeckt; der Körper bleibt dafür unverändert.
   const plist = n => { const v = (moves.params || {})[n]; if (!v) return []; return (typeof v === 'string' ? [v + '=Math.random'] : v).map(e => { const [name, src] = e.split('='); return { name, random: src === 'Math.random' }; }); };
   const mine = own ? plist(own) : [], rnd = (mine.find(e => e.random) || {}).name, moved = !!own && own in (moves.renames || {});
+  const wo = moves.world, wn = moved && wo && mine.some(e => e.name === wo.param) ? new Set(wo.names) : null, wf = wn ? new Set(wo.fromNames || []) : null;
+  const mem = (o, p) => ({ type: 'MemberExpression', object: id(o), property: id(p), computed: false, optional: false });
   // Bezüge auf umbenannte Namen werden nur innerhalb bewegter Funktionen umgeschrieben; legacy.js ruft weiter den alten Namen (Einzeiler).
   const n0 = clone(node);
   // Fassade nur für Bezüge, die nicht auf eine gleichnamige lokale Deklaration zeigen (wie codemod.mjs). sh = verdeckte Namen.
-  const shadow = (x, sh) => { if (!fac) return sh; const d = localDecl(x).filter(n => fac.has(n)); return d.length ? new Set([...sh, ...d]) : sh; };
+  const shadow = (x, sh) => { if (!fac && !wn) return sh; const d = localDecl(x).filter(n => (fac && fac.has(n)) || (wn && (wn.has(n) || n === wo.from))); return d.length ? new Set([...sh, ...d]) : sh; };
   const walk = (x, parent, key, sh = new Set()) => {
     if (!x || typeof x !== 'object') return x;
     if (Array.isArray(x)) { for (let i = 0; i < x.length; i++) x[i] = walk(x[i], parent, key, sh); return x; }
@@ -101,10 +106,12 @@ export function transform(node, moves, own) {
       if (wrap[c] && rnd) { x.callee = id(wrap[c]); x.arguments = [id(rnd), ...x.arguments.map(a => walk(a, x, 'arguments', sh))]; return x; }
     }
     if (x.type === 'Property' && !x.computed) { if (x.shorthand) { x.value = walk(x.value, x, 'value', sh); if (x.value.type !== 'Identifier' || x.value.name !== x.key.name) x.shorthand = false; return x; } x.value = walk(x.value, x, 'value', sh); return x; }
+    if (wn && x.type === 'MemberExpression' && !x.computed && x.object.type === 'Identifier' && x.object.name === wo.from && wf.has(x.property.name) && !sh.has(wo.from)) return mem(wo.param, x.property.name);
     if (x.type === 'MemberExpression' && !x.computed) { x.object = walk(x.object, x, 'object', sh); return x; }
     if (x.type === 'MethodDefinition' || x.type === 'PropertyDefinition') { if (x.computed) x.key = walk(x.key, x, 'key', sh); x.value = walk(x.value, x, 'value', sh); return x; }
     if (x.type === 'LabeledStatement' || x.type === 'BreakStatement' || x.type === 'ContinueStatement') { if (x.body) x.body = walk(x.body, x, 'body', sh); return x; }
     if (x.type === 'Identifier') {
+      if (wn && wn.has(x.name) && !sh.has(x.name)) return mem(wo.param, x.name);
       if (fac && fac.has(x.name) && !sh.has(x.name)) return { type: 'MemberExpression', object: id(moves.facade.name), property: id(x.name), computed: false, optional: false };
       if (moved && ren[x.name]) return id(ren[x.name]);
       return x;
@@ -190,6 +197,12 @@ function selftest() {
       { facade: { name: 'W', names: ['x'] }, removed: ['x'], added: ['W'] }, 1],
     ['Fassade, var gehoben', { 'legacy.js': L('let x=1;\nfunction f(){if(1){var x=2}return x}') }, { 'legacy.js': L('function f(){if(1){var x=2}return x}'), 'state/w.js': 'export const W={x:1}' },
       { facade: { name: 'W', names: ['x'] }, removed: ['x'], added: ['W'] }, 0],
+    ['Weltobjekt', { 'legacy.js': L('let x=1;\nconst F={y:2};\nfunction g(){x++;return F.y+h()}\nfunction h(){const x=3;return x}') },
+      { 'legacy.js': L('let x=1;\nconst F={y:2};\nconst WD={get x(){return x},set x(v){x=v},get y(){return F.y},h};\nfunction h(){return hW(WD)}'), 'core/g.js': 'export function gW(WD){WD.x++;return WD.y+hW(WD)}\nexport function hW(WD){const x=3;return x}' },
+      { renames: { gW: 'g', hW: 'h' }, params: { gW: ['WD'], hW: ['WD'] }, world: { param: 'WD', names: ['x'], from: 'F', fromNames: ['y'] }, changed: ['h'], added: ['WD'] }, 0],
+    ['Weltobjekt, Bezug vergessen', { 'legacy.js': L('let x=1;\nfunction g(){return x}') },
+      { 'legacy.js': L('let x=1;'), 'core/g.js': 'export function gW(WD){return x}' },
+      { renames: { gW: 'g' }, params: { gW: ['WD'] }, world: { param: 'WD', names: ['x'] } }, 1],
     ['Fassade vergessen', { 'legacy.js': L('let x=1;\nfunction f(){return x}') }, { 'legacy.js': L('let x=1;\nfunction f(){return W.x}') }, {}, 1],
     ['still gelöscht', { 'legacy.js': L('function a(){}\nfunction b(){}') }, { 'legacy.js': L('function a(){}') }, {}, 1],
     ['neu ohne Angabe', { 'legacy.js': L('function a(){}') }, { 'legacy.js': L('function a(){}\nfunction b(){}') }, {}, 1],

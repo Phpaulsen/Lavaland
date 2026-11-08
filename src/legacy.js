@@ -15,10 +15,49 @@ import { BOXD, NEWDAY, FASTMS, schoolOkWith, fUnlockWith, mixPreferWith, fParked
 import { mkQWith, mkSeqWith } from './core/learn/tasks.js';
 import { g0, grid, stamp, LIFE, zS1, z4, zS2, zS3, grow0, rA, rB, rD, rH, rC, mtop, bio, bio2, bmx, bix, noCave, liqM, liqY } from './state/world.js';
 import { ST } from './state/facade.js';
+import { winterColWith, carveCaveWith, carveCircleWith, carvePathWith, fillCraterWith, fillPondWith, houseBlocksWith, fillBlockWith, rawXWith, rawGWith, layoutWith, addTreeWith, addCreWith, populateWith, zoneColsWith, shapeWorldWith, blkWith, buildWith, genColWith, genWith, makeTrackWith, deepWorldWith, deepFarWith, planetDeepWith, vaultPlanWith } from './core/world/gen.js';
 import { SNX, SL0, PEAK, BACK, BEND, MH, SNB, CHX, CAVE, SNC0, SNC1, msurf, vnoise, inGrid, ellipse, PX0, PM, PMC, LANDX, PADH, BT, sm, colOf, hBio, craters, roomY, vFloor, WSX, LIFTX, SEA_T, SEA_L, SEA_B, HOUSE, FH } from './core/world/shape.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
+/* Weltobjekt für die Weltgenerierung in core/world/gen.js (PR 8b): Felder direkt, neu zugewiesene Namen über get/set, dazu Ports
+   für Funktionen, die noch hier stehen. Die Getter lesen erst beim Aufruf, deshalb darf WD vor den Deklarationen stehen. */
+const WD={
+  LIFE, bio, bio2, bix, bmx, g0, grid, grow0, liqM, liqY, mtop, noCave, rA, rB, rC, rD, rH, stamp, z4, zS1, zS2, zS3,
+  get BIO(){ return ST.BIO; }, set BIO(v){ ST.BIO=v; },
+  get CRE(){ return ST.CRE; }, set CRE(v){ ST.CRE=v; },
+  get DECO(){ return ST.DECO; }, set DECO(v){ ST.DECO=v; },
+  get PICKS(){ return ST.PICKS; }, set PICKS(v){ ST.PICKS=v; },
+  get LOOT(){ return ST.LOOT; }, set LOOT(v){ ST.LOOT=v; },
+  get PADS(){ return ST.PADS; }, set PADS(v){ ST.PADS=v; },
+  get EGGS(){ return ST.EGGS; }, set EGGS(v){ ST.EGGS=v; },
+  get STR(){ return ST.STR; }, set STR(v){ ST.STR=v; },
+  get DROPS(){ return ST.DROPS; }, set DROPS(v){ ST.DROPS=v; },
+  get stI(){ return ST.stI; }, set stI(v){ ST.stI=v; },
+  get MACH(){ return MACH; }, set MACH(v){ MACH=v; },
+  get MATS(){ return MATS; }, set MATS(v){ MATS=v; },
+  get OLD_END(){ return OLD_END; }, set OLD_END(v){ OLD_END=v; },
+  get OLD_N(){ return OLD_N; }, set OLD_N(v){ OLD_N=v; },
+  get RC0(){ return RC0; },
+  get RC1(){ return RC1; },
+  get RW(){ return RW; },
+  get SEED(){ return SEED; },
+  get SPACE(){ return SPACE; }, set SPACE(v){ SPACE=v; },
+  get VAULTS(){ return VAULTS; }, set VAULTS(v){ VAULTS=v; },
+  get ZDEC(){ return ZDEC; }, set ZDEC(v){ ZDEC=v; },
+  get genF(){ return genF; }, set genF(v){ genF=v; },
+  get realm(){ return realm; },
+  get tracks(){ return tracks; },
+  get BUILD(){ return BUILD; },
+  get HOME_C(){ return HOME_C; },
+  get HOME_T(){ return HOME_T; },
+  get ORBS(){ return ORBS; },
+  get RLM(){ return RLM; },
+  get ZN(){ return ZN; },
+  get clouds(){ return clouds; },
+  get trees(){ return trees; },
+  colTop, ext, ground, lifeS, rlm, scanMobile, setCell, skyLim, wc
+};
 /* Fehlerprotokoll: Technische Fehler bleiben nur auf diesem Gerät (höchstens 20, gleiche zusammengefasst) und stehen in der Elternansicht. So lässt sich ein Problem auf dem Handy des Kindes nachvollziehen. */
 const ERRK='lavaland-err';
 function errLoad(){ try{ const a=JSON.parse(localStorage.getItem(ERRK)||'[]'); return Array.isArray(a)?a.filter(function(e){ return e&&typeof e.m==='string'; }):[]; }catch(_){ return []; } }
@@ -175,20 +214,9 @@ for(let cx=0;cx<GX;cx++){
 /* ---------- Schneeberg: Er steht auf dem alten Boden. grow0 bleibt der alte Boden, mtop ist die Oberkante vom Berg. Vorn und hinten führt eine Piste hinunter. ---------- */
 for(let cx=0;cx<GX;cx++) mtop[cx]=cx<SNC0||cx>SNC1?grow0[cx]:Math.min(grow0[cx],Math.ceil((msurf((cx+.5)*CELL)-TOP)/CELL-.5));
 /* Eine Spalte vom Berg: oben Schnee, innen Fels mit Eiskristallen. Am Fuß liegt eine dünne Schneedecke. */
-function winterCol(cx){
-  const x=(cx+.5)*CELL, mt=mtop[cx], g=grow0[cx], s3=(SEED%389)*7.77;
-  for(let cy=mt;cy<g;cy++){
-    const i=cy*GX+cx, m=grid[i], d=cy-mt;
-    if(m>=4&&m!==EARTH) continue;
-    grid[i]=d<9?SNOW:(d>18&&vnoise(x/30+s3,(TOP+cy*CELL)/30)>.87?GEM:ROCK); if(LIFE.size) LIFE.delete(i);
-  }
-  if(mt>=g-1&&(x<SL0+60||x>BEND-90)){
-    const r=colTop(cx,2);
-    for(let k=0;k<2;k++) if(r+k<GY-3&&grid[(r+k)*GX+cx]===EARTH) grid[(r+k)*GX+cx]=SNOW;
-  }
-}
+function winterCol(cx){ return winterColWith(WD,cx); }
 /* Die Höhle, aus der das Hick kommt */
-function carveCave(){ ellipse(CAVE[0],CAVE[1],74,30,function(cx,cy){ grid[cy*GX+cx]=0; }); }
+function carveCave(){ return carveCaveWith(WD); }
 /* Alte Spielstände bekommen den Berg nachträglich. Was dort stand, rückt nach oben auf den Schnee. */
 function migrateSnow(){
   for(let cx=SNC0;cx<Math.min(genF,SNC1);cx++) winterCol(cx);
@@ -216,41 +244,11 @@ function ext(cx,cy){
 }
 function extI(i){ const y=(i/GX)|0; ext(i-y*GX,y); }
 function setCell(cx,cy,m,lf){ if(!inGrid(cx,cy)) return; const i=cy*GX+cx; grid[i]=m; lifeS(i,lf||0); if(m>0&&m<4) ext(cx,cy); }
-function carveCircle(x,y,r){
-  const c0=Math.floor((x-r)/CELL), c1=Math.floor((x+r)/CELL), r0=Math.floor((y-r-TOP)/CELL), r1=Math.floor((y+r-TOP)/CELL);
-  for(let cy=r0;cy<=r1;cy++) for(let cx=c0;cx<=c1;cx++){
-    if(!inGrid(cx,cy)) continue;
-    const dx=(cx+.5)*CELL-x, dy=TOP+(cy+.5)*CELL-y;
-    if(dx*dx+dy*dy<=r*r) grid[cy*GX+cx]=0;
-  }
-}
-function carvePath(pts,r){
-  for(let i=0;i<pts.length-1;i++){
-    const a=pts[i], b=pts[i+1], n=Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/8);
-    for(let k=0;k<=n;k++) carveCircle(a[0]+(b[0]-a[0])*k/n,a[1]+(b[1]-a[1])*k/n,r);
-  }
-}
-function fillCrater(){
-  const level=Math.min(ground(VOLC-105),ground(VOLC+105))+16;
-  for(let cx=Math.floor((VOLC-100)/CELL);cx<=Math.floor((VOLC+100)/CELL);cx++){
-    for(let cy=grow0[cx]-1;cy>=1;cy--){
-      if(TOP+(cy+.5)*CELL<level) break;
-      if(grid[cy*GX+cx]===0) setCell(cx,cy,LAVA);
-    }
-  }
-}
-function fillPond(){
-  const lv=Math.floor((siteY.pond+8-TOP)/CELL);
-  for(let cx=Math.floor((SITE.pond-170)/CELL);cx<=Math.floor((SITE.pond+170)/CELL);cx++)
-    for(let cy=lv;cy<grow0[cx];cy++) if(grid[cy*GX+cx]===0) setCell(cx,cy,WATER);
-}
-function houseBlocks(site){
-  const k=grow0[Math.floor(SITE[site]/CELL)]>>2, b0=Math.round(SITE[site]/24)-2;
-  return HOUSE.map(function(h){return [b0+h[0],k-1-h[1]];});
-}
-function fillBlock(bx,by){
-  for(let y=by*4;y<by*4+4;y++) for(let x=bx*4;x<bx*4+4;x++) if(inGrid(x,y)&&grid[y*GX+x]<4) grid[y*GX+x]=WOOD;
-}
+function carveCircle(x,y,r){ return carveCircleWith(WD,x,y,r); }
+function fillCrater(){ return fillCraterWith(WD); }
+function fillPond(){ return fillPondWith(WD); }
+function houseBlocks(site){ return houseBlocksWith(WD,site); }
+function fillBlock(bx,by){ return fillBlockWith(WD,bx,by); }
 function blockFilled(bx,by){
   let n=0; for(let y=by*4;y<by*4+4;y++) for(let x=bx*4;x<bx*4+4;x++) if(grid[y*GX+x]>=4) n++;
   return n>=12;
@@ -304,73 +302,12 @@ function setRealm(id){
 function wc(cx){ return !realm?cx:cx<RC0?cx+(RC1-RC0):cx>=RC1?cx-(RC1-RC0):cx; }
 
 
-function rawX(x){
-  let k=bix[clamp(Math.floor(x/CELL),0,GX-1)]-1; if(k<0) k=0;
-  const b=ST.BIO[k], d0=x-b.x0, d1=b.x1-x;
-  let h=hBio(b,x);
-  if(realm){
-    /* Auf fremden Welten: Am Landeplatz und an beiden Enden ist der Boden gleich hoch, damit die Welt rundherum zusammenpasst. */
-    const dl=Math.abs(x-LANDX); if(dl<420) h+=(PADH-h)*sm(dl<260?1:1-(dl-260)/160);
-    if(k===0&&d0<300) return PADH+(h-PADH)*sm(d0/300);
-    if(k===ST.BIO.length-1&&d1<300) return PADH+(h-PADH)*sm(d1/300);
-  }
-  if(d0<220){ const o=k>0?hBio(ST.BIO[k-1],x):rawH(x); return o+(h-o)*sm((d0+220)/440); }
-  if(d1<220&&k<ST.BIO.length-1){ const o=hBio(ST.BIO[k+1],x); return h+(o-h)*sm((220-d1)/440); }
-  return h;
-}
-function rawG(x){ return (x<EXT_X||!ST.BIO.length)?rawH(x):rawX(x); }
 
 /* Reihenfolge der Länder: Alle Arten kommen einmal dran, dann wird neu gemischt. Am Schluss liegt das Ende der Welt.
    Die Welt ist doppelt so breit wie früher. Die Länder der alten Hälfte bleiben genau so, wie sie waren; wo früher das Ende der Welt lag, geht es mit neuen Ländern weiter. */
 let OLD_N=0, OLD_END=0;
-function layout(){
-  ST.BIO=[]; let r=rng(SEED*13+7); const cnt={}; let x=B0, bag=[], i=0, last=0;
-  const R=rlm();
-  if(R){ r=rng(SEED*13+R.salt); x=PX0; }
-  const add=function(t,w){
-    const b={t:t,x0:x,x1:x+w,i:i++,s:Math.floor(r()*1e6),n:cnt[t]|0};
-    cnt[t]=b.n+1; last=t;
-    b.px=x+w*(.24+.14*r()); b.qx=24*Math.round((x+w*(.62+.16*r()))/24);
-    if(t===12) b.qx=24*Math.round((WORLD_W-700)/24);
-    b.hq=TOP+24*Math.round((hBio(b,b.qx,true)-TOP)/24);
-    ST.BIO.push(b); x+=w;
-  };
-  const fill=function(end){
-    while(x<end-5600||i<11){
-      if(!bag.length){
-        for(let t=1;t<=11;t++) bag.push(t);
-        for(let k=10;k>0;k--){ const j=Math.floor(r()*(k+1)), q=bag[k]; bag[k]=bag[j]; bag[j]=q; }
-        if(bag[10]===last){ const q=bag[10]; bag[10]=bag[0]; bag[0]=q; }
-      }
-      const t=bag.pop(); add(t,BT[t].w[0]+Math.floor(r()*BT[t].w[1]));
-    }
-  };
-  if(R){
-    /* Eine fremde Welt: ihre Länder wechseln sich ab, das letzte reicht genau bis zum Ende. */
-    const E=PX0+RW;
-    while(x<E){
-      const t=R.lands[i%R.lands.length]; let w=BT[t].w[0]+Math.floor(r()*BT[t].w[1]);
-      if(E-x-w<BT[t].w[0]*.6) w=E-x;
-      add(t,w);
-    }
-    return;
-  }
-  fill(WORLD_W0); OLD_N=i; OLD_END=x;
-  r=rng(SEED*29+11); fill(WORLD_W);
-  add(12,WORLD_W-x);
-}
-function addTree(x,k,r){
-  const f=FH[k], t={x:x,gy:ground(x),row:grow0[Math.floor(x/CELL)],h:f[0]+r()*f[1],state:0,t:0,s:.85+r()*.4};
-  if(k==='fir') t.fir=true; else if(k!=='tree') t.kind=k;
-  trees.push(t); return t;
-}
-function addCre(b,f,r,x,y){
-  const k=f[1], w=b.x1-b.x0, isle=b.t===7&&k!=='swim'&&x===undefined;
-  if(x===undefined) x=isle?b.px+(r()-.5)*150:b.x0+280+r()*(w-560);
-  const c={e:f[0],k:k,x:x,hx:x,y:y===undefined?NaN:y,dir:r()<.5?-1:1,t:r()*9,cd:0,hop:0,say:f[3],fl:f[4]||'',b:b.i,sz:f[5]||22,sp:22+r()*10,ph:r()*6,next:3+r()*6,gone:0,rng:isle?70:170,ok:false};
-  if(k==='swim'){ c.a=b.x0+140; c.z=b.x1-140; c.sp=28+r()*30; c.y=WL+40+r()*110; }
-  ST.CRE.push(c); return c;
-}
+function addTree(x,k,r){ return addTreeWith(WD,x,k,r); }
+function addCre(b,f,r,x,y){ return addCreWith(WD,b,f,r,x,y); }
 /* Bauwerke, goldene Eier und Besonderes für jede Land-Art */
 const BUILD=[];
 BUILD[1]=function(b,r){
@@ -461,145 +398,11 @@ BUILD[14]=function(b,r){
   ST.STR.push({k:'geode',x:b.qx,y:y,c1:colOf(b.qx+140)});
   ST.LOOT.push({id:b.i*4+3,x:b.qx,y:y+30,g:60,bur:false});
 };
-function populate(b){
-  const T=BT[b.t], r=rng(b.s*7+b.i), w=b.x1-b.x0, tier=Math.min(3,b.n), t0=trees.length;
-  ST.DECO.push({k:'gate',x:b.x0+240,b:b});
-  if(T.flora) for(let x=b.x0+70;x<b.x1-70;x+=T.fs*(.55+r()*.9)){
-    if(Math.abs(x-b.x0-240)<50||Math.abs(x-b.qx)<(T.clr||150)||Math.abs(x-b.px)<(T.clp||0)||liqM[Math.floor(x/CELL)]) continue;
-    addTree(x,T.flora[Math.floor(r()*T.flora.length)],r);
-  }
-  for(const f of T.fauna||[]) for(let n=0;n<f[2];n++){
-    const c=addCre(b,f,r);
-    if(f[4]==='monkey'&&trees.length>t0){ const tr=trees[t0+Math.floor(r()*(trees.length-t0))]; c.x=c.hx=tr.x; c.y=tr.gy-tr.h*.86; }
-  }
-  for(const q of T.picks||[]) for(let n=0;n<q[2];n++) ST.PICKS.push({e:q[0],ty:q[1],x:b.x0+300+r()*(w-600),y:NaN,t:0});
-  for(let n=0;n<2;n++){ const x=b.x0+320+r()*(w-640); if(Math.abs(x-b.qx)>250&&Math.abs(x-b.px)>210) ST.LOOT.push({id:b.i*4+n,x:x,y:ground(x)+56+r()*50,g:20+10*tier,bur:true}); }
-  if(!T.noCloud) for(let n=0;n<w/800;n++) clouds.push({x:b.x0+r()*w,y:-190-r()*900,s:.7+r()*1.1});
-  if(BUILD[b.t]) BUILD[b.t](b,r,tier);
-}
-/* Berechnet die ganze Welt neu aus der Welt-Nummer: Bodenform, Farben, Pflanzen, Tiere, Bauwerke, Planeten. Die Zellen selbst entstehen später. */
-function zoneCols(){ for(let cx=0;cx<GX;cx++){ const c=wc(cx); zS1[cx]=630+Math.round(3*Math.sin(c*.027+1)); z4[cx]=960+Math.round(10*Math.sin(c*.013+2)); zS2[cx]=1290+Math.round(4*Math.sin(c*.022)); zS3[cx]=1640+Math.round(4*Math.sin(c*.019+4)); } }
 const HOME_T=[], HOME_C=[];
-function shapeWorld(){
-  layout();
-  const R=rlm(), C0=R?RC0:EXC, C1=R?RC1:GX;
-  zoneCols();
-  bix.fill(0); bio.fill(0); bmx.fill(0); noCave.fill(0); liqM.fill(0); liqY.fill(0);
-  for(const b of ST.BIO){ const c0=Math.floor(b.x0/CELL), c1=Math.min(GX,Math.floor(b.x1/CELL)); for(let cx=c0;cx<c1;cx++){ bix[cx]=b.i+1; bio[cx]=b.t; } }
-  /* Am Rand zweier Länder mischen sich die Farben. */
-  for(let k=0;k<ST.BIO.length;k++){
-    const c0=Math.floor(ST.BIO[k].x0/CELL), pt=k?ST.BIO[k-1].t:R?ST.BIO[ST.BIO.length-1].t:0;
-    for(let d=-20;d<20;d++){ const cx=c0+d; if(cx>0&&cx<GX){ bio[cx]=pt; bio2[cx]=ST.BIO[k].t; bmx[cx]=Math.max(1,Math.round((d+20)/40*255)); } }
-  }
-  for(let i=C0;i<(R?C1:GX+2);i++) g0[i]=rawG(i*CELL);
-  for(const b of ST.BIO){ if(b.t===1||b.t===3) b.ly=Math.min(rawG(b.px-98),rawG(b.px+98))+9; else if(b.t===6) b.ly=Math.min(rawG(b.px-92),rawG(b.px+92))+14; }
-  for(let cx=C0;cx<C1;cx++){
-    const x=(cx+.5)*CELL, g=Math.ceil((rawG(x)-TOP)/CELL-.5), b=bix[cx]?ST.BIO[bix[cx]-1]:null;
-    const rock=b&&(b.t===8||(b.t===6&&Math.abs(x-b.px)<300));
-    grow0[cx]=g; mtop[cx]=g;
-    rA[cx]=g+(rock?70:0); rB[cx]=Math.max(rA[cx],g+30+Math.round(5*Math.sin(cx*.05)));
-    rD[cx]=342+Math.round(8*Math.sin(cx*.021)); rH[cx]=552+Math.round(10*Math.sin(cx*.017+2)); rC[cx]=GY-52+Math.round(4*Math.sin(cx*.03));
-    if(!b) continue;
-    const dq=Math.abs(x-b.qx), dp=Math.abs(x-b.px), t=b.t;
-    if(t===7){ noCave[cx]=2; if(x>b.x0+50&&x<b.x1-50){ liqM[cx]=WATER; liqY[cx]=WLR; } }
-    else if(t===6&&dp<320){ noCave[cx]=2; if(dp<92){ liqM[cx]=LAVA; liqY[cx]=Math.floor((b.ly-TOP)/CELL); } }
-    else if((t===1||t===3)&&dp<240){ noCave[cx]=1; if(dp<100){ liqM[cx]=WATER; liqY[cx]=Math.floor((b.ly-TOP)/CELL); } }
-    else if(t===10||dq<240) noCave[cx]=1;
-    if(t===18&&x>b.x0+260&&x<b.x1-260&&dq>=240){ noCave[cx]=2; liqM[cx]=WATER; liqY[cx]=Math.floor((PADH+8-TOP)/CELL); }
-    if(t===16&&x>b.x0+260&&x<b.x1-260&&dq>=240){ noCave[cx]=2; liqM[cx]=ICE; liqY[cx]=Math.floor((PADH+8-TOP)/CELL); }
-  }
-  trees.length=0; clouds.length=0; ST.CRE=[]; ST.PICKS=[]; ST.PADS=[]; ST.DECO=[]; ST.EGGS=[]; ST.LOOT=[]; ST.STR=[]; ST.DROPS=[]; ORBS.length=0;
-  if(R){
-    /* Die Randstreifen zeigen das jeweils andere Ende der Welt. */
-    const L=[g0,grow0,mtop,rA,rB,rD,rH,rC,bix,bio,bio2,bmx,noCave,liqM,liqY];
-    for(let d=0;d<PMC;d++) for(const a of L){ a[RC0-PMC+d]=a[RC1-PMC+d]; a[RC1+d]=a[RC0+d]; }
-    g0[RC1+PMC]=g0[RC0+PMC];
-    for(const b of ST.BIO) populate(b);
-    ST.DECO.push({k:'sign',x:LANDX-90,y:ground(LANDX-90),e:'🚀'});
-    planetDeep(R);
-    return;
-  }
-  for(const t of HOME_T) trees.push(Object.assign({},t));
-  for(const c of HOME_C) clouds.push(Object.assign({},c));
-  ORBS.push(MOON);
-  /* Rund um die Heimat: Tannen hinten am Berg, Nessie im Höhlensee, ein Maulwurf unter dem Start, ein Wegweiser und drei Fundsachen. */
-  const r=rng(SEED*5+3), hb={i:-1,x0:0,x1:HOME_W,t:0};
-  for(let x=7380;x<8250;x+=120+r()*90){ const cx=Math.floor(x/CELL); trees.push({x:x,gy:TOP+mtop[cx]*CELL,row:mtop[cx],h:62+r()*40,state:0,t:0,s:.85+r()*.4,fir:true}); }
-  const ns=addCre(hb,['🦕','swim',1,'NESSIE!','',34],r,940); ns.a=800; ns.z=1090; ns.sp=20; ns.y=ground(700)+266;
-  addCre(hb,['🐭','sit',1,'HEY! LOCH ZU!','bury',22],r,858,ground(858)+310);
-  ST.DECO.push({k:'sign',x:7240,y:msurf(7240),e:'➡️'},{k:'sign',x:8420,y:ground(8420),e:'🌍'});
-  ST.PICKS.push({e:'🎈',ty:'float',x:1190,y:NaN,t:0},{e:'🍄',ty:'big',x:2130,y:NaN,t:0},{e:'⭐',ty:'star',x:3900,y:NaN,t:0},{e:'🌶️',ty:'chili',x:5300,y:NaN,t:0});
-  for(const b of ST.BIO) populate(b);
-  ST.STR.sort(function(p,q){ return p.c1-q.c1; });
-  const ro=rng(SEED*3+1); let k=0;
-  for(let x=13000;x<WORLD_W-4000;x+=7000+ro()*5000){ ORBS.push({x:x,y:-3800-ro()*1000,r:140+ro()*90,k:k%4,i:k+1}); k++; }
-  deepWorld();
-}
+function shapeWorld(){ return shapeWorldWith(WD); }
 
-function blk(bx,by,m){
-  for(let y=by*4;y<by*4+4;y++) for(let x=bx*4;x<bx*4+4;x++) if(inGrid(x,y)){ grid[y*GX+x]=m; if(m===WATER) ext(x,y); }
-}
 /* Setzt ein Bauwerk in die fertig erzeugten Spalten. */
-function build(s){
-  const k=s.k;
-  if(k==='pyr'){
-    const gq=Math.round((s.y-TOP)/CELL), c0=Math.floor((s.x-156)/CELL), c1=Math.floor((s.x+156)/CELL);
-    for(let cx=c0;cx<=c1;cx++){
-      const d=Math.abs((cx+.5)*CELL-s.x), st=Math.min(10,Math.floor((156-d)/14)); if(st<0) continue;
-      for(let cy=gq-2*(st+1);cy<gq+14;cy++) if(inGrid(cx,cy)&&grid[cy*GX+cx]<4) grid[cy*GX+cx]=ROCK;
-      if(d<38) for(let cy=gq-7;cy<gq;cy++) grid[cy*GX+cx]=0;
-    }
-  }else if(k==='house'||k==='tower'||k==='bld'||k==='wreck'){
-    const kq=Math.round((s.y-TOP)/24), w=k==='tower'?5:k==='wreck'?7:s.w, h=k==='tower'?8:k==='wreck'?3:s.h;
-    const b0=k==='bld'?s.bx:Math.round(s.x/24)-(k==='wreck'?3:2), base=k==='tower'||k==='bld'?ROCK:EARTH;
-    if(k!=='wreck') for(let i=0;i<w;i++) for(let y=kq*4;y<kq*4+10;y++) for(let x=(b0+i)*4;x<(b0+i)*4+4;x++) if(inGrid(x,y)&&grid[y*GX+x]<4) grid[y*GX+x]=base;
-    for(let j=0;j<=h;j++) for(let i=0;i<w;i++){
-      let m=0;
-      if(k==='house'){ if(i===0||i===w-1||j===h) m=s.m; if(i===0&&j<2) m=0; }
-      else if(k==='tower'){ if(j<h&&(i===0||i===4)) m=ROCK; if((j===3&&i!==1)||(j===7&&i!==3)) m=ROCK; if(j===h) m=i%2?0:ROCK; if(i===0&&j<2) m=0; }
-      else if(k==='bld'){ if(j===h) continue; m=(j%2===1&&i>0&&i<w-1&&(i+j)%2===0)?0:WOOD; }
-      else{ if(j<h) m=(i===0||i===6)?WOOD:WATER; else m=i<3?WOOD:WATER; }
-      blk(b0+i,kq-1-j,m);
-    }
-    if(k==='house') for(let j=1;j<=2;j++) for(let i=j;i<w-j;i++) blk(b0+i,kq-1-h-j,s.m);
-  }else if(k==='geode'){
-    ellipse(s.x,s.y,128,58,function(cx,cy,wy){
-      const dx=((cx+.5)*CELL-s.x)/110, dy=(wy-s.y)/46, i=cy*GX+cx;
-      if(dx*dx+dy*dy<=1) grid[i]=0; else if(grid[i]>=4&&grid[i]!==BED) grid[i]=GEM;
-    });
-  }else if(k==='isle'){
-    ellipse(s.x,s.y,s.rx,14,function(cx,cy){ if(grid[cy*GX+cx]<4) grid[cy*GX+cx]=SNOW; });
-  }else if(k==='pillar'){
-    const c0=Math.floor((s.x-12)/CELL);
-    for(let cx=c0;cx<c0+4;cx++) for(let cy=Math.floor((s.y-TOP)/CELL);cy<grow0[cx]+2;cy++) if(inGrid(cx,cy)) grid[cy*GX+cx]=ROCK;
-  }else if(k==='room'||k==='lake'){
-    const lk=k==='lake', fr=Math.floor((s.y+s.ry*.5-TOP)/CELL), pad=lk?12:0;
-    ellipse(s.x,s.y,s.rx+pad,s.ry+pad,function(cx,cy,wy){
-      const i=cy*GX+cx, m=grid[i];
-      if(m===BED||m===SHELL||m===CORE) return;
-      const dx=((cx+.5)*CELL-s.x)/s.rx, dy=(wy-s.y)/s.ry, inn=dx*dx+dy*dy<=1;
-      if(!lk){ if(cy<fr){ grid[i]=0; lifeS(i,0); } else if(m<4) grid[i]=ROCK; }
-      else if(inn){ grid[i]=wy>s.y+s.ry*.15?s.m:0; lifeS(i,0); }
-      else if(m<4&&wy>s.y-6) grid[i]=ROCK;
-    });
-    if(s.hw){
-      const c0=Math.floor((s.x-s.rx-s.hw)/CELL), c1=Math.floor((s.x-s.rx+12)/CELL);
-      for(let cx=c0;cx<=c1;cx++) for(let cy=fr-8;cy<fr;cy++) if(inGrid(cx,cy)){ const m=grid[cy*GX+cx]; if(m!==BED&&m!==SHELL&&m!==CORE) grid[cy*GX+cx]=0; }
-    }
-  }else if(k==='vault'){
-    /* Schatzkammer: eine feste Wand, durch die kein Bohrer kommt, und links eine Tür. Davor ist eine kleine Nische frei. */
-    const v=s.v, fr=vFloor(v);
-    ellipse(v.x,v.y,v.rx+14,v.ry+14,function(cx,cy,wy){
-      const i=cy*GX+cx, dx=((cx+.5)*CELL-v.x)/v.rx, dy=(wy-v.y)/v.ry;
-      if(dx*dx+dy*dy<=1&&cy<fr){ grid[i]=0; lifeS(i,0); } else grid[i]=BED;
-    });
-    for(let cx=Math.floor((v.x-v.rx-64)/CELL);cx<Math.floor((v.x-v.rx-16)/CELL);cx++) for(let cy=fr-9;cy<fr;cy++) if(inGrid(cx,cy)){ const m=grid[cy*GX+cx]; if(m!==BED&&m!==SHELL&&m!==CORE){ grid[cy*GX+cx]=0; lifeS(cy*GX+cx,0); } }
-  }else if(k==='rb'){
-    const raw=[];
-    for(let n=0;n<=24;n++){ const t=n/24; raw.push([s.x+(s.x2-s.x)*t,s.y+(s.y2-s.y)*t*t-70*Math.sin(Math.PI*t)*(1-t)]); }
-    const T=makeTrack(raw,false); if(T){ T.rb=true; tracks.push(T); }
-  }
-}
+function build(s){ return buildWith(WD,s); }
 
 function scanMobile(){
   winC=Math.floor(cam.x/CELL); winR=Math.floor((cam.y-TOP)/CELL); sx0=winC-WINW-4; stamp.fill(0);
@@ -608,82 +411,9 @@ function scanMobile(){
   for(let cy=r0;cy<=r1;cy++){ const row=cy*GX; for(let cx=a;cx<=b;cx++){ const m=grid[row+cx]; if(m>0&&m<4) ext(cx,cy); } }
 }
 /* Erzeugt eine Spalte der Welt: Schichten, Höhlen, Gold und Edelsteine, Wasser oder Lava in Becken, den Schneeberg. */
-function genCol(cx,from){
-  if(realm&&(cx<RC0-PMC||cx>=RC1+PMC)){ for(let cy=0;cy<GY;cy++) grid[cy*GX+cx]=BED; return; }
-  const x=(wc(cx)+.5)*CELL, g=grow0[cx], cA=rA[cx], cB=rB[cx], cD=rD[cx], cH=rH[cx], cC=rC[cx];
-  const a1=zS1[cx], a2=z4[cx], a3=zS2[cx], a4=zS3[cx], edge=cx>0&&cx<GX-1;
-  const ns=realm?SEED*31+RLM[realm].salt:SEED, s1=(ns%977)*3.17, s2=(ns%613)*5.31, s3=(ns%389)*7.77;
-  let safe, pond, gb, rich=false;
-  if(cx<HOME_GX&&!realm){ safe=!(x<1300||(x>2400&&x<3640)||Math.abs(x-SITE.chest-40)<150); pond=Math.abs(x-SITE.pond)<240; gb=Math.ceil((baseG(x)-TOP)/CELL-.5); }
-  else{ safe=noCave[cx]<2; pond=noCave[cx]===1; gb=g; rich=bix[cx]>0&&ST.BIO[bix[cx]-1].t===8; }
-  if(!from) for(let cy=0;cy<g;cy++) grid[cy*GX+cx]=0;
-  /* Im Lavameer stehen Felswände. Dazwischen liegt Lava in einer langen Höhle. Zu den Wänden hin steigt der Boden an und bildet ein trockenes Ufer. */
-  const pil=vnoise(x/240+s1,9.5), seaT=SEA_T+Math.round(14*vnoise(x/170+s2,3.3)), bch=Math.min(1,Math.max(0,(.6-pil)/.07)), seaB=Math.round(SEA_L-5+(SEA_B+10*vnoise(x/130+s3,5.1)-SEA_L+5)*bch*bch);
-  for(let cy=Math.max(g,from|0);cy<GY;cy++){
-    const wy=TOP+cy*CELL;
-    let m;
-    if(cy<a1){
-      m=cy>=cH?HOT:cy>=cD?DEEP:(cy<cA||cy>=cB)?ROCK:EARTH;
-      if(edge){
-        const d=(cy-g)*CELL;
-        if(d>70&&cy<a1-6&&((cy-gb)*CELL>420||(safe&&!(pond&&d<200)))){
-          if(Math.abs(vnoise(x/200+s1,wy/120)-.5)<.055*Math.min(1,(d-70)/90)) m=0;
-          else if(d>900&&vnoise(x/380+s2,wy/250)>.76) m=0;
-        }
-        if(m&&d>260&&vnoise(x/30+s3,wy/30)>.86) m=cy>=cD?GEM:GOLD;
-        else if(m&&rich&&d>18&&vnoise(x/26+s3,wy/26)>.8) m=GEM;
-      }
-    }
-    else if(cy>=cC) m=CORE;
-    else if(cy<a1+SH||(cy>=a3&&cy<a3+SH)||(cy>=a4&&cy<a4+SH)) m=SHELL;
-    else{
-      const z=cy<a2?1:cy<a3?2:cy<a4?3:4;
-      m=ROCK;
-      if(edge){
-        const lo=z===1?a1+SH:z===2?a2-60:z===3?a3+SH:a4+SH, hi=z===1?a2+60:z===2?a3:z===3?a4:cC;
-        if(cy>lo+4&&cy<hi-5){
-          const n1=Math.abs(vnoise(x/200+s1,wy/120)-.5), n2=vnoise(x/380+s2,wy/250);
-          if(z===1){ if(n2>.6||n1<.04) m=0; else if(n2>.555) m=EARTH; }
-          else if(z===2){ if(n1<.065||n2>.8) m=0; else if(vnoise(x/110+s2,wy/36)>.7) m=EARTH; }
-          else if(z===3){ if(n2>.68||n1<.035) m=0; else if(n2>.63) m=ICE; }
-          else if(cy>=seaT-3){ if(cy>=seaT&&cy<seaB&&pil<.6) m=cy>=SEA_L?LAVA:0; }
-          else if(n2>.7||n1<.045) m=0;
-        }
-        if(m===ROCK&&vnoise(x/30+s3,wy/30)>(z===3?.8:.86)) m=z===4?GOLD:GEM;
-      }
-    }
-    grid[cy*GX+cx]=m;
-  }
-  if(!from&&liqM[cx]) for(let cy=Math.max(1,liqY[cx]);cy<g;cy++) grid[cy*GX+cx]=liqM[cx]===ICE&&cy>liqY[cx]+2?WATER:liqM[cx];
-  if(cx===0||cx===GX-1) for(let cy=0;cy<GY;cy++) grid[cy*GX+cx]=BED;
-  for(let cy=GY-3;cy<GY;cy++) grid[cy*GX+cx]=BED;
-  if(!from&&!realm&&cx>=SNC0&&cx<=SNC1) winterCol(cx);
-}
+function genCol(cx,from){ return genColWith(WD,cx,from); }
 /* Die Heimat entsteht sofort, der Rest der Welt wächst beim Reisen. */
-function gen(){
-  grid.fill(0); LIFE.clear(); stamp.fill(0);
-  for(let cx=0;cx<HOME_END;cx++) genCol(cx);
-  genF=HOME_END; ST.stI=0;
-  /* Höhle beim Start, mit See */
-  const gc=ground(700);
-  carvePath([[470,ground(470)-4],[560,gc+70],[680,gc+150],[790,gc+212]],26);
-  ellipse(940,gc+235,190,52,function(cx,cy){grid[cy*GX+cx]=0;});
-  ellipse(940,gc+235,190,52,function(cx,cy,wy){ if(wy>gc+247) grid[cy*GX+cx]=WATER; });
-  /* Lavahöhle hinter dem Vulkan */
-  const gl=ground(3250);
-  carvePath([[3150,ground(3150)-4],[3230,gl+75],[3300,gl+140]],26);
-  ellipse(3400,gl+165,130,44,function(cx,cy){grid[cy*GX+cx]=0;});
-  ellipse(3400,gl+165,130,44,function(cx,cy,wy){ if(wy>gl+180) grid[cy*GX+cx]=LAVA; });
-  /* Magmakammer und Schlot unter dem Vulkan */
-  const mc=baseG(VOLC)+150, vc=Math.floor(VOLC/CELL), mr=Math.floor((mc-TOP)/CELL);
-  ellipse(VOLC,mc,110,38,function(cx,cy){grid[cy*GX+cx]=LAVA;});
-  for(let cx=vc-1;cx<=vc+1;cx++) for(let cy=grow0[cx];cy<=mr;cy++) grid[cy*GX+cx]=LAVA;
-  carveCave();
-  while(ST.stI<ST.STR.length&&ST.STR[ST.stI].c1<genF){ build(ST.STR[ST.stI]); ST.stI++; }
-  scanMobile();
-  fillCrater(); fillPond();
-  houseBlocks('smash').forEach(function(b){fillBlock(b[0],b[1]);});
-}
+function gen(){ return genWith(WD); }
 /* Eine fremde Welt zum ersten Mal: Sie entsteht rund um den Landeplatz und wächst beim Reisen. */
 function planetGen(){
   grid.fill(0); LIFE.clear(); stamp.fill(0); genF=0; ST.stI=0;
@@ -914,34 +644,7 @@ for(const c of clouds) HOME_C.push(Object.assign({},c));
 
 /* ---------- Schienen ---------- */
 let tracks=[], zips=[];
-function makeTrack(raw,user){
-  if(!raw||raw.length<2) return null;
-  let pts=raw.map(function(p){return [clamp(p[0],30,WORLD_W-30),clamp(p[1],skyLim()+120,TOP+(GY-8)*CELL)];});
-  for(let k=0;k<2;k++){
-    const o=[pts[0]];
-    for(let i=0;i<pts.length-1;i++){
-      const a=pts[i],b=pts[i+1];
-      o.push([a[0]*.75+b[0]*.25,a[1]*.75+b[1]*.25],[a[0]*.25+b[0]*.75,a[1]*.25+b[1]*.75]);
-    }
-    o.push(pts[pts.length-1]); pts=o;
-  }
-  const R=[[pts[0][0],pts[0][1]]]; let acc=0;
-  for(let i=1;i<pts.length;i++){
-    let ax=pts[i-1][0], ay=pts[i-1][1]; const bx=pts[i][0], by=pts[i][1];
-    let seg=Math.hypot(bx-ax,by-ay);
-    while(seg>0&&acc+seg>=8){
-      const t=(8-acc)/seg; ax+=(bx-ax)*t; ay+=(by-ay)*t; R.push([ax,ay]);
-      seg=Math.hypot(bx-ax,by-ay); acc=0;
-    }
-    acc+=seg;
-  }
-  if(R.length<16) return null;
-  let minX=1e9,maxX=-1e9;
-  for(const p of R){ if(p[0]<minX)minX=p[0]; if(p[0]>maxX)maxX=p[0]; }
-  return {pts:R,len:(R.length-1)*8,minX:minX,maxX:maxX,user:!!user,
-    dir:R[R.length-1][0]>=R[0][0]?1:-1,
-    raw:raw.map(function(p){return [Math.round(p[0]),Math.round(p[1])];})};
-}
+function makeTrack(raw,user){ return makeTrackWith(WD,raw,user); }
 const Q={x:0,y:0,tx:1,ty:0};
 function trackAt(T,s){
   const n=T.pts.length, f=clamp(s/8,0,n-1.001), i=Math.floor(f), u=f-i;
@@ -4822,195 +4525,9 @@ function shellOk(i){
   return false;
 }
 
-/* Legt fest, wo Material, Rätselmaschinen, Stationen, Seen, Höhlen und die Körper im Weltraum liegen. Alles hängt nur von der Welt-Nummer ab. */
-function deepWorld(){
-  MATS=[]; MACH=[]; ZDEC=[];
-  const r=rng(SEED*17+5), WW=WORLD_W0, hb={i:-1,x0:0,x1:WORLD_W,t:0};
-  let mi=0, di=0, ti=0;
-  const mat=function(k,x,y){ MATS.push({id:mi++,k:k,x:x,y:y}); };
-  const yr=function(a,b){ return TOP+CELL*(a+r()*(b-a)); };
-  const xr=function(near){ return near?170+r()*8500:9000+r()*(WW-9900); };
-  const types=['muster','spiegel','robo','waage','echo','rohre','sudoku'];
-  for(let k=6;k>0;k--){ const j=Math.floor(r()*(k+1)), q=types[k]; types[k]=types[j]; types[j]=q; }
-  const nt=function(){ return types[ti++%7]; };
-  const room=function(x,y,rx,ry,hw){ const s={k:'room',x:x,y:y,rx:rx,ry:ry,hw:hw||0,nw:1,c1:colOf(x+rx+14)}; ST.STR.push(s); return roomY(s); };
-  const dm=function(x,row,zb,hw){ const y=room(x,TOP+row*CELL,92,44,hw); MACH.push({id:'d'+(di++),t:nt(),x:x,y:y,zb:zb}); };
-  const far=function(x){ return Math.abs(x-LIFTX)>560; };
-  const ZA=[660,978,1322,1672], ZB=[944,1272,1622,1880], ZBN=[1,1,2,3];
-
-  /* Material unter der Erde. Mehr als die Hälfte liegt unter der Heimat, weil dort der Aufzug hinunterfährt. */
-  for(let n=0;n<36;n++) mat('fe',xr(n<24),yr(368,616));
-  for(let n=0;n<18;n++) mat('pi',xr(n<11),yr(ZA[0]+4,ZB[0]-4));
-  for(let n=0;n<18;n++) mat('kn',xr(n<11),yr(ZA[1]+4,ZB[1]-4));
-  for(let n=0;n<18;n++) mat('kr',xr(n<11),yr(ZA[2]+2,ZB[2]-2));
-  for(let n=0;n<12;n++) mat('fp',xr(n<8),n%2?yr(SEA_L+3,SEA_B-6):yr(ZA[3]+4,ZB[3]));
-  /* Mondsteine liegen jetzt auf dem Mond selbst, der eine eigene Welt ist. Die alten Plätze behalten ihre Nummern, liegen aber nirgends mehr. */
-  for(let n=0;n<8;n++){ r(); MATS.push({id:mi++,k:'mo',x:-1e5,y:-1e5,off:1}); }
-
-  /* Rätselmaschinen: drei in der Heimat, eine in jedem Land, je drei in jeder tiefen Zone, vier im Weltraum. */
-  MACH.push({id:'h0',t:'muster',x:1330,y:NaN,sf:1,zb:0},{id:'h1',t:'robo',x:4280,y:NaN,sf:1,zb:0},{id:'h2',t:'spiegel',x:8590,y:NaN,sf:1,zb:0},{id:'n0',t:'stern',x:7010,y:NaN,sf:1,zb:0});
-  /* Länder der neuen Hälfte bekommen ihre Maschinen-Arten aus einer eigenen Reihe, damit sich an den alten nichts ändert. */
-  let ti2=0;
-  for(const b of ST.BIO) if(b.t!==12) MACH.push({id:'b'+b.i,t:b.i<OLD_N?nt():types[(ti2++)%7],x:b.t===7?b.px-12:b.t===10?b.x0+330:b.qx+150,y:NaN,sf:1,zb:b.i<4?0:1});
-  for(let k=1;k<=6;k++) ZN[k].y=room(LIFTX,TOP+ZN[k].row*CELL,124,48,0);
-  dm(LIFTX+300,ZN[1].row,0,90); dm(LIFTX+300,ZN[2].row,1,90);
-  for(let z=0;z<4;z++){
-    const a=ZA[z], b=ZB[z];
-    dm(LIFTX+300,ZN[z+3].row,ZBN[z],90);
-    dm(2400+r()*5600,a+24+r()*(b-a-48),ZBN[z],0);
-    dm(9400+r()*(WW-10600),a+24+r()*(b-a-48),ZBN[z],0);
-  }
-
-  /* Pilzgrotten: Sprungpilze und Leuchtkäfer */
-  for(let n=0;n<16;n++){
-    const x=xr(n<9), yy=yr(ZA[0]+12,ZB[0]-12), rx=54+r()*30, h=34+r()*40;
-    if(!far(x)) continue;
-    const y=room(x,yy,rx,34,0);
-    ST.PADS.push({k:'shroom',x:x,y:y-h,w:26+r()*8,h:h,pow:560+h*2,c:n,bt:0});
-    if(n%3===0) addCre(hb,['🐛','sit',1,'GLÜH!','sparkle',18],r,x+40,y);
-  }
-  /* Urzeit-Höhlen: Versteinerungen im Fels, Seen und kleine Dinos */
-  for(let n=0;n<22;n++) ZDEC.push({k:'bone',x:xr(n<12),y:yr(ZA[1]+6,ZB[1]-6),s:.8+r()*.9,f:r()<.5?-1:1,v:n%3});
-  for(let n=0;n<10;n++){
-    const x=xr(n<6), yy=yr(ZA[1]+20,ZB[1]-20), rx=120+r()*50;
-    if(!far(x)) continue;
-    const y=room(x,yy,rx,46,0);
-    addCre(hb,n%2?['🦕','walk',1,'MÖÖÖH!','bront',40]:['🦖','sit',1,'ROAR!','',28],r,x,y).rng=60;
-  }
-  const lake=function(m,a,b,n){
-    for(let i=0;i<n;i++){
-      const x=xr(i<n*.45), rx=64+r()*70, y=yr(a,b), ry=26+r()*14;
-      if(far(x)) ST.STR.push({k:'lake',x:x,y:y,rx:rx,ry:ry,m:m,nw:1,c1:colOf(x+rx+26)});
-    }
-  };
-  lake(WATER,ZA[1]+16,ZB[1]-16,22); lake(WATER,ZA[2]+16,ZB[2]-16,36); lake(LAVA,ZA[3]+16,ZB[3]-30,26);
-  /* Kristalltiefen: Kristallhallen und Pinguine */
-  for(let n=0;n<16;n++){
-    const x=xr(n<9), yy=yr(ZA[2]+16,ZB[2]-16), rx=70+r()*50, sc=.8+r()*.8, cc=Math.floor(r()*3);
-    if(!far(x)) continue;
-    const y=room(x,yy,rx,40,0);
-    ZDEC.push({k:'cry',x:x,y:y,s:sc,c:cc});
-    if(n%4===1) addCre(hb,['🐧','sit',1,'BRRR!','',22],r,x+34,y);
-  }
-  /* Lavameer: Drachenkinder in ihren Nestern */
-  for(let n=0;n<8;n++){
-    const x=xr(n<5), yy=yr(ZA[3]+16,ZB[3]-30);
-    if(!far(x)) continue;
-    addCre(hb,['🐲','sit',1,'FAUCH!','',26],r,x,room(x,yy,80,40,0));
-  }
-
-  /* Weltraum über der Heimat: Felsbrocken, eine Station, zwei Planeten und ganz oben das Sternentor */
-  const stn={x:2400,y:-9100,r:84,z:'stn'}, ice={x:1900,y:-16000,r:420,z:'ice'}, jun={x:6100,y:-19200,r:330,z:'jun'}, gate={x:3900,y:-28300,r:470,z:'gate'}, ast=[];
-  for(let n=0;n<34;n++){
-    const big=n<12; let o=null;
-    for(let g=0;g<10&&!o;g++){
-      const q={x:260+r()*8800,y:-6500-r()*4600,r:big?46+r()*22:22+r()*20,z:'ast',s:Math.floor(r()*1e6)};
-      let ok=Math.hypot(q.x-stn.x,q.y-stn.y)>280;
-      for(const p of ast) if(Math.hypot(p.x-q.x,p.y-q.y)<p.r+q.r+70) ok=false;
-      if(ok) o=q;
-    }
-    if(!o) continue;
-    ast.push(o); ORBS.push(o);
-    if(big) mat('st',o.x,o.y-o.r-12);
-  }
-  ORBS.push(stn,ice,jun,gate);
-  const top=function(o,dx){ return o.y-Math.sqrt(o.r*o.r-dx*dx); };
-  /* Eiskerne liegen jetzt auf dem Eisplaneten selbst. Die alten Plätze behalten ihre Nummern, liegen aber nirgends mehr. */
-  for(let n=0;n<12;n++){ r(); MATS.push({id:mi++,k:'ei',x:-1e5,y:-1e5,off:1}); }
-  MACH.push({id:'s0',t:nt(),x:stn.x,y:top(stn,0),zb:1},{id:'s1',t:nt(),x:ice.x+382,y:top(ice,382),zb:2,gone:1},{id:'s2',t:nt(),x:jun.x-30,y:top(jun,-30),zb:2,gone:1},{id:'s3',t:nt(),x:gate.x+170,y:top(gate,170),zb:3});
-  /* Auf dem Eisplaneten selbst stehen jetzt eigene Rätselmaschinen. */
-  MACH=MACH.filter(function(m){ return !m.gone; });
-  for(let k=0;k<5;k++) r();
-  for(let k=0;k<5;k++) r();
-  addCre(hb,['👽','sit',1,'WILLKOMMEN!','sparkle',26],r,gate.x-150,top(gate,-150));
-  addCre(hb,['👾','sit',1,'PIEP PIEP!','sparkle',24],r,gate.x-210,top(gate,-210));
-  SPACE={stn:stn,ice:ice,jun:jun,gate:gate};
-  deepFar(hb);
-  vaultPlan(7,2,9500,WORLD_W-11000,4);
-  ST.STR.sort(function(p,q){ return p.c1-q.c1; });
-}
-/* Die Tiefe unter der neuen Hälfte der Welt: Material, Rätselmaschinen, Höhlen und Tiere wie in der alten Hälfte, aus einer eigenen Zufallsreihe. */
-function deepFar(hb){
-  const r=rng(SEED*31+17), X0=WORLD_W0+300, XW=WORLD_W-X0-900;
-  let mi=MATS.length;
-  const mat=function(k,x,y){ MATS.push({id:mi++,k:k,x:x,y:y}); };
-  const yr=function(a,b){ return TOP+CELL*(a+r()*(b-a)); };
-  const xr=function(){ return X0+r()*XW; };
-  const types=['muster','spiegel','robo','waage','echo','rohre','sudoku'];
-  let di=100, ti=Math.floor(r()*7);
-  const room=function(x,y,rx,ry){ const s={k:'room',x:x,y:y,rx:rx,ry:ry,hw:0,nw:1,c1:colOf(x+rx+14)}; ST.STR.push(s); return roomY(s); };
-  const ZA=[660,978,1322,1672], ZB=[944,1272,1622,1880], ZBN=[1,1,2,3];
-  for(let n=0;n<12;n++) mat('fe',xr(),yr(368,616));
-  for(let n=0;n<7;n++) mat('pi',xr(),yr(ZA[0]+4,ZB[0]-4));
-  for(let n=0;n<7;n++) mat('kn',xr(),yr(ZA[1]+4,ZB[1]-4));
-  for(let n=0;n<7;n++) mat('kr',xr(),yr(ZA[2]+2,ZB[2]-2));
-  for(let n=0;n<4;n++) mat('fp',xr(),n%2?yr(SEA_L+3,SEA_B-6):yr(ZA[3]+4,ZB[3]));
-  for(let z=0;z<4;z++){
-    const a=ZA[z], b=ZB[z], x=xr();
-    MACH.push({id:'d'+(di++),t:types[(ti++)%7],x:x,y:room(x,a+24+r()*(b-a-48),92,44),zb:ZBN[z]});
-  }
-  for(let n=0;n<8;n++){
-    const x=xr(), y=room(x,yr(ZA[0]+12,ZB[0]-12),54+r()*30,34), h=34+r()*40;
-    ST.PADS.push({k:'shroom',x:x,y:y-h,w:26+r()*8,h:h,pow:560+h*2,c:n,bt:0});
-    if(n%3===0) addCre(hb,['🐛','sit',1,'GLÜH!','sparkle',18],r,x+40,y);
-  }
-  for(let n=0;n<10;n++) ZDEC.push({k:'bone',x:xr(),y:yr(ZA[1]+6,ZB[1]-6),s:.8+r()*.9,f:r()<.5?-1:1,v:n%3});
-  for(let n=0;n<5;n++){ const x=xr(), y=room(x,yr(ZA[1]+20,ZB[1]-20),120+r()*50,46); addCre(hb,n%2?['🦕','walk',1,'MÖÖÖH!','bront',40]:['🦖','sit',1,'ROAR!','',28],r,x,y).rng=60; }
-  const lake=function(m,a,b,n){ for(let i=0;i<n;i++){ const x=xr(), rx=64+r()*70, y=yr(a,b), ry=26+r()*14; ST.STR.push({k:'lake',x:x,y:y,rx:rx,ry:ry,m:m,nw:1,c1:colOf(x+rx+26)}); } };
-  lake(WATER,ZA[1]+16,ZB[1]-16,10); lake(WATER,ZA[2]+16,ZB[2]-16,16); lake(LAVA,ZA[3]+16,ZB[3]-30,12);
-  for(let n=0;n<8;n++){ const x=xr(), y=room(x,yr(ZA[2]+16,ZB[2]-16),70+r()*50,40); ZDEC.push({k:'cry',x:x,y:y,s:.8+r()*.8,c:Math.floor(r()*3)}); if(n%4===1) addCre(hb,['🐧','sit',1,'BRRR!','',22],r,x+34,y); }
-  for(let n=0;n<4;n++){ const x=xr(); addCre(hb,['🐲','sit',1,'FAUCH!','',26],r,x,room(x,yr(ZA[3]+16,ZB[3]-30),80,40)); }
-}
-/* Die Tiefe einer fremden Welt: dieselben harten Schichten wie auf der Erde, aber eigene Zonen, Material, Rätselmaschinen und Bewohner. */
-function planetDeep(R){
-  MATS=[]; MACH=[]; ZDEC=[]; SPACE={};
-  const r=rng(SEED*37+R.salt), X0=PX0+300, XW=RW-600, hb={i:-1,x0:PX0,x1:PX0+RW,t:0};
-  let mi=0, di=0, ti=Math.floor(r()*4);
-  const mat=function(k,x,y){ MATS.push({id:mi++,k:k,x:x,y:y}); };
-  const yr=function(a,b){ return TOP+CELL*(a+r()*(b-a)); };
-  const xr=function(){ return X0+r()*XW; };
-  const types=['stern','muster','spiegel','robo','waage'];
-  const room=function(x,y,rx,ry){ const s={k:'room',x:x,y:y,rx:rx,ry:ry,hw:0,nw:1,c1:colOf(x+rx+14)}; ST.STR.push(s); return roomY(s); };
-  const ZA=[368,560,660,978,1322,1672], ZB=[552,616,944,1272,1622,1880], ZBN=[0,1,1,1,2,3];
-  /* Material: Zone 0 heißt oben auf dem Boden oder knapp darunter. */
-  for(const q of R.mat) for(let n=0;n<q[1];n++){
-    const x=xr();
-    if(q[2]) mat(q[0],x,yr(ZA[q[2]-1]+4,ZB[q[2]-1]-4));
-    else mat(q[0],x,n%2?ground(x)-12:ground(x)+30+r()*90);
-  }
-  /* Zwei Rätselmaschinen oben, eine in jeder tiefen Zone */
-  for(let n=0;n<2;n++) MACH.push({id:'p'+(di++),t:n?types[(ti++)%5]:'stern',x:PX0+RW*(.3+.4*n)+r()*900,y:NaN,sf:1,zb:n});
-  for(let z=2;z<6;z++){ const x=xr(); MACH.push({id:'p'+(di++),t:types[(ti++)%5],x:x,y:room(x,ZA[z]+24+r()*(ZB[z]-ZA[z]-48),92,44),zb:ZBN[z]}); }
-  /* Höhlen mit Bewohnern, Seen und Kristallen */
-  for(let z=3;z<=6;z++){
-    const a=ZA[z-1], b=ZB[z-1], f=R.zc[z];
-    for(let n=0;n<8;n++){
-      const x=xr(), y=room(x,yr(a+16,b-16),60+r()*60,38);
-      if(z===4&&n%2===0){ const h=34+r()*40; ST.PADS.push({k:'shroom',x:x,y:y-h,w:26+r()*8,h:h,pow:560+h*2,c:n,bt:0}); }
-      else if(z===5&&n%2===0) ZDEC.push({k:'cry',x:x,y:y,s:.8+r()*.8,c:Math.floor(r()*3)});
-      if(f&&n%3===0) addCre(hb,f,r,x+30,y);
-    }
-    if(R.lk[z]) for(let n=0;n<10;n++){ const x=xr(), rx=64+r()*70, y=yr(a+16,b-30), ry=26+r()*14; ST.STR.push({k:'lake',x:x,y:y,rx:rx,ry:ry,m:R.lk[z],nw:1,c1:colOf(x+rx+26)}); }
-  }
-  vaultPlan(R.salt,0,PX0+400,RW-800,R.small!==undefined?1:2);
-  /* Jeder große Planet hat ganz unten einen Planetenkern. Eigene Zufallsreihe und als letztes Stück, damit sich an allem anderen nichts ändert. */
-  if(R.small===undefined){ const rc=rng(SEED*53+R.salt), x=X0+rc()*XW; mat('pk',x,TOP+CELL*(ZA[5]+40+rc()*(ZB[5]-ZA[5]-80))); }
-  ST.STR.sort(function(p,q){ return p.c1-q.c1; });
-}
 /* ---------- Wissenstüren: Tief unten liegen Schatzkammern mit fester Wand. Die Tür geht auf, wenn man drei Lernaufgaben richtig löst.
    Sie haben eine eigene Zufallsreihe, damit sich an allem anderen nichts ändert. ---------- */
 let VAULTS=[], doorQ=null;
-function vaultPlan(salt,near,X0,XW,per){
-  VAULTS=[];
-  const r=rng(SEED*41+salt), ZA=[368,660,978,1322,1672], ZB=[616,944,1272,1622,1880];
-  for(let z=0;z<5;z++) for(let n=0;n<per;n++){
-    const x=n<near?1500+r()*7200:X0+r()*XW, y=TOP+CELL*(ZA[z]+30+r()*(ZB[z]-ZA[z]-60));
-    const v={id:VAULTS.length,x:x,y:y,z:z,rx:66,ry:34};
-    v.fy=TOP+vFloor(v)*CELL;
-    VAULTS.push(v); ST.STR.push({k:'vault',v:v,nw:1,c1:colOf(x+v.rx+40)});
-    ST.LOOT.push({id:5000+v.id,x:x+10,y:v.fy-14,g:40+30*z,bur:false});
-  }
-}
 function doorCols(v){ return [Math.floor((v.x-v.rx-20)/CELL),Math.floor((v.x-v.rx*.55)/CELL)]; }
 function doorShut(v){ const c=Math.floor((v.x-v.rx-8)/CELL); return c<genF&&grid[(vFloor(v)-3)*GX+c]===BED; }
 function nearDoor(){ for(const v of VAULTS) if(Math.abs(P.x-(v.x-v.rx-28))<46&&Math.abs(P.y-v.fy)<44&&doorShut(v)) return v; return null; }
