@@ -157,7 +157,7 @@ async function makeInput() {
   const { ctx, page, ev } = await open({ fixed: false });
   await ev(`OVS.forEach(o=>o.hidden=true); paused=false;
     STAGES.m[0].slice(0,30).concat(STAGES.m[1].slice(0,10),STAGES.l[0].slice(0,15),STAGES.l[1].slice(0,5)).forEach(function(k,i){ factDone(mkQ(k), i%7===3?'miss':i%11===5?'ok2':'ok', i%3===0); });
-    gold+=137; gems+=4; energy=MAXE; hero.xp+=230; hero.up.dig=2; hero.up.jet=1; hero.pz.muster=3; hero.pz.waage=2; hero.eggs=2;
+    ST.gold+=137; ST.gems+=4; energy=MAXE; hero.xp+=230; hero.up.dig=2; hero.up.jet=1; hero.pz.muster=3; hero.pz.waage=2; hero.eggs=2;
     MS.done.chick=1; marks().push([P.x|0,P.y|0,1]); OPT.calm=true; VOICE.r=1.05; SCH.on=true; SCH.zr=2; SCH.l='MAMILO';
     for(let i=0;i<40;i++){ const cx=(P.x/CELL|0)+i; setCell(cx,((surfaceY(cx*CELL)-TOP)/CELL|0)+3,0); }
     1`);
@@ -197,7 +197,7 @@ async function run() {
     const o = await open({ input: inp });
     if (await o.ev('GY') !== GY) throw new Error('GY hat sich geändert');
     res.speichern[name] = saveParts(await o.ev(SAVEALL));
-    res.speichern[name].start = await o.page.evaluate(() => window.__gm(window.__ev('({realm, SEED, genF, x:P.x, y:P.y, energy, gold, gems, cutX})')));
+    res.speichern[name].start = await o.page.evaluate(() => window.__gm(window.__ev('({realm, SEED, genF, x:P.x, y:P.y, energy, gold:ST.gold, gems:ST.gems, cutX})')));
     if (name === 'leer') fresh = o; else await o.ctx.close();
   }
   // Import der Sicherung über „Spielstand laden“ (bakLoad lädt die Seite neu), danach wie oben.
@@ -207,7 +207,7 @@ async function run() {
     await Promise.all([o.page.waitForNavigation(), o.ev('bakLoad()')]);
     await waitReady(o.page);
     res.speichern.import = saveParts(await o.ev(SAVEALL));
-    res.speichern.import.start = await o.page.evaluate(() => window.__gm(window.__ev('({realm, SEED, genF, x:P.x, y:P.y, energy, gold, gems, cutX})')));
+    res.speichern.import.start = await o.page.evaluate(() => window.__gm(window.__ev('({realm, SEED, genF, x:P.x, y:P.y, energy, gold:ST.gold, gems:ST.gems, cutX})')));
     await o.ctx.close();
   }
 

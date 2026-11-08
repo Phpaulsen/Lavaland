@@ -20,7 +20,7 @@ page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|
 const ev = s => page.evaluate(s => window.__ev(s), s);
 await page.goto(url);
 await page.waitForFunction(() => window.__ev && window.__ev('ready'), null, { timeout: 20000 });
-await ev('OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; gold=500');
+await ev('OVS.forEach(o=>o.hidden=true); paused=false; energy=MAXE; ST.gold=500');
 
 const KEYS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'f', 't', 'k', 'e', 'x', 'Escape'];
 const MODES = ['walk', 'car', 'plane', 'ski', 'bagger', 'loader', 'dumper', 'tbm', 'rocket', 'sub', 'balloon', 'heli', 'boat', 'bug'];

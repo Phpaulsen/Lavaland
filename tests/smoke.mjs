@@ -264,7 +264,7 @@ test('Waage hält sich an den Schulstand', async ({ ev }) => {
 });
 
 test('Spielstand übersteht Neuladen', async ({ ev, page }) => {
-  await ev('OVS.forEach(o=>o.hidden=true); paused=false; gold=4321; saveFinds(); saveGame(false)');
+  await ev('OVS.forEach(o=>o.hidden=true); paused=false; ST.gold=4321; saveFinds(); saveGame(false)');
   await page.waitForTimeout(1500);
   await page.reload(); await page.waitForFunction(() => window.__ev && window.__ev('ready'), null, { timeout: 20000 });
   const g = await ev('gold');

@@ -19,6 +19,8 @@ const page = await ctx.newPage();
 const errs = [];
 page.on('pageerror', e => errs.push(e.message));
 const ev = s => page.evaluate(s => window.__ev(s), s);
+// Seit PR 14a liegen gold und gems hinter der Fassade ST. Die alte Seite kann älter sein: dann gibt es noch die bloßen Namen.
+const V = n => `('${n}' in ST?ST.${n}:${n})`;
 const ready = () => page.waitForFunction(() => window.__ev && window.__ev('ready'), null, { timeout: 30000 });
 
 // Ein Loch an fester Stelle graben: 20 Spalten, 6 Zeilen unter der Oberfläche.
@@ -30,13 +32,13 @@ let fail = '';
 try {
   await page.goto(base + '/old/'); await ready();
   const holes = await ev(DIG);
-  const before = await ev('({gold, gems, lv:hero.lv|0, xp:hero.xp|0, x:Math.round(P.x), gy:GY, top:TOP, seed:SEED})');
-  await ev('gold=4242; saveFinds(); saveHero(); saveGame(false)');
+  const before = await ev('({gold:'+V('gold')+', gems:'+V('gems')+', lv:hero.lv|0, xp:hero.xp|0, x:Math.round(P.x), gy:GY, top:TOP, seed:SEED})');
+  await ev("('gold' in ST?(ST.gold=4242):(gold=4242)); saveFinds(); saveHero(); saveGame(false)");
   await page.waitForTimeout(2000);
   errs.length = 0;
   await page.goto(base + '/'); await ready();
   await page.waitForTimeout(1000);
-  const after = await ev('({gold, gems, lv:hero.lv|0, xp:hero.xp|0, x:Math.round(P.x), gy:GY, top:TOP, seed:SEED})');
+  const after = await ev('({gold:'+V('gold')+', gems:'+V('gems')+', lv:hero.lv|0, xp:hero.xp|0, x:Math.round(P.x), gy:GY, top:TOP, seed:SEED})');
   const dug = await ev('(' + JSON.stringify(holes) + ').filter(function(h){ return grid[h[1]*GX+h[0]]!==0; }).length');
   if (after.gold !== 4242) fail = 'Gold verloren: ' + after.gold;
   else if (after.seed !== before.seed) fail = 'Neue Welt statt alter: Seed ' + before.seed + ' -> ' + after.seed;
