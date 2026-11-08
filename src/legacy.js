@@ -15,11 +15,17 @@ import { BOXD, NEWDAY, FASTMS, schoolOkWith, fUnlockWith, mixPreferWith, fParked
 import { mkQWith, mkSeqWith } from './core/learn/tasks.js';
 import { g0, grid, stamp, LIFE, zS1, z4, zS2, zS3, grow0, rA, rB, rD, rH, rC, mtop, bio, bio2, bmx, bix, noCave, liqM, liqY } from './state/world.js';
 import { ST } from './state/facade.js';
+import { bx0, bx1, by0, by1, lavaCount, waterCount, fireCount, tick, sx0, winR, rx0, rx1, qx0, qx1, px0, px1, py0, py1, winC, ext, extI, react, cellAt, hotAt, lifeS, put, stepWith, scanMobileWith, steamWith } from './state/sim.js';
 import { winterColWith, carveCaveWith, carveCircleWith, carvePathWith, fillCraterWith, fillPondWith, houseBlocksWith, fillBlockWith, rawXWith, rawGWith, layoutWith, addTreeWith, addCreWith, populateWith, zoneColsWith, shapeWorldWith, blkWith, buildWith, genColWith, genWith, makeTrackWith, deepWorldWith, deepFarWith, planetDeepWith, vaultPlanWith } from './core/world/gen.js';
 import { SNX, SL0, PEAK, BACK, BEND, MH, SNB, CHX, CAVE, SNC0, SNC1, msurf, vnoise, inGrid, ellipse, PX0, PM, PMC, LANDX, PADH, BT, sm, colOf, hBio, craters, roomY, vFloor, WSX, LIFTX, SEA_T, SEA_L, SEA_B, HOUSE, FH } from './core/world/shape.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
+/* Ports für den Zellautomaten in state/sim.js (PR 9). Getter lesen erst beim Aufruf. */
+const SP={
+  get cam(){ return cam; }, get trees(){ return trees; }, get genF(){ return genF; },
+  dust, spawn, wc
+};
 /* Weltobjekt für die Weltgenerierung in core/world/gen.js (PR 8b): Felder direkt, neu zugewiesene Namen über get/set, dazu Ports
    für Funktionen, die noch hier stehen. Die Getter lesen erst beim Aufruf, deshalb darf WD vor den Deklarationen stehen. */
 const WD={
@@ -195,10 +201,6 @@ AI.sonar='<circle cx="12" cy="12" r="2.600" fill="currentColor"/><path d="M6.500
 for(let i=0;i<GX+2;i++) g0[i]=rawH(i*CELL);
 function ground(x){ const f=clamp(x/CELL,0,GX), i=Math.floor(f); return g0[i]+(g0[i+1]-g0[i])*(f-i); }
 
-function lifeS(i,v){
-  if(v>0){ LIFE.set(i,v); if(LIFE.size>4*MAX_FIRE+4000) for(const k of LIFE.keys()) if(grid[k]!==FIRE) LIFE.delete(k); }
-  else LIFE.delete(i);
-}
 /* Harte Schichten und Zonen in der Tiefe: Oberkante je Spalte. zS1, zS2, zS3 sind die harten Schichten, z4 trennt Pilzgrotten und Urzeit-Höhlen. */
 for(let cx=0;cx<GX;cx++){ zS1[cx]=630+Math.round(3*Math.sin(cx*.027+1)); z4[cx]=960+Math.round(10*Math.sin(cx*.013+2)); zS2[cx]=1290+Math.round(4*Math.sin(cx*.022)); zS3[cx]=1640+Math.round(4*Math.sin(cx*.019+4)); }
 for(let cx=0;cx<GX;cx++){
@@ -232,17 +234,8 @@ function migrateSnow(){
     else if(h.zone==='sky'&&h.y>msurf(h.x)-20) h.y=msurf(h.x)-24;
   }
 }
-let bx0=GX,bx1=-1,by0=GY,by1=-1, lavaCount=0, waterCount=0, fireCount=0, tick=0, sx0=0, winR=0;
-/* Pro Zeile merken, wo Flüssigkeit liegt, damit die Simulation tiefe Welten nicht komplett durchsuchen muss. */
-let rx0=new Int16Array(GY).fill(GX), rx1=new Int16Array(GY).fill(-1), qx0=new Int16Array(GY).fill(GX), qx1=new Int16Array(GY).fill(-1);
-let px0=GX,px1=-1,py0=GY,py1=-1, SEED=1, gold=0, gems=0, lootDirty=false;
+let SEED=1, gold=0, gems=0, lootDirty=false;
 
-function ext(cx,cy){
-  if(cx<bx0)bx0=cx; if(cx>bx1)bx1=cx; if(cy<by0)by0=cy; if(cy>by1)by1=cy;
-  if(cx<px0)px0=cx; if(cx>px1)px1=cx; if(cy<py0)py0=cy; if(cy>py1)py1=cy;
-  if(cx<rx0[cy])rx0[cy]=cx; if(cx>rx1[cy])rx1[cy]=cx; if(cx<qx0[cy])qx0[cy]=cx; if(cx>qx1[cy])qx1[cy]=cx;
-}
-function extI(i){ const y=(i/GX)|0; ext(i-y*GX,y); }
 function setCell(cx,cy,m,lf){ if(!inGrid(cx,cy)) return; const i=cy*GX+cx; grid[i]=m; lifeS(i,lf||0); if(m>0&&m<4) ext(cx,cy); }
 function carveCircle(x,y,r){ return carveCircleWith(WD,x,y,r); }
 function fillCrater(){ return fillCraterWith(WD); }
@@ -263,7 +256,7 @@ function restoreSite(xc,hw,up,down){
 /* ---------- Große Welt: Hinter dem Schneeberg folgen Länder, die aus der Welt-Nummer berechnet werden.
    Ihre Spalten entstehen erst, wenn der Held in die Nähe kommt. Flüssigkeiten rechnen nur rund um die Kamera. ---------- */
 const ORBS=[MOON];
-let genF=0, winC=-9999;
+let genF=0;
 /* ---------- Andere Welten: Der Mond und die Planeten sind ganze Welten mit Ländern, Höhlen und Tiefe, so rund wie die Erde.
    Wer auf einem landet, reist dorthin. Die Erde wird so lange gespeichert. Eine fremde Welt liegt im Gitter ab x=PX0 und ist RW breit;
    wer an einem Ende hinausläuft, kommt am anderen wieder herein. Links und rechts liegt je ein Streifen, der das andere Ende zeigt. ---------- */
@@ -404,12 +397,7 @@ function shapeWorld(){ return shapeWorldWith(WD); }
 /* Setzt ein Bauwerk in die fertig erzeugten Spalten. */
 function build(s){ return buildWith(WD,s); }
 
-function scanMobile(){
-  winC=Math.floor(cam.x/CELL); winR=Math.floor((cam.y-TOP)/CELL); sx0=winC-WINW-4; stamp.fill(0);
-  const a=Math.max(1,winC-WINW), b=Math.min(GX-2,winC+WINW), r0=Math.max(1,winR-ROWW-80), r1=Math.min(GY-4,winR+ROWW+80);
-  bx0=GX;bx1=-1;by0=GY;by1=-1; rx0.fill(GX); rx1.fill(-1); qx0.fill(GX); qx1.fill(-1);
-  for(let cy=r0;cy<=r1;cy++){ const row=cy*GX; for(let cx=a;cx<=b;cx++){ const m=grid[row+cx]; if(m>0&&m<4) ext(cx,cy); } }
-}
+function scanMobile(){ return scanMobileWith(SP); }
 /* Erzeugt eine Spalte der Welt: Schichten, Höhlen, Gold und Edelsteine, Wasser oder Lava in Becken, den Schneeberg. */
 function genCol(cx,from){ return genColWith(WD,cx,from); }
 /* Die Heimat entsteht sofort, der Rest der Welt wächst beim Reisen. */
@@ -482,31 +470,14 @@ function loadCells(sv){
   ST.seen=sv.seen||{}; ST.eggGot=sv.eggGot||{}; ST.lootGot=sv.lootGot||{}; ST.orbGot=sv.orbGot||{}; ST.DROPS=[];
 }
 
-function put(cx,cy,t){
-  if(!inGrid(cx,cy)) return false;
-  const i=cy*GX+cx, m=grid[i];
-  if((m!==0&&m!==FIRE)||m===t) return false;
-  if(t===LAVA){ if(lavaCount>=MAX_LAVA) return false; lavaCount++; }
-  else if(t===WATER){ if(waterCount>=MAX_WATER) return false; waterCount++; }
-  else { if(fireCount>=MAX_FIRE) return false; fireCount++; }
-  grid[i]=t; lifeS(i,t===FIRE?130+(Math.random()*90|0):0); ext(cx,cy);
-  return true;
-}
 function putUp(cx,cy,t){
   if(cx<1||cx>=GX-1) return;
   let n=0; while(n<8&&cy>1&&grid[cy*GX+cx]>=4){cy--;n++;}
   put(cx,cy,t);
 }
-function cellAt(wx,wy){
-  const cx=Math.floor(wx/CELL), cy=Math.floor((wy-TOP)/CELL);
-  if(cx<0||cx>=GX||cy>=GY) return BED;
-  if(cy<0) return 0;
-  return grid[cy*GX+cx];
-}
 function inMoon(wx,wy){ for(const o of ORBS){ const dx=wx-o.x, dy=wy-o.y; if(dx*dx+dy*dy<o.r*o.r) return true; } return false; }
 function solidW(wx,wy){ return wy<-3000?inMoon(wx,wy):cellAt(wx,wy)>=4; }
 function burns(wx,wy){ const m=cellAt(wx,wy); return (m===FIRE&&hero.up.heat<1)||(m===LAVA&&hero.up.heat<2); }
-function hotAt(wx,wy){ const m=cellAt(wx,wy); return m===LAVA||m===FIRE; }
 function colTop(cx,r){
   if(cx<0)cx=0; else if(cx>=GX)cx=GX-1;
   if(r<0)r=0;
@@ -533,97 +504,9 @@ function floorAt(x,yRef,step){
 }
 function surfaceY(x){ return TOP+colTop(Math.floor(x/CELL),2)*CELL; }
 
-function react(i,p){
-  for(let k=0;k<4;k++){
-    const n=k===0?i-GX:k===1?i+GX:k===2?i-1:i+1, m=grid[n];
-    if(m===ICE){ if(Math.random()<p*1.6){ grid[n]=WATER; extI(n); } }
-    else if(m===WOOD){ if(Math.random()<p){ grid[n]=FIRE; lifeS(n,150+(Math.random()*70|0)); extI(n); } }
-    else if(m===SNOW){ if(Math.random()<p*1.4){ grid[n]=(waterCount<MAX_WATER-300&&Math.random()<.22)?WATER:0; extI(n); } }
-  }
-}
-function steam(x,y){ if(Math.random()<.3) spawn(7,x*CELL+3,TOP+y*CELL,(Math.random()-.5)*20,-40-Math.random()*40,.9,5); }
+function steam(x,y){ return steamWith(SP,x,y); }
 
-function step(){
-  tick=(tick+1)&255;
-  if(Math.abs(Math.floor(cam.x/CELL)-winC)>80||Math.abs(Math.floor((cam.y-TOP)/CELL)-winR)>70) scanMobile();
-  if(bx1<bx0){ lavaCount=0; waterCount=0; fireCount=0; }
-  else{
-    const cr=Math.floor((cam.y-TOP)/CELL), f0=Math.max(1,by0-1), f1=Math.min(GY-4,by1+1), y0=Math.max(f0,cr-ROWW), y1=Math.min(f1,cr+ROWW), part=y0>f0||y1<f1;
-    if(part){ qx0.set(rx0); qx1.set(rx1); }
-    if(y1>=y0){ const e=y1<f1?y1+1:y1+2; qx0.fill(GX,y0,e); qx1.fill(-1,y0,e); }
-    px0=GX;px1=-1;py0=GY;py1=-1;
-    let nx0=GX,nx1=-1,ny0=GY,ny1=-1, lc=0, wc=0, fc=0;
-    const ltr=tick&1;
-    for(let y=y1;y>=y0;y--){
-      if(rx1[y]<rx0[y]) continue;
-      const row=y*GX, x0=Math.max(1,rx0[y]-3,winC-WINW), x1=Math.min(GX-2,rx1[y]+3,winC+WINW);
-      for(let k=x0;k<=x1;k++){
-        const x=ltr?k:x1-(k-x0), i=row+x, t=grid[i];
-        if(t===0||t>3) continue;
-        let j=i;
-        const si=y*SW+x-sx0;
-        if(stamp[si]!==tick){
-          const dn=grid[i+GX];
-          if(t===WATER){
-            wc++;
-            if(dn===0) j=i+GX;
-            else{
-              const d=Math.random()<.5?-1:1;
-              if(grid[i+GX+d]===0) j=i+GX+d;
-              else if(grid[i+GX-d]===0) j=i+GX-d;
-              else if(grid[i+d]===0){ j=i+d; if(grid[j+d]===0){ j+=d; if(grid[j+d]===0) j+=d; } }
-              else if(grid[i-d]===0){ j=i-d; if(grid[j-d]===0){ j-=d; if(grid[j-d]===0) j-=d; } }
-            }
-          }else{
-            const up=grid[i-GX], l=grid[i-1], r=grid[i+1];
-            if(up===WATER||dn===WATER||l===WATER||r===WATER){
-              if(t===LAVA){ grid[up===WATER?i-GX:dn===WATER?i+GX:l===WATER?i-1:i+1]=0; grid[i]=ROCK; }
-              else{ grid[i]=0; lifeS(i,0); }
-              steam(x,y); continue;
-            }
-            if(up>5||dn>5||l>5||r>5) react(i,t===LAVA?.12:.07);
-            if(t===LAVA){
-              lc++;
-              if(dn===0) j=i+GX;
-              else if(dn===FIRE){ grid[i+GX]=0; j=i+GX; }
-              else{
-                const d=Math.random()<.5?-1:1;
-                if(grid[i+GX+d]===0) j=i+GX+d;
-                else if(grid[i+GX-d]===0) j=i+GX-d;
-                else if(Math.random()<.6){ if(grid[i+d]===0) j=i+d; else if(grid[i-d]===0) j=i-d; }
-              }
-            }else{
-              let lv=LIFE.get(i)|0; if(lv!==255){ if(ltr&&lv>0) lifeS(i,--lv); if(lv===0){ grid[i]=0; continue; } }
-              fc++;
-              if(dn===0) j=i+GX;
-            }
-          }
-          if(j!==i){ grid[j]=t; grid[i]=0; if(t===FIRE){ lifeS(j,LIFE.get(i)|0); LIFE.delete(i); } const dj=j-i; stamp[dj>9?si+SW+dj-GX:si+dj]=tick; }
-        }
-        const ty=(j/GX)|0, tx=j-ty*GX;
-        if(tx<nx0)nx0=tx; if(tx>nx1)nx1=tx; if(ty<ny0)ny0=ty; if(ty>ny1)ny1=ty;
-        if(tx<qx0[ty])qx0[ty]=tx; if(tx>qx1[ty])qx1[ty]=tx;
-      }
-    }
-    if(part){ bx0=Math.min(bx0,nx0,px0);bx1=Math.max(bx1,nx1,px1);by0=Math.min(by0,ny0,py0);by1=Math.max(by1,ny1,py1); }
-    else{ bx0=Math.min(nx0,px0);bx1=Math.max(nx1,px1);by0=Math.min(ny0,py0);by1=Math.max(ny1,py1); }
-    const t0=rx0, t1=rx1; rx0=qx0; rx1=qx1; qx0=t0; qx1=t1;
-    lavaCount=lc; waterCount=wc; fireCount=fc;
-  }
-  for(const tr of trees){
-    if(tr.state>=2) continue;
-    const cx=Math.floor(tr.x/CELL);
-    if(cx>=genF-1) continue;
-    if(grid[tr.row*GX+cx]<4){ dust(tr.x,tr.gy); tr.state=3; continue; }
-    if(tr.state!==0||cx<bx0-2||cx>bx1+2) continue;
-    let hit=false;
-    for(let dx=-1;dx<=1&&!hit;dx++) for(let dy=1;dy<=5;dy++){
-      const m=grid[(tr.row-dy)*GX+cx+dx]; if(m===LAVA||m===FIRE){hit=true;break;}
-    }
-    if(!hit) hit=hotAt(tr.x,tr.gy-tr.h)||hotAt(tr.x-12,tr.gy-tr.h+8)||hotAt(tr.x+12,tr.gy-tr.h+8);
-    if(hit){ tr.state=1; tr.t=5+Math.random()*2; }
-  }
-}
+function step(){ return stepWith(SP); }
 
 /* ---------- Bäume, Wolken ---------- */
 const rnd=rng(20261004);

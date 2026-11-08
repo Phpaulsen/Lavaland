@@ -39,6 +39,11 @@ Vom Maintainer am 7.11.2026 entschieden:
 
 15. **Regeln für Pakete.** Keine Laufzeitabhängigkeiten. Neue Werkzeugpakete nur mit Begründung in einem ADR, ohne eigenen Abhängigkeitsbaum, in einer mindestens zwei Wochen alten Version. Feste Versionen, Prüfsummen im Lockfile, nur `registry.npmjs.org`, Install-Skripte aus. Die CI führt `npm audit` und `npm audit signatures` aus, auch im Nachtlauf. `tests/static.mjs` prüft die Regeln mechanisch.
 
+Vom Maintainer am 8.11.2026 entschieden:
+
+16. **Weltgenerierung in `core/` mit Weltobjekt.** `core/world/gen.js` bekommt Felder, Zustand und Ports der Welt als Parameter `WD` (PR 8b). Gemessen ohne Leistungsverlust.
+17. **Zellautomat in `state/sim.js`, nicht in `core/`.** Über ein Weltobjekt verdoppelte sich die Rechenzeit von `step` (Median 0,27 → 0,56 ms, `perf.mjs`). Der Fensterzustand (`rx0`…`qx1`, `bx0`…, `px0`…, `winC`, `winR`, `sx0`, `tick`, Zähler) wird nur vom Automaten geschrieben; deshalb besitzt ihn das Modul, das ihn schreibt, und importiert `grid`, `stamp`, `LIFE` direkt. `Math.random` bleibt dort (Punkt 10 gilt für `core/`). Ausnahme von `target.md` Abschnitt 1 („Logik in `core/`“), bewusst für den heißesten Pfad.
+
 ## Verworfene Alternativen
 
 - **Klassische `<script src>`-Dateien ohne Build** (so stand es in `plan-vereinfachung.md` 4b): kein Build-Schritt, aber weiter ein gemeinsamer globaler Scope (nur auf Dateien verteilt), keine Importgrenzen, keine Prüfung von Abhängigkeiten. Bricht außerdem `file://`/Artefakt als eine Datei. Verworfen durch Entscheidung 1 und 2.
