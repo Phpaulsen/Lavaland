@@ -547,7 +547,7 @@ function explode(x,y){
 /* ---------- Spielfigur ---------- */
 function grav(){ return P.y<-1700?G*.3:G; }
 let ghost=null, chest=null;
-let tool=null, time=0, volT=3, stroke=null, strokeId=null, strokeExt=null, task=null, energy=0, paused=false;
+let time=0, volT=3, stroke=null, strokeId=null, strokeExt=null, energy=0;
 
 function park(){ return {x:P.x,y:P.y,vy:P.vy,ang:P.mode==='rocket'?0:P.ang,face:P.face,arm:P.arm,lift:P.lift,da:P.da,load:P.load}; }
 function leaveVehicle(){
@@ -583,13 +583,13 @@ function setMode(m){
   if(m==='coaster') P.on=false;
   syncUI();
 }
-function setTool(t,force){ tool=(tool===t&&!force)?null:t; stroke=null; strokeId=null; syncUI(); }
+function setTool(t,force){ ST.tool=(ST.tool===t&&!force)?null:t; stroke=null; strokeId=null; syncUI(); }
 function syncUI(){
   for(const m of MODES) $('mode-'+m).setAttribute('aria-pressed',String(P.mode===m));
-  for(const t of TOOLN) $('tool-'+t).setAttribute('aria-pressed',String(tool===t));
+  for(const t of TOOLN) $('tool-'+t).setAttribute('aria-pressed',String(ST.tool===t));
   $('btn-veh').firstChild.innerHTML=IC[P.mode];
-  $('btn-tool').firstChild.innerHTML=tool?IC[tool]:QI.hand;
-  $('btn-tool').setAttribute('aria-pressed',String(!!tool));
+  $('btn-tool').firstChild.innerHTML=ST.tool?IC[ST.tool]:QI.hand;
+  $('btn-tool').setAttribute('aria-pressed',String(!!ST.tool));
 }
 function pulse(id){
   if(id.indexOf('mode-')===0) pulse('btn-veh'); else if(id.indexOf('tool-')===0) pulse('btn-tool');
@@ -704,8 +704,8 @@ function doAction(){
     if(deepAct()) return;
     if(nearStall()){ openMarket(); return; }
     if(nearLift()){ rideLift(); return; }
-    if(tool==='bow'){ shoot(); return; }
-    if(DIGT[tool]){ handDig(); return; }
+    if(ST.tool==='bow'){ shoot(); return; }
+    if(DIGT[ST.tool]){ handDig(); return; }
     if(P.on){ P.vy=-400*(FX.sugar>0?1.3:1)*(FX.tiny>0?.8:1); P.on=false; P.air=0; sfx('jump'); }
     else P.chute=!P.chute;
   }else if(P.mode==='car'){
@@ -922,7 +922,7 @@ function updCoaster(dt,ix){
   P.x=q.x; P.y=q.y; P.vx=q.tx*P.v; P.vy=q.ty*P.v; P.ang=Math.atan2(q.ty,q.tx); P.face=T.dir;
   if(P.s>=T.len){
     qEvent('ride',1);
-    if(T.user&&task&&task.id==='park') task.data.rode=true;
+    if(T.user&&ST.task&&ST.task.id==='park') ST.task.data.rode=true;
     P.vy-=90; P.mode='walk'; P.on=false; P.air=.2; P.chute=false;
     syncUI();
   }
@@ -944,8 +944,8 @@ function update(dt){
     popG=0; popM=0; popT=.4;
   }
   if(P.swing>0) P.swing=Math.max(0,P.swing-dt*5);
-  if(keys.a&&DIGT[tool]&&P.mode==='walk'&&!paused&&!nearBoard()&&!zipNear()&&!deepIcon()) handDig();
-  else if(P.mode==='walk'&&!paused&&(ix||u||d)) pushDig(ix,u,d);
+  if(keys.a&&DIGT[ST.tool]&&P.mode==='walk'&&!ST.paused&&!nearBoard()&&!zipNear()&&!deepIcon()) handDig();
+  else if(P.mode==='walk'&&!ST.paused&&(ix||u||d)) pushDig(ix,u,d);
   if(P.zip) zipRide(dt);
   else if(P.mode==='walk') updWalk(dt,ix,u,d);
   else if(P.mode==='car') updCar(dt,ix,u,d);
@@ -1079,28 +1079,28 @@ function erase(wx,wy){
 }
 function paintAt(wx,wy){
   const cx=Math.floor(wx/CELL), cy=Math.floor((wy-TOP)/CELL);
-  if(tool==='lava'||tool==='water'){
-    const t=tool==='lava'?LAVA:WATER;
+  if(ST.tool==='lava'||ST.tool==='water'){
+    const t=ST.tool==='lava'?LAVA:WATER;
     if(t===LAVA?lavaCount>=MAX_LAVA:waterCount>=MAX_WATER){ pulse('tool-erase'); return; }
     putUp(cx,cy,t);putUp(cx+1,cy,t);putUp(cx-1,cy,t);putUp(cx,cy-1,t);putUp(cx,cy+1,t);
     if(t===WATER){ putUp(cx+1,cy-1,t); putUp(cx-1,cy-1,t); }
   }
-  else if(tool==='fire'){ putUp(cx,cy,FIRE); putUp(cx+1,cy,FIRE); }
-  else if(tool==='earth') disc(cx,cy,1.7,EARTH);
-  else if(tool==='ice') disc(cx,cy,2.3,ICE);
-  else if(tool==='snow') disc(cx,cy,2.3,SNOW);
-  else if(tool==='blocks') fillBlock(cx>>2,cy>>2);
-  else if(tool==='erase') erase(wx,wy);
+  else if(ST.tool==='fire'){ putUp(cx,cy,FIRE); putUp(cx+1,cy,FIRE); }
+  else if(ST.tool==='earth') disc(cx,cy,1.7,EARTH);
+  else if(ST.tool==='ice') disc(cx,cy,2.3,ICE);
+  else if(ST.tool==='snow') disc(cx,cy,2.3,SNOW);
+  else if(ST.tool==='blocks') fillBlock(cx>>2,cy>>2);
+  else if(ST.tool==='erase') erase(wx,wy);
 }
 function paintStep(){
-  if(!tool||tool==='track'||tool==='rope') return;
-  if(tool==='bow'){ pointers.forEach(function(p){ if(!p.has){ p.has=true; const w=toWorld(p.x,p.y); shoot(w[0],w[1]); } }); return; }
-  if(HANDT[tool]){ pointers.forEach(function(p){ const w=toWorld(p.x,p.y); if(Math.hypot(w[0]-P.x,w[1]-P.y+20)<95) handDig(w[0],w[1]); }); return; }
+  if(!ST.tool||ST.tool==='track'||ST.tool==='rope') return;
+  if(ST.tool==='bow'){ pointers.forEach(function(p){ if(!p.has){ p.has=true; const w=toWorld(p.x,p.y); shoot(w[0],w[1]); } }); return; }
+  if(HANDT[ST.tool]){ pointers.forEach(function(p){ const w=toWorld(p.x,p.y); if(Math.hypot(w[0]-P.x,w[1]-P.y+20)<95) handDig(w[0],w[1]); }); return; }
   pointers.forEach(function(p){
     const w=toWorld(p.x,p.y);
-    if(tool==='tnt'){ if(!p.has){ p.has=true; dropBomb(w[0],w[1]); } return; }
-    if(tool==='ball'||tool==='fw'){ if(!p.has||time-p.bt>(tool==='ball'?.28:.4)){ p.has=true; p.bt=time; if(tool==='ball') throwBall(w[0],w[1]); else firework(w[0],w[1]); } return; }
-    if(tool==='man'){ if(!p.has){ p.has=true; addMan(w[0]); } return; }
+    if(ST.tool==='tnt'){ if(!p.has){ p.has=true; dropBomb(w[0],w[1]); } return; }
+    if(ST.tool==='ball'||ST.tool==='fw'){ if(!p.has||time-p.bt>(ST.tool==='ball'?.28:.4)){ p.has=true; p.bt=time; if(ST.tool==='ball') throwBall(w[0],w[1]); else firework(w[0],w[1]); } return; }
+    if(ST.tool==='man'){ if(!p.has){ p.has=true; addMan(w[0]); } return; }
     if(p.has){
       const dist=Math.hypot(w[0]-p.lx,w[1]-p.ly), n=Math.min(18,Math.max(1,Math.ceil(dist/CELL)));
       for(let k=1;k<=n;k++) paintAt(p.lx+(w[0]-p.lx)*k/n,p.ly+(w[1]-p.ly)*k/n);
@@ -1113,9 +1113,9 @@ cv.addEventListener('pointerdown',function(e){
   try{cv.setPointerCapture(e.pointerId);}catch(_){}
   pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,has:false,lx:0,ly:0});
   armGhost(cv);
-  if(!tool) tapWorld(e.clientX,e.clientY);
-  if(tool==='rope') pointers.get(e.pointerId).rs=toWorld(e.clientX,e.clientY);
-  if(tool==='track'&&strokeId===null){
+  if(!ST.tool) tapWorld(e.clientX,e.clientY);
+  if(ST.tool==='rope') pointers.get(e.pointerId).rs=toWorld(e.clientX,e.clientY);
+  if(ST.tool==='track'&&strokeId===null){
     const w=toWorld(e.clientX,e.clientY);
     strokeId=e.pointerId; strokeExt=null; stroke=[w];
     for(const T of tracks){
@@ -1135,7 +1135,7 @@ cv.addEventListener('pointermove',function(e){
 });
 function endPointer(e){
   const pp=pointers.get(e.pointerId);
-  if(pp&&pp.rs&&tool==='rope'){ const w=toWorld(pp.x,pp.y); zipAdd(pp.rs[0],pp.rs[1],w[0],w[1]); }
+  if(pp&&pp.rs&&ST.tool==='rope'){ const w=toWorld(pp.x,pp.y); zipAdd(pp.rs[0],pp.rs[1],w[0],w[1]); }
   pointers.delete(e.pointerId);
   if(e.pointerId===strokeId){
     const ex=strokeExt, k=ex?tracks.indexOf(ex.T):-1;
@@ -1162,7 +1162,7 @@ cv.addEventListener('pointerup',endPointer);
 cv.addEventListener('pointercancel',endPointer);
 
 /* ---------- Ton und Sprache ---------- */
-let AC=null, talkLock=0, tapT=0;
+let AC=null, tapT=0;
 function audio(){
   if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(_){ AC=null; } }
   if(AC&&AC.state==='suspended'){ try{AC.resume();}catch(_){} }
@@ -1245,7 +1245,7 @@ function clipPlay(ids,text){
 }
 function speak(text){
   try{
-    if(performance.now()<talkLock&&performance.now()-tapT>450) return;
+    if(performance.now()<ST.talkLock&&performance.now()-tapT>450) return;
     if(muted) return;
     speakStop();
     const ss=speakSplit(text);
@@ -1345,9 +1345,9 @@ function setChipTool(key){ $('chip-tool').innerHTML=IC[key]; }
 function startTask(def){
   if(realm){ $('panel').hidden=true; say('','Diese Aufgaben gibt es auf der Erde. Flieg mit der Rakete ganz hoch, dann kommst du heim.'); return; }
   $('panel').hidden=true;
-  task={id:def.id,def:def,p:0,done:false,t:0,data:{}};
+  ST.task={id:def.id,def:def,p:0,done:false,t:0,data:{}};
   chest=null;
-  const d=task.data, id=def.id;
+  const d=ST.task.data, id=def.id;
   if(id==='build'){ restoreSite(SITE.build,90,150,36); d.blocks=houseBlocks('build'); teleport(SITE.build-110); }
   else if(id==='smash'){
     restoreSite(SITE.smash,90,150,36); d.blocks=houseBlocks('smash');
@@ -1393,7 +1393,7 @@ function startTask(def){
   speak(def.say);
 }
 function progress(){
-  const d=task.data, id=task.id;
+  const d=ST.task.data, id=ST.task.id;
   if(id==='build'){ let n=0; for(const b of d.blocks) if(blockFilled(b[0],b[1])) n++; return Math.min(1,n/14); }
   if(id==='smash'){
     let n=0; for(const b of d.blocks) for(let y=b[1]*4;y<b[1]*4+4;y++) for(let x=b[0]*4;x<b[0]*4+4;x++) if(grid[y*GX+x]===WOOD) n++;
@@ -1402,19 +1402,19 @@ function progress(){
   if(id==='volcano'){
     let n=0; for(const i of d.plan.cone) if(grid[i]>=4) n++;
     const fill=n/d.plan.cone.length, y=siteY.volb;
-    if(fill>=.8&&!d.stage2){ d.stage2=true; setTool('lava',true); setChipTool('lava'); pulse('tool-lava'); speak(task.def.say2); }
+    if(fill>=.8&&!d.stage2){ d.stage2=true; setTool('lava',true); setChipTool('lava'); pulse('tool-lava'); speak(ST.task.def.say2); }
     const lv=d.stage2?boxCount(SITE.volb-100,SITE.volb+100,y-150,y-6,function(m){return m===LAVA;}):0;
     return .85*Math.min(1,fill/.8)+(lv>=6?.15:0);
   }
   if(id==='cool'){
     const n=boxCount(VOLC-125,VOLC+125,ground(VOLC-105)-60,ground(VOLC)+12,function(m,i){ return m===LAVA&&grid[i-GX]<4&&grid[i-GX]!==LAVA; });
     if(n>d.max) d.max=n;
-    if(d.max<6||task.t<1) return 0;
+    if(d.max<6||ST.task.t<1) return 0;
     return n===0?1:Math.min(.95,1-n/d.max);
   }
   if(id==='park'){
     let has=false; for(const T of tracks) if(T.user&&T.len>=400) has=true;
-    if(has&&!d.stage2){ d.stage2=true; setChipTool('coaster'); pulse('mode-coaster'); speak(task.def.say2); }
+    if(has&&!d.stage2){ d.stage2=true; setChipTool('coaster'); pulse('mode-coaster'); speak(ST.task.def.say2); }
     return d.rode?1:(has?.5:0);
   }
   if(id==='fire'){
@@ -1435,8 +1435,8 @@ function progress(){
   return 0;
 }
 function mark(){
-  if(!task||task.done) return null;
-  const id=task.id;
+  if(!ST.task||ST.task.done) return null;
+  const id=ST.task.id;
   if(id==='build') return [SITE.build+12,siteY.build-140];
   if(id==='smash') return [SITE.smash+6,siteY.smash-140];
   if(id==='volcano') return [SITE.volb,siteY.volb-104];
@@ -1457,22 +1457,22 @@ function updateStars(){
   $('stars').textContent=String(n); $('stars').hidden=n===0;
 }
 function finishTask(){
-  task.done=true; stars[task.id]=1; saveStars(); updateStars();
+  ST.task.done=true; stars[ST.task.id]=1; saveStars(); updateStars();
   $('bar').style.width='100%'; $('chip').classList.add('done');
   confetti(P.x,P.y); jingle(); speak('Geschafft! Super!');
   ST.gold+=25; ST.lootDirty=true; addXp(50);
-  if(task.id==='volcano') for(let i=0;i<16;i++) spawn(4,SITE.volb+(Math.random()-.5)*30,siteY.volb-90,(Math.random()-.5)*320,-300-Math.random()*260,2.4,4+Math.random()*3);
-  if(task.id==='treasure'&&chest) for(let i=0;i<24;i++) spawn(6,chest.x,chest.y,(Math.random()-.5)*260,-200-Math.random()*300,1.6,3.5,'#ffd23f');
-  const mine=task;
-  setTimeout(function(){ if(task===mine){ task=null; $('chip').hidden=true; pulse('tasks'); } },2800);
+  if(ST.task.id==='volcano') for(let i=0;i<16;i++) spawn(4,SITE.volb+(Math.random()-.5)*30,siteY.volb-90,(Math.random()-.5)*320,-300-Math.random()*260,2.4,4+Math.random()*3);
+  if(ST.task.id==='treasure'&&chest) for(let i=0;i<24;i++) spawn(6,chest.x,chest.y,(Math.random()-.5)*260,-200-Math.random()*300,1.6,3.5,'#ffd23f');
+  const mine=ST.task;
+  setTimeout(function(){ if(ST.task===mine){ ST.task=null; $('chip').hidden=true; pulse('tasks'); } },2800);
 }
 let taskAcc=0;
 function taskTick(dt){
-  if(!task||task.done) return;
-  task.t+=dt; taskAcc+=dt;
+  if(!ST.task||ST.task.done) return;
+  ST.task.t+=dt; taskAcc+=dt;
   if(taskAcc<.25) return;
   taskAcc=0;
-  const p=progress(); task.p=p; $('bar').style.width=Math.round(p*100)+'%';
+  const p=progress(); ST.task.p=p; $('bar').style.width=Math.round(p*100)+'%';
   if(p>=1) finishTask();
 }
 
@@ -1489,9 +1489,9 @@ const FINDS=[
   ['rainbow','🌈','einen Regenbogen','sky'],['unicorn','🦄','ein Einhorn','sky'],
   ['robot','🤖','einen Roboter','volcano'],['trophy','🏆','einen Pokal','house'],['statue','🗿','eine Steinfigur','edge'],['gift','🎁','ein Geschenk','edge']
 ];
-let found={}, hidden=[], nearT=0, ready=false, saving=false, saveT=0, lootT=0;
+let found={}, hidden=[], nearT=0, saveT=0, lootT=0;
 try{ const o=JSON.parse(localStorage.getItem(K_FINDS)||'{}')||{}; found=o.ids||{}; ST.gold=o.gold|0; ST.gems=o.gems|0; }catch(_){ found={}; }
-function saveFinds(){ if(frozen) return; try{ localStorage.setItem(K_FINDS,JSON.stringify({ids:found,gold:ST.gold,gems:ST.gems})); }catch(_){} }
+function saveFinds(){ if(ST.frozen) return; try{ localStorage.setItem(K_FINDS,JSON.stringify({ids:found,gold:ST.gold,gems:ST.gems})); }catch(_){} }
 function placeFind(zone,r){
   const anyX=function(){
     for(let k=0;k<40;k++){
@@ -1610,10 +1610,7 @@ function renderAlbum(){
 }
 
 /* ---------- Speichern: Die ganze Welt liegt als ein Eintrag in der Browser-Datenbank dieses Geräts. ---------- */
-let frozen=false; /* true, solange ein geladener Spielstand eingespielt wird: dann schreibt das Spiel nichts mehr. */
-/* true, wenn die Datenbank beim Start nicht lesbar war: Dann läuft das Spiel mit einer Ersatzwelt, schreibt aber nichts in die Datenbank, damit der echte Spielstand beim nächsten Start wieder da ist. */
-let diskLock=false;
-function idbDo(mode,fn){ return idbDoWith(diskLock,mode,fn); }
+function idbDo(mode,fn){ return idbDoWith(ST.diskLock,mode,fn); }
 function snapshot(pre,pf){
   const F=pf==null?genF:pf, g=pre||packRuns(F);
   const pk={};
@@ -1624,11 +1621,11 @@ function snapshot(pre,pf){
 }
 /* Autospeichern in Häppchen: Das Packen der Welt dauert auf einem schwachen Handy bis zu einer halben Sekunde und ruckelt dann sichtbar. Darum packt das Autospeichern pro Bild nur so viele Spalten, wie in 4 ms passen. Jede Spalte ist für sich vollständig, der Stand bleibt also immer lesbar. Ändert sich während des Packens eine schon gepackte Spalte, kommt das beim nächsten Speichern mit. Beim Verlassen, Reisen und Antippen wird weiter sofort am Stück gespeichert. */
 let packJob=null;
-function packStart(){ if(saving||!ready||frozen||traveling||packJob) return; packJob={cx:0,f:genF,rl:realm,out:new Uint8Array(1<<20),n:0}; }
+function packStart(){ if(ST.saving||!ST.ready||ST.frozen||ST.traveling||packJob) return; packJob={cx:0,f:genF,rl:realm,out:new Uint8Array(1<<20),n:0}; }
 function packStep(){
   const J=packJob;
   if(!J) return;
-  if(J.rl!==realm||traveling||frozen||!ready){ packJob=null; return; }
+  if(J.rl!==realm||ST.traveling||ST.frozen||!ST.ready){ packJob=null; return; }
   const t0=performance.now(), G=grid, W=GX, end0=GY*W;
   let out=J.out, n=J.n, cx=J.cx;
   while(cx<J.f){
@@ -1646,18 +1643,18 @@ function packStep(){
   J.out=out; J.n=n; J.cx=cx;
   if(cx<J.f) return;
   packJob=null;
-  if(saving) return;
-  saving=true; saveFinds(); saveHero();
-  idbDo('readwrite',function(st){ return st.put(snapshot(out.slice(0,n),J.f),realmKey(J.rl)); }).then(function(){ saving=false; },function(){ saving=false; });
+  if(ST.saving) return;
+  ST.saving=true; saveFinds(); saveHero();
+  idbDo('readwrite',function(st){ return st.put(snapshot(out.slice(0,n),J.f),realmKey(J.rl)); }).then(function(){ ST.saving=false; },function(){ ST.saving=false; });
 }
 function saveGame(manual){
   packJob=null;
-  if(saving||!ready||frozen||traveling) return;
-  saving=true; saveFinds(); saveHero();
+  if(ST.saving||!ST.ready||ST.frozen||ST.traveling) return;
+  ST.saving=true; saveFinds(); saveHero();
   idbDo('readwrite',function(st){ return st.put(snapshot(),realmKey(realm)); }).then(function(){
-    saving=false; if(manual){ flash('save','ok'); tone([660,880]); speak('Gespeichert.'); banner(svg24(QI.save)+'<svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5" stroke="#2f8f4a" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',1400); setTimeout(function(){ $('menu').hidden=true; },500); }
+    ST.saving=false; if(manual){ flash('save','ok'); tone([660,880]); speak('Gespeichert.'); banner(svg24(QI.save)+'<svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5" stroke="#2f8f4a" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',1400); setTimeout(function(){ $('menu').hidden=true; },500); }
   },function(){
-    saving=false; if(manual){ flash('save','warn'); tone([170],'sawtooth'); }
+    ST.saving=false; if(manual){ flash('save','warn'); tone([170],'sawtooth'); }
   });
 }
 function autosave(dt){
@@ -1668,7 +1665,7 @@ function autosave(dt){
 }
 function restore(sv){
   SEED=sv.seed; shapeWorld(); loadCells(sv); LIFE.clear(); stamp.fill(0);
-  parts.length=0; ghost=null; chest=null; stroke=null; strokeId=null; task=null; $('chip').hidden=true;
+  parts.length=0; ghost=null; chest=null; stroke=null; strokeId=null; ST.task=null; $('chip').hidden=true;
   trees.forEach(function(t,i){ t.state=(sv.trees&&sv.trees[i])|0; t.t=0; });
   zips=Array.isArray(sv.zips)?sv.zips.filter(zipOk).slice(-ZIPMAX):[]; P.zip=null; MONS.length=0; METS=[]; MROCKS=[]; FLIES=[]; ARROWS.length=0;
   tracks=[]; (sv.tracks||[]).forEach(function(t){ const T=makeTrack(t.raw,t.user); if(T){ if(t.rb) T.rb=true; tracks.push(T); } });
@@ -1679,18 +1676,18 @@ function restore(sv){
   deepRestore(sv);
   if(!sv.snow) migrateSnow();
   grow(Math.max(HOME_END*CELL,P.x+3200));
-  energy=sv.energy||0; cam.x=P.x; cam.y=P.y-80; tool=null; pan.x=0; pan.y=0;
+  energy=sv.energy||0; cam.x=P.x; cam.y=P.y-80; ST.tool=null; pan.x=0; pan.y=0;
   scanMobile();
 }
 function newSeed(){ return 1+Math.floor(Math.random()*999983); }
 
 /* ---------- Reisen zwischen den Welten: Die Welt, die man verlässt, wird gespeichert, die neue geladen oder zum ersten Mal erzeugt. ---------- */
-let traveling=false, portalT=0, portalOff='', exitHint=false, portO=null;
+let portalT=0, portalOff='', exitHint=false, portO=null;
 function orbsOf(id){ const R=RLM[id]; return R.orb?[R.orb()]:R.orbs(); }
 function newRealm(){
   ST.seen={}; ST.eggGot={}; ST.lootGot={}; ST.orbGot={}; matGot={}; pzGot={};
   shapeWorld(); planetGen();
-  parts.length=0; ghost=null; chest=null; stroke=null; strokeId=null; task=null; $('chip').hidden=true;
+  parts.length=0; ghost=null; chest=null; stroke=null; strokeId=null; ST.task=null; $('chip').hidden=true;
   for(const tr of trees){ tr.state=0; tr.t=0; }
   tracks=[]; zips=[]; P.zip=null; MONS.length=0; METS=[]; MROCKS=[]; FLIES=[]; ARROWS.length=0; props=[]; bombs.length=0; hidden=[]; guide=null;
   for(const k in parked) parked[k]=null;
@@ -1698,11 +1695,11 @@ function newRealm(){
   scanMobile();
 }
 function travel(to){
-  if(traveling||to===realm||(to&&!RLM[to])) return;
-  traveling=true; portalT=0;
+  if(ST.traveling||to===realm||(to&&!RLM[to])) return;
+  ST.traveling=true; portalT=0;
   const from=realm, m=P.mode, en=energy, f=$('fade');
   f.hidden=false; void f.offsetWidth; f.classList.add('on'); sfx('whoosh');
-  const done=function(){ f.classList.remove('on'); setTimeout(function(){ f.hidden=true; },380); traveling=false; };
+  const done=function(){ f.classList.remove('on'); setTimeout(function(){ f.hidden=true; },380); ST.traveling=false; };
   setTimeout(function(){
     let sv0=null;
     try{ sv0=snapshot(); }catch(_){ done(); return; }
@@ -1720,7 +1717,7 @@ function travel(to){
       }
       energy=en; arrive(from,to,m);
       try{ if(to) localStorage.setItem(K_REALM,to); else localStorage.removeItem(K_REALM); }catch(_){}
-      traveling=false; saveGame(false); traveling=true;
+      ST.traveling=false; saveGame(false); ST.traveling=true;
       done();
     },function(){ done(); tone([170],'sawtooth'); });
   },450);
@@ -1747,7 +1744,7 @@ function arrive(from,to,m){
 }
 /* Landet man auf dem Mond oder einem Planeten und bleibt kurz stehen, beginnt die Reise. Oben über einer fremden Welt geht es zurück. */
 function portalTick(dt){
-  if(traveling||uiOpen()) return;
+  if(ST.traveling||uiOpen()) return;
   const R=rlm();
   if(R){
     if(P.y<-1400&&!exitHint){ exitHint=true; say('','Flieg noch ein Stück höher, dann geht es zurück zur Erde.'); }
@@ -1770,7 +1767,7 @@ try{
 }catch(_){}
 let digN=0, props=[], nearF=null, nearD=1e9;
 const bombs=[], pet={x:820,y:0};
-function saveHero(){ if(frozen) return; try{ localStorage.setItem(K_HERO,JSON.stringify(hero)); }catch(_){} }
+function saveHero(){ if(ST.frozen) return; try{ localStorage.setItem(K_HERO,JSON.stringify(hero)); }catch(_){} }
 function xpNeed(l){ return 40+l*30; }
 function addXp(n){
   hero.xp+=n; ST.heroDirty=true;
@@ -2048,7 +2045,7 @@ function questPoint(){
 const MISX=1262;
 let MS={done:{},cur:null,fl:{}}, misShown='';
 try{ const o=JSON.parse(localStorage.getItem(MISK)||'null'); if(o&&typeof o==='object'){ if(o.done&&typeof o.done==='object'&&!Array.isArray(o.done)) MS.done=o.done; if(o.cur&&typeof o.cur==='object'&&typeof o.cur.id==='string'&&(o.cur.st|0)===o.cur.st) MS.cur=o.cur; if(o.fl&&typeof o.fl==='object'&&!Array.isArray(o.fl)) MS.fl=o.fl; } }catch(_){}
-function misSave(){ if(frozen) return; try{ localStorage.setItem(MISK,JSON.stringify(MS)); }catch(_){} }
+function misSave(){ if(ST.frozen) return; try{ localStorage.setItem(MISK,JSON.stringify(MS)); }catch(_){} }
 /* Eine Mission: e = wer sie gibt, start(m) richtet sie ein (false = gerade nicht möglich), steps mit Bild, Ansage, Ziel und Prüfung, win = Gold und Edelsteine. */
 const MIS=[];
 function misDef(){ if(!MS.cur) return null; for(const d of MIS) if(d.id===MS.cur.id) return d; return null; }
@@ -2083,7 +2080,7 @@ function misTick(dt){
   const d=misDef();
   if(MS.cur&&!d){ MS.cur=null; misSave(); }
   renderMis();
-  if(!d||!misHere(d)||traveling) return;
+  if(!d||!misHere(d)||ST.traveling) return;
   const m=MS.cur, st=d.steps[m.st];
   if(!st.tick(m,dt)) return;
   m.st++;
@@ -2364,7 +2361,7 @@ function say(who,text){
   const ms=900+text.length*72;
   $('say-in').innerHTML=(who?'<b>'+who+':</b> ':'')+text; $('say').classList.add('show');
   clearTimeout(sayT); sayT=setTimeout(function(){ $('say').classList.remove('show'); },ms+500);
-  talkLock=0; speak(text); talkLock=performance.now()+ms;
+  ST.talkLock=0; speak(text); ST.talkLock=performance.now()+ms;
   return ms/1000;
 }
 function later(sec,fn){ stq.push({t:sec,fn:fn}); }
@@ -2726,7 +2723,7 @@ function storyTick(dt){
   }else if(c===2){
     if(!stv.top&&N.hare.s>0&&P.mode==='walk'&&P.on&&P.x>6700){ stv.top=true; pulse('mode-ski'); later(2.2,function(){ if(hero.st.ch===2&&P.mode==='walk') say('','Jetzt die Ski! Tippe oben auf das Fahrzeug und nimm die Ski.'); }); }
   }else if(c===3){
-    if(stv.fight&&tool!=='ball'){ remindT-=dt; if(remindT<=0){ remindT=7; pulse('tool-ball'); } }
+    if(stv.fight&&ST.tool!=='ball'){ remindT-=dt; if(remindT<=0){ remindT=7; pulse('tool-ball'); } }
   }else if(c===4){
     const f=N.fau, hd=P.mode==='tbm'?drillHead():P.mode==='bagger'?bucket():[P.x,P.y-16];
     if(Math.hypot(hd[0]-f.x,hd[1]-(f.y-22))<74||Math.hypot(P.x-f.x,P.y-16-(f.y-22))<74){
@@ -2737,7 +2734,7 @@ function storyTick(dt){
   }else if(c===5){
     const f=N.fau, n=boxCount(f.x-64,f.x+64,f.y-72,f.y+14,function(m){return m===FIRE||m===LAVA;});
     if(n>1){ stv.warm=Math.min(1,(stv.warm||0)+dt/3.2); if(Math.random()<dt*3) spawn(8,f.x+(Math.random()-.5)*20,f.y-44,0,-30,1,13,'❤️'); }
-    else if(tool!=='fire'){ remindT-=dt; if(remindT<=0){ remindT=7; pulse('tool-fire'); } }
+    else if(ST.tool!=='fire'){ remindT-=dt; if(remindT<=0){ remindT=7; pulse('tool-fire'); } }
     f.warm=stv.warm||0;
     if(f.warm>=1){
       stv.busy=true; setTool(null,true); shout(f.x,f.y-60,'RÜLPS!','#ffd23f'); sfx('burp'); shake=Math.max(shake,.3);
@@ -3270,7 +3267,7 @@ function shakeTree(tr){
 }
 /* Tippen ohne Werkzeug: Sonne, Tiere, Wolken, Bäume und die Tür am Ende der Welt reagieren. */
 function tapWorld(sx,sy){
-  if(paused) return;
+  if(ST.paused) return;
   const w=toWorld(sx,sy), wx=w[0], wy=w[1];
   if(deepTap(wx,wy)) return;
   if(Math.hypot(sx-(W-74),sy-(H*.34-cam.y*S*.03))<32*S+10&&cam.y>-1500&&!solidW(wx,wy)){ nightOn=!nightOn; sfx('pop'); speak(nightOn?'Gute Nacht!':'Guten Morgen!'); return; }
@@ -3437,14 +3434,14 @@ function drawZips(x0,x1){
     ctx.fillStyle='#ffd23f'; circle(z.a[0],z.a[1],5); ctx.strokeStyle=INK; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(z.a[0],z.a[1],5,0,TAU); ctx.stroke();
   }
   if(P.zip){ ctx.fillStyle=INK; circle(P.x,P.y-46,4.5); ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(P.x,P.y-46); ctx.lineTo(P.x,P.y-40); ctx.stroke(); }
-  pointers.forEach(function(p){ if(tool==='rope'&&p.rs){ const w=toWorld(p.x,p.y); ctx.strokeStyle='#a0632f'; ctx.lineWidth=4; ctx.setLineDash([10,9]); ctx.beginPath(); ctx.moveTo(p.rs[0],p.rs[1]); ctx.lineTo(w[0],w[1]); ctx.stroke(); ctx.setLineDash([]); } });
+  pointers.forEach(function(p){ if(ST.tool==='rope'&&p.rs){ const w=toWorld(p.x,p.y); ctx.strokeStyle='#a0632f'; ctx.lineWidth=4; ctx.setLineDash([10,9]); ctx.beginPath(); ctx.moveTo(p.rs[0],p.rs[1]); ctx.lineTo(w[0],w[1]); ctx.stroke(); ctx.setLineDash([]); } });
 }
 /* Schaufel und Spitzhacke: zu Fuß graben, ohne Akku. Die Schaufel ist schnell, schafft aber nur Erde, Sand und Schnee. Die Spitzhacke schafft auch Fels und Eis, nur langsamer. Harte Schichten bleiben wie beim Bagger dem Bohrer vorbehalten. Aktionstaste gräbt in die Richtung, die man drückt: nach vorn, oben, unten oder schräg. */
 const HANDT={shovel:1,pick:1,bow:1}, DIGT={shovel:1,pick:1}, SOFT={4:1,14:1};
 let handT=0, handHint=0;
 function handDig(wx,wy){
   if(P.mode!=='walk'||P.zip||time<handT) return 0;
-  const sh=tool==='shovel', r=(sh?15:12)*(1+.12*hero.up.dig);
+  const sh=ST.tool==='shovel', r=(sh?15:12)*(1+.12*hero.up.dig);
   handT=time+(sh?.14:.22); P.swing=1;
   if(wx===undefined){
     const hx=(keys.r?1:0)-(keys.l?1:0);
@@ -3563,7 +3560,7 @@ function monSpawn(){
   }
 }
 function monTick(dt){
-  if(paused) return;
+  if(ST.paused) return;
   if(!OPT.mon){ if(MONS.length) MONS.length=0; return; }
   const under=monDepth()>140;
   monT-=dt;
@@ -3801,10 +3798,10 @@ function drawHarps(x0,x1){
   }
 }
 function drawHandTool(){
-  if(!HANDT[tool]||P.mode!=='walk'||P.zip) return;
+  if(!HANDT[ST.tool]||P.mode!=='walk'||P.zip) return;
   const ks=kidScale(), sw=P.swing||0, dn=keys.d;
   ctx.save(); ctx.translate(P.x+P.face*5*ks,P.y-22*ks); ctx.scale(P.face*ks,ks);
-  if(tool==='bow'){
+  if(ST.tool==='bow'){
     ctx.rotate(P.aim);
     ctx.strokeStyle=INK; ctx.lineWidth=4.5; ctx.lineCap='round'; ctx.beginPath(); ctx.arc(-2,0,15,-1.25,1.25); ctx.stroke();
     ctx.strokeStyle='#a0632f'; ctx.lineWidth=2.6; ctx.stroke();
@@ -3815,7 +3812,7 @@ function drawHandTool(){
   ctx.strokeStyle=INK; ctx.lineWidth=4.5; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(22,0); ctx.stroke();
   ctx.strokeStyle='#a0632f'; ctx.lineWidth=2.6; ctx.stroke();
   ctx.fillStyle=INK;
-  if(tool==='shovel'){ ctx.beginPath(); ctx.moveTo(20,-6); ctx.lineTo(33,-5); ctx.quadraticCurveTo(38,0,33,5); ctx.lineTo(20,6); ctx.closePath(); ctx.fill(); ctx.fillStyle='#b9c4cf'; ctx.beginPath(); ctx.moveTo(21.5,-4.5); ctx.lineTo(32,-3.5); ctx.quadraticCurveTo(35.5,0,32,3.5); ctx.lineTo(21.5,4.5); ctx.closePath(); ctx.fill(); }
+  if(ST.tool==='shovel'){ ctx.beginPath(); ctx.moveTo(20,-6); ctx.lineTo(33,-5); ctx.quadraticCurveTo(38,0,33,5); ctx.lineTo(20,6); ctx.closePath(); ctx.fill(); ctx.fillStyle='#b9c4cf'; ctx.beginPath(); ctx.moveTo(21.5,-4.5); ctx.lineTo(32,-3.5); ctx.quadraticCurveTo(35.5,0,32,3.5); ctx.lineTo(21.5,4.5); ctx.closePath(); ctx.fill(); }
   else{ ctx.beginPath(); ctx.moveTo(21,-14); ctx.quadraticCurveTo(28,-4,21,0); ctx.quadraticCurveTo(28,4,21,14); ctx.lineTo(25,0); ctx.closePath(); ctx.fill(); ctx.lineWidth=5; ctx.strokeStyle=INK; ctx.beginPath(); ctx.moveTo(22,-13); ctx.quadraticCurveTo(29,0,22,13); ctx.stroke(); ctx.lineWidth=2.6; ctx.strokeStyle='#b9c4cf'; ctx.stroke(); }
   ctx.restore();
 }
@@ -4225,7 +4222,7 @@ function fogTick(dt){
   if(P.y<ground(P.x)) for(let y=0,gy=fRow(ground(P.x));y<=gy;y++) fogSet(a,tx,y);
 }
 function fogSave(){
-  if(!fogDirty||frozen) return; fogDirty=false;
+  if(!fogDirty||ST.frozen) return; fogDirty=false;
   for(const k in FOG){ let t=''; const a=FOG[k]; for(let i=0;i<a.length;i+=4096) t+=String.fromCharCode.apply(null,a.subarray(i,i+4096)); try{ localStorage.setItem(k,btoa(t)); }catch(_){} }
 }
 setInterval(fogSave,15000);
@@ -4484,7 +4481,7 @@ function deepTick(dt){
     if(!(hero.fin&1)&&Math.hypot(P.x-SPACE.gate.x,P.y-SPACE.gate.y)<SPACE.gate.r+40) finale(1);
   }
   if(!(hero.fin&2)&&!realm&&P.y>9000&&cellAt(P.x,P.y+3)===CORE) finale(2);
-  if(!hero.deep&&performance.now()>talkLock&&Math.abs(P.x-WSX)<110&&Math.abs(P.y-ground(WSX))<90) deepIntro();
+  if(!hero.deep&&performance.now()>ST.talkLock&&Math.abs(P.x-WSX)<110&&Math.abs(P.y-ground(WSX))<90) deepIntro();
   if(guide&&time>guide.t) guide=null;
 }
 function nextMach(){
@@ -4586,7 +4583,7 @@ function renderLab(){
   $('lab-taf').innerHTML='<span aria-hidden="true">🔢</span><span aria-hidden="true">💠</span>'+(hero.mat.ms|0);
 }
 function openLab(){
-  renderLab(); $('lab').hidden=false; talkLock=0;
+  renderLab(); $('lab').hidden=false; ST.talkLock=0;
   if(!hero.deep){ hero.deep=true; saveHero(); speak('Das ist die Werkstatt von Professor Zahnrad. Hier siehst du, was du für einen besseren Bohrer, eine stärkere Rakete und eine hellere Lampe brauchst. Tippe auf ein Bild, dann sage ich dir, wo du es findest.'); }
 }
 function labBuild(g){
@@ -4623,7 +4620,7 @@ function renderMine(){
   }
   $('mine-cards').innerHTML=h;
 }
-function openMine(){ if(liftBusy) return; renderMine(); $('mine').hidden=false; talkLock=0; speak('Wohin soll der Aufzug fahren?'); }
+function openMine(){ if(liftBusy) return; renderMine(); $('mine').hidden=false; ST.talkLock=0; speak('Wohin soll der Aufzug fahren?'); }
 function liftGo(k){
   if(liftBusy) return;
   const f=$('fade'), m=P.mode;
@@ -4884,7 +4881,7 @@ function pzCell(c,r,ctl){
 }
 function pzOpen(m){
   const T=PZI[m.t], lv=clamp((hero.pz[m.t]|0)+(m.zb|0),0,9);
-  keys.l=keys.r=keys.u=keys.d=keys.a=false; talkLock=0;
+  keys.l=keys.r=keys.u=keys.d=keys.a=false; ST.talkLock=0;
   pzc={m:m,T:T,lv:lv,fails:0,hint:0,won:false,busy:false,st:null}; LOG.pStart(pzc);
   $('pz-ic').textContent=T.e;
   let h=''; for(let i=0;i<10;i++) h+='<i'+(i<=lv?' class="on"':'')+'></i>';
@@ -4970,7 +4967,7 @@ $('pz').addEventListener('click',function(e){
 /* Am Akku: ein Rätsel statt fünf Lernaufgaben. Die Arten wechseln der Reihe nach, damit keine ausgelassen wird. */
 $('quiz-pz').addEventListener('click',function(){
   LOG.qSwitch();
-  $('quiz').hidden=true; paused=false;
+  $('quiz').hidden=true; ST.paused=false;
   pzOpen({id:'quiz',t:PZT[(hero.pzn|0)%PZT.length].id,zb:0,quiz:true});
 });
 
@@ -5404,7 +5401,7 @@ $('quiz-say').addEventListener('click',function(){ if(qcur) speak(qcur.say); });
 tap($('tasks'),function(){ $('panel').hidden=false; });
 $('panel-x').addEventListener('click',function(){ $('panel').hidden=true; });
 $('panel').addEventListener('click',function(e){ if(e.target===$('panel')) $('panel').hidden=true; });
-tap($('chip'),function(){ if(task) speak(task.done?'Geschafft! Super!':(task.data.stage2&&task.def.say2?task.def.say2:task.def.say)); });
+tap($('chip'),function(){ if(ST.task) speak(ST.task.done?'Geschafft! Super!':(ST.task.data.stage2&&ST.task.def.say2?ST.task.def.say2:ST.task.def.say)); });
 tap($('btn-menu'),function(){ $('menu').hidden=false; });
 tap($('btn-story'),function(){ renderStory(); $('story').hidden=false; });
 tap($('btn-map'),function(){ mapPg=0; renderMap(); $('map').hidden=false; renderFog(); });
@@ -5437,7 +5434,7 @@ $('sound').addEventListener('click',function(){
 /* ---------- Spielstand umziehen: Alles aus diesem Browser (Welt, Held, Funde, Einstellungen, Protokoll) als eine Datei. Der Speicher gehört zur Adresse, darum braucht der Umzug vom Artefakt auf eine eigene Seite oder in die Homescreen-App diesen Weg. ---------- */
 let bakIn=null;
 function bakMake(){
-  const fresh=ready&&!traveling?idbDo('readwrite',function(st){ return st.put(snapshot(),realmKey(realm)); }).catch(function(){}):Promise.resolve();
+  const fresh=ST.ready&&!ST.traveling?idbDo('readwrite',function(st){ return st.put(snapshot(),realmKey(realm)); }).catch(function(){}):Promise.resolve();
   saveFinds(); saveHero();
   return fresh.then(function(){ return Promise.all(BAK_DBS.map(dbDump)); }).then(function(rs){
     const ls={}, db={};
@@ -5483,7 +5480,7 @@ function bakPick(file){
 }
 function bakLoad(){
   const b=bakIn; bakIn=null; if(!b) return;
-  frozen=true;
+  ST.frozen=true;
   const dbs=Object.keys(b.db).filter(function(n){ return BAK_DBS.indexOf(n)>=0; });
   Promise.all(dbs.map(function(n){ return dbLoad(n,dec(b.db[n])); })).then(function(){
     try{
@@ -5492,7 +5489,7 @@ function bakLoad(){
       for(const k in (b.ls||{})) if(k.indexOf('lavaland')===0) localStorage.setItem(k,String(b.ls[k]));
     }catch(_){}
     location.reload();
-  },function(){ frozen=false; tone([170],'sawtooth'); });
+  },function(){ ST.frozen=false; tone([170],'sawtooth'); });
 }
 
 /* ---------- Vollbild im Browser-Tab (Android, Desktop). iPhone kennt das nicht, dort hilft nur „Zum Home-Bildschirm“. Als installierte App ist das Spiel schon im Vollbild, der Knopf bleibt dann weg. ---------- */
@@ -5551,21 +5548,21 @@ function renderBatt(){
 function need(fn){ if(energy>0) fn(); else openQuiz(fn); }
 function openQuiz(then){
   if(then) pending=then;
-  paused=true; keys.l=keys.r=keys.u=keys.d=keys.a=false; talkLock=0;
+  ST.paused=true; keys.l=keys.r=keys.u=keys.d=keys.a=false; ST.talkLock=0;
   $('quiz').hidden=false; LOG.qOpen(); nextQ();
   $('quiz-pz').textContent=PZT[(hero.pzn|0)%PZT.length].e; $('quiz-pz').classList.toggle('near',(hero.pzn|0)<3);
 }
 function closeQuiz(){
   LOG.qClose();
   doorQ=null; $('quiz-pz').hidden=false;
-  $('quiz').hidden=true; paused=false;
+  $('quiz').hidden=true; ST.paused=false;
   speakStop();
   const f=pending; pending=null;
   if(energy>0){ if(f) f(); }
-  else{ if(!HANDT[tool]) setTool(null,true); if(P.mode!=='walk'){ const air=!P.on; setMode('walk'); if(air){ P.chute=true; P.vy=Math.min(P.vy,0); } } pulse('batt'); }
+  else{ if(!HANDT[ST.tool]) setTool(null,true); if(P.mode!=='walk'){ const air=!P.on; setMode('walk'); if(air){ P.chute=true; P.vy=Math.min(P.vy,0); } } pulse('batt'); }
 }
 function drain(dt){
-  if(P.mode!=='walk'||(tool&&!HANDT[tool])){
+  if(P.mode!=='walk'||(ST.tool&&!HANDT[ST.tool])){
     energy-=dt;
     if(energy<=0){ energy=0; battLow=false; $('batt').classList.remove('low'); renderBatt(); openQuiz(null); return; }
     /* Kurz vor leer blinkt der Akku und tickt, damit die Lernaufgabe nicht aus dem Nichts kommt. */
@@ -5615,7 +5612,7 @@ function loadFacts(){
   if(!FS.dm||typeof FS.dm!=='object'||!FS.dm.c||typeof FS.dm.c!=='object') delete FS.dm;
   for(const k in FS.f){ const r=FS.f[k]; if(!Array.isArray(r)||!(r[0]>=0)||!isFinite(r[1])) delete FS.f[k]; else r[0]=clamp(r[0]|0,0,5); }
 }
-function saveFacts(){ if(frozen) return; try{ localStorage.setItem(K_FACTS,JSON.stringify(FS)); }catch(_){} }
+function saveFacts(){ if(ST.frozen) return; try{ localStorage.setItem(K_FACTS,JSON.stringify(FS)); }catch(_){} }
 loadFacts();
 /* Wer schon Fakten in Fach 4 oder 5 hat, bekommt die Meistersteine dafür beim ersten Start nachträglich. */
 (function(){ if(FS.mg) return; FS.mg={}; let n=0; for(const k in FS.f) if(FS.f[k][0]>=MBOX){ FS.mg[k]=1; n++; } if(n){ hero.mat.ms=(hero.mat.ms|0)+n; hero.mk.ms=1; saveHero(); } saveFacts(); })();
@@ -5820,7 +5817,7 @@ window.addEventListener('keydown',function(e){
   /* Escape schließt die Aufgabe wie das X, sonst bliebe das Spiel pausiert. */
   if(e.key==='Escape'&&!$('quiz').hidden){ closeQuiz(); return; }
   if(e.key==='Escape'){ document.querySelectorAll('.ov,#panel').forEach(function(o){ o.hidden=true; }); pzClose(); return; }
-  if(paused||uiOpen()||(e.target&&e.target.tagName==='BUTTON'&&e.key==='Enter')) return;
+  if(ST.paused||uiOpen()||(e.target&&e.target.tagName==='BUTTON'&&e.key==='Enter')) return;
   const k=keymap[e.key];
   if(k){ if(!e.repeat) keyTap(k); keys[k]=true; e.preventDefault(); }
   else if(e.key===' '){ if(!e.repeat){ keys.a=true; doAction(); } e.preventDefault(); }
@@ -5829,7 +5826,7 @@ window.addEventListener('keydown',function(e){
 /* Tastenkürzel für Tablet-Tastatur und Laptop: dieselben Knöpfe wie oben in der Leiste. Fragezeichen zeigt die Liste. */
 const SHORT={f:'btn-veh',t:'btn-tool',k:'btn-map',e:'batt',b:'btn-story',m:'btn-menu'};
 function keyShort(k){
-  if(k==='x'){ if(P.mode!=='walk') setMode('walk'); else if(tool) setTool(null,true); return; }
+  if(k==='x'){ if(P.mode!=='walk') setMode('walk'); else if(ST.tool) setTool(null,true); return; }
   if(k==='?'||k==='h'){ banner('⌨️ F Fahrzeuge · T Werkzeug · K Karte · E Aufgabe · B Buch · M Menü · X Aussteigen',4200); return; }
   const el=SHORT[k]&&$(SHORT[k]);
   if(el&&!el.hidden&&el.offsetParent) el.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}));
@@ -6144,8 +6141,8 @@ function drawChest(){
   ctx.globalAlpha=.5+.5*Math.sin(time*5); ctx.fillStyle='#fff8e6'; circle(x+14,y-16,2.5); circle(x-16,y-4,1.8); ctx.globalAlpha=1;
 }
 function drawPlan(){
-  const d=task.data;
-  if(task.id==='build'){
+  const d=ST.task.data;
+  if(ST.task.id==='build'){
     ctx.setLineDash([5,4]); ctx.lineWidth=2; ctx.strokeStyle='#fff8e6';
     for(const b of d.blocks){
       if(blockFilled(b[0],b[1])) continue;
@@ -6153,7 +6150,7 @@ function drawPlan(){
       ctx.fillStyle='rgba(255,248,230,.3)'; ctx.fillRect(x+1,y+1,22,22); ctx.strokeRect(x+1.5,y+1.5,21,21);
     }
     ctx.setLineDash([]);
-  }else if(task.id==='volcano'){
+  }else if(ST.task.id==='volcano'){
     ctx.fillStyle='rgba(138,90,60,.38)'; ctx.beginPath();
     for(const i of d.plan.cone) if(grid[i]<4){ const cy=(i/GX)|0; ctx.rect((i-cy*GX)*CELL,TOP+cy*CELL,CELL,CELL); }
     ctx.fill();
@@ -6256,7 +6253,7 @@ function draw(){
   if(y0<-2500) drawSpace();
   for(const tr of trees) if(tr.x>x0-40&&tr.x<x1+40) drawTree(tr);
   drawCells(x0,x1,y0,y1);
-  if(task&&!task.done) drawPlan();
+  if(ST.task&&!ST.task.done) drawPlan();
   if(chest) drawChest();
   drawFinds(true,x0,x1,y0,y1);
   if(STALL_X>x0-50&&STALL_X<x1+50) drawStall();
@@ -6291,7 +6288,7 @@ function draw(){
   drawMets();
   drawArrows();
   drawMons(false);
-  if(tool==='track'){
+  if(ST.tool==='track'){
     for(const T of tracks){ const a=T.pts[0], b=T.pts[T.pts.length-1]; knob(a[0],a[1],8); knob(b[0],b[1],11); }
   }
   if(stroke&&stroke.length>1){
@@ -6328,10 +6325,10 @@ function draw(){
   else if(P.mode==='loader') drawLoader(P.x,P.y,P.ang,P.face,P.lift,P.load,true);
   else if(P.mode==='dumper') drawDumper(P.x,P.y,P.ang,P.face,P.load,Math.min(1,P.bed),true);
   else if(P.mode==='tbm') drawTbm(P.x,P.y,P.ang,P.face,P.da,true,Math.abs(P.vx)>5?time*2.5:0);
-  else if(P.mode==='rocket') drawRocket(P.x,P.y,P.ang,true,keys.u&&!paused);
+  else if(P.mode==='rocket') drawRocket(P.x,P.y,P.ang,true,keys.u&&!ST.paused);
   else if(P.mode==='plane') drawPlane(P.x,P.y,P.vx,P.vy,P.face,P.on,P.ang,true);
   else if(P.mode==='sub') drawSub(P.x,P.y,P.ang,P.face,true);
-  else if(P.mode==='balloon') drawBalloon(P.x,P.y,P.ang,true,keys.u&&!paused);
+  else if(P.mode==='balloon') drawBalloon(P.x,P.y,P.ang,true,keys.u&&!ST.paused);
   else if(P.mode==='bug') drawBug(P.x+P.face*15*Math.min(1,Math.abs(P.ang)/1.57),P.y,P.ang,P.face,true,P.run);
   else if(P.mode==='boat') drawBoat(P.x,P.y,P.ang,P.face,true,boatWet()?Math.min(1,Math.abs(P.vx)/200):0);
   else if(P.mode==='heli') drawHeli(P.x,P.y,P.ang,P.face,true,reduced?.6:time*(P.on?6:22));
@@ -6432,7 +6429,7 @@ function draw(){
 function actIcon(){
   if(P.zip) return 'jump';
   if(P.mode==='walk'){ if(zipNear()) return 'hook'; if(nearBoard()) return 'mis'; if(nearScope()) return 'scope'; const da=deepIcon(); if(da) return da; }
-  if(P.mode==='walk') return nearStall()?'shop':nearLift()?'lift':tool==='bow'?'bow':DIGT[tool]?'dig':(P.chute?'down':(P.on||P.air<.15?'jump':'chute'));
+  if(P.mode==='walk') return nearStall()?'shop':nearLift()?'lift':ST.tool==='bow'?'bow':DIGT[ST.tool]?'dig':(P.chute?'down':(P.on||P.air<.15?'jump':'chute'));
   if(P.mode==='ski') return nearLift()?'lift':(P.on||P.ball>0?'jump':'spin');
   if(P.mode==='dragon') return 'flame';
   if(P.mode==='sub') return 'sonar';
@@ -6456,7 +6453,7 @@ function resetWorld(seed){
   ST.seen={}; ST.eggGot={}; ST.lootGot={}; ST.orbGot={}; matGot={}; pzGot={};
   shapeWorld();
   gen();
-  parts.length=0; ghost=null; chest=null; stroke=null; strokeId=null; task=null; $('chip').hidden=true;
+  parts.length=0; ghost=null; chest=null; stroke=null; strokeId=null; ST.task=null; $('chip').hidden=true;
   for(const tr of trees){ tr.state=0; tr.t=0; }
   tracks=[]; zips=[]; P.zip=null; const d=demoTrack(); if(d) tracks.push(d);
   if(MS.cur||Object.keys(MS.fl).length){ MS.cur=null; MS.fl={}; misSave(); }
@@ -6466,7 +6463,7 @@ function resetWorld(seed){
   parked.car={x:720,y:surfaceY(720),vy:0,ang:0,face:1,arm:0,load:0};
   parked.plane={x:630,y:surfaceY(630),vy:0,ang:0,face:1};
   parked.rocket={x:556,y:surfaceY(556),vy:0,ang:0,face:1,load:0};
-  cam.x=P.x; cam.y=P.y-80; tool=null; pan.x=0; pan.y=0; props=[]; bombs.length=0;
+  cam.x=P.x; cam.y=P.y-80; ST.tool=null; pan.x=0; pan.y=0; props=[]; bombs.length=0;
   deepHome();
   hideFinds();
   stEnter();
@@ -6478,12 +6475,12 @@ function resetWorld(seed){
 /* Was das Protokoll vom Spiel liest (log/ darf state/ nicht importieren, ADR 0001). */
 const LP={
   get energy(){ return energy; },
-  get frozen(){ return frozen; },
-  get paused(){ return paused; },
+  get frozen(){ return ST.frozen; },
+  get paused(){ return ST.paused; },
   get pzc(){ return pzc; },
-  get ready(){ return ready; },
+  get ready(){ return ST.ready; },
   get realm(){ return realm; },
-  get tool(){ return tool; },
+  get tool(){ return ST.tool; },
   get MAXE(){ return MAXE; },
   get P(){ return P; },
   get SEG(){ return SEG; },
@@ -6802,7 +6799,7 @@ let LIM=0; try{ LIM=LIMS.indexOf(+localStorage.getItem(K_LIMIT))>0?+localStorage
 function limCheck(){
   if(!LIM||DAY.t<LIM*60||$('camp').hidden===false) return;
   if(DAY.lim&&DAY.t-DAY.lim<CAMPGAP) return;
-  if(uiOpen()||paused) return;
+  if(uiOpen()||ST.paused) return;
   DAY.lim=DAY.t; daySave(); openCamp('lim');
 }
 const CAMPGAP=600;
@@ -6810,7 +6807,7 @@ let campT=null;
 /* Höchstens alle zehn Spielminuten, und nur wenn gerade nichts anderes offen ist. */
 function campSoon(){
   dayLoad(); if(DAY.t-DAY.fire<CAMPGAP||campT) return;
-  campT=setTimeout(function tryCamp(){ if(uiOpen()||paused||!ready){ campT=setTimeout(tryCamp,3000); return; } campT=null; openCamp(''); },4500);
+  campT=setTimeout(function tryCamp(){ if(uiOpen()||ST.paused||!ST.ready){ campT=setTimeout(tryCamp,3000); return; } campT=null; openCamp(''); },4500);
 }
 function plural(n,a,b){ return n+' '+(n===1?a:b); }
 function openCamp(why){
@@ -6916,9 +6913,9 @@ function frame(t){
   try{
     const raw=(t-last)/1000||0, dt=Math.min(.034,raw); last=t;
     LOG.tick(raw); LOG.beat(raw);
-    if(ready&&!document.hidden){ const ls=LOG.state(); if(ls&&ls!=='idle') dayTick(Math.min(1,raw)); }
+    if(ST.ready&&!document.hidden){ const ls=LOG.state(); if(ls&&ls!=='idle') dayTick(Math.min(1,raw)); }
     /* Solange ein Fenster offen ist, steht das Spiel still und der Akku läuft nicht leer. */
-    if(!(paused||uiOpen())){
+    if(!(ST.paused||uiOpen())){
       accum+=dt; let n=0;
       while(accum>=1/30&&n<2){ paintStep(); step(); accum-=1/30; n++; }
       if(accum>.1) accum=0;
@@ -6929,7 +6926,7 @@ function frame(t){
     }
     /* Akku sparen: Hinter einem offenen Fenster steht die Welt still, dann reichen 6 Bilder pro Sekunde. Ohne Berührung reichen 30. */
     drawN++;
-    const every=(paused||uiOpen())?10:LOG.state()==='idle'?2:1;
+    const every=(ST.paused||uiOpen())?10:LOG.state()==='idle'?2:1;
     if(drawN>=every){ drawN=0; draw(); }
     const ic=actIcon(); if(ic!==lastIcon){ actEl.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+AI[ic]+'</svg>'; lastIcon=ic; }
   }catch(e){
@@ -6948,13 +6945,13 @@ function safe(f,dt){
 function start(){
   resize();
   const go=function(){
-    ready=true; LOG.start(); updateStars(); renderAlbum(); syncUI(); syncSound(); battShown=-1; renderBatt();
+    ST.ready=true; LOG.start(); updateStars(); renderAlbum(); syncUI(); syncSound(); battShown=-1; renderBatt();
     stEnter(); syncOwn(); renderStory();
     let psst=0; try{ psst=+localStorage.getItem(K_PSST)||0; }catch(_){}
-    if(!hero.st.on){ if(psst<3) setTimeout(function(){ if(!hero.st.on&&!uiOpen()&&!paused){ try{ localStorage.setItem(K_PSST,String(psst+1)); }catch(_){} say('','Psst! Über Nacht ist etwas Seltsames passiert. Tippe auf das Buch!'); pulse('btn-story'); } },2800); else pulse('btn-story'); }
-    else if(!hero.big) setTimeout(function(){ if(!uiOpen()&&!paused){ hero.big=true; if(nextLand()){ hero.quest={type:'land',goal:1,p:0}; showQuest(false); } saveHero(); say('','Neu! Hinter dem Schneeberg liegen jetzt viele fremde Länder. Fahr hinten am Berg hinunter und entdecke sie!'); pulse('btn-map'); } },2800);
+    if(!hero.st.on){ if(psst<3) setTimeout(function(){ if(!hero.st.on&&!uiOpen()&&!ST.paused){ try{ localStorage.setItem(K_PSST,String(psst+1)); }catch(_){} say('','Psst! Über Nacht ist etwas Seltsames passiert. Tippe auf das Buch!'); pulse('btn-story'); } },2800); else pulse('btn-story'); }
+    else if(!hero.big) setTimeout(function(){ if(!uiOpen()&&!ST.paused){ hero.big=true; if(nextLand()){ hero.quest={type:'land',goal:1,p:0}; showQuest(false); } saveHero(); say('','Neu! Hinter dem Schneeberg liegen jetzt viele fremde Länder. Fahr hinten am Berg hinunter und entdecke sie!'); pulse('btn-map'); } },2800);
     if(hero.quest&&hero.quest.type==='core'&&hero.dr<3) hero.quest=null;
-    if(hero.st.on&&hero.big&&!hero.deep) setTimeout(function(){ if(!uiOpen()&&!paused) deepIntro(); },2800);
+    if(hero.st.on&&hero.big&&!hero.deep) setTimeout(function(){ if(!uiOpen()&&!ST.paused) deepIntro(); },2800);
     labBadge(false);
     if(!hero.quest||hero.quest.done||!QDEF[hero.quest.type]) hero.quest=newQuest();
     showQuest(false); pulse('quest');
@@ -7016,10 +7013,10 @@ function start(){
       /* Die Datenbank ist gerade nicht lesbar (auf Android etwa bei vollem Speicher). Erst noch einmal versuchen, dann ohne Speichern weiterspielen. */
       if(!retry) return new Promise(function(res){ setTimeout(res,800); }).then(function(){ return load(true); });
       errAdd('Datenbank nicht lesbar: '+((e&&e.message)||e),'start');
-      diskLock=true; setRealm(''); resetWorld(newSeed()); return true;
+      ST.diskLock=true; setRealm(''); resetWorld(newSeed()); return true;
     });
   };
-  load(false).then(go,function(){ diskLock=true; setRealm(''); resetWorld(newSeed()); go(); });
+  load(false).then(go,function(){ ST.diskLock=true; setRealm(''); resetWorld(newSeed()); go(); });
 }
 /*@test-hook*/
 document.addEventListener('visibilitychange',function(){ if(document.hidden) saveGame(false); });

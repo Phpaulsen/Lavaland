@@ -20,7 +20,7 @@ const page = await ctx.newPage();
 const errs = [];
 page.on('pageerror', e => errs.push(e.message));
 const ev = s => page.evaluate(s => window.__ev(s), s);
-const ready = () => page.waitForFunction(() => window.__ev && window.__ev('ready'), null, { timeout: 20000 });
+const ready = () => page.waitForFunction(() => window.__ev && window.__ev('ST.ready'), null, { timeout: 20000 });
 // Liest einen Eintrag direkt aus der Datenbank, ohne das Spiel.
 const raw = key => page.evaluate(k => new Promise((res, rej) => {
   const rq = indexedDB.open('lavaland', 1);
@@ -59,7 +59,7 @@ test('Datenbank beim Start kurz nicht lesbar: nichts wird überschrieben', async
   // Kurzer Aussetzer: Der zweite Versuch klappt, der alte Stand ist sofort da.
   await page.evaluate(() => sessionStorage.setItem('test-idb-kaputt-bis', String(Date.now() + 400)));
   await page.reload(); await ready();
-  if (await ev('SEED') !== before.seed || await ev('diskLock')) throw new Error('Nach kurzem Aussetzer nicht der alte Stand');
+  if (await ev('SEED') !== before.seed || await ev('ST.diskLock')) throw new Error('Nach kurzem Aussetzer nicht der alte Stand');
   // Längerer Aussetzer: Ersatzwelt, die nach der Störung nicht gespeichert wird.
   await page.evaluate(() => sessionStorage.setItem('test-idb-kaputt-bis', String(Date.now() + 3000)));
   await page.reload(); await ready();
@@ -101,12 +101,12 @@ test('Geschlossene Protokoll-Datenbank wird neu geöffnet', async () => {
 
 testCdp('Absturz wird beim nächsten Start erkannt, normales Neuladen nicht', async () => {
   await page.goto(url); await ready();
-  await ev("localStorage.removeItem(ERRK); OVS.forEach(o=>o.hidden=true); paused=false; setMode('sub')");
+  await ev("localStorage.removeItem(ERRK); OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('sub')");
   await page.waitForTimeout(2600);
   // Normales Neuladen ist kein Absturz.
   await page.reload(); await ready(); await page.waitForTimeout(300);
   if (await ev("errLoad().some(e=>e.w==='Absturz')")) throw new Error('Neuladen als Absturz gezählt');
-  await ev("OVS.forEach(o=>o.hidden=true); paused=false; setMode('sub')");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('sub')");
   await page.waitForTimeout(2600);
   // Absturz: Der Tab stirbt ohne pagehide, wie wenn Android ihn wegen Speichermangel beendet.
   const p2 = await ctx.newPage();
@@ -114,7 +114,7 @@ testCdp('Absturz wird beim nächsten Start erkannt, normales Neuladen nicht', as
   cdp.send('Page.crash').catch(() => {});
   await page.waitForEvent('crash', { timeout: 5000 }).catch(() => {});
   p2.on('pageerror', e => errs.push(e.message));
-  await p2.goto(url); await p2.waitForFunction(() => window.__ev && window.__ev('ready'), null, { timeout: 20000 });
+  await p2.goto(url); await p2.waitForFunction(() => window.__ev && window.__ev('ST.ready'), null, { timeout: 20000 });
   await p2.waitForTimeout(500);
   const e2 = s => p2.evaluate(s => window.__ev(s), s);
   const m = await e2("(errLoad().find(e=>e.w==='Absturz')||{}).m");

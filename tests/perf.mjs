@@ -21,9 +21,9 @@ try {
     const page = await ctx.newPage();
     await page.addInitScript(() => { let a = 7; Math.random = function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; });
     await page.goto(url);
-    await page.waitForFunction(() => window.__ev && window.__ev('ready'), null, { timeout: 20000 });
+    await page.waitForFunction(() => window.__ev && window.__ev('ST.ready'), null, { timeout: 20000 });
     const r = await page.evaluate(n => window.__ev(`(function(n){
-      requestAnimationFrame=function(){}; OVS.forEach(function(o){ o.hidden=true; }); paused=false; frozen=true;
+      requestAnimationFrame=function(){}; OVS.forEach(function(o){ o.hidden=true; }); ST.paused=false; ST.frozen=true;
       /* Damit der Zellautomat zu tun hat: Wasser und Lava über dem Helden. */
       const cx=P.x/CELL|0, cy=(P.y-TOP)/CELL|0;
       for(let y=cy-90;y<cy-50;y++) for(let x=cx-60;x<cx+60;x++) if(!grid[y*GX+x]) setCell(x,y,x<cx?WATER:LAVA);

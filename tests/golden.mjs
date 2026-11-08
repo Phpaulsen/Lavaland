@@ -132,14 +132,14 @@ async function open({ fixed = true, input = null } = {}) {
 }
 async function waitReady(page) {
   for (let i = 0; ; i++) {
-    if (await page.evaluate(() => !!(window.__ev && window.__ev('ready'))).catch(() => false)) return;
+    if (await page.evaluate(() => !!(window.__ev && window.__ev('ST.ready'))).catch(() => false)) return;
     if (i > 300) throw new Error('Spiel nicht bereit');
     await new Promise(r => setTimeout(r, 100));
   }
 }
 
 // Alle Speicherfunktionen einmal schreiben lassen, dann die Sicherung je Teil hashen.
-const SAVEALL = `(function(){ frozen=false; fogDirty=true; optSave(); voiceSave(); saveStars(); saveFinds(); saveHero(); misSave(); fogSave(); mkSave(); saveFacts(); saveSchool(); daySave(); return bakMake().then(function(b){ return {snap:enc(snapshot()), bak:b}; }); })()`;
+const SAVEALL = `(function(){ ST.frozen=false; fogDirty=true; optSave(); voiceSave(); saveStars(); saveFinds(); saveHero(); misSave(); fogSave(); mkSave(); saveFacts(); saveSchool(); daySave(); return bakMake().then(function(b){ return {snap:enc(snapshot()), bak:b}; }); })()`;
 function saveParts(r) {
   const o = { at: r.bak.at, snapshot: {} };
   for (const k in r.snap) o.snapshot[k] = sha(JSON.stringify(r.snap[k]));
@@ -155,7 +155,7 @@ function saveParts(r) {
 async function makeInput() {
   if (fs.existsSync(INP)) throw new Error(INP + ' gibt es schon. Die Eingabe wird nie neu erzeugt.');
   const { ctx, page, ev } = await open({ fixed: false });
-  await ev(`OVS.forEach(o=>o.hidden=true); paused=false;
+  await ev(`OVS.forEach(o=>o.hidden=true); ST.paused=false;
     STAGES.m[0].slice(0,30).concat(STAGES.m[1].slice(0,10),STAGES.l[0].slice(0,15),STAGES.l[1].slice(0,5)).forEach(function(k,i){ factDone(mkQ(k), i%7===3?'miss':i%11===5?'ok2':'ok', i%3===0); });
     ST.gold+=137; ST.gems+=4; energy=MAXE; hero.xp+=230; hero.up.dig=2; hero.up.jet=1; hero.pz.muster=3; hero.pz.waage=2; hero.eggs=2;
     MS.done.chick=1; marks().push([P.x|0,P.y|0,1]); OPT.calm=true; VOICE.r=1.05; SCH.on=true; SCH.zr=2; SCH.l='MAMILO';
@@ -164,7 +164,7 @@ async function makeInput() {
   await page.waitForTimeout(3000);
   await ev("travel('moon')"); await page.waitForTimeout(4000);
   if (await ev('realm') !== 'moon') throw new Error('Reise zum Mond fehlgeschlagen');
-  await ev("OVS.forEach(o=>o.hidden=true); paused=false; for(let i=0;i<20;i++){ const cx=(P.x/CELL|0)+i; setCell(cx,((surfaceY(cx*CELL)-TOP)/CELL|0)+2,0); } marks().push([P.x|0,P.y|0,2]); fogDirty=true; 1");
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; for(let i=0;i<20;i++){ const cx=(P.x/CELL|0)+i; setCell(cx,((surfaceY(cx*CELL)-TOP)/CELL|0)+2,0); } marks().push([P.x|0,P.y|0,2]); fogDirty=true; 1");
   await page.waitForTimeout(2000);
   await ev("travel('')"); await page.waitForTimeout(4000);
   if (await ev('realm') !== '') throw new Error('Rückreise fehlgeschlagen');

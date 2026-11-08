@@ -30,7 +30,7 @@ const browser = await chromium.launch(process.env.CHROMIUM ? { executablePath: p
 const ctx = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block' });
 const page = await ctx.newPage();
 await page.goto('http://127.0.0.1:' + srv.address().port + '/');
-await page.waitForFunction(() => window.__ev && window.__ev('ready'), null, { timeout: 20000 });
+await page.waitForFunction(() => window.__ev && window.__ev('ST.ready'), null, { timeout: 20000 });
 const dyn = await page.evaluate(() => window.__ev(`(function(){
   const r=[];
   // 2. Lernaufgaben

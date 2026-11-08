@@ -11,7 +11,7 @@ const ctx = await browser.newContext({ ...phone(), bypassCSP: true });
 const page = await ctx.newPage();
 const errs = [];
 page.on('pageerror', e => errs.push(e.message));
-const ready = () => page.waitForFunction(() => window.__ev && window.__ev('ready'), null, { timeout: 20000 });
+const ready = () => page.waitForFunction(() => window.__ev && window.__ev('ST.ready'), null, { timeout: 20000 });
 let fail = '';
 try {
   await page.goto(url); await ready();

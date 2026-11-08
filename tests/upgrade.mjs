@@ -21,6 +21,7 @@ page.on('pageerror', e => errs.push(e.message));
 const ev = s => page.evaluate(s => window.__ev(s), s);
 // Seit PR 14a liegen gold und gems hinter der Fassade ST. Die alte Seite kann älter sein: dann gibt es noch die bloßen Namen.
 const V = n => `('${n}' in ST?ST.${n}:${n})`;
+// Die alte Seite (main) kann ready noch als bloßen Namen haben: Im Bündel liegen Modulnamen im selben Gültigkeitsbereich, darum geht ready auf beiden.
 const ready = () => page.waitForFunction(() => window.__ev && window.__ev('ready'), null, { timeout: 30000 });
 
 // Ein Loch an fester Stelle graben: 20 Spalten, 6 Zeilen unter der Oberfläche.

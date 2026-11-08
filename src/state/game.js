@@ -16,3 +16,17 @@ export const P={mode:'walk',x:820,y:0,vx:0,vy:0,on:true,landed:false,gs:0,face:1
 export const parked={car:null,plane:null,rocket:null,bagger:null,loader:null,dumper:null,tbm:null,sub:null,balloon:null,heli:null,boat:null,bug:null};
 export const cam={x:820,y:-60}, pan={x:0,y:0};
 export const keys={l:false,r:false,u:false,d:false,a:false};
+
+/* Speicherschalter und Bedienzustand (PR 14c) */
+/* frozen: true, solange ein geladener Spielstand eingespielt wird: dann schreibt das Spiel nichts mehr. */
+/* diskLock: true, wenn die Datenbank beim Start nicht lesbar war: Dann läuft das Spiel mit einer Ersatzwelt, schreibt aber nichts in die Datenbank, damit der echte Spielstand beim nächsten Start wieder da ist. */
+export let ready=false, saving=false, frozen=false, diskLock=false, traveling=false, paused=false, tool=null, task=null, talkLock=0;
+/** @param {boolean} v */ export function setReady(v){ ready=v; }
+/** @param {boolean} v */ export function setSaving(v){ saving=v; }
+/** @param {boolean} v */ export function setFrozen(v){ frozen=v; }
+/** @param {boolean} v */ export function setDiskLock(v){ diskLock=v; }
+/** @param {boolean} v */ export function setTraveling(v){ traveling=v; }
+/** @param {boolean} v */ export function setPaused(v){ paused=v; }
+/** @param {any} v (setTool gibt es schon in legacy.js: Werkzeug wählen) */ export function setToolV(v){ tool=v; }
+/** @param {any} v */ export function setTask(v){ task=v; }
+/** @param {number} v */ export function setTalkLock(v){ talkLock=v; }

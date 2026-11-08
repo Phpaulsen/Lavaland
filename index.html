@@ -1810,6 +1810,42 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
   var cam = { x: 820, y: -60 };
   var pan = { x: 0, y: 0 };
   var keys = { l: false, r: false, u: false, d: false, a: false };
+  var ready = false;
+  var saving = false;
+  var frozen = false;
+  var diskLock = false;
+  var traveling = false;
+  var paused = false;
+  var tool = null;
+  var task = null;
+  var talkLock = 0;
+  function setReady(v) {
+    ready = v;
+  }
+  function setSaving(v) {
+    saving = v;
+  }
+  function setFrozen(v) {
+    frozen = v;
+  }
+  function setDiskLock(v) {
+    diskLock = v;
+  }
+  function setTraveling(v) {
+    traveling = v;
+  }
+  function setPaused(v) {
+    paused = v;
+  }
+  function setToolV(v) {
+    tool = v;
+  }
+  function setTask(v) {
+    task = v;
+  }
+  function setTalkLock(v) {
+    talkLock = v;
+  }
 
   // src/state/facade.js
   var ST = {
@@ -1932,6 +1968,60 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     },
     set heroDirty(v) {
       setHeroDirty(v);
+    },
+    get ready() {
+      return ready;
+    },
+    set ready(v) {
+      setReady(v);
+    },
+    get saving() {
+      return saving;
+    },
+    set saving(v) {
+      setSaving(v);
+    },
+    get frozen() {
+      return frozen;
+    },
+    set frozen(v) {
+      setFrozen(v);
+    },
+    get diskLock() {
+      return diskLock;
+    },
+    set diskLock(v) {
+      setDiskLock(v);
+    },
+    get traveling() {
+      return traveling;
+    },
+    set traveling(v) {
+      setTraveling(v);
+    },
+    get paused() {
+      return paused;
+    },
+    set paused(v) {
+      setPaused(v);
+    },
+    get tool() {
+      return tool;
+    },
+    set tool(v) {
+      setToolV(v);
+    },
+    get task() {
+      return task;
+    },
+    set task(v) {
+      setTask(v);
+    },
+    get talkLock() {
+      return talkLock;
+    },
+    set talkLock(v) {
+      setTalkLock(v);
     }
   };
 
@@ -1983,8 +2073,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       };
     });
   }
-  function idbDoWith(diskLock, mode, fn) {
-    if (diskLock && mode !== "readonly") return Promise.reject(new Error("diskLock"));
+  function idbDoWith(diskLock2, mode, fn) {
+    if (diskLock2 && mode !== "readonly") return Promise.reject(new Error("diskLock"));
     return idbOpen().then(function(db) {
       return new Promise(function(res, rej) {
         const tx = db.transaction("save", mode), rq = fn(tx.objectStore("save"));
@@ -5383,7 +5473,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       return P.y < -1700 ? G * 0.3 : G;
     }
     let ghost = null, chest = null;
-    let tool = null, time = 0, volT = 3, stroke = null, strokeId = null, strokeExt = null, task = null, energy = 0, paused = false;
+    let time = 0, volT = 3, stroke = null, strokeId = null, strokeExt = null, energy = 0;
     function park() {
       return { x: P.x, y: P.y, vy: P.vy, ang: P.mode === "rocket" ? 0 : P.ang, face: P.face, arm: P.arm, lift: P.lift, da: P.da, load: P.load };
     }
@@ -5456,17 +5546,17 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       syncUI();
     }
     function setTool(t, force) {
-      tool = tool === t && !force ? null : t;
+      ST.tool = ST.tool === t && !force ? null : t;
       stroke = null;
       strokeId = null;
       syncUI();
     }
     function syncUI() {
       for (const m of MODES) $("mode-" + m).setAttribute("aria-pressed", String(P.mode === m));
-      for (const t of TOOLN) $("tool-" + t).setAttribute("aria-pressed", String(tool === t));
+      for (const t of TOOLN) $("tool-" + t).setAttribute("aria-pressed", String(ST.tool === t));
       $("btn-veh").firstChild.innerHTML = IC[P.mode];
-      $("btn-tool").firstChild.innerHTML = tool ? IC[tool] : QI.hand;
-      $("btn-tool").setAttribute("aria-pressed", String(!!tool));
+      $("btn-tool").firstChild.innerHTML = ST.tool ? IC[ST.tool] : QI.hand;
+      $("btn-tool").setAttribute("aria-pressed", String(!!ST.tool));
     }
     function pulse(id) {
       if (id.indexOf("mode-") === 0) pulse("btn-veh");
@@ -5649,11 +5739,11 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
           rideLift();
           return;
         }
-        if (tool === "bow") {
+        if (ST.tool === "bow") {
           shoot();
           return;
         }
-        if (DIGT[tool]) {
+        if (DIGT[ST.tool]) {
           handDig();
           return;
         }
@@ -6032,7 +6122,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       P.face = T.dir;
       if (P.s >= T.len) {
         qEvent("ride", 1);
-        if (T.user && task && task.id === "park") task.data.rode = true;
+        if (T.user && ST.task && ST.task.id === "park") ST.task.data.rode = true;
         P.vy -= 90;
         P.mode = "walk";
         P.on = false;
@@ -6070,8 +6160,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         popT = 0.4;
       }
       if (P.swing > 0) P.swing = Math.max(0, P.swing - dt * 5);
-      if (keys.a && DIGT[tool] && P.mode === "walk" && !paused && !nearBoard() && !zipNear() && !deepIcon()) handDig();
-      else if (P.mode === "walk" && !paused && (ix || u || d)) pushDig(ix, u, d);
+      if (keys.a && DIGT[ST.tool] && P.mode === "walk" && !ST.paused && !nearBoard() && !zipNear() && !deepIcon()) handDig();
+      else if (P.mode === "walk" && !ST.paused && (ix || u || d)) pushDig(ix, u, d);
       if (P.zip) zipRide(dt);
       else if (P.mode === "walk") updWalk(dt, ix, u, d);
       else if (P.mode === "car") updCar(dt, ix, u, d);
@@ -6250,8 +6340,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     function paintAt(wx, wy) {
       const cx = Math.floor(wx / CELL), cy = Math.floor((wy - TOP) / CELL);
-      if (tool === "lava" || tool === "water") {
-        const t = tool === "lava" ? LAVA : WATER;
+      if (ST.tool === "lava" || ST.tool === "water") {
+        const t = ST.tool === "lava" ? LAVA : WATER;
         if (t === LAVA ? lavaCount >= MAX_LAVA : waterCount >= MAX_WATER) {
           pulse("tool-erase");
           return;
@@ -6265,18 +6355,18 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
           putUp(cx + 1, cy - 1, t);
           putUp(cx - 1, cy - 1, t);
         }
-      } else if (tool === "fire") {
+      } else if (ST.tool === "fire") {
         putUp(cx, cy, FIRE);
         putUp(cx + 1, cy, FIRE);
-      } else if (tool === "earth") disc(cx, cy, 1.7, EARTH);
-      else if (tool === "ice") disc(cx, cy, 2.3, ICE);
-      else if (tool === "snow") disc(cx, cy, 2.3, SNOW);
-      else if (tool === "blocks") fillBlock(cx >> 2, cy >> 2);
-      else if (tool === "erase") erase(wx, wy);
+      } else if (ST.tool === "earth") disc(cx, cy, 1.7, EARTH);
+      else if (ST.tool === "ice") disc(cx, cy, 2.3, ICE);
+      else if (ST.tool === "snow") disc(cx, cy, 2.3, SNOW);
+      else if (ST.tool === "blocks") fillBlock(cx >> 2, cy >> 2);
+      else if (ST.tool === "erase") erase(wx, wy);
     }
     function paintStep() {
-      if (!tool || tool === "track" || tool === "rope") return;
-      if (tool === "bow") {
+      if (!ST.tool || ST.tool === "track" || ST.tool === "rope") return;
+      if (ST.tool === "bow") {
         pointers.forEach(function(p) {
           if (!p.has) {
             p.has = true;
@@ -6286,7 +6376,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         });
         return;
       }
-      if (HANDT[tool]) {
+      if (HANDT[ST.tool]) {
         pointers.forEach(function(p) {
           const w = toWorld(p.x, p.y);
           if (Math.hypot(w[0] - P.x, w[1] - P.y + 20) < 95) handDig(w[0], w[1]);
@@ -6295,23 +6385,23 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
       pointers.forEach(function(p) {
         const w = toWorld(p.x, p.y);
-        if (tool === "tnt") {
+        if (ST.tool === "tnt") {
           if (!p.has) {
             p.has = true;
             dropBomb(w[0], w[1]);
           }
           return;
         }
-        if (tool === "ball" || tool === "fw") {
-          if (!p.has || time - p.bt > (tool === "ball" ? 0.28 : 0.4)) {
+        if (ST.tool === "ball" || ST.tool === "fw") {
+          if (!p.has || time - p.bt > (ST.tool === "ball" ? 0.28 : 0.4)) {
             p.has = true;
             p.bt = time;
-            if (tool === "ball") throwBall(w[0], w[1]);
+            if (ST.tool === "ball") throwBall(w[0], w[1]);
             else firework(w[0], w[1]);
           }
           return;
         }
-        if (tool === "man") {
+        if (ST.tool === "man") {
           if (!p.has) {
             p.has = true;
             addMan(w[0]);
@@ -6335,9 +6425,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, has: false, lx: 0, ly: 0 });
       armGhost(cv);
-      if (!tool) tapWorld(e.clientX, e.clientY);
-      if (tool === "rope") pointers.get(e.pointerId).rs = toWorld(e.clientX, e.clientY);
-      if (tool === "track" && strokeId === null) {
+      if (!ST.tool) tapWorld(e.clientX, e.clientY);
+      if (ST.tool === "rope") pointers.get(e.pointerId).rs = toWorld(e.clientX, e.clientY);
+      if (ST.tool === "track" && strokeId === null) {
         const w = toWorld(e.clientX, e.clientY);
         strokeId = e.pointerId;
         strokeExt = null;
@@ -6369,7 +6459,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     });
     function endPointer(e) {
       const pp = pointers.get(e.pointerId);
-      if (pp && pp.rs && tool === "rope") {
+      if (pp && pp.rs && ST.tool === "rope") {
         const w = toWorld(pp.x, pp.y);
         zipAdd(pp.rs[0], pp.rs[1], w[0], w[1]);
       }
@@ -6406,7 +6496,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     cv.addEventListener("pointerup", endPointer);
     cv.addEventListener("pointercancel", endPointer);
-    let AC = null, talkLock = 0, tapT = 0;
+    let AC = null, tapT = 0;
     function audio() {
       if (!AC) {
         try {
@@ -6599,7 +6689,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     function speak(text) {
       try {
-        if (performance.now() < talkLock && performance.now() - tapT > 450) return;
+        if (performance.now() < ST.talkLock && performance.now() - tapT > 450) return;
         if (muted) return;
         speakStop();
         const ss = speakSplit(text);
@@ -6770,9 +6860,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         return;
       }
       $("panel").hidden = true;
-      task = { id: def.id, def, p: 0, done: false, t: 0, data: {} };
+      ST.task = { id: def.id, def, p: 0, done: false, t: 0, data: {} };
       chest = null;
-      const d = task.data, id = def.id;
+      const d = ST.task.data, id = def.id;
       if (id === "build") {
         restoreSite(SITE.build, 90, 150, 36);
         d.blocks = houseBlocks("build");
@@ -6843,7 +6933,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       speak(def.say);
     }
     function progress() {
-      const d = task.data, id = task.id;
+      const d = ST.task.data, id = ST.task.id;
       if (id === "build") {
         let n = 0;
         for (const b of d.blocks) if (blockFilled(b[0], b[1])) n++;
@@ -6863,7 +6953,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
           setTool("lava", true);
           setChipTool("lava");
           pulse("tool-lava");
-          speak(task.def.say2);
+          speak(ST.task.def.say2);
         }
         const lv = d.stage2 ? boxCount(SITE.volb - 100, SITE.volb + 100, y - 150, y - 6, function(m) {
           return m === LAVA;
@@ -6875,7 +6965,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
           return m === LAVA && grid[i - GX] < 4 && grid[i - GX] !== LAVA;
         });
         if (n > d.max) d.max = n;
-        if (d.max < 6 || task.t < 1) return 0;
+        if (d.max < 6 || ST.task.t < 1) return 0;
         return n === 0 ? 1 : Math.min(0.95, 1 - n / d.max);
       }
       if (id === "park") {
@@ -6885,7 +6975,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
           d.stage2 = true;
           setChipTool("coaster");
           pulse("mode-coaster");
-          speak(task.def.say2);
+          speak(ST.task.def.say2);
         }
         return d.rode ? 1 : has ? 0.5 : 0;
       }
@@ -6912,8 +7002,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       return 0;
     }
     function mark() {
-      if (!task || task.done) return null;
-      const id = task.id;
+      if (!ST.task || ST.task.done) return null;
+      const id = ST.task.id;
       if (id === "build") return [SITE.build + 12, siteY.build - 140];
       if (id === "smash") return [SITE.smash + 6, siteY.smash - 140];
       if (id === "volcano") return [SITE.volb, siteY.volb - 104];
@@ -6939,8 +7029,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       $("stars").hidden = n === 0;
     }
     function finishTask() {
-      task.done = true;
-      stars[task.id] = 1;
+      ST.task.done = true;
+      stars[ST.task.id] = 1;
       saveStars();
       updateStars();
       $("bar").style.width = "100%";
@@ -6951,12 +7041,12 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       ST.gold += 25;
       ST.lootDirty = true;
       addXp(50);
-      if (task.id === "volcano") for (let i = 0; i < 16; i++) spawn(4, SITE.volb + (Math.random() - 0.5) * 30, siteY.volb - 90, (Math.random() - 0.5) * 320, -300 - Math.random() * 260, 2.4, 4 + Math.random() * 3);
-      if (task.id === "treasure" && chest) for (let i = 0; i < 24; i++) spawn(6, chest.x, chest.y, (Math.random() - 0.5) * 260, -200 - Math.random() * 300, 1.6, 3.5, "#ffd23f");
-      const mine = task;
+      if (ST.task.id === "volcano") for (let i = 0; i < 16; i++) spawn(4, SITE.volb + (Math.random() - 0.5) * 30, siteY.volb - 90, (Math.random() - 0.5) * 320, -300 - Math.random() * 260, 2.4, 4 + Math.random() * 3);
+      if (ST.task.id === "treasure" && chest) for (let i = 0; i < 24; i++) spawn(6, chest.x, chest.y, (Math.random() - 0.5) * 260, -200 - Math.random() * 300, 1.6, 3.5, "#ffd23f");
+      const mine = ST.task;
       setTimeout(function() {
-        if (task === mine) {
-          task = null;
+        if (ST.task === mine) {
+          ST.task = null;
           $("chip").hidden = true;
           pulse("tasks");
         }
@@ -6964,13 +7054,13 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     let taskAcc = 0;
     function taskTick(dt) {
-      if (!task || task.done) return;
-      task.t += dt;
+      if (!ST.task || ST.task.done) return;
+      ST.task.t += dt;
       taskAcc += dt;
       if (taskAcc < 0.25) return;
       taskAcc = 0;
       const p = progress();
-      task.p = p;
+      ST.task.p = p;
       $("bar").style.width = Math.round(p * 100) + "%";
       if (p >= 1) finishTask();
     }
@@ -7010,7 +7100,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       ["statue", "🗿", "eine Steinfigur", "edge"],
       ["gift", "🎁", "ein Geschenk", "edge"]
     ];
-    let found = {}, hidden = [], nearT = 0, ready = false, saving = false, saveT = 0, lootT = 0;
+    let found = {}, hidden = [], nearT = 0, saveT = 0, lootT = 0;
     try {
       const o = JSON.parse(localStorage.getItem(K_FINDS) || "{}") || {};
       found = o.ids || {};
@@ -7020,7 +7110,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       found = {};
     }
     function saveFinds() {
-      if (frozen) return;
+      if (ST.frozen) return;
       try {
         localStorage.setItem(K_FINDS, JSON.stringify({ ids: found, gold: ST.gold, gems: ST.gems }));
       } catch (_) {
@@ -7246,10 +7336,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       $("gem-n").textContent = String(ST.gems);
       renderEggs();
     }
-    let frozen = false;
-    let diskLock = false;
     function idbDo(mode, fn) {
-      return idbDoWith(diskLock, mode, fn);
+      return idbDoWith(ST.diskLock, mode, fn);
     }
     function snapshot(pre, pf) {
       const F = pf == null ? genF : pf, g = pre || packRuns(F);
@@ -7289,13 +7377,13 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     let packJob = null;
     function packStart() {
-      if (saving || !ready || frozen || traveling || packJob) return;
+      if (ST.saving || !ST.ready || ST.frozen || ST.traveling || packJob) return;
       packJob = { cx: 0, f: genF, rl: realm, out: new Uint8Array(1 << 20), n: 0 };
     }
     function packStep() {
       const J = packJob;
       if (!J) return;
-      if (J.rl !== realm || traveling || frozen || !ready) {
+      if (J.rl !== realm || ST.traveling || ST.frozen || !ST.ready) {
         packJob = null;
         return;
       }
@@ -7329,28 +7417,28 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       J.cx = cx;
       if (cx < J.f) return;
       packJob = null;
-      if (saving) return;
-      saving = true;
+      if (ST.saving) return;
+      ST.saving = true;
       saveFinds();
       saveHero();
       idbDo("readwrite", function(st) {
         return st.put(snapshot(out.slice(0, n), J.f), realmKey(J.rl));
       }).then(function() {
-        saving = false;
+        ST.saving = false;
       }, function() {
-        saving = false;
+        ST.saving = false;
       });
     }
     function saveGame(manual) {
       packJob = null;
-      if (saving || !ready || frozen || traveling) return;
-      saving = true;
+      if (ST.saving || !ST.ready || ST.frozen || ST.traveling) return;
+      ST.saving = true;
       saveFinds();
       saveHero();
       idbDo("readwrite", function(st) {
         return st.put(snapshot(), realmKey(realm));
       }).then(function() {
-        saving = false;
+        ST.saving = false;
         if (manual) {
           flash("save", "ok");
           tone([660, 880]);
@@ -7361,7 +7449,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
           }, 500);
         }
       }, function() {
-        saving = false;
+        ST.saving = false;
         if (manual) {
           flash("save", "warn");
           tone([170], "sawtooth");
@@ -7396,7 +7484,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       chest = null;
       stroke = null;
       strokeId = null;
-      task = null;
+      ST.task = null;
       $("chip").hidden = true;
       trees.forEach(function(t, i) {
         t.state = (sv.trees && sv.trees[i]) | 0;
@@ -7445,7 +7533,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       energy = sv.energy || 0;
       cam.x = P.x;
       cam.y = P.y - 80;
-      tool = null;
+      ST.tool = null;
       pan.x = 0;
       pan.y = 0;
       scanMobile();
@@ -7453,7 +7541,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function newSeed() {
       return 1 + Math.floor(Math.random() * 999983);
     }
-    let traveling = false, portalT = 0, portalOff = "", exitHint = false, portO = null;
+    let portalT = 0, portalOff = "", exitHint = false, portO = null;
     function orbsOf(id) {
       const R = RLM[id];
       return R.orb ? [R.orb()] : R.orbs();
@@ -7472,7 +7560,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       chest = null;
       stroke = null;
       strokeId = null;
-      task = null;
+      ST.task = null;
       $("chip").hidden = true;
       for (const tr of trees) {
         tr.state = 0;
@@ -7496,8 +7584,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       scanMobile();
     }
     function travel(to) {
-      if (traveling || to === realm || to && !RLM[to]) return;
-      traveling = true;
+      if (ST.traveling || to === realm || to && !RLM[to]) return;
+      ST.traveling = true;
       portalT = 0;
       const from = realm, m = P.mode, en = energy, f = $("fade");
       f.hidden = false;
@@ -7509,7 +7597,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         setTimeout(function() {
           f.hidden = true;
         }, 380);
-        traveling = false;
+        ST.traveling = false;
       };
       setTimeout(function() {
         let sv0 = null;
@@ -7549,9 +7637,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
             else localStorage.removeItem(K_REALM);
           } catch (_) {
           }
-          traveling = false;
+          ST.traveling = false;
           saveGame(false);
-          traveling = true;
+          ST.traveling = true;
           done();
         }, function() {
           done();
@@ -7605,7 +7693,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       syncUI();
     }
     function portalTick(dt) {
-      if (traveling || uiOpen()) return;
+      if (ST.traveling || uiOpen()) return;
       const R = rlm();
       if (R) {
         if (P.y < -1400 && !exitHint) {
@@ -7666,7 +7754,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     let digN = 0, props = [], nearF = null, nearD = 1e9;
     const bombs = [], pet = { x: 820, y: 0 };
     function saveHero() {
-      if (frozen) return;
+      if (ST.frozen) return;
       try {
         localStorage.setItem(K_HERO, JSON.stringify(hero));
       } catch (_) {
@@ -8277,7 +8365,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     } catch (_) {
     }
     function misSave() {
-      if (frozen) return;
+      if (ST.frozen) return;
       try {
         localStorage.setItem(MISK, JSON.stringify(MS));
       } catch (_) {
@@ -8350,7 +8438,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         misSave();
       }
       renderMis();
-      if (!d || !misHere(d) || traveling) return;
+      if (!d || !misHere(d) || ST.traveling) return;
       const m = MS.cur, st = d.steps[m.st];
       if (!st.tick(m, dt)) return;
       m.st++;
@@ -8988,9 +9076,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       sayT = setTimeout(function() {
         $("say").classList.remove("show");
       }, ms + 500);
-      talkLock = 0;
+      ST.talkLock = 0;
       speak(text);
-      talkLock = performance.now() + ms;
+      ST.talkLock = performance.now() + ms;
       return ms / 1e3;
     }
     function later(sec, fn) {
@@ -9665,7 +9753,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
           });
         }
       } else if (c === 3) {
-        if (stv.fight && tool !== "ball") {
+        if (stv.fight && ST.tool !== "ball") {
           remindT -= dt;
           if (remindT <= 0) {
             remindT = 7;
@@ -9692,7 +9780,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         if (n > 1) {
           stv.warm = Math.min(1, (stv.warm || 0) + dt / 3.2);
           if (Math.random() < dt * 3) spawn(8, f.x + (Math.random() - 0.5) * 20, f.y - 44, 0, -30, 1, 13, "❤️");
-        } else if (tool !== "fire") {
+        } else if (ST.tool !== "fire") {
           remindT -= dt;
           if (remindT <= 0) {
             remindT = 7;
@@ -10912,7 +11000,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       else if (!k) drop("🍎");
     }
     function tapWorld(sx, sy) {
-      if (paused) return;
+      if (ST.paused) return;
       const w = toWorld(sx, sy), wx = w[0], wy = w[1];
       if (deepTap(wx, wy)) return;
       if (Math.hypot(sx - (W - 74), sy - (H * 0.34 - cam.y * S * 0.03)) < 32 * S + 10 && cam.y > -1500 && !solidW(wx, wy)) {
@@ -11253,7 +11341,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         ctx.stroke();
       }
       pointers.forEach(function(p) {
-        if (tool === "rope" && p.rs) {
+        if (ST.tool === "rope" && p.rs) {
           const w = toWorld(p.x, p.y);
           ctx.strokeStyle = "#a0632f";
           ctx.lineWidth = 4;
@@ -11270,7 +11358,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     let handT = 0, handHint = 0;
     function handDig(wx, wy) {
       if (P.mode !== "walk" || P.zip || time < handT) return 0;
-      const sh = tool === "shovel", r = (sh ? 15 : 12) * (1 + 0.12 * hero.up.dig);
+      const sh = ST.tool === "shovel", r = (sh ? 15 : 12) * (1 + 0.12 * hero.up.dig);
       handT = time + (sh ? 0.14 : 0.22);
       P.swing = 1;
       if (wx === void 0) {
@@ -11471,7 +11559,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
     }
     function monTick(dt) {
-      if (paused) return;
+      if (ST.paused) return;
       if (!OPT.mon) {
         if (MONS.length) MONS.length = 0;
         return;
@@ -12069,12 +12157,12 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
     }
     function drawHandTool() {
-      if (!HANDT[tool] || P.mode !== "walk" || P.zip) return;
+      if (!HANDT[ST.tool] || P.mode !== "walk" || P.zip) return;
       const ks = kidScale(), sw = P.swing || 0, dn = keys.d;
       ctx.save();
       ctx.translate(P.x + P.face * 5 * ks, P.y - 22 * ks);
       ctx.scale(P.face * ks, ks);
-      if (tool === "bow") {
+      if (ST.tool === "bow") {
         ctx.rotate(P.aim);
         ctx.strokeStyle = INK;
         ctx.lineWidth = 4.5;
@@ -12108,7 +12196,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       ctx.lineWidth = 2.6;
       ctx.stroke();
       ctx.fillStyle = INK;
-      if (tool === "shovel") {
+      if (ST.tool === "shovel") {
         ctx.beginPath();
         ctx.moveTo(20, -6);
         ctx.lineTo(33, -5);
@@ -13176,7 +13264,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (P.y < ground(P.x)) for (let y = 0, gy = fRow(ground(P.x)); y <= gy; y++) fogSet(a, tx, y);
     }
     function fogSave() {
-      if (!fogDirty || frozen) return;
+      if (!fogDirty || ST.frozen) return;
       fogDirty = false;
       for (const k in FOG) {
         let t = "";
@@ -13647,7 +13735,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         if (!(hero.fin & 1) && Math.hypot(P.x - SPACE.gate.x, P.y - SPACE.gate.y) < SPACE.gate.r + 40) finale(1);
       }
       if (!(hero.fin & 2) && !realm && P.y > 9e3 && cellAt(P.x, P.y + 3) === CORE) finale(2);
-      if (!hero.deep && performance.now() > talkLock && Math.abs(P.x - WSX) < 110 && Math.abs(P.y - ground(WSX)) < 90) deepIntro();
+      if (!hero.deep && performance.now() > ST.talkLock && Math.abs(P.x - WSX) < 110 && Math.abs(P.y - ground(WSX)) < 90) deepIntro();
       if (guide && time > guide.t) guide = null;
     }
     function nextMach() {
@@ -13806,7 +13894,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function openLab() {
       renderLab();
       $("lab").hidden = false;
-      talkLock = 0;
+      ST.talkLock = 0;
       if (!hero.deep) {
         hero.deep = true;
         saveHero();
@@ -13885,7 +13973,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (liftBusy) return;
       renderMine();
       $("mine").hidden = false;
-      talkLock = 0;
+      ST.talkLock = 0;
       speak("Wohin soll der Aufzug fahren?");
     }
     function liftGo(k) {
@@ -14449,7 +14537,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function pzOpen(m) {
       const T = PZI[m.t], lv = clamp((hero.pz[m.t] | 0) + (m.zb | 0), 0, 9);
       keys.l = keys.r = keys.u = keys.d = keys.a = false;
-      talkLock = 0;
+      ST.talkLock = 0;
       pzc = { m, T, lv, fails: 0, hint: 0, won: false, busy: false, st: null };
       LOG.pStart(pzc);
       $("pz-ic").textContent = T.e;
@@ -14604,7 +14692,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     $("quiz-pz").addEventListener("click", function() {
       LOG.qSwitch();
       $("quiz").hidden = true;
-      paused = false;
+      ST.paused = false;
       pzOpen({ id: "quiz", t: PZT[(hero.pzn | 0) % PZT.length].id, zb: 0, quiz: true });
     });
     function tkHtml(t) {
@@ -15390,7 +15478,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (e.target === $("panel")) $("panel").hidden = true;
     });
     tap($("chip"), function() {
-      if (task) speak(task.done ? "Geschafft! Super!" : task.data.stage2 && task.def.say2 ? task.def.say2 : task.def.say);
+      if (ST.task) speak(ST.task.done ? "Geschafft! Super!" : ST.task.data.stage2 && ST.task.def.say2 ? ST.task.def.say2 : ST.task.def.say);
     });
     tap($("btn-menu"), function() {
       $("menu").hidden = false;
@@ -15475,7 +15563,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     });
     let bakIn = null;
     function bakMake() {
-      const fresh = ready && !traveling ? idbDo("readwrite", function(st) {
+      const fresh = ST.ready && !ST.traveling ? idbDo("readwrite", function(st) {
         return st.put(snapshot(), realmKey(realm));
       }).catch(function() {
       }) : Promise.resolve();
@@ -15582,7 +15670,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       const b = bakIn;
       bakIn = null;
       if (!b) return;
-      frozen = true;
+      ST.frozen = true;
       const dbs = Object.keys(b.db).filter(function(n) {
         return BAK_DBS.indexOf(n) >= 0;
       });
@@ -15603,7 +15691,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         }
         location.reload();
       }, function() {
-        frozen = false;
+        ST.frozen = false;
         tone([170], "sawtooth");
       });
     }
@@ -15704,9 +15792,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     function openQuiz(then) {
       if (then) pending = then;
-      paused = true;
+      ST.paused = true;
       keys.l = keys.r = keys.u = keys.d = keys.a = false;
-      talkLock = 0;
+      ST.talkLock = 0;
       $("quiz").hidden = false;
       LOG.qOpen();
       nextQ();
@@ -15718,14 +15806,14 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       doorQ = null;
       $("quiz-pz").hidden = false;
       $("quiz").hidden = true;
-      paused = false;
+      ST.paused = false;
       speakStop();
       const f = pending;
       pending = null;
       if (energy > 0) {
         if (f) f();
       } else {
-        if (!HANDT[tool]) setTool(null, true);
+        if (!HANDT[ST.tool]) setTool(null, true);
         if (P.mode !== "walk") {
           const air = !P.on;
           setMode("walk");
@@ -15738,7 +15826,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
     }
     function drain(dt) {
-      if (P.mode !== "walk" || tool && !HANDT[tool]) {
+      if (P.mode !== "walk" || ST.tool && !HANDT[ST.tool]) {
         energy -= dt;
         if (energy <= 0) {
           energy = 0;
@@ -15830,7 +15918,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
     }
     function saveFacts() {
-      if (frozen) return;
+      if (ST.frozen) return;
       try {
         localStorage.setItem(K_FACTS, JSON.stringify(FS));
       } catch (_) {
@@ -16228,7 +16316,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         pzClose();
         return;
       }
-      if (paused || uiOpen() || e.target && e.target.tagName === "BUTTON" && e.key === "Enter") return;
+      if (ST.paused || uiOpen() || e.target && e.target.tagName === "BUTTON" && e.key === "Enter") return;
       const k = keymap[e.key];
       if (k) {
         if (!e.repeat) keyTap(k);
@@ -16246,7 +16334,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function keyShort(k) {
       if (k === "x") {
         if (P.mode !== "walk") setMode("walk");
-        else if (tool) setTool(null, true);
+        else if (ST.tool) setTool(null, true);
         return;
       }
       if (k === "?" || k === "h") {
@@ -16959,8 +17047,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       ctx.globalAlpha = 1;
     }
     function drawPlan() {
-      const d = task.data;
-      if (task.id === "build") {
+      const d = ST.task.data;
+      if (ST.task.id === "build") {
         ctx.setLineDash([5, 4]);
         ctx.lineWidth = 2;
         ctx.strokeStyle = "#fff8e6";
@@ -16972,7 +17060,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
           ctx.strokeRect(x + 1.5, y + 1.5, 21, 21);
         }
         ctx.setLineDash([]);
-      } else if (task.id === "volcano") {
+      } else if (ST.task.id === "volcano") {
         ctx.fillStyle = "rgba(138,90,60,.38)";
         ctx.beginPath();
         for (const i of d.plan.cone) if (grid[i] < 4) {
@@ -17186,7 +17274,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (y0 < -2500) drawSpace();
       for (const tr of trees) if (tr.x > x0 - 40 && tr.x < x1 + 40) drawTree(tr);
       drawCells(x0, x1, y0, y1);
-      if (task && !task.done) drawPlan();
+      if (ST.task && !ST.task.done) drawPlan();
       if (chest) drawChest();
       drawFinds(true, x0, x1, y0, y1);
       if (STALL_X > x0 - 50 && STALL_X < x1 + 50) drawStall();
@@ -17248,7 +17336,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       drawMets();
       drawArrows();
       drawMons(false);
-      if (tool === "track") {
+      if (ST.tool === "track") {
         for (const T of tracks) {
           const a = T.pts[0], b = T.pts[T.pts.length - 1];
           knob(a[0], a[1], 8);
@@ -17304,10 +17392,10 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       else if (P.mode === "loader") drawLoader(P.x, P.y, P.ang, P.face, P.lift, P.load, true);
       else if (P.mode === "dumper") drawDumper(P.x, P.y, P.ang, P.face, P.load, Math.min(1, P.bed), true);
       else if (P.mode === "tbm") drawTbm(P.x, P.y, P.ang, P.face, P.da, true, Math.abs(P.vx) > 5 ? time * 2.5 : 0);
-      else if (P.mode === "rocket") drawRocket(P.x, P.y, P.ang, true, keys.u && !paused);
+      else if (P.mode === "rocket") drawRocket(P.x, P.y, P.ang, true, keys.u && !ST.paused);
       else if (P.mode === "plane") drawPlane(P.x, P.y, P.vx, P.vy, P.face, P.on, P.ang, true);
       else if (P.mode === "sub") drawSub(P.x, P.y, P.ang, P.face, true);
-      else if (P.mode === "balloon") drawBalloon(P.x, P.y, P.ang, true, keys.u && !paused);
+      else if (P.mode === "balloon") drawBalloon(P.x, P.y, P.ang, true, keys.u && !ST.paused);
       else if (P.mode === "bug") drawBug(P.x + P.face * 15 * Math.min(1, Math.abs(P.ang) / 1.57), P.y, P.ang, P.face, true, P.run);
       else if (P.mode === "boat") drawBoat(P.x, P.y, P.ang, P.face, true, boatWet() ? Math.min(1, Math.abs(P.vx) / 200) : 0);
       else if (P.mode === "heli") drawHeli(P.x, P.y, P.ang, P.face, true, reduced ? 0.6 : time * (P.on ? 6 : 22));
@@ -17495,7 +17583,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         const da = deepIcon();
         if (da) return da;
       }
-      if (P.mode === "walk") return nearStall() ? "shop" : nearLift() ? "lift" : tool === "bow" ? "bow" : DIGT[tool] ? "dig" : P.chute ? "down" : P.on || P.air < 0.15 ? "jump" : "chute";
+      if (P.mode === "walk") return nearStall() ? "shop" : nearLift() ? "lift" : ST.tool === "bow" ? "bow" : DIGT[ST.tool] ? "dig" : P.chute ? "down" : P.on || P.air < 0.15 ? "jump" : "chute";
       if (P.mode === "ski") return nearLift() ? "lift" : P.on || P.ball > 0 ? "jump" : "spin";
       if (P.mode === "dragon") return "flame";
       if (P.mode === "sub") return "sonar";
@@ -17539,7 +17627,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       chest = null;
       stroke = null;
       strokeId = null;
-      task = null;
+      ST.task = null;
       $("chip").hidden = true;
       for (const tr of trees) {
         tr.state = 0;
@@ -17580,7 +17668,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       parked.rocket = { x: 556, y: surfaceY(556), vy: 0, ang: 0, face: 1, load: 0 };
       cam.x = P.x;
       cam.y = P.y - 80;
-      tool = null;
+      ST.tool = null;
       pan.x = 0;
       pan.y = 0;
       props = [];
@@ -17596,22 +17684,22 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         return energy;
       },
       get frozen() {
-        return frozen;
+        return ST.frozen;
       },
       get paused() {
-        return paused;
+        return ST.paused;
       },
       get pzc() {
         return pzc;
       },
       get ready() {
-        return ready;
+        return ST.ready;
       },
       get realm() {
         return realm;
       },
       get tool() {
-        return tool;
+        return ST.tool;
       },
       get MAXE() {
         return MAXE;
@@ -18220,7 +18308,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function limCheck() {
       if (!LIM || DAY.t < LIM * 60 || $("camp").hidden === false) return;
       if (DAY.lim && DAY.t - DAY.lim < CAMPGAP) return;
-      if (uiOpen() || paused) return;
+      if (uiOpen() || ST.paused) return;
       DAY.lim = DAY.t;
       daySave();
       openCamp("lim");
@@ -18231,7 +18319,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       dayLoad();
       if (DAY.t - DAY.fire < CAMPGAP || campT) return;
       campT = setTimeout(function tryCamp() {
-        if (uiOpen() || paused || !ready) {
+        if (uiOpen() || ST.paused || !ST.ready) {
           campT = setTimeout(tryCamp, 3e3);
           return;
         }
@@ -18485,11 +18573,11 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         last = t;
         LOG.tick(raw);
         LOG.beat(raw);
-        if (ready && !document.hidden) {
+        if (ST.ready && !document.hidden) {
           const ls = LOG.state();
           if (ls && ls !== "idle") dayTick(Math.min(1, raw));
         }
-        if (!(paused || uiOpen())) {
+        if (!(ST.paused || uiOpen())) {
           accum += dt;
           let n = 0;
           while (accum >= 1 / 30 && n < 2) {
@@ -18515,7 +18603,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
           }
         }
         drawN++;
-        const every = paused || uiOpen() ? 10 : LOG.state() === "idle" ? 2 : 1;
+        const every = ST.paused || uiOpen() ? 10 : LOG.state() === "idle" ? 2 : 1;
         if (drawN >= every) {
           drawN = 0;
           draw();
@@ -18551,7 +18639,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function start() {
       resize();
       const go = function() {
-        ready = true;
+        ST.ready = true;
         LOG.start();
         updateStars();
         renderAlbum();
@@ -18569,7 +18657,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         }
         if (!hero.st.on) {
           if (psst < 3) setTimeout(function() {
-            if (!hero.st.on && !uiOpen() && !paused) {
+            if (!hero.st.on && !uiOpen() && !ST.paused) {
               try {
                 localStorage.setItem(K_PSST, String(psst + 1));
               } catch (_) {
@@ -18580,7 +18668,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
           }, 2800);
           else pulse("btn-story");
         } else if (!hero.big) setTimeout(function() {
-          if (!uiOpen() && !paused) {
+          if (!uiOpen() && !ST.paused) {
             hero.big = true;
             if (nextLand()) {
               hero.quest = { type: "land", goal: 1, p: 0 };
@@ -18593,7 +18681,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         }, 2800);
         if (hero.quest && hero.quest.type === "core" && hero.dr < 3) hero.quest = null;
         if (hero.st.on && hero.big && !hero.deep) setTimeout(function() {
-          if (!uiOpen() && !paused) deepIntro();
+          if (!uiOpen() && !ST.paused) deepIntro();
         }, 2800);
         labBadge(false);
         if (!hero.quest || hero.quest.done || !QDEF[hero.quest.type]) hero.quest = newQuest();
@@ -18700,14 +18788,14 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
             return load(true);
           });
           errAdd("Datenbank nicht lesbar: " + (e && e.message || e), "start");
-          diskLock = true;
+          ST.diskLock = true;
           setRealm("");
           resetWorld(newSeed());
           return true;
         });
       };
       load(false).then(go, function() {
-        diskLock = true;
+        ST.diskLock = true;
         setRealm("");
         resetWorld(newSeed());
         go();

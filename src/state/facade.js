@@ -3,9 +3,9 @@
 // Name ST statt G: G ist die Schwerkraft (core/world/const.js). Die Fassade wird leer und gelöscht, wenn legacy.js leer ist (PR 29).
 import { BIO, STR, CRE, PICKS, PADS, DECO, EGGS, LOOT, DROPS, stI, NT0, NC0, seen, eggGot, lootGot, orbGot,
   setBIO, setSTR, setCRE, setPICKS, setPADS, setDECO, setEGGS, setLOOT, setDROPS, setStI, setNT0, setNC0, setSeen, setEggGot, setLootGot, setOrbGot } from './world.js';
-import { gold, gems, lootDirty, heroDirty, setGold, setGems, setLootDirty, setHeroDirty } from './game.js';
+import { gold, gems, lootDirty, heroDirty, setGold, setGems, setLootDirty, setHeroDirty, ready, saving, frozen, diskLock, traveling, paused, tool, task, talkLock, setReady, setSaving, setFrozen, setDiskLock, setTraveling, setPaused, setToolV, setTask, setTalkLock } from './game.js';
 
-/** @type {{ BIO: any[], STR: any[], CRE: any[], PICKS: any[], PADS: any[], DECO: any[], EGGS: any[], LOOT: any[], DROPS: any[], stI: number, NT0: number, NC0: number, seen: Record<string, any>, eggGot: Record<string, any>, lootGot: Record<string, any>, orbGot: Record<string, any>, gold: number, gems: number, lootDirty: boolean, heroDirty: boolean }} */
+/** @type {{ BIO: any[], STR: any[], CRE: any[], PICKS: any[], PADS: any[], DECO: any[], EGGS: any[], LOOT: any[], DROPS: any[], stI: number, NT0: number, NC0: number, seen: Record<string, any>, eggGot: Record<string, any>, lootGot: Record<string, any>, orbGot: Record<string, any>, gold: number, gems: number, lootDirty: boolean, heroDirty: boolean, ready: boolean, saving: boolean, frozen: boolean, diskLock: boolean, traveling: boolean, paused: boolean, tool: any, task: any, talkLock: number }} */
 export const ST={
   get BIO(){ return BIO; }, set BIO(v){ setBIO(v); },
   get STR(){ return STR; }, set STR(v){ setSTR(v); },
@@ -26,5 +26,14 @@ export const ST={
   get gold(){ return gold; }, set gold(v){ setGold(v); },
   get gems(){ return gems; }, set gems(v){ setGems(v); },
   get lootDirty(){ return lootDirty; }, set lootDirty(v){ setLootDirty(v); },
-  get heroDirty(){ return heroDirty; }, set heroDirty(v){ setHeroDirty(v); }
+  get heroDirty(){ return heroDirty; }, set heroDirty(v){ setHeroDirty(v); },
+  get ready(){ return ready; }, set ready(v){ setReady(v); },
+  get saving(){ return saving; }, set saving(v){ setSaving(v); },
+  get frozen(){ return frozen; }, set frozen(v){ setFrozen(v); },
+  get diskLock(){ return diskLock; }, set diskLock(v){ setDiskLock(v); },
+  get traveling(){ return traveling; }, set traveling(v){ setTraveling(v); },
+  get paused(){ return paused; }, set paused(v){ setPaused(v); },
+  get tool(){ return tool; }, set tool(v){ setToolV(v); },
+  get task(){ return task; }, set task(v){ setTask(v); },
+  get talkLock(){ return talkLock; }, set talkLock(v){ setTalkLock(v); }
 };

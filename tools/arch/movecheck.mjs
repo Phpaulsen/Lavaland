@@ -129,7 +129,9 @@ export function transform(node, moves, own) {
   };
   // Eigener Name und eigene Parameter sind Deklarationen, keine Bezüge.
   if ((n0.type === 'FunctionDeclaration' || n0.type === 'ClassDeclaration') && n0.id) { n0.id = id(own || n0.id.name); }
-  const sh0 = SCOPE.has(n0.type) ? shadow(n0, new Set()) : new Set(); // vor dem Abnehmen der Parameter, die verdecken auch
+  // Vor dem Abnehmen der Parameter, die verdecken auch. Ebenso die neuen Parameter gleichen Namens (idbDoWith(diskLock, …) aus PR 11
+  // bleibt diskLock, auch wenn diskLock später hinter die Fassade zieht).
+  const sh0 = new Set([...(SCOPE.has(n0.type) ? shadow(n0, new Set()) : []), ...mine.filter(e => !e.random).map(e => e.name)]);
   const params = n0.params; if (params) n0.params = [];
   walk(n0, null, null, sh0);
   if (params) n0.params = mine.map(e => id(e.name)).concat(params);
@@ -143,7 +145,12 @@ export function mergeSteps(moves, done = -Infinity) {
   for (const s of steps) for (const [k, v] of Object.entries(s)) {
     if (k === 'pr') continue;
     if (Array.isArray(v)) out[k] = [...new Set([...(out[k] || []), ...v])];
-    else if (k === 'facade' || k === 'world') { if (out[k] && JSON.stringify(out[k]) !== JSON.stringify(v)) throw new Error(`${k} in zwei Schritten verschieden`); out[k] = v; }
+    else if (k === 'facade' || k === 'world') {
+      // Gleiche Fassade bzw. gleicher Port in zwei Schritten: Namen vereinigen. Sonst ist die Angabe mehrdeutig.
+      const key = k === 'facade' ? 'name' : 'param', o = out[k];
+      if (o && (o[key] !== v[key] || o.from !== v.from)) throw new Error(`${k} in zwei Schritten verschieden`);
+      out[k] = o ? { ...o, names: [...new Set([...o.names, ...v.names])], ...(o.fromNames || v.fromNames ? { fromNames: [...new Set([...(o.fromNames || []), ...(v.fromNames || [])])] } : {}) } : v;
+    }
     else out[k] = Object.assign(out[k] || {}, v);
   }
   // Neu in einem Schritt und in einem späteren geändert: im Ganzen nur neu.
@@ -250,10 +257,15 @@ function selftest() {
     ['IIFE, Körper geändert', { 'legacy.js': L('let e=1;\nconst L=(function(){return e})();') },
       { 'legacy.js': L('let e=1;\nconst L=lW({});'), 'log/l.js': 'export function lW(LP){return LP.e+1}' },
       { renames: { lW: 'L' }, iife: ['lW'], params: { lW: ['LP'] }, world: { param: 'LP', names: ['e'] }, changed: ['L'] }, 1],
+    ['Parameter gleichen Namens verdeckt die Fassade', { 'legacy.js': L('let d=false;\nfunction f(m){return d||m}') },
+      { 'legacy.js': L('function f(m){return fW(ST.d,m)}'), 'db.js': 'export function fW(d,m){return d||m}', 'state/w.js': 'export const ST={d:false}' },
+      { renames: { fW: 'f' }, params: { fW: ['d'] }, facade: { name: 'ST', names: ['d'] }, changed: ['f'], removed: ['d'], added: ['ST'] }, 0],
     ['changed, aber gleich', { 'legacy.js': L('function a(){}') }, { 'legacy.js': L('function a(){}') }, { changed: ['a'] }, 1],
   ];
   const st = { stack: [{ pr: 11, renames: { a: 'b' }, added: ['x'], changed: ['c'] }, { pr: 12, renames: { d: 'e' }, changed: ['x', 'f'] }] };
   const m1 = JSON.stringify(mergeSteps(st)), m2 = JSON.stringify(mergeSteps(st, doneOf({ pr: 11 })));
+  const f2 = mergeSteps({ stack: [{ pr: 1, facade: { name: 'ST', names: ['a'] } }, { pr: 2, facade: { name: 'ST', names: ['b'] } }] });
+  if (JSON.stringify(f2.facade) !== JSON.stringify({ name: 'ST', names: ['a', 'b'] })) { console.log('FAIL Selbsttest Stapel Fassade: ' + JSON.stringify(f2)); process.exit(1); }
   if (m1 !== JSON.stringify({ renames: { a: 'b', d: 'e' }, added: ['x'], changed: ['c', 'f'] }) || m2 !== JSON.stringify({ renames: { d: 'e' }, changed: ['x', 'f'] }) || doneOf(st) !== 12 || doneOf(null) !== -Infinity) { console.log('FAIL Selbsttest Stapel: ' + m1 + ' | ' + m2); process.exit(1); }
   let bad = 0;
   for (const [name, b, h, m, n] of T) { const r = compare(b, h, m); if (r.err.length !== n) { bad++; console.log(`FAIL Selbsttest „${name}“: erwartet ${n} Fehler, bekommen ${r.err.length}: ${r.err.join('; ')}`); } }
