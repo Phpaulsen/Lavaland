@@ -1,15 +1,9 @@
 {
-  "pr": 6,
-  "renames": {
-    "qpicWith": "qpic", "lettersForWith": "lettersFor", "mkQWith": "mkQ", "mkSeqWith": "mkSeq",
-    "schoolOkWith": "schoolOk", "fUnlockWith": "fUnlock", "mixPreferWith": "mixPrefer", "fParkedWith": "fParked"
-  },
-  "params": {
-    "qpicWith": ["IC", "QI"], "lettersForWith": "rand", "mkQWith": ["rand=Math.random", "IC", "QI"], "mkSeqWith": ["rand=Math.random", "FS"],
-    "schoolOkWith": ["SCH"], "fUnlockWith": ["FS"], "mixPreferWith": ["rand=Math.random", "kindHist"], "fParkedWith": ["FS"]
-  },
-  "wrappers": { "ri": "riWith", "shuffle": "shuffleWith" },
-  "changed": ["mkQ", "mkSeq", "schoolOk", "fUnlock", "mixPrefer", "fParked"],
+  "pr": "7a",
+  "renames": {},
+  "params": {},
+  "wrappers": {},
+  "changed": [],
   "added": [],
   "removed": []
 }

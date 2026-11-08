@@ -13,6 +13,7 @@ import { sdOk, mkSudokuWith } from './core/puzzles/sudoku.js';
 import { WORDS, SYL, RHYW, CASES, STAGES, fDom, fStage, fKind, fName } from './core/learn/facts.js';
 import { BOXD, NEWDAY, FASTMS, schoolOkWith, fUnlockWith, mixPreferWith, fParkedWith } from './core/learn/leitner.js';
 import { mkQWith, mkSeqWith } from './core/learn/tasks.js';
+import { g0, grid, stamp, LIFE, zS1, z4, zS2, zS3, grow0, rA, rB, rD, rH, rC, mtop, bio, bio2, bmx, bix, noCave, liqM, liqY } from './state/world.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -150,22 +151,15 @@ AI.bow='<path d="M5 3c9 1.500 14 6.500 16 16" stroke="currentColor" stroke-width
 AI.sonar='<circle cx="12" cy="12" r="2.600" fill="currentColor"/><path d="M6.500 6.500a8 8 0 0 0 0 11M17.500 6.500a8 8 0 0 1 0 11M3.500 3.500a12 12 0 0 0 0 17M20.500 3.500a12 12 0 0 1 0 17" stroke="currentColor" stroke-width="2.200" fill="none" stroke-linecap="round"/>';
 
 /* ---------- Welt ---------- */
-const g0=new Float32Array(GX+2);
 for(let i=0;i<GX+2;i++) g0[i]=rawH(i*CELL);
 function ground(x){ const f=clamp(x/CELL,0,GX), i=Math.floor(f); return g0[i]+(g0[i+1]-g0[i])*(f-i); }
 
-const grid=new Uint8Array(GX*GY), stamp=new Uint8Array(SW*GY);
-/* Brenndauer nur für Feuerzellen (höchstens MAX_FIRE). Früher ein Byte für jede der 39 Mio. Zellen (39 MB); auf Handys hat Firefox das Spiel wegen Speichermangel beendet.
-   255 = brennt dauerhaft (Lagerfeuer). Fehlt eine Zelle, ist ihr Wert 0. Einträge für Zellen, die längst kein Feuer mehr sind, räumt lifeS gelegentlich weg. */
-const LIFE=new Map();
 function lifeS(i,v){
   if(v>0){ LIFE.set(i,v); if(LIFE.size>4*MAX_FIRE+4000) for(const k of LIFE.keys()) if(grid[k]!==FIRE) LIFE.delete(k); }
   else LIFE.delete(i);
 }
 /* Harte Schichten und Zonen in der Tiefe: Oberkante je Spalte. zS1, zS2, zS3 sind die harten Schichten, z4 trennt Pilzgrotten und Urzeit-Höhlen. */
-const zS1=new Int16Array(GX), z4=new Int16Array(GX), zS2=new Int16Array(GX), zS3=new Int16Array(GX);
 for(let cx=0;cx<GX;cx++){ zS1[cx]=630+Math.round(3*Math.sin(cx*.027+1)); z4[cx]=960+Math.round(10*Math.sin(cx*.013+2)); zS2[cx]=1290+Math.round(4*Math.sin(cx*.022)); zS3[cx]=1640+Math.round(4*Math.sin(cx*.019+4)); }
-const grow0=new Int16Array(GX), rA=new Int16Array(GX), rB=new Int16Array(GX), rD=new Int16Array(GX), rH=new Int16Array(GX), rC=new Int16Array(GX);
 for(let cx=0;cx<GX;cx++){
   const x=(cx+.5)*CELL;
   grow0[cx]=Math.ceil((rawH(x)-TOP)/CELL-.5);
@@ -186,7 +180,6 @@ function msurf(x){
   const h=MH*t*t*(3-2*t)+44*Math.exp(-Math.pow((x-6185)/40,2))+52*Math.exp(-Math.pow((x-6510)/44,2))+46*Math.exp(-Math.pow((x-7790)/42,2));
   return Math.max(TOP+90,Math.min(rawH(x),rawH(x)*(1-ww)+SNB*ww-h));
 }
-const mtop=new Int16Array(GX);
 for(let cx=0;cx<GX;cx++) mtop[cx]=cx<SNC0||cx>SNC1?grow0[cx]:Math.min(grow0[cx],Math.ceil((msurf((cx+.5)*CELL)-TOP)/CELL-.5));
 /* Eine Spalte vom Berg: oben Schnee, innen Fels mit Eiskristallen. Am Fuß liegt eine dünne Schneedecke. */
 function winterCol(cx){
@@ -293,7 +286,7 @@ function restoreSite(xc,hw,up,down){
 }
 /* ---------- Große Welt: Hinter dem Schneeberg folgen Länder, die aus der Welt-Nummer berechnet werden.
    Ihre Spalten entstehen erst, wenn der Held in die Nähe kommt. Flüssigkeiten rechnen nur rund um die Kamera. ---------- */
-const bio=new Uint8Array(GX), bio2=new Uint8Array(GX), bmx=new Uint8Array(GX), bix=new Uint8Array(GX), noCave=new Uint8Array(GX), liqM=new Uint8Array(GX), liqY=new Int16Array(GX), ORBS=[MOON];
+const ORBS=[MOON];
 let BIO=[], STR=[], CRE=[], PICKS=[], PADS=[], DECO=[], EGGS=[], LOOT=[], DROPS=[], genF=0, stI=0, winC=-9999, NT0=0, NC0=0;
 let seen={}, eggGot={}, lootGot={}, orbGot={};
 /* ---------- Andere Welten: Der Mond und die Planeten sind ganze Welten mit Ländern, Höhlen und Tiefe, so rund wie die Erde.

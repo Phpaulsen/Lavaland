@@ -84,10 +84,18 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 - **Typen:** `FactStore`, `School`, `Question`, `Word`, `Domain` als JSDoc-Typen. `let m` in `mkQ` (Treffer je Muster) ist ausdrücklich `any`.
 - **Absicherung:** Move-Nachweis (29 bewegt, 6 Einzeiler), Generator-Golden-Master über `mkQ` je Fakt und Speicher-Golden-Master über `factDone`, Rauchtest „Lernaufgabe“, einmaliger Differenztest alt gegen neu (siehe PR).
 
-### PR 7: Welt-Felder in ein Modul
+### PR 7a: Welt-Felder mit fester Größe
 
-- **Bewegt:** `grid`, `life`, `stamp`, `zS1…zS3`, `z4`, `mtop`, `grow0`, `rA…rC`, `bio`, `bio2`, `bmx`, `bix`, `noCave`, `liqM`, `liqY` → `state/world.js`. Neu zugewiesene Listen (`BIO`, `STR`, `LOOT`, `PADS`, `DROPS`, `genF`, `seen`, `eggGot` …) → `state/world.js` mit Settern; `G` entsteht hier (`state/facade.js`).
-- **Risiken:** höchstes Risiko bis hier. 13 Sektionen schreiben in `grid` (`current.md` Abschnitt 4), Leistung im Zellautomat. **Absicherung:** Codemod statt Handarbeit, Move-Nachweis, Golden-Master Welt und Speicherformat, `perf.mjs` alt gegen neu.
+- **Geteilt (Abschnitt 5: „werden sie geteilt, nicht vergrößert“):** PR 7 hatte zwei verschiedene Arten von Namen. Feste Typed Arrays sind `const`, ziehen als echte Import-Bindungen um, und `legacy.js` ändert sich dabei nicht. Neu zugewiesene Namen brauchen Setter, Fassade und Codemod. 7a macht nur das Erste.
+- **Bewegt:** 22 Namen → `state/world.js`, nur die Deklarationen: `g0`, `grid`, `stamp`, `LIFE` (seit #92 statt `life`), `zS1`, `z4`, `zS2`, `zS3`, `grow0`, `rA`, `rB`, `rD`, `rH`, `rC`, `mtop`, `bio`, `bio2`, `bmx`, `bix`, `noCave`, `liqM`, `liqY`. Die Schleifen, die sie beim Laden füllen, bleiben in `legacy.js` an ihrer Stelle. Sie brauchen `rawH`, `baseG`, `bump` und `msurf`, und die Reihenfolge des Füllens bleibt so dieselbe. `ORBS` stand mit `bio` in einer Deklaration und bleibt als eigene.
+- **Bleibt:** `ground`, `lifeS` (Funktionen, ziehen mit PR 8/9), `rx0`, `rx1`, `qx0`, `qx1` (`let`, werden in `step` getauscht, also 7b).
+- **Leistung:** esbuild legt Importe als Variablen in denselben Bundle-Scope; `step` liest `grid` ohne Umweg. `perf.mjs` alt gegen neu, je zwei Läufe: Unterschiede im Rauschen (siehe PR).
+- **Absicherung:** Move-Nachweis (22 bewegt, 0 geändert), Golden-Master Welt und Speicherformat, `perf.mjs`.
+
+### PR 7b: Neu zugewiesene Welt-Namen und die Fassade
+
+- **Bewegt:** neu zugewiesene Listen und Zähler aus `S04`/`S05` (`BIO`, `STR`, `CRE`, `PICKS`, `PADS`, `DECO`, `EGGS`, `LOOT`, `DROPS`, `genF`, `seen`, `eggGot`, `lootGot`, `orbGot` …, dazu `rx0`…`qx1`) → `state/world.js` mit Settern; die Fassade entsteht hier (`state/facade.js`). Ihr Name wird hier festgelegt (nicht `G`, das ist die Schwerkraft).
+- **Risiken:** höchstes Risiko bis hier. Die Namen werden in vielen Sektionen gelesen und neu zugewiesen, `rx0`…`qx1` im Zellautomat. **Absicherung:** Codemod statt Handarbeit, Move-Nachweis mit Fassade, Golden-Master Welt und Speicherformat, `perf.mjs` alt gegen neu. Wird auch 7b zu groß, wird weiter geteilt.
 
 ### PR 8: Weltgenerierung
 
