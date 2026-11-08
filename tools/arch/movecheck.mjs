@@ -85,9 +85,12 @@ export function localDecl(x) {
 }
 
 /** Wendet die erlaubten Umschreibungen auf einen alten Knoten an. */
-export function transform(node, moves, own) {
+export function transform(node, moves, own, file) {
   const ren = {}; for (const [n, o] of Object.entries(moves.renames || {})) ren[o] = n;
-  const fac = moves.facade ? new Set(moves.facade.names) : null, wrap = moves.wrappers || {};
+  // facade darf eine Liste sein (ST für Spielzustand, AU für Ton). Mit own: Datei, der die Namen gehören; dort bleiben sie bloße Namen.
+  const facs = [].concat(moves.facade || []).filter(f => !f.own || f.own !== file);
+  const facOf = new Map(); for (const f of facs) for (const n of f.names) facOf.set(n, f.name);
+  const fac = facOf.size ? facOf : null, wrap = moves.wrappers || {};
   const lit = moves.literals || null;
   // params: "rand" (kurz für ["rand=Math.random"]) oder eine Liste. "rand=Math.random": Math.random im alten Körper wird zu rand.
   // "FS": neuer Parameter gleichen Namens, der den Top-Level-Namen verdeckt; der Körper bleibt dafür unverändert.
@@ -122,7 +125,7 @@ export function transform(node, moves, own) {
     if (lit && x.type === 'Literal' && typeof x.value === 'string' && Object.hasOwn(lit, x.value)) { const k = lit[x.value]; return wn && wn.has(k) && !sh.has(k) ? mem(wo.param, k) : id(k); } // Konstante, die später über einen Port kommt
     if (x.type === 'Identifier') {
       if (wn && wn.has(x.name) && !sh.has(x.name)) return mem(wo.param, x.name);
-      if (fac && fac.has(x.name) && !sh.has(x.name)) return { type: 'MemberExpression', object: id(moves.facade.name), property: id(x.name), computed: false, optional: false };
+      if (fac && fac.has(x.name) && !sh.has(x.name)) return { type: 'MemberExpression', object: id(fac.get(x.name)), property: id(x.name), computed: false, optional: false };
       if (moved && ren[x.name]) return id(ren[x.name]);
       return x;
     }
@@ -157,11 +160,16 @@ export function mergeSteps(moves, done = -Infinity) {
       out.world = list.length === 1 ? list[0] : list;
     }
     else if (k === 'facade') {
-      // Gleiche Fassade bzw. gleicher Port in zwei Schritten: Namen vereinigen. Sonst ist die Angabe mehrdeutig.
-      const key = k === 'facade' ? 'name' : 'param', o = out[k];
-      if (o && (o[key] !== v[key] || o.from !== v.from)) throw new Error(`${k} in zwei Schritten verschieden`);
-      out[k] = o ? { ...o, names: [...new Set([...o.names, ...v.names])], ...(o.fromNames || v.fromNames ? { fromNames: [...new Set([...(o.fromNames || []), ...(v.fromNames || [])])] } : {}) } : v;
+      // Gleiche Fassade in zwei Schritten: Namen vereinigen. Verschiedene Fassaden (ST, AU): Liste.
+      const list = [].concat(out.facade || []);
+      for (const f of [].concat(v)) {
+        const o = list.find(x => x.name === f.name);
+        if (!o) list.push({ ...f });
+        else { if ((o.own || '') !== (f.own || '')) throw new Error(`facade ${f.name} in zwei Schritten verschieden`); o.names = [...new Set([...o.names, ...f.names])]; }
+      }
+      out.facade = list.length === 1 ? list[0] : list;
     }
+
     else out[k] = Object.assign(out[k] || {}, v);
   }
   // Neu in einem Schritt und in einem späteren geändert: im Ganzen nur neu.
@@ -193,13 +201,13 @@ export function compare(base, head, moves) {
       if (!c || c.type !== 'FunctionExpression' || c.id) { err.push(`iife ${n}=${o}: ${o} ist kein const ${o}=(function(){…})()`); continue; }
       bn = { ...c, type: 'FunctionDeclaration', id: id(n) };
     }
-    if (norm(transform(bn, moves, n)) !== norm(H.decl.get(n).node)) err.push(`${o} → ${n} (${H.decl.get(n).file}): AST weicht über die erlaubten Umschreibungen hinaus ab`);
+    if (norm(transform(bn, moves, n, H.decl.get(n).file)) !== norm(H.decl.get(n).node)) err.push(`${o} → ${n} (${H.decl.get(n).file}): AST weicht über die erlaubten Umschreibungen hinaus ab`);
     else rep.moved.push(`${o} → ${H.decl.get(n).file}:${n}`);
   }
   for (const [n, b] of B.decl) {
     const h = H.decl.get(n);
     if (!h) { if (srcOf.has(n)) continue; if (removed.has(n)) rep.removed.push(n); else err.push(`${n} (${b.file}) fehlt im neuen Stand und steht nicht unter removed`); continue; }
-    const same = norm(transform(b.node, moves, n)) === norm(h.node);
+    const same = norm(transform(b.node, moves, n, h.file)) === norm(h.node);
     if (same) { if (b.file === h.file) rep.same++; else rep.moved.push(`${n}: ${b.file} → ${h.file}`); if (changed.has(n)) err.push(`${n} steht unter changed, ist aber unverändert`); }
     else if (changed.has(n)) rep.changed.push(`${n} (${h.file})`);
     else err.push(`${n} (${b.file} → ${h.file}): AST verschieden, steht nicht unter changed`);
@@ -271,6 +279,9 @@ function selftest() {
     ['Parameter gleichen Namens verdeckt die Fassade', { 'legacy.js': L('let d=false;\nfunction f(m){return d||m}') },
       { 'legacy.js': L('function f(m){return fW(ST.d,m)}'), 'db.js': 'export function fW(d,m){return d||m}', 'state/w.js': 'export const ST={d:false}' },
       { renames: { fW: 'f' }, params: { fW: ['d'] }, facade: { name: 'ST', names: ['d'] }, changed: ['f'], removed: ['d'], added: ['ST'] }, 0],
+    ['Fassade mit Eigentümer', { 'legacy.js': L('let m=false;\nfunction t(){return m}\nfunction u(){m=true}') },
+      { 'legacy.js': L('function u(){AU.m=true}'), 'audio/s.js': 'export let m=false;\nexport const AU={get m(){return m},set m(v){m=v}};\nexport function t(){return m}' },
+      { facade: [{ name: 'AU', names: ['m'], own: 'audio/s.js' }], added: ['AU'] }, 0],
     ['changed, aber gleich', { 'legacy.js': L('function a(){}') }, { 'legacy.js': L('function a(){}') }, { changed: ['a'] }, 1],
   ];
   const st = { stack: [{ pr: 11, renames: { a: 'b' }, added: ['x'], changed: ['c'] }, { pr: 12, renames: { d: 'e' }, changed: ['x', 'f'] }] };

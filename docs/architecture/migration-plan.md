@@ -162,6 +162,8 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 
 - **Bewegt:** `S11` → `audio/`. Sprachclips, TTS, `speak`, `sfx`, `tone`, `jingle`.
 - **Absicherung:** `voice.mjs`, Rauchtest (Clip-Abruf `clipGet`, `speakSplit`).
+- **Umgesetzt:** `S11` und `tone` → `audio/sound.js`: `AC`, `audio`, `jingle`, `VRATES`, `VOICE`, `voicesDe`, `voiceGet`, `VCLIP` samt Laden von `audio/index.json`, `clipGet`, `clipPlay`, `speakSplit`, `speakStop`, `numWord`, `synthText`, `synth`, `blip`, `noise`, `sfx`, `tone` und ihre Zähler. `speak` als `speakWith(AP, …)` mit Einzeiler in `legacy.js`; Port `AP` hat `talkLock` (Spielzustand, den `audio/` nicht importieren darf) und `vcMiss`. `muted`, `fxOff`, `tapT` schreibt `legacy.js` über die Fassade `AU` (17 Bezüge, Codemod); `movecheck.mjs` kennt dafür Fassaden als Liste mit Eigentümerdatei (`own`).
+- **Abweichung:** In `legacy.js` bleiben, was `localStorage` berührt (`audio/` darf `persistence/` nicht importieren): Laden von `VOICE` und `muted`/`fxOff`, `voiceSave`, `vcMiss`. Ebenso der `pointerdown`-Handler (Ton entsperren, Tipp-Klick), damit die Reihenfolge der Handler gleich bleibt, und der `voiceschanged`-Handler (ruft die Elternansicht). Sie ziehen mit der Oberfläche bzw. mit `app/` (PR 24–28). Das Laden von `audio/index.json` startet jetzt beim Auswerten des Moduls, also kurz vor dem Rest von `legacy.js` statt mittendrin; `offline.mjs` (kein Netz, langsames Netz, Serverfehler) bleibt grün.
 
 *Hier greift die Weiche aus Abschnitt 3.*
 

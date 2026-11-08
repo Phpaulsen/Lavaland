@@ -25,6 +25,7 @@ import { SNX, SL0, PEAK, BACK, BEND, MH, SNB, CHX, CAVE, SNC0, SNC1, msurf, vnoi
 import { BAK_DBS, BAK_ST, BAK_MAX, TYPED, BADK, bakOk, b64, unb64, enc, dec, dbDump, dbLoad, bakMakeWith, bakLoadWith } from './persistence/transfer.js';
 import { K_ALIVE, logWith } from './log/log.js';
 import { snapshotWith, saveGameWith, autosaveWith, packStartWith, packStepWith, saveHeroWith, saveFindsWith, saveFactsWith } from './persistence/save.js';
+import { AU, audio, jingle, VRATES, VOICE, voicesDe, VCLIP, speakStop, synth, speakWith, blip, sfx, tone } from './audio/sound.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -1191,149 +1192,18 @@ function endPointer(e){
 cv.addEventListener('pointerup',endPointer);
 cv.addEventListener('pointercancel',endPointer);
 
-/* ---------- Ton und Sprache ---------- */
-let AC=null, tapT=0;
-function audio(){
-  if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(_){ AC=null; } }
-  if(AC&&AC.state==='suspended'){ try{AC.resume();}catch(_){} }
-}
-function jingle(){
-  if(!AC||muted||fxOff) return;
-  try{
-    const t=AC.currentTime;
-    [523,659,784,1047].forEach(function(f,i){
-      const o=AC.createOscillator(), g=AC.createGain(), s=t+i*.11;
-      o.type='triangle'; o.frequency.value=f;
-      g.gain.setValueAtTime(.0001,s); g.gain.linearRampToValueAtTime(.18,s+.02); g.gain.exponentialRampToValueAtTime(.001,s+.4);
-      o.connect(g); g.connect(AC.destination); o.start(s); o.stop(s+.45);
-    });
-  }catch(_){}
-}
-/* Vorlesestimme: Feste Sätze kommen als Aufnahme aus audio/ (eine natürliche deutsche Stimme, erzeugt mit tools/voice). Nur Sätze ohne Aufnahme spricht die Browserstimme, deren Stimme Eltern in der Elternansicht wählen können. Das Tempo gilt für beide. */
-const VRATES=[.75,.95,1.1];
-let VOICE={v:'',r:.95};
+/* ---------- Ton und Sprache (Klänge und Vorlesen in src/audio/sound.js; hier, was Speicher und Spielzustand braucht) ---------- */
 try{ const o=JSON.parse(localStorage.getItem(K_VOICE)||'null'); if(o&&typeof o==='object'){ if(typeof o.v==='string') VOICE.v=o.v.slice(0,120); if(VRATES.indexOf(o.r)>=0) VOICE.r=o.r; } }catch(_){}
-function voicesDe(){ try{ return speechSynthesis.getVoices().filter(function(v){ return /^de([-_]|$)/i.test(v.lang); }); }catch(_){ return []; } }
-function voiceGet(){ if(!VOICE.v) return null; return voicesDe().find(function(v){ return v.name===VOICE.v; })||null; }
 try{ if('speechSynthesis' in window) speechSynthesis.addEventListener('voiceschanged',function(){ if(typeof parLoad==='function'&&!$('par').hidden) parLoad(); }); }catch(_){}
 function voiceSave(){ try{ localStorage.setItem(K_VOICE,JSON.stringify(VOICE)); }catch(_){} }
-/* Aufnahmen: audio/index.json ordnet jedem Satz eine Datei zu. Ein Text wird in Sätze geteilt. Nur wenn es für jeden Satz eine Aufnahme gibt, kommen die Aufnahmen, sonst spricht die Browserstimme den ganzen Text. So stecken nie zwei Stimmen in einer Ansage. */
-let VCLIP=null, vcSeq=0, vcAud=null;
-const vcUrl={};
-function speakSplit(t){ return (String(t).replace(/\s+/g,' ').trim().match(/[^.!?]+[.!?]+|[^.!?]+$/g)||[]).map(function(s){ return s.trim(); }).filter(Boolean); }
-try{
-  const a=document.createElement('audio');
-  if(a.canPlayType&&a.canPlayType('audio/ogg; codecs=opus')) fetch('audio/index.json').then(function(r){ return r.ok?r.json():null; }).then(function(j){ if(j&&j.v===1&&j.c) VCLIP=j.c; }).catch(function(){});
-}catch(_){}
 /* Sätze ohne Aufnahme merken (die letzten 40), damit sie beim nächsten Erzeugen dazukommen. Sie stehen in der Elternansicht. */
 function vcMiss(t){ try{ const a=JSON.parse(localStorage.getItem(K_VMISS)||'[]'); if(!Array.isArray(a)||a.indexOf(t)>=0) return; a.push(String(t).slice(0,300)); localStorage.setItem(K_VMISS,JSON.stringify(a.slice(-40))); }catch(_){} }
-function clipGet(id){
-  if(!vcUrl[id]){ vcUrl[id]=fetch('audio/'+id+'.ogg').then(function(r){ if(!r.ok) throw new Error('clip'); return r.blob(); }).then(function(b){ return URL.createObjectURL(b); }); vcUrl[id].catch(function(){ delete vcUrl[id]; }); }
-  return vcUrl[id];
-}
-function speakStop(){
-  vcSeq++;
-  try{ if(vcAud){ vcAud.onended=null; vcAud.pause(); vcAud=null; } }catch(_){}
-  try{ if(window.speechSynthesis) window.speechSynthesis.cancel(); }catch(_){}
-}
-/* Die Browserstimme liest eine Ziffer vor einem Punkt gern als Ordnungszahl („die 8.“ wird „die achte“), deshalb bekommt sie Zahlen als Wörter. Bildzeichen liest sie nicht mit. */
-const NUMW=['null','eins','zwei','drei','vier','fünf','sechs','sieben','acht','neun','zehn','elf','zwölf','dreizehn','vierzehn','fünfzehn','sechzehn','siebzehn','achtzehn','neunzehn'];
-const NUMT=['','','zwanzig','dreißig','vierzig','fünfzig','sechzig','siebzig','achtzig','neunzig'];
-function numWord(n){
-  if(n<20) return NUMW[n];
-  if(n<100) return (n%10?(n%10===1?'ein':NUMW[n%10])+'und':'')+NUMT[Math.floor(n/10)];
-  if(n<1000) return (Math.floor(n/100)===1?'ein':NUMW[Math.floor(n/100)])+'hundert'+(n%100?numWord(n%100):'');
-  return String(n);
-}
-function synthText(t){ return String(t).replace(/\d+/g,function(d){ return numWord(+d); }).replace(/ – /g,', ').replace(/[←-⯿️‍]|[\uD83C-\uD83E][\uDC00-\uDFFF]/g,'').replace(/\s+/g,' ').trim(); }
-function synth(text){
-  if(!('speechSynthesis' in window)) return;
-  const u=new SpeechSynthesisUtterance(synthText(text));
-  u.lang='de-DE'; u.rate=VOICE.r; u.pitch=1;
-  /* Ohne Wahl der Eltern eine Stimme für Deutsch aus Deutschland, damit kein englischer Standard deutsche Wörter verdreht. */
-  const vo=voiceGet()||voicesDe().find(function(v){ return /^de[-_]DE$/i.test(v.lang); }); if(vo) u.voice=vo;
-  window.speechSynthesis.speak(u);
-  return u;
-}
-function clipPlay(ids,text){
-  const seq=vcSeq, h={onend:null};
-  const done=function(){ if(seq===vcSeq&&h.onend){ const f=h.onend; h.onend=null; f(); } };
-  const fail=function(){ if(seq!==vcSeq) return; const u=synth(text); if(u) u.onend=done; else done(); };
-  Promise.all(ids.map(clipGet)).then(function(urls){
-    let i=0;
-    const next=function(){
-      if(seq!==vcSeq) return;
-      if(i>=urls.length){ vcAud=null; done(); return; }
-      const a=new Audio(urls[i++]); vcAud=a;
-      /* Langsam und schnell aus der Elternansicht gelten auch hier, die Tonhöhe bleibt dabei gleich. */
-      a.playbackRate=VOICE.r/.95; a.onended=next;
-      const p=a.play(); if(p&&p.catch) p.catch(function(){ if(i===1) fail(); else next(); });
-    };
-    next();
-  }).catch(fail);
-  return h;
-}
-function speak(text){
-  try{
-    if(performance.now()<ST.talkLock&&performance.now()-tapT>450) return;
-    if(muted) return;
-    speakStop();
-    const ss=speakSplit(text);
-    if(VCLIP){
-      const ids=ss.map(function(s){ return VCLIP[s]; });
-      if(ss.length&&ids.every(Boolean)) return clipPlay(ids,text);
-      vcMiss(text);
-    }
-    return synth(text);
-  }catch(_){}
-}
-let muted=false, fxOff=false, noiseBuf=null, coinT=0, coinN=0, digSfxT=0, flameSfx=0;
+function speak(text){ return speakWith(AP,text); }
+const AP={ get talkLock(){ return ST.talkLock; }, vcMiss };
 /* Drei Stufen: alles an, nur Sprache (ohne Piepen und Klänge), alles aus. Sprache braucht das Kind, Effekte nerven manchmal die Großen. */
-try{ const mv=localStorage.getItem(K_MUTE); muted=mv==='1'; fxOff=mv==='s'; }catch(_){}
-function blip(f0,f1,dur,type,vol){
-  if(!AC||muted||fxOff) return;
-  try{
-    const t=AC.currentTime, o=AC.createOscillator(), g=AC.createGain();
-    o.type=type||'sine'; o.frequency.setValueAtTime(f0,t); if(f1!==f0) o.frequency.exponentialRampToValueAtTime(f1,t+dur);
-    g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.001,t+dur);
-    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur+.02);
-  }catch(_){}
-}
-function noise(dur,freq,vol){
-  if(!AC||muted||fxOff) return;
-  try{
-    if(!noiseBuf){ noiseBuf=AC.createBuffer(1,Math.floor(AC.sampleRate*.6),AC.sampleRate); const d=noiseBuf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1; }
-    const t=AC.currentTime, src=AC.createBufferSource(), f=AC.createBiquadFilter(), g=AC.createGain();
-    src.buffer=noiseBuf; f.type='lowpass'; f.frequency.setValueAtTime(freq,t); f.frequency.exponentialRampToValueAtTime(Math.max(60,freq*.3),t+dur);
-    g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.001,t+dur);
-    src.connect(f); f.connect(g); g.connect(AC.destination); src.start(t); src.stop(t+dur+.02);
-  }catch(_){}
-}
-/* Kurze Geräusche. Gold klingt mit jedem Stück in Folge etwas höher. */
-function sfx(k){
-  const now=performance.now();
-  if(k==='coin'){ if(now-coinT<70) return; coinN=now-coinT<700?Math.min(12,coinN+1):0; coinT=now; const f=880*Math.pow(1.06,coinN); blip(f,f*1.5,.09,'triangle',.12); }
-  else if(k==='dig'){ if(now-digSfxT<95) return; digSfxT=now; noise(.07,500+Math.random()*300,.16); }
-  else if(k==='jump') blip(300,620,.12,'sine',.1);
-  else if(k==='boom'){ noise(.55,900,.4); blip(120,40,.4,'sine',.3); }
-  else if(k==='tick') blip(900,700,.03,'square',.03);
-  else if(k==='pop') blip(520,880,.1,'triangle',.12);
-  else if(k==='throw') blip(520,240,.09,'sine',.06);
-  else if(k==='splat') noise(.09,1500,.12);
-  else if(k==='swish') noise(.18,3200,.03);
-  else if(k==='hick') blip(430,920,.08,'square',.05);
-  else if(k==='laugh') tone([392,523,392,523]);
-  else if(k==='pups'){ blip(150,52,.45,'sawtooth',.2); noise(.3,320,.1); }
-  else if(k==='burp') blip(120,62,.55,'sawtooth',.22);
-  else if(k==='quack') blip(760,380,.1,'square',.05);
-  else if(k==='whoosh') blip(280,900,.24,'sine',.06);
-  else if(k==='fw') blip(500,1500,.3,'sine',.04);
-  else if(k==='bang'){ noise(.35,2600,.2); blip(170,60,.22,'sine',.14); }
-  else if(k==='roar') blip(80,190,.5,'sawtooth',.15);
-  else if(k==='flame'){ if(now-flameSfx<110) return; flameSfx=now; noise(.14,1000,.07); }
-}
+try{ const mv=localStorage.getItem(K_MUTE); AU.muted=mv==='1'; AU.fxOff=mv==='s'; }catch(_){}
 document.addEventListener('pointerdown',function(e){
-  audio(); tapT=performance.now();
+  audio(); AU.tapT=performance.now();
   if(e.target&&e.target.closest&&e.target.closest('.btn,.card,.opt,.shopc,.round,.xb,#batt,#mkt,#quest,#chip,.album button')) sfx('tick');
 },true);
 
@@ -2318,7 +2188,7 @@ MIS.push({id:'flag2',e:'👩‍🚀',win:[80,5],
 
 const OVS=Array.prototype.slice.call(document.querySelectorAll('.ov,#panel,#quiz,#pz'));
 function uiOpen(){ for(const o of OVS) if(!o.hidden) return true; return false; }
-function syncSound(){ $('sound').innerHTML=svg24(muted?QI.mute:fxOff?QI.talk:QI.sound); $('sound').setAttribute('aria-pressed',String(!muted)); $('sound').setAttribute('aria-label',muted?'Ton ist aus':fxOff?'Nur Sprache':'Ton ist an'); }
+function syncSound(){ $('sound').innerHTML=svg24(AU.muted?QI.mute:AU.fxOff?QI.talk:QI.sound); $('sound').setAttribute('aria-pressed',String(!AU.muted)); $('sound').setAttribute('aria-label',AU.muted?'Ton ist aus':AU.fxOff?'Nur Sprache':'Ton ist an'); }
 
 /* ---------- Winter: Ski, Lift, Schneebälle, Schneemänner, Pinguine, Feuerwerk, Drachenflug und die Geschichte vom Hick im Berg ---------- */
 const FLX=5892, HAREX=6885, YETX=7052, IGX=7128, LIFT0=5790, LIFT1=6935, PENX=5952, RIMY=Math.min(ground(VOLC-92),ground(VOLC+92));
@@ -5197,7 +5067,7 @@ function ecPlay(st){
   };
   pzDraw(); pzLater(450,step);
 }
-function stEcho(st){ pzc.busy=true; pzLater(muted?700:(st.rev?5200:3600),function(){ ecPlay(st); }); }
+function stEcho(st){ pzc.busy=true; pzLater(AU.muted?700:(st.rev?5200:3600),function(){ ecPlay(st); }); }
 function acEcho(st,a){
   if(a==='rep'){ ecPlay(st); return; }
   if(st.ph!=='in') return;
@@ -5409,10 +5279,10 @@ function syncHand(){ document.body.classList.toggle('lefty',lefty); $('hand').in
 $('hand').addEventListener('click',function(){ lefty=!lefty; try{ localStorage.setItem(K_LEFTY,lefty?'1':'0'); }catch(_){} syncHand(); sfx('pop'); speak(lefty?'Steuerung gespiegelt: Laufen jetzt rechts.':'Steuerung wie vorher: Laufen links.'); });
 syncHand();
 $('sound').addEventListener('click',function(){
-  if(muted){ muted=false; fxOff=false; } else if(fxOff){ muted=true; fxOff=false; } else fxOff=true;
-  try{ localStorage.setItem(K_MUTE,muted?'1':fxOff?'s':'0'); }catch(_){} if(muted) speakStop();
+  if(AU.muted){ AU.muted=false; AU.fxOff=false; } else if(AU.fxOff){ AU.muted=true; AU.fxOff=false; } else AU.fxOff=true;
+  try{ localStorage.setItem(K_MUTE,AU.muted?'1':AU.fxOff?'s':'0'); }catch(_){} if(AU.muted) speakStop();
   syncSound(); sfx('pop');
-  if(fxOff) speak('Nur Sprache.');
+  if(AU.fxOff) speak('Nur Sprache.');
 });
 /* ---------- Spielstand umziehen: Alles aus diesem Browser (Welt, Held, Funde, Einstellungen, Protokoll) als eine Datei. Der Speicher gehört zur Adresse, darum braucht der Umzug vom Artefakt auf eine eigene Seite oder in die Homescreen-App diesen Weg. ---------- */
 let bakIn=null;
@@ -5533,18 +5403,6 @@ function drain(dt){
   const low=ST.energy>0&&ST.energy<12;
   if(low!==battLow){ battLow=low; $('batt').classList.toggle('low',low); }
   renderBatt();
-}
-function tone(list,type){
-  if(!AC||muted||fxOff) return;
-  try{
-    const t=AC.currentTime;
-    list.forEach(function(f,i){
-      const o=AC.createOscillator(), g=AC.createGain(), s=t+i*.1;
-      o.type=type||'triangle'; o.frequency.value=f;
-      g.gain.setValueAtTime(.0001,s); g.gain.linearRampToValueAtTime(.16,s+.02); g.gain.exponentialRampToValueAtTime(.001,s+.25);
-      o.connect(g); g.connect(AC.destination); o.start(s); o.stop(s+.3);
-    });
-  }catch(_){}
 }
 function ri(a,b){ return riWith(Math.random,a,b); }
 function shuffle(a){ return shuffleWith(Math.random,a); }

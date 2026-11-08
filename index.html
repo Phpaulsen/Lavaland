@@ -4965,6 +4965,362 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
   }
 
+  // src/audio/sound.js
+  var AC = null;
+  var tapT = 0;
+  function audio() {
+    if (!AC) {
+      try {
+        AC = new (window.AudioContext || /** @type {any} */
+        window.webkitAudioContext)();
+      } catch (_) {
+        AC = null;
+      }
+    }
+    if (AC && AC.state === "suspended") {
+      try {
+        AC.resume();
+      } catch (_) {
+      }
+    }
+  }
+  function jingle() {
+    if (!AC || muted || fxOff) return;
+    try {
+      const t = AC.currentTime;
+      [523, 659, 784, 1047].forEach(
+        /** @param {any} f @param {any} i */
+        function(f, i) {
+          const o = AC.createOscillator(), g = AC.createGain(), s = t + i * 0.11;
+          o.type = "triangle";
+          o.frequency.value = f;
+          g.gain.setValueAtTime(1e-4, s);
+          g.gain.linearRampToValueAtTime(0.18, s + 0.02);
+          g.gain.exponentialRampToValueAtTime(1e-3, s + 0.4);
+          o.connect(g);
+          g.connect(AC.destination);
+          o.start(s);
+          o.stop(s + 0.45);
+        }
+      );
+    } catch (_) {
+    }
+  }
+  var VRATES = [0.75, 0.95, 1.1];
+  var VOICE = { v: "", r: 0.95 };
+  function voicesDe() {
+    try {
+      return speechSynthesis.getVoices().filter(
+        /** @param {any} v */
+        function(v) {
+          return /^de([-_]|$)/i.test(v.lang);
+        }
+      );
+    } catch (_) {
+      return [];
+    }
+  }
+  function voiceGet() {
+    if (!VOICE.v) return null;
+    return voicesDe().find(
+      /** @param {any} v */
+      function(v) {
+        return v.name === VOICE.v;
+      }
+    ) || null;
+  }
+  var VCLIP = null;
+  var vcSeq = 0;
+  var vcAud = null;
+  var vcUrl = {};
+  function speakSplit(t) {
+    return (String(t).replace(/\s+/g, " ").trim().match(/[^.!?]+[.!?]+|[^.!?]+$/g) || []).map(
+      /** @param {any} s */
+      function(s) {
+        return s.trim();
+      }
+    ).filter(Boolean);
+  }
+  try {
+    const a = document.createElement("audio");
+    if (a.canPlayType && a.canPlayType("audio/ogg; codecs=opus")) fetch("audio/index.json").then(
+      /** @param {any} r */
+      function(r) {
+        return r.ok ? r.json() : null;
+      }
+    ).then(
+      /** @param {any} j */
+      function(j) {
+        if (j && j.v === 1 && j.c) VCLIP = j.c;
+      }
+    ).catch(function() {
+    });
+  } catch (_) {
+  }
+  function clipGet(id) {
+    if (!vcUrl[id]) {
+      vcUrl[id] = fetch("audio/" + id + ".ogg").then(
+        /** @param {any} r */
+        function(r) {
+          if (!r.ok) throw new Error("clip");
+          return r.blob();
+        }
+      ).then(
+        /** @param {any} b */
+        function(b) {
+          return URL.createObjectURL(b);
+        }
+      );
+      vcUrl[id].catch(function() {
+        delete vcUrl[id];
+      });
+    }
+    return vcUrl[id];
+  }
+  function speakStop() {
+    vcSeq++;
+    try {
+      if (vcAud) {
+        vcAud.onended = null;
+        vcAud.pause();
+        vcAud = null;
+      }
+    } catch (_) {
+    }
+    try {
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+    } catch (_) {
+    }
+  }
+  var NUMW = ["null", "eins", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun", "zehn", "elf", "zwölf", "dreizehn", "vierzehn", "fünfzehn", "sechzehn", "siebzehn", "achtzehn", "neunzehn"];
+  var NUMT = ["", "", "zwanzig", "dreißig", "vierzig", "fünfzig", "sechzig", "siebzig", "achtzig", "neunzig"];
+  function numWord(n) {
+    if (n < 20) return NUMW[n];
+    if (n < 100) return (n % 10 ? (n % 10 === 1 ? "ein" : NUMW[n % 10]) + "und" : "") + NUMT[Math.floor(n / 10)];
+    if (n < 1e3) return (Math.floor(n / 100) === 1 ? "ein" : NUMW[Math.floor(n / 100)]) + "hundert" + (n % 100 ? numWord(n % 100) : "");
+    return String(n);
+  }
+  function synthText(t) {
+    return String(t).replace(
+      /\d+/g,
+      /** @param {any} d */
+      function(d) {
+        return numWord(+d);
+      }
+    ).replace(/ – /g, ", ").replace(/[←-⯿️‍]|[\uD83C-\uD83E][\uDC00-\uDFFF]/g, "").replace(/\s+/g, " ").trim();
+  }
+  function synth(text) {
+    if (!("speechSynthesis" in window)) return;
+    const u = new SpeechSynthesisUtterance(synthText(text));
+    u.lang = "de-DE";
+    u.rate = VOICE.r;
+    u.pitch = 1;
+    const vo = voiceGet() || voicesDe().find(
+      /** @param {any} v */
+      function(v) {
+        return /^de[-_]DE$/i.test(v.lang);
+      }
+    );
+    if (vo) u.voice = vo;
+    window.speechSynthesis.speak(u);
+    return u;
+  }
+  function clipPlay(ids, text) {
+    const seq = vcSeq, h = (
+      /** @type {{ onend: any }} */
+      { onend: null }
+    );
+    const done = function() {
+      if (seq === vcSeq && h.onend) {
+        const f = h.onend;
+        h.onend = null;
+        f();
+      }
+    };
+    const fail = function() {
+      if (seq !== vcSeq) return;
+      const u = synth(text);
+      if (u) u.onend = done;
+      else done();
+    };
+    Promise.all(ids.map(clipGet)).then(
+      /** @param {any} urls */
+      function(urls) {
+        let i = 0;
+        const next = function() {
+          if (seq !== vcSeq) return;
+          if (i >= urls.length) {
+            vcAud = null;
+            done();
+            return;
+          }
+          const a = new Audio(urls[i++]);
+          vcAud = a;
+          a.playbackRate = VOICE.r / 0.95;
+          a.onended = next;
+          const p = a.play();
+          if (p && p.catch) p.catch(function() {
+            if (i === 1) fail();
+            else next();
+          });
+        };
+        next();
+      }
+    ).catch(fail);
+    return h;
+  }
+  function speakWith(AP, text) {
+    try {
+      if (performance.now() < AP.talkLock && performance.now() - tapT > 450) return;
+      if (muted) return;
+      speakStop();
+      const ss = speakSplit(text);
+      if (VCLIP) {
+        const ids = ss.map(
+          /** @param {any} s */
+          function(s) {
+            return (
+              /** @type {Record<string, string>} */
+              VCLIP[s]
+            );
+          }
+        );
+        if (ss.length && ids.every(Boolean)) return clipPlay(ids, text);
+        AP.vcMiss(text);
+      }
+      return synth(text);
+    } catch (_) {
+    }
+  }
+  var muted = false;
+  var fxOff = false;
+  var noiseBuf = null;
+  var coinT = 0;
+  var coinN = 0;
+  var digSfxT = 0;
+  var flameSfx = 0;
+  function blip(f0, f1, dur, type, vol) {
+    if (!AC || muted || fxOff) return;
+    try {
+      const t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain();
+      o.type = type || "sine";
+      o.frequency.setValueAtTime(f0, t);
+      if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(1e-3, t + dur);
+      o.connect(g);
+      g.connect(AC.destination);
+      o.start(t);
+      o.stop(t + dur + 0.02);
+    } catch (_) {
+    }
+  }
+  function noise(dur, freq, vol) {
+    if (!AC || muted || fxOff) return;
+    try {
+      if (!noiseBuf) {
+        noiseBuf = AC.createBuffer(1, Math.floor(AC.sampleRate * 0.6), AC.sampleRate);
+        const d = noiseBuf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      }
+      const t = AC.currentTime, src = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain();
+      src.buffer = noiseBuf;
+      f.type = "lowpass";
+      f.frequency.setValueAtTime(freq, t);
+      f.frequency.exponentialRampToValueAtTime(Math.max(60, freq * 0.3), t + dur);
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(1e-3, t + dur);
+      src.connect(f);
+      f.connect(g);
+      g.connect(AC.destination);
+      src.start(t);
+      src.stop(t + dur + 0.02);
+    } catch (_) {
+    }
+  }
+  function sfx(k) {
+    const now = performance.now();
+    if (k === "coin") {
+      if (now - coinT < 70) return;
+      coinN = now - coinT < 700 ? Math.min(12, coinN + 1) : 0;
+      coinT = now;
+      const f = 880 * Math.pow(1.06, coinN);
+      blip(f, f * 1.5, 0.09, "triangle", 0.12);
+    } else if (k === "dig") {
+      if (now - digSfxT < 95) return;
+      digSfxT = now;
+      noise(0.07, 500 + Math.random() * 300, 0.16);
+    } else if (k === "jump") blip(300, 620, 0.12, "sine", 0.1);
+    else if (k === "boom") {
+      noise(0.55, 900, 0.4);
+      blip(120, 40, 0.4, "sine", 0.3);
+    } else if (k === "tick") blip(900, 700, 0.03, "square", 0.03);
+    else if (k === "pop") blip(520, 880, 0.1, "triangle", 0.12);
+    else if (k === "throw") blip(520, 240, 0.09, "sine", 0.06);
+    else if (k === "splat") noise(0.09, 1500, 0.12);
+    else if (k === "swish") noise(0.18, 3200, 0.03);
+    else if (k === "hick") blip(430, 920, 0.08, "square", 0.05);
+    else if (k === "laugh") tone([392, 523, 392, 523]);
+    else if (k === "pups") {
+      blip(150, 52, 0.45, "sawtooth", 0.2);
+      noise(0.3, 320, 0.1);
+    } else if (k === "burp") blip(120, 62, 0.55, "sawtooth", 0.22);
+    else if (k === "quack") blip(760, 380, 0.1, "square", 0.05);
+    else if (k === "whoosh") blip(280, 900, 0.24, "sine", 0.06);
+    else if (k === "fw") blip(500, 1500, 0.3, "sine", 0.04);
+    else if (k === "bang") {
+      noise(0.35, 2600, 0.2);
+      blip(170, 60, 0.22, "sine", 0.14);
+    } else if (k === "roar") blip(80, 190, 0.5, "sawtooth", 0.15);
+    else if (k === "flame") {
+      if (now - flameSfx < 110) return;
+      flameSfx = now;
+      noise(0.14, 1e3, 0.07);
+    }
+  }
+  function tone(list, type) {
+    if (!AC || muted || fxOff) return;
+    try {
+      const t = AC.currentTime;
+      list.forEach(
+        /** @param {any} f @param {any} i */
+        function(f, i) {
+          const o = AC.createOscillator(), g = AC.createGain(), s = t + i * 0.1;
+          o.type = type || "triangle";
+          o.frequency.value = f;
+          g.gain.setValueAtTime(1e-4, s);
+          g.gain.linearRampToValueAtTime(0.16, s + 0.02);
+          g.gain.exponentialRampToValueAtTime(1e-3, s + 0.25);
+          o.connect(g);
+          g.connect(AC.destination);
+          o.start(s);
+          o.stop(s + 0.3);
+        }
+      );
+    } catch (_) {
+    }
+  }
+  var AU = {
+    get muted() {
+      return muted;
+    },
+    set muted(v) {
+      muted = v;
+    },
+    get fxOff() {
+      return fxOff;
+    },
+    set fxOff(v) {
+      fxOff = v;
+    },
+    get tapT() {
+      return tapT;
+    },
+    set tapT(v) {
+      tapT = v;
+    }
+  };
+
   // src/legacy.js
   (function() {
     "use strict";
@@ -6892,43 +7248,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     cv.addEventListener("pointerup", endPointer);
     cv.addEventListener("pointercancel", endPointer);
-    let AC = null, tapT = 0;
-    function audio() {
-      if (!AC) {
-        try {
-          AC = new (window.AudioContext || window.webkitAudioContext)();
-        } catch (_) {
-          AC = null;
-        }
-      }
-      if (AC && AC.state === "suspended") {
-        try {
-          AC.resume();
-        } catch (_) {
-        }
-      }
-    }
-    function jingle() {
-      if (!AC || muted || fxOff) return;
-      try {
-        const t = AC.currentTime;
-        [523, 659, 784, 1047].forEach(function(f, i) {
-          const o = AC.createOscillator(), g = AC.createGain(), s = t + i * 0.11;
-          o.type = "triangle";
-          o.frequency.value = f;
-          g.gain.setValueAtTime(1e-4, s);
-          g.gain.linearRampToValueAtTime(0.18, s + 0.02);
-          g.gain.exponentialRampToValueAtTime(1e-3, s + 0.4);
-          o.connect(g);
-          g.connect(AC.destination);
-          o.start(s);
-          o.stop(s + 0.45);
-        });
-      } catch (_) {
-      }
-    }
-    const VRATES = [0.75, 0.95, 1.1];
-    let VOICE = { v: "", r: 0.95 };
     try {
       const o = JSON.parse(localStorage.getItem(K_VOICE) || "null");
       if (o && typeof o === "object") {
@@ -6936,21 +7255,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         if (VRATES.indexOf(o.r) >= 0) VOICE.r = o.r;
       }
     } catch (_) {
-    }
-    function voicesDe() {
-      try {
-        return speechSynthesis.getVoices().filter(function(v) {
-          return /^de([-_]|$)/i.test(v.lang);
-        });
-      } catch (_) {
-        return [];
-      }
-    }
-    function voiceGet() {
-      if (!VOICE.v) return null;
-      return voicesDe().find(function(v) {
-        return v.name === VOICE.v;
-      }) || null;
     }
     try {
       if ("speechSynthesis" in window) speechSynthesis.addEventListener("voiceschanged", function() {
@@ -6964,23 +7268,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       } catch (_) {
       }
     }
-    let VCLIP = null, vcSeq = 0, vcAud = null;
-    const vcUrl = {};
-    function speakSplit(t) {
-      return (String(t).replace(/\s+/g, " ").trim().match(/[^.!?]+[.!?]+|[^.!?]+$/g) || []).map(function(s) {
-        return s.trim();
-      }).filter(Boolean);
-    }
-    try {
-      const a = document.createElement("audio");
-      if (a.canPlayType && a.canPlayType("audio/ogg; codecs=opus")) fetch("audio/index.json").then(function(r) {
-        return r.ok ? r.json() : null;
-      }).then(function(j) {
-        if (j && j.v === 1 && j.c) VCLIP = j.c;
-      }).catch(function() {
-      });
-    } catch (_) {
-    }
     function vcMiss(t) {
       try {
         const a = JSON.parse(localStorage.getItem(K_VMISS) || "[]");
@@ -6990,205 +7277,21 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       } catch (_) {
       }
     }
-    function clipGet(id) {
-      if (!vcUrl[id]) {
-        vcUrl[id] = fetch("audio/" + id + ".ogg").then(function(r) {
-          if (!r.ok) throw new Error("clip");
-          return r.blob();
-        }).then(function(b) {
-          return URL.createObjectURL(b);
-        });
-        vcUrl[id].catch(function() {
-          delete vcUrl[id];
-        });
-      }
-      return vcUrl[id];
-    }
-    function speakStop() {
-      vcSeq++;
-      try {
-        if (vcAud) {
-          vcAud.onended = null;
-          vcAud.pause();
-          vcAud = null;
-        }
-      } catch (_) {
-      }
-      try {
-        if (window.speechSynthesis) window.speechSynthesis.cancel();
-      } catch (_) {
-      }
-    }
-    const NUMW = ["null", "eins", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun", "zehn", "elf", "zwölf", "dreizehn", "vierzehn", "fünfzehn", "sechzehn", "siebzehn", "achtzehn", "neunzehn"];
-    const NUMT = ["", "", "zwanzig", "dreißig", "vierzig", "fünfzig", "sechzig", "siebzig", "achtzig", "neunzig"];
-    function numWord(n) {
-      if (n < 20) return NUMW[n];
-      if (n < 100) return (n % 10 ? (n % 10 === 1 ? "ein" : NUMW[n % 10]) + "und" : "") + NUMT[Math.floor(n / 10)];
-      if (n < 1e3) return (Math.floor(n / 100) === 1 ? "ein" : NUMW[Math.floor(n / 100)]) + "hundert" + (n % 100 ? numWord(n % 100) : "");
-      return String(n);
-    }
-    function synthText(t) {
-      return String(t).replace(/\d+/g, function(d) {
-        return numWord(+d);
-      }).replace(/ – /g, ", ").replace(/[←-⯿️‍]|[\uD83C-\uD83E][\uDC00-\uDFFF]/g, "").replace(/\s+/g, " ").trim();
-    }
-    function synth(text) {
-      if (!("speechSynthesis" in window)) return;
-      const u = new SpeechSynthesisUtterance(synthText(text));
-      u.lang = "de-DE";
-      u.rate = VOICE.r;
-      u.pitch = 1;
-      const vo = voiceGet() || voicesDe().find(function(v) {
-        return /^de[-_]DE$/i.test(v.lang);
-      });
-      if (vo) u.voice = vo;
-      window.speechSynthesis.speak(u);
-      return u;
-    }
-    function clipPlay(ids, text) {
-      const seq = vcSeq, h = { onend: null };
-      const done = function() {
-        if (seq === vcSeq && h.onend) {
-          const f = h.onend;
-          h.onend = null;
-          f();
-        }
-      };
-      const fail = function() {
-        if (seq !== vcSeq) return;
-        const u = synth(text);
-        if (u) u.onend = done;
-        else done();
-      };
-      Promise.all(ids.map(clipGet)).then(function(urls) {
-        let i = 0;
-        const next = function() {
-          if (seq !== vcSeq) return;
-          if (i >= urls.length) {
-            vcAud = null;
-            done();
-            return;
-          }
-          const a = new Audio(urls[i++]);
-          vcAud = a;
-          a.playbackRate = VOICE.r / 0.95;
-          a.onended = next;
-          const p = a.play();
-          if (p && p.catch) p.catch(function() {
-            if (i === 1) fail();
-            else next();
-          });
-        };
-        next();
-      }).catch(fail);
-      return h;
-    }
     function speak(text) {
-      try {
-        if (performance.now() < ST.talkLock && performance.now() - tapT > 450) return;
-        if (muted) return;
-        speakStop();
-        const ss = speakSplit(text);
-        if (VCLIP) {
-          const ids = ss.map(function(s) {
-            return VCLIP[s];
-          });
-          if (ss.length && ids.every(Boolean)) return clipPlay(ids, text);
-          vcMiss(text);
-        }
-        return synth(text);
-      } catch (_) {
-      }
+      return speakWith(AP, text);
     }
-    let muted = false, fxOff = false, noiseBuf = null, coinT = 0, coinN = 0, digSfxT = 0, flameSfx = 0;
+    const AP = { get talkLock() {
+      return ST.talkLock;
+    }, vcMiss };
     try {
       const mv = localStorage.getItem(K_MUTE);
-      muted = mv === "1";
-      fxOff = mv === "s";
+      AU.muted = mv === "1";
+      AU.fxOff = mv === "s";
     } catch (_) {
-    }
-    function blip(f0, f1, dur, type, vol) {
-      if (!AC || muted || fxOff) return;
-      try {
-        const t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain();
-        o.type = type || "sine";
-        o.frequency.setValueAtTime(f0, t);
-        if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
-        g.gain.setValueAtTime(vol, t);
-        g.gain.exponentialRampToValueAtTime(1e-3, t + dur);
-        o.connect(g);
-        g.connect(AC.destination);
-        o.start(t);
-        o.stop(t + dur + 0.02);
-      } catch (_) {
-      }
-    }
-    function noise(dur, freq, vol) {
-      if (!AC || muted || fxOff) return;
-      try {
-        if (!noiseBuf) {
-          noiseBuf = AC.createBuffer(1, Math.floor(AC.sampleRate * 0.6), AC.sampleRate);
-          const d = noiseBuf.getChannelData(0);
-          for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-        }
-        const t = AC.currentTime, src = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain();
-        src.buffer = noiseBuf;
-        f.type = "lowpass";
-        f.frequency.setValueAtTime(freq, t);
-        f.frequency.exponentialRampToValueAtTime(Math.max(60, freq * 0.3), t + dur);
-        g.gain.setValueAtTime(vol, t);
-        g.gain.exponentialRampToValueAtTime(1e-3, t + dur);
-        src.connect(f);
-        f.connect(g);
-        g.connect(AC.destination);
-        src.start(t);
-        src.stop(t + dur + 0.02);
-      } catch (_) {
-      }
-    }
-    function sfx(k) {
-      const now = performance.now();
-      if (k === "coin") {
-        if (now - coinT < 70) return;
-        coinN = now - coinT < 700 ? Math.min(12, coinN + 1) : 0;
-        coinT = now;
-        const f = 880 * Math.pow(1.06, coinN);
-        blip(f, f * 1.5, 0.09, "triangle", 0.12);
-      } else if (k === "dig") {
-        if (now - digSfxT < 95) return;
-        digSfxT = now;
-        noise(0.07, 500 + Math.random() * 300, 0.16);
-      } else if (k === "jump") blip(300, 620, 0.12, "sine", 0.1);
-      else if (k === "boom") {
-        noise(0.55, 900, 0.4);
-        blip(120, 40, 0.4, "sine", 0.3);
-      } else if (k === "tick") blip(900, 700, 0.03, "square", 0.03);
-      else if (k === "pop") blip(520, 880, 0.1, "triangle", 0.12);
-      else if (k === "throw") blip(520, 240, 0.09, "sine", 0.06);
-      else if (k === "splat") noise(0.09, 1500, 0.12);
-      else if (k === "swish") noise(0.18, 3200, 0.03);
-      else if (k === "hick") blip(430, 920, 0.08, "square", 0.05);
-      else if (k === "laugh") tone([392, 523, 392, 523]);
-      else if (k === "pups") {
-        blip(150, 52, 0.45, "sawtooth", 0.2);
-        noise(0.3, 320, 0.1);
-      } else if (k === "burp") blip(120, 62, 0.55, "sawtooth", 0.22);
-      else if (k === "quack") blip(760, 380, 0.1, "square", 0.05);
-      else if (k === "whoosh") blip(280, 900, 0.24, "sine", 0.06);
-      else if (k === "fw") blip(500, 1500, 0.3, "sine", 0.04);
-      else if (k === "bang") {
-        noise(0.35, 2600, 0.2);
-        blip(170, 60, 0.22, "sine", 0.14);
-      } else if (k === "roar") blip(80, 190, 0.5, "sawtooth", 0.15);
-      else if (k === "flame") {
-        if (now - flameSfx < 110) return;
-        flameSfx = now;
-        noise(0.14, 1e3, 0.07);
-      }
     }
     document.addEventListener("pointerdown", function(e) {
       audio();
-      tapT = performance.now();
+      AU.tapT = performance.now();
       if (e.target && e.target.closest && e.target.closest(".btn,.card,.opt,.shopc,.round,.xb,#batt,#mkt,#quest,#chip,.album button")) sfx("tick");
     }, true);
     const TASKS = [
@@ -9303,9 +9406,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       return false;
     }
     function syncSound() {
-      $("sound").innerHTML = svg24(muted ? QI.mute : fxOff ? QI.talk : QI.sound);
-      $("sound").setAttribute("aria-pressed", String(!muted));
-      $("sound").setAttribute("aria-label", muted ? "Ton ist aus" : fxOff ? "Nur Sprache" : "Ton ist an");
+      $("sound").innerHTML = svg24(AU.muted ? QI.mute : AU.fxOff ? QI.talk : QI.sound);
+      $("sound").setAttribute("aria-pressed", String(!AU.muted));
+      $("sound").setAttribute("aria-label", AU.muted ? "Ton ist aus" : AU.fxOff ? "Nur Sprache" : "Ton ist an");
     }
     const FLX = 5892, HAREX = 6885, YETX = 7052, IGX = 7128, LIFT0 = 5790, LIFT1 = 6935, PENX = 5952, RIMY = Math.min(ground(VOLC - 92), ground(VOLC + 92));
     const balls = [], fws = [], stq = [], FLK = [];
@@ -15393,7 +15496,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     function stEcho(st) {
       pzc.busy = true;
-      pzLater(muted ? 700 : st.rev ? 5200 : 3600, function() {
+      pzLater(AU.muted ? 700 : st.rev ? 5200 : 3600, function() {
         ecPlay(st);
       });
     }
@@ -15814,21 +15917,21 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     });
     syncHand();
     $("sound").addEventListener("click", function() {
-      if (muted) {
-        muted = false;
-        fxOff = false;
-      } else if (fxOff) {
-        muted = true;
-        fxOff = false;
-      } else fxOff = true;
+      if (AU.muted) {
+        AU.muted = false;
+        AU.fxOff = false;
+      } else if (AU.fxOff) {
+        AU.muted = true;
+        AU.fxOff = false;
+      } else AU.fxOff = true;
       try {
-        localStorage.setItem(K_MUTE, muted ? "1" : fxOff ? "s" : "0");
+        localStorage.setItem(K_MUTE, AU.muted ? "1" : AU.fxOff ? "s" : "0");
       } catch (_) {
       }
-      if (muted) speakStop();
+      if (AU.muted) speakStop();
       syncSound();
       sfx("pop");
-      if (fxOff) speak("Nur Sprache.");
+      if (AU.fxOff) speak("Nur Sprache.");
     });
     let bakIn = null;
     function bakMake() {
@@ -16069,25 +16172,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         $("batt").classList.toggle("low", low);
       }
       renderBatt();
-    }
-    function tone(list, type) {
-      if (!AC || muted || fxOff) return;
-      try {
-        const t = AC.currentTime;
-        list.forEach(function(f, i) {
-          const o = AC.createOscillator(), g = AC.createGain(), s = t + i * 0.1;
-          o.type = type || "triangle";
-          o.frequency.value = f;
-          g.gain.setValueAtTime(1e-4, s);
-          g.gain.linearRampToValueAtTime(0.16, s + 0.02);
-          g.gain.exponentialRampToValueAtTime(1e-3, s + 0.25);
-          o.connect(g);
-          g.connect(AC.destination);
-          o.start(s);
-          o.stop(s + 0.3);
-        });
-      } catch (_) {
-      }
     }
     function ri(a, b) {
       return riWith(Math.random, a, b);
