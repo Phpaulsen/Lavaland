@@ -1,11 +1,16 @@
 // Systemschnittstelle (PR 16): Nebensysteme laufen nach update() einmal je Bild, in fester Reihenfolge.
 // Schicht systems: darf core/, state/, audio/ und systems/ importieren. Das Fehlerprotokoll (log/) kommt als Parameter errAdd.
 // Die Tick-Funktionen stehen noch in legacy.js und werden dort registriert; PR 17–21 holen sie einzeln hierher.
-/** @typedef {{ name: string, tick: (dt: number) => void }} System */
+/** Ebenen in draw(), von hinten nach vorn: 'back' (nach den Seilrutschen), 'mid' (nach dem Fernrohr), 'glow' (nach der Dunkelheit).
+ * @typedef {'back' | 'mid' | 'glow'} Layer
+ * @typedef {{ name: string, tick: (dt: number) => void, draw?: (ctx: CanvasRenderingContext2D, layer: Layer, x0: number, x1: number) => void }} System */
 /** @type {System[]} */
 export const SIDE=[];
-/** @param {string} name @param {(dt: number) => void} tick */
-export function register(name,tick){ SIDE.push({name:name,tick:tick}); }
+/** @param {string} name @param {System['tick']} tick @param {System['draw']} [draw] */
+export function register(name,tick,draw){ SIDE.push(draw?{name:name,tick:tick,draw:draw}:{name:name,tick:tick}); }
+/* Zeichnet eine Ebene: alle Systeme mit draw in der Reihenfolge von SIDE. Ohne Fehlerschutz, wie vorher: Ein Fehler beim Zeichnen fängt frame(). */
+/** @param {CanvasRenderingContext2D} ctx @param {Layer} layer @param {number} x0 @param {number} x1 */
+export function drawLayer(ctx,layer,x0,x1){ for(const s of SIDE) if(s.draw) s.draw(ctx,layer,x0,x1); }
 /** Fehler je System: nach drei Fehlern bleibt es abgeschaltet, das Spiel läuft weiter. @type {Map<System, number>} */
 export const SAFE=new Map();
 /** @param {(m: any, w: string) => void} errAdd @param {System} s @param {number} dt */

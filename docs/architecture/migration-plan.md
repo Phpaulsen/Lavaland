@@ -236,6 +236,8 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 
 Je PR: `tick` und `draw(ctx, layer)` ins System, Zeichenaufruf in `draw()` an derselben Stelle durch den Ebenenaufruf ersetzt. **Risiko:** Zeichenreihenfolge. **Absicherung:** Bildvergleich im Rauchtest für drei feste Szenen (Screenshot-Hash bei abgeschalteten Teilchen), neu in PR 17, gegen den Stand vor PR 17 erzeugt.
 
+**Umgesetzt PR 17:** `systems/sights.js` (Geysire, Sternschnuppen, Wrack, Glühwürmchen, Harfe) mit Port `SY`; `draw(ctx, layer, x0, x1)` auf den Ebenen `back`, `mid`, `glow` über `drawLayer` in `systems/index.js`. Der Bildvergleich ist `tests/pixels.mjs`: Er zeichnet die Szenen mit main und dem neuen Stand im selben Browser, statt feste Hashes zu speichern, weil Pixel von der Chromium-Version abhängen.
+
 ### PR 22–23: Rendering
 
 - **22:** Paletten, Hintergrund, Stimmung, Flora, Deko (`S35`, `S36`, `S44`) → `render/`.
