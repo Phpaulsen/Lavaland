@@ -207,6 +207,11 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 - `lavaland-stars` wird nicht mehr gelesen oder geschrieben, die Mondflagge der alten Mond-Aufgabe entfällt.
 - Golden Master: 49 Einträge gestrichen (24 × `chest`, 24 × `grow chest` für die entfernte Truhe, `speichern / leer / ls lavaland-stars`), kein Wert geändert. `golden.mjs` ruft `saveStars` nicht mehr auf.
 
+### Streich-PR 3c: Missionsbrett weg (verhaltensändernd, nicht Teil der Migration)
+
+- Missionsbrett neben dem Aufzug, alle sieben Missionen (Küken, Post, Karte, Äpfel, Feuerwehr, Mondflaggen), ihr HUD-Knopf `#mis`, der rote Pfeil und die Flaggen entfallen. `lavaland-mis` wird nicht mehr gelesen oder geschrieben. `postMax` bleibt fürs Fernrohr.
+- Golden Master: 1 Eintrag gestrichen (`speichern / leer / ls lavaland-mis`), kein Wert geändert. `golden.mjs` ruft `misSave` nicht mehr auf.
+
 ### PR 16: Systemschnittstelle
 
 - **Bewegt:** `SIDE`, `SAFE`, `safe()` → `systems/index.js` mit `{ name, tick }` je Eintrag, gleiche Reihenfolge, `name` = heutiger Funktionsname. Die Tick-Funktionen selbst bleiben noch in `legacy.js` und werden nur registriert.
