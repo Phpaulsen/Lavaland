@@ -111,9 +111,11 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 
 ### PR 9: Zellautomat
 
-- **Bewegt:** `step`, `react`, `steam` (`S05`, `index.html:1746`) → `core/world/sim.js`, Zufall als Parameter.
-- **Dazu das Rechenfenster** aus PR 7a/7b: `rx0`, `rx1`, `qx0`, `qx1`, `winC` (mit `scanMobile`), direkt gebunden, keine Fassade.
-- **Risiken:** Leistung; `step` läuft 30× pro Sekunde über die sichtbare Welt. **Absicherung:** `perf.mjs`, Fuzz-Test, Upgrade-Test.
+- **Abweichung (entschieden 8.11.2026, ADR 0001 Punkt 17): `state/sim.js` statt `core/world/sim.js`.** Gemessen: Liest `step` Gitter und Fensterzustand über ein Weltobjekt wie in PR 8b, steigt die Rechenzeit von 0,27 auf 0,56 ms (Median, zwei Läufe gleich). Alle Schreiber des Fensterzustands liegen im Automaten, `put` schreibt nur die Zähler.
+- **Bewegt:** 10 Funktionen, `step`, `react`, `steam`, `put`, `ext`, `extI`, `scanMobile`, `cellAt`, `hotAt`, `lifeS`, Text unverändert. Dazu 19 Namen Fensterzustand als `export let`: `bx0 bx1 by0 by1 lavaCount waterCount fireCount tick sx0 winR` (eine Deklaration), `rx0 rx1 qx0 qx1`, `px0 px1 py0 py1` (aus der Deklaration mit `SEED`, `gold` …), `winC` (aus der mit `genF`). `legacy.js` liest sie über Importe, direkte Bindungen.
+- **Ports:** `step`, `scanMobile`, `steam` bekommen `SP` vorn (`const SP` in `legacy.js`: `cam`, `trees`, `genF` über Getter, `dust`, `spawn`, `wc`) und heißen `…With`; in `legacy.js` bleibt je ein Einzeiler. `movecheck.mjs` prüft das mit `world: {param: "SP"}` wie in PR 8b. `Math.random` bleibt, Golden Master unberührt.
+- **Bleibt:** `genF` (liest der Nebel, schreibt `loadCells`/`restore`), `wc` (liest `realm`), Teilchen (`spawn`, `dust`).
+- **Absicherung:** Move-Nachweis (29 bewegt, 3 Einzeiler), Golden Master, Fuzz, Upgrade-Test, `perf.mjs` dreimal alt gegen neu.
 
 ### PR 10: Packen und Laden der Zellen
 
