@@ -4316,6 +4316,84 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
     );
   }
+  function bakMakeWith(TP) {
+    const fresh = ST.ready && !ST.traveling ? TP.idbDo(
+      "readwrite",
+      /** @param {any} st */
+      function(st) {
+        return st.put(TP.snapshot(), realmKey(TP.realm));
+      }
+    ).catch(function() {
+    }) : Promise.resolve();
+    TP.saveFinds();
+    TP.saveHero();
+    return fresh.then(function() {
+      return Promise.all(BAK_DBS.map(dbDump));
+    }).then(
+      /** @param {any} rs */
+      function(rs) {
+        const ls = (
+          /** @type {any} */
+          {}
+        ), db = (
+          /** @type {any} */
+          {}
+        );
+        try {
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && k.indexOf("lavaland") === 0 && k !== TP.K_ALIVE) ls[k] = localStorage.getItem(k);
+          }
+        } catch (_) {
+        }
+        BAK_DBS.forEach(
+          /** @param {any} n @param {any} i */
+          function(n, i) {
+            if (rs[i]) db[n] = enc(rs[i]);
+          }
+        );
+        return { app: "lavaland", bak: 1, at: (/* @__PURE__ */ new Date()).toISOString(), ls, db };
+      }
+    );
+  }
+  function bakLoadWith(TP) {
+    const b = TP.bakIn;
+    TP.bakIn = null;
+    if (!b) return;
+    ST.frozen = true;
+    const dbs = Object.keys(b.db).filter(
+      /** @param {any} n */
+      function(n) {
+        return BAK_DBS.indexOf(n) >= 0;
+      }
+    );
+    Promise.all(dbs.map(
+      /** @param {any} n */
+      function(n) {
+        return dbLoad(n, dec(b.db[n]));
+      }
+    )).then(function() {
+      try {
+        const old = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.indexOf("lavaland") === 0) old.push(k);
+        }
+        old.forEach(
+          /** @param {any} k */
+          function(k) {
+            localStorage.removeItem(k);
+          }
+        );
+        for (const k in b.ls || {}) if (k.indexOf("lavaland") === 0) localStorage.setItem(k, String(b.ls[k]));
+      } catch (_) {
+      }
+      location.reload();
+    }, function() {
+      ST.frozen = false;
+      TP.tone([170], "sawtooth");
+    });
+  }
 
   // src/log/log.js
   var K_ALIVE = "lavaland-alive";
@@ -4904,6 +4982,25 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       dust,
       spawn,
       wc
+    };
+    const TP = {
+      get realm() {
+        return realm;
+      },
+      get bakIn() {
+        return bakIn;
+      },
+      set bakIn(v) {
+        bakIn = v;
+      },
+      idbDo,
+      tone,
+      get K_ALIVE() {
+        return K_ALIVE;
+      },
+      saveFinds,
+      saveHero,
+      snapshot
     };
     const SV = {
       get FS() {
@@ -15735,28 +15832,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     });
     let bakIn = null;
     function bakMake() {
-      const fresh = ST.ready && !ST.traveling ? idbDo("readwrite", function(st) {
-        return st.put(snapshot(), realmKey(realm));
-      }).catch(function() {
-      }) : Promise.resolve();
-      saveFinds();
-      saveHero();
-      return fresh.then(function() {
-        return Promise.all(BAK_DBS.map(dbDump));
-      }).then(function(rs) {
-        const ls = {}, db = {};
-        try {
-          for (let i = 0; i < localStorage.length; i++) {
-            const k = localStorage.key(i);
-            if (k && k.indexOf("lavaland") === 0 && k !== K_ALIVE) ls[k] = localStorage.getItem(k);
-          }
-        } catch (_) {
-        }
-        BAK_DBS.forEach(function(n, i) {
-          if (rs[i]) db[n] = enc(rs[i]);
-        });
-        return { app: "lavaland", bak: 1, at: (/* @__PURE__ */ new Date()).toISOString(), ls, db };
-      });
+      return bakMakeWith(TP);
     }
     function bakDone(ok) {
       if (ok) {
@@ -15839,33 +15915,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       rd.readAsText(file);
     }
     function bakLoad() {
-      const b = bakIn;
-      bakIn = null;
-      if (!b) return;
-      ST.frozen = true;
-      const dbs = Object.keys(b.db).filter(function(n) {
-        return BAK_DBS.indexOf(n) >= 0;
-      });
-      Promise.all(dbs.map(function(n) {
-        return dbLoad(n, dec(b.db[n]));
-      })).then(function() {
-        try {
-          const old = [];
-          for (let i = 0; i < localStorage.length; i++) {
-            const k = localStorage.key(i);
-            if (k && k.indexOf("lavaland") === 0) old.push(k);
-          }
-          old.forEach(function(k) {
-            localStorage.removeItem(k);
-          });
-          for (const k in b.ls || {}) if (k.indexOf("lavaland") === 0) localStorage.setItem(k, String(b.ls[k]));
-        } catch (_) {
-        }
-        location.reload();
-      }, function() {
-        ST.frozen = false;
-        tone([170], "sawtooth");
-      });
+      return bakLoadWith(TP);
     }
     const DE = document.documentElement;
     function fsOn() {

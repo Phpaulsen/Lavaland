@@ -22,7 +22,7 @@ import { packRunsWith, unpackRunsWith, runsOk } from './core/world/pack.js';
 import { bx0, bx1, by0, by1, lavaCount, waterCount, fireCount, tick, sx0, winR, rx0, rx1, qx0, qx1, px0, px1, py0, py1, winC, ext, extI, react, cellAt, hotAt, lifeS, put, stepWith, scanMobileWith, steamWith } from './state/sim.js';
 import { winterColWith, carveCaveWith, carveCircleWith, carvePathWith, fillCraterWith, fillPondWith, houseBlocksWith, fillBlockWith, rawXWith, rawGWith, layoutWith, addTreeWith, addCreWith, populateWith, zoneColsWith, shapeWorldWith, blkWith, buildWith, genColWith, genWith, makeTrackWith, deepWorldWith, deepFarWith, planetDeepWith, vaultPlanWith } from './core/world/gen.js';
 import { SNX, SL0, PEAK, BACK, BEND, MH, SNB, CHX, CAVE, SNC0, SNC1, msurf, vnoise, inGrid, ellipse, PX0, PM, PMC, LANDX, PADH, BT, sm, colOf, hBio, craters, roomY, vFloor, WSX, LIFTX, SEA_T, SEA_L, SEA_B, HOUSE, FH } from './core/world/shape.js';
-import { BAK_DBS, BAK_ST, BAK_MAX, TYPED, BADK, bakOk, b64, unb64, enc, dec, dbDump, dbLoad } from './persistence/transfer.js';
+import { BAK_DBS, BAK_ST, BAK_MAX, TYPED, BADK, bakOk, b64, unb64, enc, dec, dbDump, dbLoad, bakMakeWith, bakLoadWith } from './persistence/transfer.js';
 import { K_ALIVE, logWith } from './log/log.js';
 import { snapshotWith, saveGameWith, autosaveWith, packStartWith, packStepWith, saveHeroWith, saveFindsWith, saveFactsWith } from './persistence/save.js';
 (function(){
@@ -32,6 +32,17 @@ const $=id=>document.getElementById(id);
 const SP={
   get cam(){ return cam; }, get trees(){ return trees; }, get genF(){ return genF; },
   dust, spawn, wc
+};
+/* Port für persistence/transfer.js (Spielstand umziehen): Speichern, Ton, aktuelle Welt, bakIn (setzt bakPick), Herzschlag-Schlüssel aus log/. */
+const TP={
+  get realm(){ return realm; },
+  get bakIn(){ return bakIn; }, set bakIn(v){ bakIn=v; },
+  idbDo,
+  tone,
+  get K_ALIVE(){ return K_ALIVE; },
+  saveFinds,
+  saveHero,
+  snapshot
 };
 /* Port für persistence/save.js: was das Speichern vom übrigen Spiel braucht (Rückmeldung, Welt, Lernkern). */
 const SV={
@@ -5405,16 +5416,7 @@ $('sound').addEventListener('click',function(){
 });
 /* ---------- Spielstand umziehen: Alles aus diesem Browser (Welt, Held, Funde, Einstellungen, Protokoll) als eine Datei. Der Speicher gehört zur Adresse, darum braucht der Umzug vom Artefakt auf eine eigene Seite oder in die Homescreen-App diesen Weg. ---------- */
 let bakIn=null;
-function bakMake(){
-  const fresh=ST.ready&&!ST.traveling?idbDo('readwrite',function(st){ return st.put(snapshot(),realmKey(realm)); }).catch(function(){}):Promise.resolve();
-  saveFinds(); saveHero();
-  return fresh.then(function(){ return Promise.all(BAK_DBS.map(dbDump)); }).then(function(rs){
-    const ls={}, db={};
-    try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.indexOf('lavaland')===0&&k!==K_ALIVE) ls[k]=localStorage.getItem(k); } }catch(_){}
-    BAK_DBS.forEach(function(n,i){ if(rs[i]) db[n]=enc(rs[i]); });
-    return {app:'lavaland',bak:1,at:new Date().toISOString(),ls:ls,db:db};
-  });
-}
+function bakMake(){ return bakMakeWith(TP); }
 function bakDone(ok){
   if(ok){ flash('exp','ok'); tone([660,880]); try{ localStorage.setItem(K_BAK_AT,String(Date.now())); }catch(_){} }
   else { flash('exp','warn'); tone([170],'sawtooth'); }
@@ -5450,19 +5452,7 @@ function bakPick(file){
   rd.onerror=function(){ flash('imp','warn'); tone([170],'sawtooth'); };
   rd.readAsText(file);
 }
-function bakLoad(){
-  const b=bakIn; bakIn=null; if(!b) return;
-  ST.frozen=true;
-  const dbs=Object.keys(b.db).filter(function(n){ return BAK_DBS.indexOf(n)>=0; });
-  Promise.all(dbs.map(function(n){ return dbLoad(n,dec(b.db[n])); })).then(function(){
-    try{
-      const old=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.indexOf('lavaland')===0) old.push(k); }
-      old.forEach(function(k){ localStorage.removeItem(k); });
-      for(const k in (b.ls||{})) if(k.indexOf('lavaland')===0) localStorage.setItem(k,String(b.ls[k]));
-    }catch(_){}
-    location.reload();
-  },function(){ ST.frozen=false; tone([170],'sawtooth'); });
-}
+function bakLoad(){ return bakLoadWith(TP); }
 
 /* ---------- Vollbild im Browser-Tab (Android, Desktop). iPhone kennt das nicht, dort hilft nur „Zum Home-Bildschirm“. Als installierte App ist das Spiel schon im Vollbild, der Knopf bleibt dann weg. ---------- */
 const DE=document.documentElement;
