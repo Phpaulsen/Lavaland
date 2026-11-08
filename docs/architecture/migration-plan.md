@@ -179,6 +179,16 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 - Akku (Entscheidung 8.11.): Malen kostet nur noch je Zelle, die neu den Stoff bekommt (`PAINTC` = 0,012), gezählt im Pinselbereich vor und nach dem Tupfer. Wählen und Stillhalten kosten nichts mehr; vorher lief der Akku jede Sekunde, solange ein Stoff gewählt war. Ein bildschirmbreiter Strich kostet 1,5 (Feuer) bis 4,7 (Eis, Schnee) von 375. Leerer Akku: wie bisher Lernfenster, danach ist kein Stoff mehr gewählt.
 - Golden Master unverändert. `movecheck.mjs` kennt `stmtsAdded`.
 
+### Streich-PR 2a: Gold, Markt, XP (verhaltensändernd, nicht Teil der Migration)
+
+- Gold und Edelsteine zählen nicht mehr: Erz klingt und glitzert nur, Belohnungen zeigen nur noch ein Bild (⭐, 🌍, 🔭 …), Tagesgeschenk weg. `ST.gold`/`ST.gems` und die Speicherschlüssel bleiben, damit alte Stände laden.
+- Einmaliger Tausch beim Start (Entscheidung 8.11.): je angefangene 50 Gold (`GOLDZ`) und je angefangene 10 Edelsteine (`GEMZ`) ein Zahnrad ⚙, danach beide 0 (`goldSwap`).
+- Markt, Marktstand, XP/Level weg. `hero.xp`/`hero.lvl` werden noch geladen und gespeichert, aber nicht mehr verändert. Bohrer, Motor, Düse, Kompass behalten ihre gekaufte Stufe. Schutz ist eine vierte Werkstatt-Zeile (`GEAR.hs`, Stufe in `hero.up.heat`, 2/3/4 Zahnräder).
+- Bombe: zuerst der alte Vorrat `hero.tnt`, dann 15 Akku je Bombe (`BOMBE`). Das gewählte Bombenwerkzeug zieht wie die Malstoffe keinen Akku mehr im Leerlauf.
+- Haustiere, Hüte, gekaufte Fahrgeschäfte (Karussell, Riesenrad, Trampolin) weg, auch bereits gekaufte: `hero.pet`/`hero.hat` laden leer, `ST.props` behält nur Schneemänner. Für goldene Eier bleibt die Regenbogen-Spur (5 Eier).
+- Aufträge: kein Kauf-, Gold- oder Edelstein-Auftrag mehr, Bombenauftrag immer im Topf, Einführungsauftrag 5 ist eine Rätselmaschine.
+- Golden Master: 17 Speicher-Hashes ersetzt (siehe PR), Welt-, Generator- und MACH-Hashes unverändert. `movecheck.mjs` kennt `stmtsRemoved`.
+
 ### PR 16: Systemschnittstelle
 
 - **Bewegt:** `SIDE`, `SAFE`, `safe()` → `systems/index.js` mit `{ name, tick }` je Eintrag, gleiche Reihenfolge, `name` = heutiger Funktionsname. Die Tick-Funktionen selbst bleiben noch in `legacy.js` und werden nur registriert.

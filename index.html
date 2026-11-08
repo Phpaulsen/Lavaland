@@ -238,7 +238,7 @@ body.lefty #mark{left:auto;right:15px}
 #mis{pointer-events:auto;cursor:pointer;touch-action:none;display:flex;align-items:center;gap:2px;padding:0 10px;margin:0;background:var(--paper);border:3px solid var(--ink);border-radius:24px;box-shadow:0 4px 0 #e63946;color:var(--ink);font:700 22px/1 var(--font-ui)}
 #mis:focus-visible{outline:3px solid var(--lava);outline-offset:2px}
 #mis .st{font-size:18px}
-#batt,#mkt,#chip,#quest,#mis{height:44px}
+#batt,#chip,#quest,#mis{height:44px}
 @keyframes low{50%{background:#ffb09a}}
 #batt.low{animation:low .6s ease-in-out infinite}
 @keyframes bump{40%{transform:scale(1.1)}}
@@ -261,38 +261,6 @@ body.lefty #mark{left:auto;right:15px}
 .round.big svg{width:38px;height:38px}
 .round.nope{background:var(--lava);color:#fff}
 .round.go{animation:near 1.3s ease-in-out infinite}
-
-/* Held, Verbesserungen und Markt */
-#mkt{
-  pointer-events:auto;cursor:pointer;touch-action:none;display:flex;align-items:center;gap:4px;height:48px;padding:0 11px 0 7px;margin:0;
-  background:var(--paper);border:3px solid var(--ink);border-radius:24px;box-shadow:0 4px 0 var(--ink);color:var(--ink);
-  font:700 15px/1 var(--font-ui);font-variant-numeric:tabular-nums;
-}
-#mkt svg{width:18px;height:18px}
-#mkt:focus-visible,.shopc:focus-visible{outline:3px solid var(--lava);outline-offset:2px}
-.lv{
-  display:grid;place-items:center;min-width:26px;height:26px;padding:0 4px;box-sizing:border-box;border-radius:13px;
-  background:#7b4fd6;color:#fff;border:2px solid var(--ink);font:700 14px/1 var(--font-ui);font-variant-numeric:tabular-nums;
-}
-.xpb{display:block;width:26px;height:9px;box-sizing:border-box;border:2px solid var(--ink);border-radius:5px;background:#fff;overflow:hidden;margin-right:3px}
-.xpb i{display:block;height:100%;width:0;background:#7b4fd6}
-.xpb.wide{width:84px;height:13px;border-radius:7px}
-.shop{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.shopc{
-  position:relative;min-width:0;padding:6px 2px 6px;margin:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;
-  background:#fff;border:3px solid var(--ink);border-radius:14px;box-shadow:0 3px 0 var(--ink);color:var(--ink);
-  font:700 12px/1.1 var(--font-learn);
-}
-.shopc .em{font-size:29px;line-height:1.1}
-.shopc .pips{font-size:11px;line-height:1;letter-spacing:2px;color:#7b4fd6;min-height:11px}
-.shopc .pr{display:flex;align-items:center;gap:2px;font:700 13px/1 var(--font-ui);font-variant-numeric:tabular-nums}
-.shopc .pr svg{width:14px;height:14px}
-.shopc.poor .pr{color:#b0392b}
-.shopc.poor,.shopc.lvl{background:#f1ede2}
-.shopc.lvl .em{filter:grayscale(1);opacity:.5}
-.shopc.max,.shopc.own{background:#f1f9e4}
-.shopc.on{background:var(--sun)}
-.shopc .yes{color:#2f8f4a;font-size:15px}
 
 /* Große Welt: Karte zum Reisen und Belohnungen für goldene Eier */
 .card.place{padding:8px 4px;font-size:34px;line-height:1.25}
@@ -541,9 +509,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
   .album{grid-template-columns:repeat(11,minmax(0,1fr))}
   .album button{font-size:21px}
   .loot{margin-bottom:8px}
-  .shop{grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
-  .shopc .em{font-size:24px}
-  #batt,#mkt,#chip,#quest,#mis{height:40px}
+  #batt,#chip,#quest,#mis{height:40px}
   #batt{height:42px}
   .qsheet{max-width:660px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"top top" "q ans";align-items:center;gap:10px 16px;padding:12px 16px}
   .qtop{grid-area:top;justify-self:center}
@@ -623,7 +589,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
   <div class="grid" id="grid"></div>
   <div class="row2">
   <button id="batt" aria-label="Lern-Akku aufladen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 2L4 14h6l-1.5 8L19 10h-6z" fill="#ffd23f" stroke="#1d2a3a" stroke-width="1.6" stroke-linejoin="round"/></svg><span class="cells" id="batt-cells"><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i></span></button>
-  <button id="mkt" aria-label="Markt öffnen"><span class="lv" id="lvl">1</span><span class="xpb"><i id="xp"></i></span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="#f0c432" stroke="#1d2a3a" stroke-width="2"/></svg><b id="hud-gold">0</b><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12l4 6-10 11L2 10z" fill="#5fd4e6" stroke="#1d2a3a" stroke-width="2" stroke-linejoin="round"/></svg><b id="hud-gem">0</b></button>
   <button id="quest" aria-label="Auftrag anhören"><svg id="q-ic" viewBox="0 0 24 24" aria-hidden="true"></svg><span class="bar"><i id="q-bar"></i></span><b id="q-txt"></b></button>
   <button id="mis" hidden aria-label="Mission noch einmal anhören"><span id="mis-e"></span><span class="st" id="mis-s"></span></button>
   <button id="chip" hidden aria-label="Aufgabe noch einmal anhören">
@@ -668,18 +633,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
   <div class="sheet" role="dialog" aria-label="Funde"><button class="xb" aria-label="Schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg></button>
     <div class="loot">
       <span><b id="found-n">0/0</b></span>
-      <span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="#f0c432" stroke="#1d2a3a" stroke-width="1.8"/><circle cx="12" cy="12" r="4" fill="none" stroke="#1d2a3a" stroke-width="1.4"/></svg><b id="gold-n">0</b></span>
-      <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12l4 6-10 11L2 10z" fill="#5fd4e6" stroke="#1d2a3a" stroke-width="1.8" stroke-linejoin="round"/></svg><b id="gem-n">0</b></span>
     </div>
     <div class="album" id="album"></div>
     <div class="eggs" id="eggs"></div>
-  </div>
-</div>
-
-<div id="market" class="ov" hidden>
-  <div class="sheet" role="dialog" aria-label="Markt"><button class="xb" aria-label="Schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg></button>
-    <div class="loot"><span><span class="lv" id="m-lvl">1</span><span class="xpb wide"><i id="m-xp"></i></span></span><span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="#f0c432" stroke="#1d2a3a" stroke-width="2"/></svg><b id="m-gold">0</b></span><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12l4 6-10 11L2 10z" fill="#5fd4e6" stroke="#1d2a3a" stroke-width="2" stroke-linejoin="round"/></svg><b id="m-gem">0</b></span></div>
-    <div class="shop" id="shop"></div>
   </div>
 </div>
 
@@ -5708,14 +5664,11 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     IC.pick = '<path d="M4 21L15 10" stroke="#a0632f" stroke-width="3.2" stroke-linecap="round"/><path d="M4 21L15 10" ' + S1 + ' stroke-width="1" fill="none"/><path d="M8 4.500c4-2 9-1.500 12.500 1.500l-1 1c-3-1.500-6-1.500-8.500 0zM20.500 6c2 4 1.500 8.500-1 12l-1-1c1.500-2.500 1.500-6 0-9z" fill="#9aa7b4" ' + S1 + ' stroke-width="1.400"/><path d="M13 8l3 3" ' + S1 + ' stroke-width="3.200"/>';
     IC.bow = '<path d="M6 3c8 2 13 7 15 15" stroke="#a0632f" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M6 3c8 2 13 7 15 15" ' + S1 + ' stroke-width="1" fill="none"/><path d="M6 3l15 15" stroke="' + K + '" stroke-width="1.200"/><path d="M3 21L17 7" ' + S1 + ' stroke-width="2"/><path d="M17 7l1-4 3 3z" fill="#9aa7b4" ' + S1 + ' stroke-width="1.200"/><path d="M3 21l1-3.500M3 21l3.500-1" stroke="#e63946" stroke-width="2.200" stroke-linecap="round"/>';
     IC.tnt = '<circle cx="10.5" cy="14.5" r="7.5" fill="#3a3438" ' + S1 + ' stroke-width="1.6"/><path d="M15.5 9l3-3" ' + S1 + ' stroke-width="2.4"/><path d="M18.5 6l.8-3M18.5 6l3-.6M18.5 6l2.4 1.800" stroke="#ff8a1f" stroke-width="1.8" stroke-linecap="round"/><path d="M7 12a4 4 0 0 1 3-2" stroke="#fff" stroke-width="1.6" stroke-linecap="round" fill="none"/>';
-    AI.shop = '<path d="M5 9h14l-1.5 11.5h-11z" fill="currentColor"/><path d="M9 9V7a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round"/>';
     QI.bolt = '<path d="M13.5 2L4 14h6l-1.5 8L19 10h-6z" fill="#ffd23f" ' + S1 + ' stroke-width="1.6"/>';
-    QI.coin = '<circle cx="12" cy="12" r="8.5" fill="#f0c432" ' + S1 + ' stroke-width="1.8"/><circle cx="12" cy="12" r="4" fill="none" ' + S1 + ' stroke-width="1.4"/>';
     QI.gear = '<path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1" ' + S1 + ' stroke-width="3"/><circle cx="12" cy="12" r="6.5" fill="#9aa7b4" ' + S1 + ' stroke-width="1.6"/><circle cx="12" cy="12" r="2.6" fill="#fff8e6" ' + S1 + ' stroke-width="1.4"/>';
     QI.sound = '<path d="M3 9h4l5-4v14l-5-4H3z" fill="' + K + '"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" ' + S1 + ' stroke-width="2.2" fill="none"/>';
     QI.talk = '<path d="M4 5h16v10H10l-5 4v-4H4z" fill="' + K + '"/><circle cx="9" cy="10" r="1.3" fill="#fff"/><circle cx="12.5" cy="10" r="1.3" fill="#fff"/><circle cx="16" cy="10" r="1.3" fill="#fff"/>';
     QI.mute = '<path d="M3 9h4l5-4v14l-5-4H3z" fill="' + K + '"/><path d="M16 9l5 6M21 9l-5 6" stroke="#e63946" stroke-width="2.6" stroke-linecap="round"/>';
-    IC.bag = '<path d="M5 9h14l-1.5 11.5h-11z" fill="#e63946" ' + S1 + ' stroke-width="1.6"/><path d="M9 9V7a3 3 0 0 1 6 0v2" fill="none" ' + S1 + ' stroke-width="2.2"/>';
     IC.ski = '<path d="M3 17.5l17 4.500" ' + S1 + ' stroke-width="2.6"/><circle cx="14" cy="4.5" r="2.800" fill="#e63946" ' + S1 + ' stroke-width="1.2"/><path d="M13.5 8.500L10 13l4.500 3-1.500 3.500M12 10.500l5.500 2" ' + S1 + ' stroke-width="2.4" fill="none"/>';
     IC.snow = '<path d="M12 2v20M3.300 7l17.400 10M20.700 7L3.300 17M12 2l-2.500 2.500M12 2l2.500 2.500M12 22l-2.500-2.500M12 22l2.500-2.500" stroke="#3aa0e8" stroke-width="2.4" stroke-linecap="round" fill="none"/>';
     IC.ball = '<circle cx="14.500" cy="12" r="7" fill="#fff" ' + S1 + ' stroke-width="1.6"/><path d="M2 8h4M1 12h4.500M2 16h4" ' + S1 + ' stroke-width="2"/>';
@@ -6358,20 +6311,10 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (m === SHELL && !shellOk(i)) return 0;
       grid[i] = 0;
       if (quest && quest.type === "dig" && !quest.done) quest.p++;
-      if (++digN % 60 === 0) addXp(1);
       if (m === GOLD || m === GEM) {
-        const got = 1;
-        if (m === GOLD) {
-          ST.gold += got;
-          popG += got;
-          qEvent("gold", got);
-        } else {
-          ST.gems += got;
-          popM += got;
-          qEvent("gems", got);
-        }
+        if (m === GOLD) qEvent("gold", 1);
+        else qEvent("gems", 1);
         ST.lootDirty = true;
-        addXp(m === GOLD ? 1 : 2);
         sfx("coin");
         if (Math.random() < 0.5) {
           const y = i / GX | 0;
@@ -6495,10 +6438,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
           return;
         }
         if (deepAct()) return;
-        if (nearStall()) {
-          openMarket();
-          return;
-        }
         if (nearLift()) {
           rideLift();
           return;
@@ -6580,11 +6519,10 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         return ST.seen[b.i];
       })) {
         ST.seen.round = 1;
-        ST.gold += 50;
         ST.lootDirty = true;
         confetti(P.x, P.y);
         jingle();
-        banner("🌍 +50" + COIN, 2400);
+        banner("🌍", 2400);
         say("", "Du bist einmal ganz um " + rlm().n + " herum gereist!");
       }
     }
@@ -7323,7 +7261,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     document.addEventListener("pointerdown", function(e) {
       audio();
       AU.tapT = performance.now();
-      if (e.target && e.target.closest && e.target.closest(".btn,.card,.opt,.shopc,.round,.xb,#batt,#mkt,#quest,#chip,.album button")) sfx("tick");
+      if (e.target && e.target.closest && e.target.closest(".btn,.card,.opt,.round,.xb,#batt,#quest,#chip,.album button")) sfx("tick");
     }, true);
     const TASKS = [
       { id: "build", name: "Haus bauen", tool: "blocks", say: "Baue das Haus mit den Bauklötzen nach." },
@@ -7568,9 +7506,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       confetti(P.x, P.y);
       jingle();
       speak("Geschafft! Super!");
-      ST.gold += 25;
       ST.lootDirty = true;
-      addXp(50);
       if (ST.task.id === "volcano") for (let i = 0; i < 16; i++) spawn(4, SITE.volb + (Math.random() - 0.5) * 30, siteY.volb - 90, (Math.random() - 0.5) * 320, -300 - Math.random() * 260, 2.4, 4 + Math.random() * 3);
       if (ST.task.id === "treasure" && chest) for (let i = 0; i < 24; i++) spawn(6, chest.x, chest.y, (Math.random() - 0.5) * 260, -200 - Math.random() * 300, 1.6, 3.5, "#ffd23f");
       const mine = ST.task;
@@ -7770,9 +7706,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       confetti(h.x, h.y + 20);
       jingle();
       speak("Du hast " + h.name + " gefunden!");
-      ST.gold += 15;
       ST.lootDirty = true;
-      addXp(40);
       qEvent("find", 1);
       sfx("pop");
       spawn(8, h.x, h.y, 0, -46, 2.4, 30, h.e);
@@ -7858,8 +7792,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       $("found").textContent = String(n);
       $("found").hidden = n === 0;
       $("found-n").textContent = n + "/" + FINDS.length;
-      $("gold-n").textContent = String(ST.gold);
-      $("gem-n").textContent = String(ST.gems);
       renderEggs();
     }
     function idbDo(mode, fn) {
@@ -7913,7 +7845,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         }
       });
       ST.hidden = sv.hidden || [];
-      ST.props = sv.props || [];
+      ST.props = (sv.props || []).filter(function(o) {
+        return o.type === "man";
+      });
       bombs.length = 0;
       for (const k in parked) parked[k] = sv.parked && sv.parked[k] || null;
       heliLoad = "";
@@ -8134,8 +8068,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         hero.xp = o.xp | 0;
         hero.lvl = Math.max(1, o.lvl | 0);
         hero.own = o.own || {};
-        hero.pet = o.pet || "";
-        hero.hat = o.hat || "";
+        hero.pet = "";
+        hero.hat = "";
         hero.tnt = o.tnt | 0;
         hero.qn = o.qn | 0;
         hero.quest = o.quest || null;
@@ -8158,170 +8092,25 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
     } catch (_) {
     }
-    let digN = 0, nearF = null, nearD = 1e9;
+    let nearF = null, nearD = 1e9;
     const bombs = [], pet = { x: 820, y: 0 };
     function saveHero() {
       return saveHeroWith(SV);
     }
-    function xpNeed(l) {
-      return 40 + l * 30;
-    }
-    function addXp(n) {
-      hero.xp += n;
-      ST.heroDirty = true;
-      while (hero.xp >= xpNeed(hero.lvl)) {
-        hero.xp -= xpNeed(hero.lvl);
-        hero.lvl++;
-        ST.gold += 10 * hero.lvl;
-        ST.lootDirty = true;
-        confetti(P.x, P.y);
-        jingle();
-        speak("Level " + hero.lvl + "!");
-        spawn(8, P.x, P.y - 50, 0, -40, 2.2, 26, "⭐");
-        pulse("mkt");
-        banner("Level " + hero.lvl + " ⭐ +" + 10 * hero.lvl + COIN, 2300);
-      }
-    }
-    let hudG = -1;
     function hudLoot() {
-      if (hudG >= 0 && ST.gold > hudG) {
-        const el = $("mkt");
-        el.classList.remove("bump");
-        void el.offsetWidth;
-        el.classList.add("bump");
-      }
-      hudG = ST.gold;
-      const w = Math.round(hero.xp / xpNeed(hero.lvl) * 100) + "%";
-      $("hud-gold").textContent = String(ST.gold);
-      $("hud-gem").textContent = String(ST.gems);
-      $("lvl").textContent = String(hero.lvl);
-      $("xp").style.width = w;
-      $("m-gold").textContent = String(ST.gold);
-      $("m-gem").textContent = String(ST.gems);
-      $("m-lvl").textContent = String(hero.lvl);
-      $("m-xp").style.width = w;
-      $("gold-n").textContent = String(ST.gold);
-      $("gem-n").textContent = String(ST.gems);
       $("tnt-n").textContent = String(hero.tnt);
       $("tnt-n").hidden = hero.tnt <= 0;
     }
-    const SHOP = [
-      { id: "dig", e: "⛏️", kind: "up", name: "Bohrer", say: "Bagger und Bohrer graben schneller und größer" },
-      { id: "motor", e: "🏎️", kind: "up", name: "Motor", say: "alles fährt schneller" },
-      { id: "jet", e: "💨", kind: "up", name: "Düse", say: "du fliegst schneller" },
-      { id: "compass", e: "🧭", kind: "up", name: "Kompass", say: "ein blauer Pfeil zeigt zum nächsten Fund" },
-      { id: "heat", e: "🛡️", kind: "up", name: "Schutz", say: ["Feuer tut dir nichts mehr", "Lava tut dir nichts mehr", "der Erdkern tut dir nichts mehr"] },
-      { id: "tnt", e: "💣", kind: "use", name: "3 Bomben", g: 8, m: 0, lv: 1, say: "zum Sprengen. Sie liegen bei den Werkzeugen" },
-      { id: "carousel", e: "🎠", kind: "prop", name: "Karussell", g: 60, m: 0, lv: 2, say: "es steht jetzt da, wo du stehst" },
-      { id: "wheel", e: "🎡", kind: "prop", name: "Riesenrad", g: 90, m: 0, lv: 3, say: "es steht jetzt da, wo du stehst" },
-      { id: "tramp", e: "🤸", kind: "prop", name: "Trampolin", g: 35, m: 0, lv: 1, say: "es steht jetzt da, wo du stehst. Spring darauf" },
-      { id: "dog", e: "🐕", kind: "pet", name: "Hund", g: 40, m: 0, lv: 1, say: "er läuft dir nach" },
-      { id: "cat", e: "🐈", kind: "pet", name: "Katze", g: 40, m: 0, lv: 2, say: "sie läuft dir nach" },
-      { id: "dragon", e: "🐉", kind: "pet", name: "Drache", g: 120, m: 40, lv: 5, say: "er fliegt dir nach" },
-      { id: "tophat", e: "🎩", kind: "hat", name: "Hut", g: 30, m: 0, lv: 1, say: "du trägst ihn jetzt" },
-      { id: "crown", e: "👑", kind: "hat", name: "Krone", g: 100, m: 20, lv: 4, say: "du trägst sie jetzt" },
-      { id: "beanie", e: "🧣", kind: "hat", name: "Mütze", g: 20, m: 0, lv: 1, say: "du trägst sie jetzt" }
-    ];
-    const UPG = [25, 70, 160], UPM = [0, 8, 30], UPL = [1, 3, 6];
-    const COIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="#f0c432" stroke="#1d2a3a" stroke-width="2"/></svg>';
-    const GEMI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12l4 6-10 11L2 10z" fill="#5fd4e6" stroke="#1d2a3a" stroke-width="2" stroke-linejoin="round"/></svg>';
-    function price(it) {
-      if (it.kind === "up") {
-        const l = Math.min(2, hero.up[it.id]);
-        return { g: UPG[l], m: UPM[l], lv: UPL[l] };
-      }
-      return { g: it.g, m: it.m || 0, lv: it.lv || 1 };
-    }
-    function shopState(it) {
-      if (it.kind === "up" && hero.up[it.id] >= 3) return "max";
-      if ((it.kind === "pet" || it.kind === "hat") && hero.own[it.id]) return hero.pet === it.id || hero.hat === it.id ? "on" : "own";
-      const q = price(it);
-      if (hero.lvl < q.lv) return "lvl";
-      return ST.gold >= q.g && ST.gems >= q.m ? "ok" : "poor";
-    }
-    function renderShop() {
-      $("shop").innerHTML = SHOP.map(function(it) {
-        const stt = shopState(it), q = price(it);
-        let mid = "&nbsp;", foot;
-        if (it.kind === "up") {
-          const l = hero.up[it.id];
-          mid = "●".repeat(l) + "○".repeat(3 - l);
-        } else if (it.id === "tnt") mid = "× " + hero.tnt;
-        if (stt === "max" || stt === "own" || stt === "on") foot = '<span class="pr yes">✓</span>';
-        else if (stt === "lvl") foot = '<span class="pr">' + svg24(QI.lock) + "Lv " + q.lv + "</span>";
-        else foot = '<span class="pr">' + COIN + q.g + (q.m ? " " + GEMI + q.m : "") + "</span>";
-        return '<button class="shopc ' + stt + '" data-shop="' + it.id + '"><span class="em" aria-hidden="true">' + it.e + "</span><span>" + it.name + '</span><span class="pips" aria-hidden="true">' + mid + "</span>" + foot + "</button>";
-      }).join("");
-      hudLoot();
-    }
-    function openMarket() {
-      renderShop();
-      $("market").hidden = false;
-    }
-    function buy(id) {
-      const it = SHOP.find(function(q2) {
-        return q2.id === id;
-      }), stt = shopState(it), q = price(it);
-      const what = Array.isArray(it.say) ? it.say[Math.min(2, hero.up[it.id])] : it.say;
-      if (stt === "own" || stt === "on") {
-        if (it.kind === "pet") {
-          hero.pet = hero.pet === id ? "" : id;
-          pet.x = P.x;
-          pet.y = P.y - 16;
-        } else hero.hat = hero.hat === id ? "" : id;
-        tone([660]);
-        saveHero();
-        renderShop();
-        return;
-      }
-      if (stt === "max") {
-        speak(it.name + " ist schon ganz stark.");
-        return;
-      }
-      if (stt === "lvl") {
-        tone([170], "sawtooth");
-        speak(it.name + ". Das gibt es ab Level " + q.lv + ".");
-        return;
-      }
-      if (stt === "poor") {
-        tone([170], "sawtooth");
-        speak(it.name + ": " + what + ". Das kostet " + q.g + " Gold" + (q.m ? " und " + q.m + " Edelsteine" : "") + ". Du hast noch nicht genug.");
-        return;
-      }
-      ST.gold -= q.g;
-      ST.gems -= q.m;
-      if (it.kind === "up") hero.up[id]++;
-      else if (it.kind === "use") hero.tnt += 3;
-      else if (it.kind === "pet") {
-        hero.own[id] = 1;
-        hero.pet = id;
-        pet.x = P.x;
-        pet.y = P.y - 16;
-      } else if (it.kind === "hat") {
-        hero.own[id] = 1;
-        hero.hat = id;
-      } else {
-        ST.props.push({ type: id, x: P.x, y: surfaceY(P.x) });
-        $("market").hidden = true;
-      }
-      tone([523, 659, 784]);
-      speak(it.name + " gekauft: " + what + ".");
-      qEvent("buy", 1);
-      saveHero();
-      saveFinds();
-      renderShop();
-    }
-    function nearStall() {
-      return P.mode === "walk" && P.on && Math.abs(P.x - STALL_X) < 46 && Math.abs(P.y - ground(STALL_X)) < 50;
-    }
+    const BOMBE = 15;
     function dropBomb(x, y) {
-      if (hero.tnt <= 0) {
-        openMarket();
-        return;
+      if (hero.tnt > 0) {
+        hero.tnt--;
+        ST.heroDirty = true;
+        hudLoot();
+      } else {
+        if (ST.energy <= 0) return;
+        paintPay(BOMBE);
       }
-      hero.tnt--;
-      ST.heroDirty = true;
-      hudLoot();
       bombs.push({ x, y, vy: 0, t: 1.8 });
     }
     function blast(x, y) {
@@ -8335,104 +8124,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       qEvent("bomb", 1);
       if (P.mode !== "coaster" && Math.hypot(P.x - x, P.y - 16 - y) < 84) burn();
     }
-    function drawStall() {
-      const x = STALL_X, y = ground(STALL_X);
-      ctx.fillStyle = "#7a4a2c";
-      ctx.fillRect(x - 31, y - 50, 4, 50);
-      ctx.fillRect(x + 27, y - 50, 4, 50);
-      ctx.fillStyle = "#b9793a";
-      rr(x - 35, y - 22, 70, 22, 3);
-      ctx.fillStyle = "#8a5a3c";
-      ctx.fillRect(x - 35, y - 22, 70, 4);
-      for (let k = 0; k < 6; k++) {
-        ctx.fillStyle = k % 2 ? "#fff8e6" : "#e63946";
-        ctx.fillRect(x - 39 + k * 13, y - 66, 13.4, 14);
-        circle(x - 32.5 + k * 13, y - 52, 6.5);
-      }
-      ctx.fillStyle = "#f0c432";
-      circle(x - 14, y - 28, 5.5);
-      circle(x - 4, y - 27, 4.5);
-      ctx.fillStyle = "#5fd4e6";
-      ctx.beginPath();
-      ctx.moveTo(x + 12, y - 33);
-      ctx.lineTo(x + 19, y - 27);
-      ctx.lineTo(x + 12, y - 21);
-      ctx.lineTo(x + 5, y - 27);
-      ctx.closePath();
-      ctx.fill();
-    }
     function drawProp(o) {
-      const x = o.x, y = o.y;
-      if (o.type === "man") {
-        drawMan(o);
-        return;
-      }
-      if (o.type === "tramp") {
-        drawTramp(o);
-        return;
-      }
-      if (o.type === "wheel") {
-        const cy = y - 64, R = 48, a0 = reduced ? 0 : time * 0.5;
-        ctx.strokeStyle = INK;
-        ctx.lineWidth = 4;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        ctx.beginPath();
-        ctx.moveTo(x - 28, y);
-        ctx.lineTo(x, cy);
-        ctx.lineTo(x + 28, y);
-        ctx.stroke();
-        ctx.strokeStyle = "#7d8a99";
-        ctx.lineWidth = 1.6;
-        ctx.beginPath();
-        for (let k = 0; k < 8; k++) {
-          const a = a0 + k * TAU / 8;
-          ctx.moveTo(x, cy);
-          ctx.lineTo(x + R * Math.cos(a), cy + R * Math.sin(a));
-        }
-        ctx.stroke();
-        ctx.strokeStyle = "#e0304a";
-        ctx.lineWidth = 3.5;
-        ctx.beginPath();
-        ctx.arc(x, cy, R, 0, TAU);
-        ctx.stroke();
-        for (let k = 0; k < 8; k++) {
-          const a = a0 + k * TAU / 8;
-          ctx.fillStyle = CONF[k % 6];
-          rr(x + R * Math.cos(a) - 7, cy + R * Math.sin(a), 14, 11, 4);
-        }
-        ctx.fillStyle = "#ffd23f";
-        circle(x, cy, 6);
-      } else {
-        ctx.fillStyle = "#7b4fd6";
-        rr(x - 36, y - 8, 72, 8, 3);
-        ctx.fillStyle = "#cfd6dd";
-        ctx.fillRect(x - 2, y - 56, 4, 48);
-        for (let k = 0; k < 3; k++) {
-          const ph = (reduced ? 0 : time * 1.5) + k * 2.1, hx = x + 27 * Math.sin(ph), hy = y - 25 + (reduced ? 0 : 4 * Math.sin(time * 4 + k * 1.7));
-          ctx.fillRect(hx - 0.8, y - 54, 1.6, hy - y + 54);
-          ctx.fillStyle = CONF[k * 2];
-          rr(hx - 8, hy, 16, 9, 4);
-          circle(hx + (Math.cos(ph) > 0 ? 8 : -8), hy - 2, 3.5);
-          ctx.fillStyle = "#cfd6dd";
-        }
-        ctx.fillStyle = "#e63946";
-        ctx.beginPath();
-        ctx.moveTo(x - 42, y - 52);
-        ctx.lineTo(x, y - 80);
-        ctx.lineTo(x + 42, y - 52);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = "#fff8e6";
-        ctx.beginPath();
-        ctx.moveTo(x - 15, y - 52);
-        ctx.lineTo(x, y - 80);
-        ctx.lineTo(x + 15, y - 52);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = "#ffd23f";
-        circle(x, y - 82, 4);
-      }
+      if (o.type === "man") drawMan(o);
     }
     function pointTo(mx, my, col) {
       const sx = (mx - cam.x) * S + W / 2, sy = (my - cam.y) * S + H / 2, topS = Math.min(H * 0.4, 215), botS = H - Math.min(H * 0.3, 170);
@@ -8453,7 +8146,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       arrow(ex, ey, Math.atan2(sy - ey, sx - ex), 13, col);
       ctx.restore();
     }
-    const QSCRIPT = [{ type: "quiz", goal: 1 }, { type: "drive", goal: 400, veh: "car" }, { type: "dig", goal: 200 }, { type: "find", goal: 1 }, { type: "buy", goal: 1 }, { type: "deep", goal: 500 }, { type: "high", goal: 2500 }];
+    const QSCRIPT = [{ type: "quiz", goal: 1 }, { type: "drive", goal: 400, veh: "car" }, { type: "dig", goal: 200 }, { type: "find", goal: 1 }, { type: "pz", goal: 1 }, { type: "deep", goal: 500 }, { type: "high", goal: 2500 }];
     const VNAME = { car: "dem Auto", dumper: "dem Kipper", loader: "dem Radlader", tbm: "der Tunnelbohrmaschine" };
     const QDEF = {
       quiz: { ic: function() {
@@ -8484,13 +8177,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }, hint: function() {
         return "mode-bagger";
       } },
-      buy: { ic: function() {
-        return IC.bag;
-      }, say: function() {
-        return "Kaufe etwas auf dem Markt.";
-      }, hint: function() {
-        return "mkt";
-      } },
       deep: { ic: function() {
         return IC.tbm;
       }, say: function(q) {
@@ -8504,20 +8190,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         return "Fliege mit der Rakete hoch in den Weltraum.";
       }, hint: function() {
         return "mode-rocket";
-      } },
-      gold: { ic: function() {
-        return QI.coin;
-      }, say: function(q) {
-        return "Sammle " + q.goal + " Gold. Es steckt gelb im Fels.";
-      }, hint: function() {
-        return "mode-tbm";
-      } },
-      gems: { ic: function() {
-        return QI.gem;
-      }, say: function(q) {
-        return "Sammle " + q.goal + " Edelsteine. Sie stecken tief unten im dunklen Gestein.";
-      }, hint: function() {
-        return "mode-tbm";
       } },
       ride: { ic: function() {
         return IC.coaster;
@@ -8613,20 +8285,18 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       const n = hero.qn;
       if (n < QSCRIPT.length) return Object.assign({ p: 0 }, QSCRIPT[n]);
       const tier = Math.floor((n - QSCRIPT.length) / 4), lastT = hero.quest ? hero.quest.type : "";
-      const pool = ["gold", "gems", "dig", "quiz", "drive", "deep", "high", "ride", "moon", "ski", "salto", "pz", "pz", "mat"];
+      const pool = ["dig", "quiz", "drive", "deep", "high", "ride", "moon", "ski", "salto", "pz", "pz", "mat"];
       if (hero.dr >= 3) pool.push("core");
       if (nextLand()) pool.push("land", "land");
       if (eggLand()) pool.push("egg", "poke");
       if (ST.hidden.some(function(h) {
         return !h.got;
       })) pool.push("find", "find");
-      if (hero.tnt > 0) pool.push("bomb");
+      pool.push("bomb");
       let type = pool[ri(0, pool.length - 1)], guard = 0;
       while (type === lastT && guard++ < 20) type = pool[ri(0, pool.length - 1)];
       const q = { type, goal: 1, p: 0 };
-      if (type === "gold") q.goal = 15 + 5 * Math.min(tier, 7);
-      else if (type === "gems") q.goal = 6 + 2 * Math.min(tier, 7);
-      else if (type === "dig") q.goal = 400 + 200 * Math.min(tier, 8);
+      if (type === "dig") q.goal = 400 + 200 * Math.min(tier, 8);
       else if (type === "quiz") q.goal = 2 + Math.min(tier, 3);
       else if (type === "drive") {
         q.veh = ["car", "dumper", "loader", "tbm"][ri(0, 3)];
@@ -8710,20 +8380,16 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
       renderQuest();
       if (quest.p >= quest.goal) {
-        const g = 10 + 2 * Math.min(hero.qn, 15), m = hero.qn % 3 === 2 ? 3 : 0;
         quest.done = true;
         qDoneT = 2.3;
         hero.qn++;
-        ST.gold += g;
-        ST.gems += m;
         ST.lootDirty = true;
         $("q-bar").style.width = "100%";
         $("quest").classList.add("done");
-        banner('<svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5" stroke="#2f8f4a" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>+' + g + COIN + (m ? " +" + m + GEMI : ""), 2100);
+        banner('<svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5" stroke="#2f8f4a" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>', 2100);
         confetti(P.x, P.y);
         jingle();
         speak("Auftrag geschafft!");
-        addXp(25);
         saveHero();
       }
     }
@@ -8849,7 +8515,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         MS.cur = null;
         misSave();
         renderMis();
-        reward(d.win[0], d.win[1]);
+        reward();
         later(0.3, function() {
           say(d.e, d.end);
         });
@@ -9498,14 +9164,11 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       };
       next();
     }
-    function reward(g, m) {
-      ST.gold += g;
-      ST.gems += m || 0;
+    function reward() {
       ST.lootDirty = true;
       confetti(P.x, P.y);
       jingle();
-      addXp(30);
-      banner("⭐ +" + g + COIN + (m ? " +" + m + GEMI : ""), 2300);
+      banner("⭐", 2300);
     }
     function nearLift() {
       return (P.mode === "walk" || P.mode === "ski") && P.on && P.ball <= 0 && Math.abs(P.x - LIFT0) < 48 && Math.abs(P.y - surfaceY(LIFT0)) < 60;
@@ -9604,10 +9267,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
             const n = Math.round(P.rot / TAU);
             if (n > 0) {
               shout(P.x, P.y - 54, n > 1 ? n + " × SALTO!" : "SALTO!", "#ffd23f");
-              ST.gold += n;
-              popG += n;
               ST.lootDirty = true;
-              addXp(2 * n);
               sfx("pop");
               qEvent("salto", n);
             } else if (wasAir > 1 && !P.jet) shout(P.x, P.y - 54, "JUHU!");
@@ -9859,8 +9519,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (++pinN === 6) {
         shout(PENX + 38, p.y - 74, "STRIKE!", "#ffd23f");
         confetti(PENX + 38, p.y - 20);
-        ST.gold += 5;
-        popG += 5;
         ST.lootDirty = true;
         jingle();
       }
@@ -9938,10 +9596,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         sfx("pop");
         tell([["Mümmel", "Hihi, erwischt! Ich wollte doch nur Fangen spielen. Hier ist die Karotte."]], function() {
           N.car = { x: h.x, y: h.y - 20, t: 0 };
-          tell([["", "Die Karotte fliegt zu Flocke. Plopp! Die Nase sitzt wieder. Zum Dank schenkt er dir seine Mütze."]], function() {
-            hero.own.beanie = 1;
-            if (!hero.hat) hero.hat = "beanie";
-            reward(25, 0);
+          tell([["", "Die Karotte fliegt zu Flocke. Plopp! Die Nase sitzt wieder. Flocke freut sich riesig."]], function() {
+            reward();
             stGoto(3);
           });
         });
@@ -9974,7 +9630,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
               ["Brummel", "Ho, ho, ho! Jetzt habe ich gute Laune. Das Hick kommt von unten, tief aus dem Berg. Ich trau mich da nicht runter. Aber du bist mutig!"]
             ],
             function() {
-              reward(25, 0);
+              reward();
               stGoto(4);
             }
           );
@@ -10141,7 +9797,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
           tell(
             [["Flocke", "Hallo! Ich bin Flocke. Ha, ha, hatschi! Oh nein. Meine Karottennase ist weg!"], ["Flocke", "Der freche Hase Mümmel hat sie geklaut. Holst du sie mir zurück?"]],
             function() {
-              reward(15, 0);
+              reward();
               stGoto(2);
             }
           );
@@ -10170,7 +9826,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
           tell(
             [["", "Da ist ja gar kein Monster! Da sitzt ein winziges Drachenbaby. Es ist ganz blau vor Kälte."], ["Fauchi", "Hick! Ich bin Fauchi. Ich habe mich verlaufen. Hick! Mir ist so kalt. Mein Feuer ist ausgegangen."]],
             function() {
-              reward(25, 0);
+              reward();
               stGoto(5);
             }
           );
@@ -10200,7 +9856,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
           tell(
             [["", "Fauchi wird warm und rot. Und dann: Rülps! Eine riesige Flamme!"], ["Fauchi", "Hoppla, Entschuldigung! Mein Schluckauf ist weg. Aber ich will zu meiner Mama. Sie wohnt im Vulkan."]],
             function() {
-              reward(25, 0);
+              reward();
               stGoto(6);
             }
           );
@@ -10221,7 +9877,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
             ],
             function() {
               hero.own.dragon = 1;
-              reward(40, 8);
+              reward();
               stGoto(7);
             }
           );
@@ -10244,7 +9900,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
               saveHero();
               syncOwn();
               renderStory();
-              reward(60, 10);
+              reward();
               N.yeti.hick = 0.4;
               stv = {};
               later(4, function() {
@@ -10834,7 +10490,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     const FX = { hot: 0, slip: 0, sugar: 0, big: 0, tiny: 0, pump: 0, star: 0, float: 0, stink: 0, rainbow: 0, sonar: 0 };
     const PETS = { dog: "🐕", cat: "🐈", dragon: "🐉", chick: "🐥", dino: "🦕", rex: "🦖", uni: "🦄", ghost: "👻", robot: "🤖", ufo: "🛸", alien: "👽", sala: "🦎" }, EHAT = { cap: "🧢", grad: "🎓", helm: "⛑️" };
-    const WEAR = [[1, "pet", "chick", "ein Küken"], [2, "hat", "cap", "eine Kappe"], [3, "pet", "dino", "einen Langhals-Dino"], [5, "trail", "trail", "eine Regenbogen-Spur"], [7, "pet", "uni", "ein Einhorn"], [10, "hat", "grad", "einen Doktorhut"], [13, "pet", "ghost", "ein Gespenst"], [16, "pet", "robot", "einen Roboter"], [20, "hat", "helm", "einen Helm"], [25, "pet", "ufo", "ein UFO"], [-1, "pet", "rex", "ein Dino-Baby"], [-1, "pet", "alien", "ein Außerirdischer"], [-1, "pet", "sala", "ein Feuersalamander"]];
+    const WEAR = [[5, "trail", "trail", "eine Regenbogen-Spur"]];
     const ORBN = ["Du bist auf dem Käsemond gelandet! Hier wohnen die Mäuse.", "Ein Planet aus Keks! Bitte nicht alles aufessen.", "Der Disco-Planet! Hier tanzen alle.", "Hilfe, der Planet guckt dich an! Das ist Glubschi."];
     [
       ["cheese", 19, [[250, 200, 90], [200, 120, 60], ["🪨", "den Käsefels"], ["🧀", "das warme Käsegestein"], ["🐭", "die Mäusehöhlen"], ["🕳️", "die Käselöcher"], ["💎", "die Kristallkäsehallen"], ["🫕", "den Fonduekern"]]],
@@ -10899,14 +10555,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       jingle();
       if (!hero.own.rex) {
         hero.own.rex = 1;
-        hero.pet = "rex";
-        pet.x = c.x;
-        pet.y = c.y;
         saveHero();
-        say("", "Knack! Ein Dino-Baby schlüpft. Es will bei dir bleiben.");
+        say("", "Knack! Ein Dino-Baby schlüpft und piept dich fröhlich an.");
       } else {
-        ST.gold += 20;
-        popG += 20;
         ST.lootDirty = true;
       }
     }
@@ -10923,15 +10574,11 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       const f = c.fl, away = P.x < c.x ? -1 : 1, foot = !tap2 && (P.mode === "walk" || P.mode === "ski");
       if (f === "eat") {
         c.gone = time + 18;
-        ST.gold += 2;
-        popG += 2;
         ST.lootDirty = true;
         sfx("coin");
       } else if (f === "gift") {
         if (!(c.gt > time)) {
           c.gt = time + 30;
-          ST.gold += 3;
-          popG += 3;
           ST.lootDirty = true;
           spawn(8, c.x, c.y - 30, 0, -30, 1.4, 18, "🍪");
         }
@@ -11130,9 +10777,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       const ty = q.ty, y = P.y - 54;
       sfx("pop");
       if (ty === "food" || ty === "egg1") {
-        const g = ty === "food" ? 2 : 1;
-        ST.gold += g;
-        popG += g;
         ST.lootDirty = true;
         shout(P.x, y, "MAMPF!");
       } else if (ty === "chili") {
@@ -11235,23 +10879,15 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         return true;
       };
       for (const p of ST.PADS) if (Math.abs(p.x - P.x) < 60 && hit(p.x, p.y, p.w, p.pow, p)) return;
-      for (const o of ST.props) if (o.type === "tramp" && hit(o.x, o.y - 12, 24, 650, o)) return;
     }
     function grant(w) {
       hero.own[w[2]] = 1;
-      if (w[1] === "pet") {
-        hero.pet = w[2];
-        pet.x = P.x;
-        pet.y = P.y - 16;
-      } else if (w[1] === "hat") hero.hat = w[2];
-      else hero.trail = true;
+      hero.trail = true;
     }
     function eggFound(e) {
       ST.eggGot[e.b] = 1;
       hero.eggs = (hero.eggs | 0) + 1;
-      ST.gold += 15;
       ST.lootDirty = true;
-      addXp(40);
       qEvent("egg", 1);
       confetti(e.x, e.y + 20);
       jingle();
@@ -11268,18 +10904,16 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     function lootFound(l) {
       ST.lootGot[l.id] = 1;
-      ST.gold += l.g;
       ST.lootDirty = true;
-      addXp(15);
       sfx("coin");
       jingle();
       for (let i = 0; i < 22; i++) spawn(6, l.x, l.y, (Math.random() - 0.5) * 240, -180 - Math.random() * 280, 1.4, 3.5, "#ffd23f");
-      banner("+" + l.g + COIN, 2e3);
+      banner("✨", 2e3);
       if (l.tro) {
         say("", "Du hast das Ende der Welt gefunden! Weiter geht es wirklich nicht. Dafür bekommst du den goldenen Pokal.");
         for (let i = 0; i < 6; i++) firework(l.x - 200 + i * 80, l.y - 160 - Math.random() * 120);
       } else if (l.pot) say("", "Ein Topf voll Gold am Regenbogen!");
-      else say("", "Ein Schatz! Plus " + l.g + " Gold.");
+      else say("", "Ein Schatz!");
     }
     function secretsTick() {
       const pts = [[P.x, P.y - 16]];
@@ -11324,13 +10958,11 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function discover(b) {
       const T = BT[b.t];
       ST.seen[b.i] = 1;
-      ST.gold += 10;
       ST.lootDirty = true;
-      addXp(20);
       qEvent("land", 1);
       jingle();
       confetti(P.x, P.y);
-      banner(T.e + " ⭐ +10" + COIN, 2400);
+      banner(T.e + " ⭐", 2400);
       say("", "Du hast " + (b.n ? T.n2 : T.n) + " entdeckt!");
     }
     function disco(n) {
@@ -11391,8 +11023,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       else if (k === "palm") drop("🥥");
       else if (k === "lolly" || k === "cane") drop("🍬");
       else if (k === "crystal") {
-        ST.gems += 1;
-        popM += 1;
         ST.lootDirty = true;
         sfx("coin");
       } else if (k === "dead") spawn(8, tr.x, top, 40, -60, 1.6, 20, "🦇");
@@ -11882,11 +11512,10 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
             return q.hit;
           })) {
             tgtT = 12;
-            ST.gold += 5;
             ST.lootDirty = true;
             confetti(t.x, ty);
             jingle();
-            banner("🎯 +5" + COIN, 2e3);
+            banner("🎯", 2e3);
           }
           return true;
         }
@@ -12037,15 +11666,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (i >= 0) MONS.splice(i, 1);
       burst(m.x, m.y - 12, MONC[m.lv][0]);
       for (let k = 0; k < 6; k++) spawn(5, m.x, m.y - 12, (Math.random() - 0.5) * 260, -90 - Math.random() * 160, 0.8, 3);
-      const g = 2 + m.lv;
-      ST.gold += g;
-      popG += g;
       ST.lootDirty = true;
       sfx("coin");
-      if (m.lv >= 2 && Math.random() < 0.3) {
-        ST.gems++;
-        popM++;
-      }
       hero.mon = (hero.mon | 0) + 1;
       ST.heroDirty = true;
     }
@@ -12211,7 +11833,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         }
         if (Math.abs(P.x - r.x) < 28 && Math.abs(P.y - r.y) < 44) {
           MROCKS.splice(MROCKS.indexOf(r), 1);
-          reward(3, 0);
+          reward();
         }
       }
     }
@@ -12263,12 +11885,10 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         if (Math.random() < dt * 2.5) spawn(7, w.x + (Math.random() - 0.5) * 8, gy - 14, (Math.random() - 0.5) * 10, -60 - Math.random() * 30, 1.6, 3 + Math.random() * 2);
         if (Math.abs(P.x - w.x) < 30 && P.y > gy - 70 && P.y < gy + 20) {
           ST.orbGot[w.k] = 1;
-          ST.gold += 25;
-          ST.gems += 1;
           ST.lootDirty = true;
           confetti(w.x, gy - 20);
           jingle();
-          banner("🏴‍☠️ +25" + COIN + " +1" + GEMI, 2600);
+          banner("🏴‍☠️", 2600);
           shout(w.x, gy - 60, "SCHATZ!", "#ffd23f");
         }
       }
@@ -12378,9 +11998,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         scopeRender(q.n);
         speak(q.n + " Sterne! Richtig!");
         jingle();
-        ST.gold += 2;
         ST.lootDirty = true;
-        banner("🔭 +2" + COIN, 1800);
+        banner("🔭", 1800);
         return;
       }
       q.done = true;
@@ -12518,9 +12137,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
           tone([523, 659, 784, 1046]);
           if (!ST.orbGot[h.k]) {
             ST.orbGot[h.k] = 1;
-            ST.gold += 3;
             ST.lootDirty = true;
-            banner("🎶 +3" + COIN, 2e3);
+            banner("🎶", 2e3);
           }
         }
       }
@@ -12956,11 +12574,10 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (P.on && P.y < -3e3) for (const o of ORBS) {
         if (!o.i || ST.orbGot[o.i] || Math.hypot(P.x - o.x, P.y - o.y) > o.r + 30) continue;
         ST.orbGot[o.i] = 1;
-        ST.gold += 30;
         ST.lootDirty = true;
         confetti(P.x, P.y);
         jingle();
-        banner("⭐ +30" + COIN, 2400);
+        banner("⭐", 2400);
         say("", ORBN[o.k]);
         if (o.k === 2) disco(14);
       }
@@ -13397,24 +13014,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       circle(p.x + w * 0.3, cy - 8, 3.8);
       circle(p.x + w * 0.62, cy - 2, 2.4);
     }
-    function drawTramp(o) {
-      const sq = o.bt > time ? (o.bt - time) / 0.25 : 0;
-      ctx.strokeStyle = INK;
-      ctx.lineWidth = 3;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(o.x - 22, o.y);
-      ctx.lineTo(o.x - 18, o.y - 12);
-      ctx.moveTo(o.x + 22, o.y);
-      ctx.lineTo(o.x + 18, o.y - 12);
-      ctx.stroke();
-      ctx.strokeStyle = "#3aa0e8";
-      ctx.lineWidth = 5;
-      ctx.beginPath();
-      ctx.moveTo(o.x - 24, o.y - 12);
-      ctx.quadraticCurveTo(o.x, o.y - 12 + sq * 12, o.x + 24, o.y - 12);
-      ctx.stroke();
-    }
     function drawEgg(x, y) {
       ctx.fillStyle = "rgba(255,220,90,.35)";
       circle(x, y - 2, 17 + (reduced ? 0 : 2 * Math.sin(time * 5)));
@@ -13784,12 +13383,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         speak("Dafür brauchst du " + q[0] + " goldene Eier.");
         return;
       }
-      if (q[1] === "pet") {
-        hero.pet = hero.pet === q[2] ? "" : q[2];
-        pet.x = P.x;
-        pet.y = P.y - 16;
-      } else if (q[1] === "hat") hero.hat = hero.hat === q[2] ? "" : q[2];
-      else hero.trail = !hero.trail;
+      hero.trail = !hero.trail;
       tone([660]);
       saveHero();
       renderEggs();
@@ -13846,7 +13440,22 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         done: ["Die Lampe leuchtet jetzt weiter.", "Die Lampe leuchtet jetzt noch weiter.", "Die Sonnenlampe ist fertig! Jetzt ist es unter der Erde überall hell."]
       }
     };
-    const GEARK = ["dr", "rk", "lp"];
+    GEAR.hs = {
+      e: "🛡️",
+      n: "Schutz",
+      art: "den Schutz",
+      rc: [{ zr: 2 }, { zr: 3 }, { zr: 4 }],
+      what: ["Dann tut dir Feuer nichts mehr.", "Dann tut dir Lava nichts mehr.", "Dann tut dir der glühende Erdkern nichts mehr."],
+      done: ["Der Schutz ist fertig! Feuer tut dir jetzt nichts mehr.", "Der Schutz ist stärker! Lava tut dir jetzt nichts mehr.", "Der Schutz ist ganz stark! Jetzt tut dir sogar der Erdkern nichts mehr."]
+    };
+    const GEARK = ["dr", "rk", "lp", "hs"];
+    function gearLv(g) {
+      return (g === "hs" ? hero.up.heat : hero[g]) | 0;
+    }
+    function gearSet(g, v) {
+      if (g === "hs") hero.up.heat = v;
+      else hero[g] = v;
+    }
     let MATS = [], MACH = [], ZDEC = [], SPACE = {}, guide = null, klT = 0, klS = 0, klN = 0, labHi = false, dkA = 0, mhT = 0, liftBusy = false;
     const dkc = document.createElement("canvas"), dkx = dkc.getContext("2d");
     function skyLim() {
@@ -13917,7 +13526,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       sfx("pop");
       jingle();
       confetti(v.x - v.rx, v.fy - 30);
-      addXp(30);
       say("", "Die Wissenstür ist offen! Drinnen liegt ein Schatz.");
       dayAdd("z", "🚪");
       campSoon();
@@ -13987,14 +13595,12 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       hero.mat[k] = n;
       ST.heroDirty = true;
       sfx("coin");
-      addXp(6);
       qEvent("mat", 1);
       dayAdd("mat");
       for (let i = 0; i < 10; i++) spawn(5, m.x, m.y, (Math.random() - 0.5) * 180, -60 - Math.random() * 160, 0.7, 2);
       banner(MAT[k][0] + " " + n, 1500);
       if (k === "pk") {
         hero.mk.pk = 1;
-        ST.gold += 100;
         ST.lootDirty = true;
         confetti(m.x, m.y);
         jingle();
@@ -14013,7 +13619,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       labBadge(true);
     }
     function canBuild(g) {
-      const t = hero[g] | 0;
+      const t = gearLv(g);
       if (t >= 3) return false;
       const rc = GEAR[g].rc[t];
       for (const k in rc) if ((hero.mat[k] | 0) < rc[k]) return false;
@@ -14033,30 +13639,18 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function finale(n) {
       hero.fin |= n;
       if (n === 1) {
-        hero.own.alien = 1;
-        hero.pet = "alien";
-        pet.x = P.x;
-        pet.y = P.y - 16;
-        ST.gold += 200;
         for (let i = 0; i < 8; i++) later(i * 0.35, function() {
           firework(P.x - 240 + Math.random() * 480, P.y - 140 - Math.random() * 160);
         });
-        banner("🌟 +200" + COIN, 3e3);
-        say("", "Du hast das Sternentor erreicht, ganz am Ende vom Weltraum! Ein kleiner Außerirdischer will bei dir bleiben.");
+        banner("🌟", 3e3);
+        say("", "Du hast das Sternentor erreicht, ganz am Ende vom Weltraum!");
       } else {
-        hero.own.sala = 1;
-        hero.pet = "sala";
-        pet.x = P.x;
-        pet.y = P.y - 16;
-        ST.gold += 150;
-        ST.gems += 30;
-        banner("🌋 +150" + COIN + " +30" + GEMI, 3e3);
-        say("", "Du stehst auf dem glühenden Erdkern! Tiefer geht es nicht. Ein Feuersalamander will bei dir bleiben.");
+        banner("🌋", 3e3);
+        say("", "Du stehst auf dem glühenden Erdkern! Tiefer geht es nicht.");
       }
       ST.lootDirty = true;
       confetti(P.x, P.y);
       jingle();
-      addXp(120);
       saveHero();
       renderEggs();
       if (hero.fin === 3) later(10, function() {
@@ -14074,7 +13668,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
       pulse("btn-lab");
       tell([
-        ["Professor Zahnrad", "Hallo! Ich bin Professor Zahnrad. Meine Werkstatt steht jetzt neben dem Markt."],
+        ["Professor Zahnrad", "Hallo! Ich bin Professor Zahnrad. Meine Werkstatt steht jetzt bei dir zu Hause."],
         ["Professor Zahnrad", "Unter der Erde geht es jetzt viel tiefer, und der Weltraum ist riesig. Aber dafür brauchst du einen besseren Bohrer und eine stärkere Rakete."],
         ["Professor Zahnrad", "Die baue ich dir. Bring mir Material und Zahnräder. Zahnräder bekommst du von meinen Rätselmaschinen. Die erste steht gleich rechts neben dem Aufzug."]
       ]);
@@ -14093,7 +13687,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
             ST.seen["z" + z] = 1;
             jingle();
             confetti(P.x, P.y);
-            addXp(30);
             banner(R.zn[z - 1][0] + " ⭐", 2400);
             say("", "Du hast " + R.zn[z - 1][1] + " erreicht!");
             dayAdd("z", R.zn[z - 1][0]);
@@ -14104,7 +13697,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
           saveHero();
           jingle();
           confetti(P.x, P.y);
-          addXp(30);
           banner(ZN[z].e + " ⭐", 2400);
           say("", "Du hast " + ZN[z].n + " erreicht! Der Aufzug zu Hause fährt jetzt bis hierher.");
           dayAdd("z", ZN[z].e);
@@ -14127,11 +13719,10 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
           const o = SPACE[k];
           if (ST.orbGot[k] || Math.hypot(P.x - o.x, P.y - o.y) > o.r + 40) continue;
           ST.orbGot[k] = 1;
-          ST.gold += 30;
           ST.lootDirty = true;
           confetti(P.x, P.y);
           jingle();
-          banner("⭐ +30" + COIN, 2400);
+          banner("⭐", 2400);
           say("", k === "stn" ? "Du bist auf der Raumstation gelandet! Auf den großen Felsbrocken ringsum liegt Sternenerz." : k === "ice" ? "Du bist auf dem Eisplaneten gelandet! Hier liegen Eiskerne." : "Du bist auf dem Blubberplaneten gelandet! Hier wohnt Blubb.");
         }
         if (!(hero.fin & 1) && Math.hypot(P.x - SPACE.gate.x, P.y - SPACE.gate.y) < SPACE.gate.r + 40) finale(1);
@@ -14260,7 +13851,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       return guide ? matWhere(guide.k) : null;
     }
     function missing(g) {
-      const t = hero[g] | 0, rc = GEAR[g].rc[t], out = [];
+      const t = gearLv(g), rc = GEAR[g].rc[t], out = [];
       for (const k in rc) {
         const d = rc[k] - (hero.mat[k] | 0);
         if (d > 0) out.push(d + " " + MAT[k][d > 1 ? 2 : 1]);
@@ -14276,7 +13867,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       $("lab-inv").innerHTML = h;
       h = "";
       for (const g of GEARK) {
-        const G2 = GEAR[g], t = hero[g] | 0, rc = t < 3 ? G2.rc[t] : null, can = canBuild(g);
+        const G2 = GEAR[g], t = gearLv(g), rc = t < 3 ? G2.rc[t] : null, can = canBuild(g);
         h += '<div class="rc"><button class="tl" data-tl="' + g + '" aria-label="' + G2.n + ", Stufe " + t + ' von 3"><span aria-hidden="true">' + G2.e + '</span><i aria-hidden="true">' + "●".repeat(t) + "○".repeat(3 - t) + '</i></button><div class="need">';
         if (rc) for (const k in rc) {
           const n = hero.mat[k] | 0;
@@ -14300,11 +13891,11 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (!hero.deep) {
         hero.deep = true;
         saveHero();
-        speak("Das ist die Werkstatt von Professor Zahnrad. Hier siehst du, was du für einen besseren Bohrer, eine stärkere Rakete und eine hellere Lampe brauchst. Tippe auf ein Bild, dann sage ich dir, wo du es findest.");
+        speak("Das ist die Werkstatt von Professor Zahnrad. Hier siehst du, was du für einen besseren Bohrer, eine stärkere Rakete, eine hellere Lampe und einen Schutz gegen Feuer brauchst. Tippe auf ein Bild, dann sage ich dir, wo du es findest.");
       }
     }
     function labBuild(g) {
-      const G2 = GEAR[g], t = hero[g] | 0;
+      const G2 = GEAR[g], t = gearLv(g);
       if (t >= 3) {
         speak(G2.n + " ist schon ganz fertig.");
         return;
@@ -14317,18 +13908,17 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (!atLab()) {
         tone([170], "sawtooth");
         guide = { k: "lab", t: time + 120 };
-        speak("Du hast alles zusammen! Bauen kann aber nur Professor Zahnrad. Komm zur Werkstatt. Sie steht zu Hause neben dem Markt.");
+        speak("Du hast alles zusammen! Bauen kann aber nur Professor Zahnrad. Komm zur Werkstatt. Sie steht bei dir zu Hause.");
         return;
       }
       const rc = G2.rc[t];
       for (const k in rc) hero.mat[k] -= rc[k];
-      hero[g] = t + 1;
+      gearSet(g, t + 1);
       saveHero();
       guide = null;
       $("lab").hidden = true;
       confetti(P.x, P.y);
       jingle();
-      addXp(40);
       banner(G2.e + " " + "●".repeat(t + 1) + "○".repeat(2 - t), 2600);
       say("Professor Zahnrad", G2.done[t]);
       labBadge(false);
@@ -14347,7 +13937,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
       b = e.target.closest("[data-tl]");
       if (b) {
-        const g = b.dataset.tl, G2 = GEAR[g], t = hero[g] | 0;
+        const g = b.dataset.tl, G2 = GEAR[g], t = gearLv(g);
         speak(t >= 3 ? G2.n + " ist ganz fertig." : G2.n + ", Stufe " + (t + 1) + ". " + G2.what[t] + (canBuild(g) ? " Du hast alles dafür. Tippe auf den Hammer." : " Dafür fehlen noch " + missing(g) + "."));
         return;
       }
@@ -15021,19 +14611,17 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       c.busy = true;
       pzClear();
       LOG.pWin(c);
-      const id = c.T.id, first = !c.m.quiz && !ST.pzGot[c.m.id], clean = c.fails <= 1 && !c.hint, g = first ? 8 + 2 * c.lv : 3;
+      const id = c.T.id, first = !c.m.quiz && !ST.pzGot[c.m.id], clean = c.fails <= 1 && !c.hint;
       tone([523, 659, 784, 1047]);
       if (clean) hero.pz[id] = Math.min(9, (hero.pz[id] | 0) + 1);
       else if (c.fails >= 5 || c.hint >= 2) hero.pz[id] = Math.max(0, (hero.pz[id] | 0) - 1);
       hero.pzn = (hero.pzn | 0) + 1;
       dayAdd("pz");
       const segs = clean ? 5 : Math.max(1, 5 - c.fails - c.hint), full = segs >= 5 || ST.energy >= MAXE;
-      ST.gold += g;
       ST.lootDirty = true;
       ST.energy = Math.max(ST.energy, segs * SEG);
       battShown = -1;
       renderBatt();
-      addXp(first ? 20 : 6);
       qEvent("pz", 1);
       if (first) {
         ST.pzGot[c.m.id] = 1;
@@ -15042,7 +14630,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
       saveHero();
       $("pz-body").classList.add("win");
-      banner((first ? "⚙️ +1 &nbsp;" : "") + "+" + g + COIN, 2e3);
+      banner(first ? "⚙️ +1" : "⭐", 2e3);
       setTimeout(function() {
         if (pzc !== c) return;
         $("pz").hidden = true;
@@ -15697,7 +15285,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       return '<svg viewBox="0 0 24 24" aria-hidden="true">' + inner + "</svg>";
     }
     const LOCK = '<span class="lock">' + svg24(QI.lock) + "</span>";
-    $("grid").innerHTML = '<button class="btn veh cool" id="btn-veh" aria-label="Fahrzeug wählen">' + svg24(IC.walk) + LOCK + '</button><button class="btn cool" id="btn-tool" aria-label="Werkzeug wählen" aria-pressed="false">' + svg24(QI.hand) + LOCK + '</button><button class="btn gold" id="tasks" aria-label="Aufgaben">' + svg24(IC.star) + '<span class="badge" id="stars" hidden>0</span></button><button class="btn tale" id="btn-story" aria-label="Geschichte: Das Geheimnis vom Schneeberg">' + svg24(QI.book) + '<span class="badge" id="st-n" hidden>!</span></button><button class="btn" id="btn-map" aria-label="Karte: zu einem entdeckten Land reisen">' + svg24(QI.map) + '</button><button class="btn" id="btn-lab" aria-label="Werkstatt: Bohrer, Rakete und Lampe bauen">' + svg24(QI.lab) + '<span class="badge" id="lab-n" hidden>!</span></button><button class="btn" id="btn-finds" aria-label="Funde ansehen">' + svg24(QI.gem) + '<span class="badge" id="found" hidden>0</span></button><button class="btn" id="btn-menu" aria-label="Menü: Speichern, Ton, neue Welt, Vollbild, Spielstand umziehen">' + svg24(QI.gear) + "</button>";
+    $("grid").innerHTML = '<button class="btn veh cool" id="btn-veh" aria-label="Fahrzeug wählen">' + svg24(IC.walk) + LOCK + '</button><button class="btn cool" id="btn-tool" aria-label="Werkzeug wählen" aria-pressed="false">' + svg24(QI.hand) + LOCK + '</button><button class="btn gold" id="tasks" aria-label="Aufgaben">' + svg24(IC.star) + '<span class="badge" id="stars" hidden>0</span></button><button class="btn tale" id="btn-story" aria-label="Geschichte: Das Geheimnis vom Schneeberg">' + svg24(QI.book) + '<span class="badge" id="st-n" hidden>!</span></button><button class="btn" id="btn-map" aria-label="Karte: zu einem entdeckten Land reisen">' + svg24(QI.map) + '</button><button class="btn" id="btn-lab" aria-label="Werkstatt: Bohrer, Rakete, Lampe und Schutz bauen">' + svg24(QI.lab) + '<span class="badge" id="lab-n" hidden>!</span></button><button class="btn" id="btn-finds" aria-label="Funde ansehen">' + svg24(QI.gem) + '<span class="badge" id="found" hidden>0</span></button><button class="btn" id="btn-menu" aria-label="Menü: Speichern, Ton, neue Welt, Vollbild, Spielstand umziehen">' + svg24(QI.gear) + "</button>";
     $("save").innerHTML = svg24(QI.save);
     $("reset").innerHTML = svg24(IC.reset);
     $("exp").innerHTML = svg24(QI.exp);
@@ -15816,10 +15404,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       b.addEventListener("click", function() {
         $("toolbox").hidden = true;
         $("magic").hidden = true;
-        if (b.dataset.tool === "tnt" && hero.tnt <= 0) {
-          openMarket();
-          return;
-        }
         if (HANDT[b.dataset.tool]) {
           if (P.mode !== "walk") setMode("walk");
           setTool(b.dataset.tool);
@@ -15846,11 +15430,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     });
     tap($("save"), function() {
       saveGame(true);
-    });
-    tap($("mkt"), openMarket);
-    $("shop").addEventListener("click", function(e) {
-      const b = e.target.closest("[data-shop]");
-      if (b) buy(b.dataset.shop);
     });
     $("album").addEventListener("click", function(e) {
       const b = e.target.closest("[data-find]");
@@ -16198,7 +15777,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
     }
     function drain(dt) {
-      if (P.mode !== "walk" || ST.tool && !HANDT[ST.tool] && (!PAINT[ST.tool] || ST.energy <= 0)) {
+      if (P.mode !== "walk" || ST.tool && !HANDT[ST.tool] && (!PAINT[ST.tool] && ST.tool !== "tnt" || ST.energy <= 0)) {
         ST.energy -= dt;
         if (ST.energy <= 0) {
           ST.energy = 0;
@@ -16594,7 +16173,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       dayAdd("q");
       ST.energy = Math.min(MAXE, ST.energy + SEG);
       tone(how === "ok" ? [660, 880] : [520, 660]);
-      addXp(how === "ok" ? 8 : 4);
       qEvent("quiz", 1);
       battShown = -1;
       renderBatt();
@@ -17626,7 +17204,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (ST.task && !ST.task.done) drawPlan();
       if (chest) drawChest();
       drawFinds(true, x0, x1, y0, y1);
-      if (STALL_X > x0 - 50 && STALL_X < x1 + 50) drawStall();
       for (const o2 of ST.props) if (o2.x > x0 - 60 && o2.x < x1 + 60) drawProp(o2);
       drawWinter(x0, x1);
       drawWorldBack(x0, x1, y0, y1);
@@ -17932,7 +17509,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         const da = deepIcon();
         if (da) return da;
       }
-      if (P.mode === "walk") return nearStall() ? "shop" : nearLift() ? "lift" : ST.tool === "bow" ? "bow" : DIGT[ST.tool] ? "dig" : P.chute ? "down" : P.on || P.air < 0.15 ? "jump" : "chute";
+      if (P.mode === "walk") return nearLift() ? "lift" : ST.tool === "bow" ? "bow" : DIGT[ST.tool] ? "dig" : P.chute ? "down" : P.on || P.air < 0.15 ? "jump" : "chute";
       if (P.mode === "ski") return nearLift() ? "lift" : P.on || P.ball > 0 ? "jump" : "spin";
       if (P.mode === "dragon") return "flame";
       if (P.mode === "sub") return "sonar";
@@ -18985,6 +18562,23 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         console.error(e);
       }
     }
+    const GOLDZ = 50, GEMZ = 10;
+    function goldSwap() {
+      const g = Math.max(0, ST.gold | 0), m = Math.max(0, ST.gems | 0);
+      if (!g && !m) return;
+      const z = Math.ceil(g / GOLDZ) + Math.ceil(m / GEMZ);
+      hero.mat.zr = (hero.mat.zr | 0) + z;
+      hero.mk.zr = 1;
+      ST.gold = 0;
+      ST.gems = 0;
+      saveHero();
+      saveFinds();
+      labBadge(false);
+      setTimeout(function() {
+        banner("⚙️ +" + z, 2600);
+        say("", "Professor Zahnrad hat deinen Schatz in " + z + (z > 1 ? " Zahnräder" : " Zahnrad") + " getauscht. Damit kannst du in der Werkstatt bauen.");
+      }, 1300);
+    }
     function start() {
       resize();
       const go = function() {
@@ -19039,14 +18633,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         const today = (/* @__PURE__ */ new Date()).toDateString();
         if (hero.day !== today) {
           hero.day = today;
-          ST.gold += 20;
           saveHero();
-          saveFinds();
-          setTimeout(function() {
-            banner("🎁 +20" + COIN, 2400);
-          }, 1300);
         }
-        hudG = -1;
+        goldSwap();
         hudLoot();
         if (ST.energy <= 0) pulse("batt");
         requestAnimationFrame(function(t) {
