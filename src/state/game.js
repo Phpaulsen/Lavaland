@@ -13,6 +13,7 @@ export let gold=0, gems=0, lootDirty=false, heroDirty=false;
 
 /* Spielfigur, geparkte Fahrzeuge, Kamera, Verschieben der Ansicht, gedrückte Tasten (PR 14b) */
 export const P={mode:'walk',x:820,y:0,vx:0,vy:0,on:true,landed:false,gs:0,face:1,chute:false,air:0,run:0,ang:0,turbo:0,soot:0,hurt:0,track:null,s:0,v:0,arm:.75,load:0,digT:0,climb:0,lift:0,da:0,bed:0,ball:0,spin:0,rot:0,frost:0,jet:false,back:false,balT:0,wall:false,zip:null,swing:0,aim:0};
+/** @type {Record<string, any>} */
 export const parked={car:null,plane:null,rocket:null,bagger:null,loader:null,dumper:null,tbm:null,sub:null,balloon:null,heli:null,boat:null,bug:null};
 export const cam={x:820,y:-60}, pan={x:0,y:0};
 export const keys={l:false,r:false,u:false,d:false,a:false};
