@@ -94,17 +94,24 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 
 ### PR 7b: Neu zugewiesene Welt-Namen und die Fassade
 
-- **Bewegt:** neu zugewiesene Listen und Zähler aus `S04`/`S05` (`BIO`, `STR`, `CRE`, `PICKS`, `PADS`, `DECO`, `EGGS`, `LOOT`, `DROPS`, `genF`, `seen`, `eggGot`, `lootGot`, `orbGot` …, dazu `rx0`…`qx1`) → `state/world.js` mit Settern; die Fassade entsteht hier (`state/facade.js`). Ihr Name wird hier festgelegt (nicht `G`, das ist die Schwerkraft).
-- **Risiken:** höchstes Risiko bis hier. Die Namen werden in vielen Sektionen gelesen und neu zugewiesen, `rx0`…`qx1` im Zellautomat. **Absicherung:** Codemod statt Handarbeit, Move-Nachweis mit Fassade, Golden-Master Welt und Speicherformat, `perf.mjs` alt gegen neu. Wird auch 7b zu groß, wird weiter geteilt.
+- **Bewegt:** 16 Namen → `state/world.js` als `export let` mit je einem Setter (`setBIO`, `setStI`, `setSeen` …): `BIO`, `STR`, `CRE`, `PICKS`, `PADS`, `DECO`, `EGGS`, `LOOT`, `DROPS`, `stI`, `NT0`, `NC0`, `seen`, `eggGot`, `lootGot`, `orbGot`. Werte wie vorher.
+- **Fassade `ST`** (`state/facade.js`): ein Objekt mit get/set je Name, der Setter schreibt die Modulbindung. `legacy.js` liest und schreibt `ST.x`, umgeschrieben mit `codemod.mjs` (209 Bezüge, `ST` vorher auf Kollision geprüft).
+- **Abweichung: `genF` und `winC` bleiben in `legacy.js`.** Beide werden in Schleifen von `step` gelesen (`winC` je Zeile des Rechenfensters, `genF` je Spalte), `genF` auch je Kachel im Nebel. Über die Fassade kostete das messbar (`step` Median +0,01 ms, 90. Perzentil +0,06 ms, viermal gleich), und ADR 0001 Punkt 9 schließt Getter in heißen Schleifen aus. `winC` zieht mit dem Rechenfenster (`rx0`…`qx1`, `scanMobile`) in PR 9 um, `genF` mit der Weltgenerierung in PR 8, jeweils als direkte Bindung des Moduls, das sie schreibt.
+- **`rx0`, `rx1`, `qx0`, `qx1`** (`let`, in `step` getauscht) ziehen ebenfalls erst mit PR 9 um, nicht mit 7b.
+- **Werkzeug:** `movecheck.mjs` schreibt Fassadennamen jetzt nur um, wo kein gleichnamiger lokaler Name sie verdeckt (Parameter, `let`/`const`/`var`, Funktion, `catch`, wie `codemod.mjs`). Vorher meldete es lokale `seen` (`sheetPick`, `parNews`, `mkRohreWith`) als Abweichung. Drei neue Selbsttests, darunter einer, der eine fälschlich umgeschriebene lokale Variable rot meldet.
+- **Tests:** unverändert. `window.__ev` sieht die Namen weiter, weil esbuild die Modulbindungen in denselben Bundle-Scope legt; Golden Master liest sie so.
+- **Absicherung:** Move-Nachweis mit Fassade (16 bewegt, 0 geändert), Golden-Master Welt und Speicherformat, `perf.mjs` alt gegen neu.
 
 ### PR 8: Weltgenerierung
 
 - **Bewegt:** `shapeWorld`, `gen`, `genCol`, `build` und ihre Hilfen (`current.md` Abschnitt 7: 28 bzw. 27 Funktionen) → `core/world/gen.js`. Sie bekommen das Welt-Objekt als Parameter statt globaler Felder.
+- **Dazu `genF`** (aus PR 7b zurückgestellt): direkte Bindung, keine Fassade, weil `step` und der Nebel es in Schleifen lesen.
 - **Risiken:** Reihenfolge der `rng`-Aufrufe je Strom. **Absicherung:** Golden-Master Welt für alle Seeds und Welten; Move-Nachweis mit erlaubter Umschreibung „Feld → Parameter“.
 
 ### PR 9: Zellautomat
 
 - **Bewegt:** `step`, `react`, `steam` (`S05`, `index.html:1746`) → `core/world/sim.js`, Zufall als Parameter.
+- **Dazu das Rechenfenster** aus PR 7a/7b: `rx0`, `rx1`, `qx0`, `qx1`, `winC` (mit `scanMobile`), direkt gebunden, keine Fassade.
 - **Risiken:** Leistung; `step` läuft 30× pro Sekunde über die sichtbare Welt. **Absicherung:** `perf.mjs`, Fuzz-Test, Upgrade-Test.
 
 ### PR 10: Packen und Laden der Zellen
@@ -190,7 +197,7 @@ Je PR: `tick` und `draw(ctx, layer)` ins System, Zeichenaufruf in `draw()` an de
 
 ## 5. Größter Aufwand und Unsicherheit
 
-- Die Fassade heißt nicht `G`: `G` ist im Spiel schon die Schwerkraft (`index.html:924`). Name wird in PR 7 festgelegt (Vorschlag `ST`, vorher auf Kollision prüfen).
+- Die Fassade heißt nicht `G`: `G` ist im Spiel schon die Schwerkraft (`index.html:924`). Festgelegt in PR 7b: `ST` (`state/facade.js`). Wo der Plan ab PR 13 `G` als Fassade nennt, ist `ST` gemeint.
 - **PR 7 und 14** fassen die meisten Stellen an (Codemod). Wenn der Codemod nicht sauber trennt, werden sie geteilt, nicht vergrößert.
 - **PR 23** (`draw`) hat keinen Golden-Master außer dem Bildvergleich. Fehler sind dort sichtbar, aber nur in den drei Szenen.
 - Schätzung: 31 PRs ohne Streichen. Weil vor PR 16 gestrichen wird, fallen PR 20 großteils und Teile von 24 und 26 weg. PR 5 läuft vorher und zieht Echo und Sudoku noch mit um.
