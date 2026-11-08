@@ -700,8 +700,11 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
 (() => {
   // src/systems/index.js
   var SIDE = [];
-  function register(name, tick2) {
-    SIDE.push({ name, tick: tick2 });
+  function register(name, tick2, draw) {
+    SIDE.push(draw ? { name, tick: tick2, draw } : { name, tick: tick2 });
+  }
+  function drawLayer(ctx, layer, x0, x1) {
+    for (const s of SIDE) if (s.draw) s.draw(ctx, layer, x0, x1);
   }
   var SAFE = /* @__PURE__ */ new Map();
   function safeWith(errAdd, s, dt) {
@@ -5257,6 +5260,431 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
   };
 
+  // src/systems/sights.js
+  function geysersWith(SY) {
+    const a = SY.realm ? [] : [4280];
+    for (const b of ST.BIO) if (GEYT[b.t]) a.push(24 * Math.round((b.px + b.qx) / 48));
+    return a;
+  }
+  var GEYT = { 1: 1, 6: 1, 13: 1, 15: 1, 16: 1, 18: 1 };
+  var GEYS = [];
+  var geyKey = "";
+  function geyPhaseWith(SY, x) {
+    return (SY.time + x * 0.013) % 8;
+  }
+  function geyTickWith(SY, dt) {
+    const k = SY.realm + SY.SEED + ST.BIO.length;
+    if (k !== geyKey) {
+      geyKey = k;
+      GEYS = geysersWith(SY);
+    }
+    for (const x of GEYS) {
+      if (Math.abs(x - P.x) > SY.W / SY.S + 200) continue;
+      const ph = geyPhaseWith(SY, x), gy = SY.ground(x);
+      if (ph < 6) {
+        if (Math.random() < dt * (ph > 5 ? 14 : 3)) SY.spawn(7, x + (Math.random() - 0.5) * 10, gy - 4, (Math.random() - 0.5) * 20, -30 - Math.random() * 30, 0.9, 4 + Math.random() * 3);
+        continue;
+      }
+      if (Math.random() < dt * 60) {
+        SY.spawn(6, x + (Math.random() - 0.5) * 12, gy - 6, (Math.random() - 0.5) * 70, -560 - Math.random() * 240, 1.1, 3 + Math.random() * 2, "#7fd0ff");
+        SY.spawn(7, x, gy - 10, (Math.random() - 0.5) * 60, -200 - Math.random() * 200, 0.8, 7);
+      }
+      if (ph - dt < 6) {
+        sfx("whoosh");
+        if (Math.abs(x - P.x) < 400) SY.shout(x, gy - 80, "PSCHHH!", "#bfe9f5");
+      }
+      if (P.mode !== "coaster" && !P.zip && Math.abs(P.x - x) < 26 && P.y > gy - 300 && P.y < gy + 24) {
+        P.vy = Math.min(P.vy, -820);
+        P.on = false;
+        P.chute = false;
+        P.wall = false;
+        if (P.y > gy - 30) P.y -= 4;
+      }
+    }
+  }
+  function drawGeysWith(SY, ctx, x0, x1) {
+    for (const x of GEYS) {
+      if (x < x0 - 40 || x > x1 + 40) continue;
+      const gy = SY.ground(x), ph = geyPhaseWith(SY, x);
+      ctx.fillStyle = SY.INK;
+      ctx.beginPath();
+      ctx.ellipse(x, gy, 26, 9, 0, Math.PI, 0);
+      ctx.fill();
+      ctx.fillStyle = "#9aa7b4";
+      ctx.beginPath();
+      ctx.ellipse(x, gy, 23, 7, 0, Math.PI, 0);
+      ctx.fill();
+      ctx.fillStyle = "#3a6f9a";
+      ctx.beginPath();
+      ctx.ellipse(x, gy - 2, 9, 3, 0, 0, TAU);
+      ctx.fill();
+      if (ph >= 6) {
+        const h = Math.min(1, (ph - 6) * 4) * Math.min(1, (8 - ph) * 3) * 260;
+        ctx.fillStyle = "rgba(127,208,255,.75)";
+        ctx.beginPath();
+        ctx.moveTo(x - 8, gy - 2);
+        ctx.quadraticCurveTo(x - 14, gy - h * 0.6, x - 4, gy - h);
+        ctx.lineTo(x + 4, gy - h);
+        ctx.quadraticCurveTo(x + 14, gy - h * 0.6, x + 8, gy - 2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,.8)";
+        SY.circle(x, gy - h, 10);
+      }
+    }
+  }
+  var METS = [];
+  var MROCKS = [];
+  var metNext = 8;
+  function metSkyWith(SY) {
+    return SY.nightA > 0.7 || SY.realm && BT[bio[clamp(Math.floor(P.x / CELL), 0, GX - 1)]].space;
+  }
+  function metTickWith(SY, dt) {
+    if (metSkyWith(SY) && SY.time > metNext && P.y > -2e3) {
+      metNext = SY.time + 5 + Math.random() * 9;
+      const land = MROCKS.length < 3 && Math.random() < 0.4, d = Math.random() < 0.5 ? -1 : 1, tx = P.x + d * (140 + Math.random() * 240);
+      const sx = land ? tx - d * 520 : P.x + (Math.random() - 0.5) * 600, sy = P.y - SY.W / SY.S * 0.7 - 200;
+      const ty = land ? SY.ground(tx) : sy + 260 + Math.random() * 120, tt = land ? 1.4 : 1.1;
+      METS.push({ x: sx, y: sy, vx: (tx - sx) / tt, vy: (ty - sy) / tt, t: tt, land, tr: [] });
+    }
+    for (const m of METS.slice()) {
+      m.t -= dt;
+      if (m.g) m.vy += m.g * dt;
+      m.x += m.vx * dt;
+      m.y += m.vy * dt;
+      m.tr.unshift([m.x, m.y]);
+      if (m.tr.length > 14) m.tr.pop();
+      if (m.t > 0) continue;
+      METS.splice(METS.indexOf(m), 1);
+      if (m.land) {
+        const gy = SY.ground(m.x);
+        MROCKS.push({ x: m.x, y: gy, t: 0 });
+        sfx("pop");
+        for (let i = 0; i < 14; i++) SY.spawn(6, m.x, gy - 4, (Math.random() - 0.5) * 260, -120 - Math.random() * 220, 0.8, 3, "#ffd23f");
+        if (Math.abs(m.x - P.x) < 500) SY.shout(m.x, gy - 50, "BUMM!", "#ffd23f");
+      }
+    }
+    for (const r of MROCKS.slice()) {
+      r.t += dt;
+      r.y = SY.ground(r.x);
+      if (r.t > 60) {
+        MROCKS.splice(MROCKS.indexOf(r), 1);
+        continue;
+      }
+      if (Math.abs(P.x - r.x) < 28 && Math.abs(P.y - r.y) < 44) {
+        MROCKS.splice(MROCKS.indexOf(r), 1);
+        SY.reward();
+      }
+    }
+  }
+  function drawMetsWith(SY, ctx) {
+    for (const m of METS) {
+      for (let i = 1; i < m.tr.length; i++) {
+        const a = m.tr[i - 1], b = m.tr[i];
+        ctx.strokeStyle = "rgba(255,236,170," + (1 - i / m.tr.length) + ")";
+        ctx.lineWidth = 5 * (1 - i / m.tr.length) + 1;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(a[0], a[1]);
+        ctx.lineTo(b[0], b[1]);
+        ctx.stroke();
+      }
+      ctx.fillStyle = "#fff8e6";
+      SY.circle(m.x, m.y, 4.5);
+    }
+    for (const r of MROCKS) {
+      const cool = clamp((r.t - 40) / 20, 0, 1), gl = (1 - cool) * (0.6 + 0.4 * Math.sin(SY.time * 6 + r.x));
+      ctx.fillStyle = "rgba(255,200,60," + 0.35 * gl + ")";
+      SY.circle(r.x, r.y - 9, 22);
+      ctx.fillStyle = SY.INK;
+      SY.circle(r.x, r.y - 9, 11);
+      ctx.fillStyle = cool < 1 ? "#ff9a3c" : "#7a7068";
+      SY.circle(r.x, r.y - 9, 8.5);
+      ctx.fillStyle = "rgba(255,240,170," + gl + ")";
+      SY.circle(r.x - 3, r.y - 12, 2.8);
+    }
+  }
+  function wrecksWith(SY) {
+    const a = [];
+    for (const b of ST.BIO) if (b.t === 7) {
+      const x = 24 * Math.round((b.x0 + (b.x1 - b.x0) * 0.78) / 24);
+      a.push({ x, k: "wr" + (SY.realm || "") + b.i });
+    }
+    return a;
+  }
+  var WRECKS = [];
+  var wrKey = "";
+  function wreckTickWith(SY, dt) {
+    const k = SY.realm + SY.SEED + ST.BIO.length;
+    if (k !== wrKey) {
+      wrKey = k;
+      WRECKS = wrecksWith(SY);
+    }
+    for (const w of WRECKS) {
+      if (ST.orbGot[w.k] || Math.abs(w.x - P.x) > SY.W / SY.S + 200) continue;
+      const gy = SY.ground(w.x);
+      if (Math.random() < dt * 2.5) SY.spawn(7, w.x + (Math.random() - 0.5) * 8, gy - 14, (Math.random() - 0.5) * 10, -60 - Math.random() * 30, 1.6, 3 + Math.random() * 2);
+      if (Math.abs(P.x - w.x) < 30 && P.y > gy - 70 && P.y < gy + 20) {
+        ST.orbGot[w.k] = 1;
+        ST.lootDirty = true;
+        SY.confetti(w.x, gy - 20);
+        jingle();
+        SY.banner("🏴‍☠️", 2600);
+        SY.shout(w.x, gy - 60, "SCHATZ!", "#ffd23f");
+      }
+    }
+  }
+  function drawWrecksWith(SY, ctx, x0, x1) {
+    for (const w of WRECKS) {
+      if (w.x < x0 - 200 || w.x > x1 + 200) continue;
+      const gy = SY.ground(w.x), open = !!ST.orbGot[w.k];
+      ctx.save();
+      ctx.translate(w.x - 70, gy + 6);
+      ctx.rotate(-0.12);
+      ctx.fillStyle = SY.INK;
+      ctx.beginPath();
+      ctx.moveTo(-74, -34);
+      ctx.lineTo(54, -34);
+      ctx.lineTo(40, 0);
+      ctx.lineTo(-58, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#6b4a32";
+      ctx.beginPath();
+      ctx.moveTo(-70, -31);
+      ctx.lineTo(50, -31);
+      ctx.lineTo(38, -3);
+      ctx.lineTo(-56, -3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#4e3524";
+      ctx.fillRect(-64, -22, 108, 3);
+      ctx.fillStyle = "#1d2b3a";
+      SY.circle(-30, -17, 5);
+      SY.circle(-4, -17, 5);
+      SY.circle(22, -17, 5);
+      ctx.fillStyle = SY.INK;
+      ctx.fillRect(-12, -110, 7, 78);
+      ctx.fillStyle = "#8a6a4a";
+      ctx.fillRect(-10, -108, 3, 76);
+      ctx.fillStyle = "rgba(240,232,210,.7)";
+      ctx.beginPath();
+      ctx.moveTo(-5, -104);
+      ctx.lineTo(28, -80);
+      ctx.lineTo(-5, -58);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = SY.INK;
+      ctx.fillRect(w.x - 15, gy - 22, 30, 22);
+      ctx.fillStyle = "#b5762d";
+      ctx.fillRect(w.x - 13, gy - 20, 26, 18);
+      ctx.fillStyle = "#6b4a32";
+      ctx.fillRect(w.x - 13, gy - 13, 26, 3);
+      if (open) {
+        ctx.fillStyle = SY.INK;
+        ctx.fillRect(w.x - 15, gy - 34, 30, 8);
+        ctx.fillStyle = "#b5762d";
+        ctx.fillRect(w.x - 13, gy - 33, 26, 6);
+      } else {
+        ctx.fillStyle = "#ffd23f";
+        ctx.fillRect(w.x - 3, gy - 15, 6, 6);
+      }
+    }
+  }
+  var FLIES = [];
+  var JAR = [];
+  function flyTickWith(SY, dt) {
+    const night = SY.nightA > 0.5 && !SY.realm;
+    if (night && FLIES.length < 6 && P.y < 400 && Math.random() < dt * 1.5) {
+      const tr = SY.trees.filter(
+        /** @param {any} t */
+        function(t) {
+          return t.state === 0 && Math.abs(t.x - P.x) < SY.W / SY.S * 0.6;
+        }
+      );
+      if (tr.length) {
+        const t = tr[Math.floor(Math.random() * tr.length)];
+        FLIES.push({ hx: t.x + (Math.random() - 0.5) * 60, hy: t.gy - 30 - Math.random() * 70, x: t.x, y: t.gy - 40, ph: Math.random() * 9, t: 0 });
+      }
+    }
+    for (const f of FLIES.slice()) {
+      f.t += dt;
+      f.x = f.hx + Math.sin(f.t * 1.3 + f.ph) * 22;
+      f.y = f.hy + Math.sin(f.t * 1.9 + f.ph * 2) * 12;
+      if (!night && Math.random() < dt * 0.5 || Math.abs(f.x - P.x) > SY.W / SY.S * 1.5) {
+        FLIES.splice(FLIES.indexOf(f), 1);
+        continue;
+      }
+      if (JAR.length < 5 && Math.hypot(f.x - P.x, f.y - (P.y - 20)) < 26) {
+        FLIES.splice(FLIES.indexOf(f), 1);
+        JAR.push({ t: 120, a: Math.random() * TAU });
+        blip(900, 1400, 0.12, "sine", 0.05);
+      }
+    }
+    for (const j of JAR.slice()) {
+      j.t -= dt;
+      j.a += dt * 2.2;
+      if (j.t <= 0) JAR.splice(JAR.indexOf(j), 1);
+    }
+  }
+  function jarPosWith(SY, j) {
+    return [P.x + Math.cos(j.a) * 24, P.y - 34 + Math.sin(j.a * 1.7) * 10];
+  }
+  function drawFliesWith(SY, ctx) {
+    const k = 0.6 + 0.4 * Math.sin(SY.time * 5);
+    for (const f of FLIES) {
+      ctx.fillStyle = "rgba(200,255,90," + 0.35 * k + ")";
+      SY.circle(f.x, f.y, 10);
+      ctx.fillStyle = "#eaff8a";
+      SY.circle(f.x, f.y, 2.4);
+    }
+    for (const j of JAR) {
+      const p = jarPosWith(SY, j), fade = Math.min(1, j.t / 10);
+      ctx.fillStyle = "rgba(220,255,120," + 0.3 * k * fade + ")";
+      SY.circle(p[0], p[1], 8);
+      ctx.fillStyle = "rgba(234,255,138," + fade + ")";
+      SY.circle(p[0], p[1], 2.6);
+    }
+  }
+  var HARPN = [523, 587, 659, 784, 880];
+  var HARPC = ["#ff7aa8", "#ffb347", "#ffe066", "#7be0a8", "#7ab8ff"];
+  var HARPS = [];
+  var harpKey = "";
+  function harpTickWith(SY, dt) {
+    const k = SY.realm + SY.SEED + ST.BIO.length;
+    if (k !== harpKey) {
+      harpKey = k;
+      HARPS = [];
+      for (const b of ST.BIO) if (b.t === 8) {
+        const x0 = 24 * Math.round(b.px / 24) - 68;
+        HARPS.push({ x0, k: "hp" + (SY.realm || "") + b.i, last: -1, seq: [], sh: [0, 0, 0, 0, 0] });
+      }
+    }
+    for (const h of HARPS) {
+      for (let i2 = 0; i2 < 5; i2++) h.sh[i2] = Math.max(0, h.sh[i2] - dt * 2);
+      if (P.x < h.x0 - 30 || P.x > h.x0 + 166) {
+        h.last = -1;
+        continue;
+      }
+      const i = Math.round((P.x - h.x0) / 34);
+      if (i < 0 || i > 4) {
+        h.last = -1;
+        continue;
+      }
+      const cx = h.x0 + i * 34, gy = SY.ground(cx);
+      if (Math.abs(P.x - cx) > 12 || P.y < gy - 110 || P.y > gy + 20 || i === h.last) continue;
+      h.last = i;
+      h.sh[i] = 1;
+      tone([HARPN[i]], "sine");
+      SY.spawn(6, cx, gy - 30 - i * 10, (Math.random() - 0.5) * 60, -80, 0.8, 3, HARPC[i]);
+      h.seq.push(i);
+      if (h.seq.length > 5) h.seq.shift();
+      if (h.seq.join("") === "01234") {
+        h.seq = [];
+        SY.confetti(cx, gy - 60);
+        tone([523, 659, 784, 1046]);
+        if (!ST.orbGot[h.k]) {
+          ST.orbGot[h.k] = 1;
+          ST.lootDirty = true;
+          SY.banner("🎶", 2e3);
+        }
+      }
+    }
+  }
+  function drawHarpsWith(SY, ctx, x0, x1) {
+    for (const h of HARPS) {
+      if (h.x0 > x1 + 60 || h.x0 + 170 < x0 - 60) continue;
+      for (let i = 0; i < 5; i++) {
+        const cx = h.x0 + i * 34, gy = SY.ground(cx), ht = 34 + i * 11, w = 9, sh = h.sh[i] * Math.sin(SY.time * 40) * 2;
+        ctx.fillStyle = SY.INK;
+        ctx.beginPath();
+        ctx.moveTo(cx + sh, gy - ht - 4);
+        ctx.lineTo(cx + w + 2, gy - ht * 0.35);
+        ctx.lineTo(cx + w, gy + 2);
+        ctx.lineTo(cx - w, gy + 2);
+        ctx.lineTo(cx - w - 2, gy - ht * 0.35);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = HARPC[i];
+        ctx.beginPath();
+        ctx.moveTo(cx + sh, gy - ht);
+        ctx.lineTo(cx + w, gy - ht * 0.35);
+        ctx.lineTo(cx + w - 1, gy);
+        ctx.lineTo(cx - w + 1, gy);
+        ctx.lineTo(cx - w, gy - ht * 0.35);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255," + (0.35 + 0.5 * h.sh[i]) + ")";
+        ctx.beginPath();
+        ctx.moveTo(cx + sh - 1, gy - ht + 4);
+        ctx.lineTo(cx - w + 3, gy - ht * 0.35);
+        ctx.lineTo(cx - 3, gy - 4);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+  }
+  function sightsWith(SY) {
+    return [
+      { name: "geyTick", tick: (
+        /** @param {any} dt */
+        function(dt) {
+          geyTickWith(SY, dt);
+        }
+      ), draw: (
+        /** @param {CanvasRenderingContext2D} ctx @param {any} l @param {any} x0 @param {any} x1 */
+        function(ctx, l, x0, x1) {
+          if (l === "mid") drawGeysWith(SY, ctx, x0, x1);
+        }
+      ) },
+      { name: "metTick", tick: (
+        /** @param {any} dt */
+        function(dt) {
+          metTickWith(SY, dt);
+        }
+      ), draw: (
+        /** @param {CanvasRenderingContext2D} ctx @param {any} l */
+        function(ctx, l) {
+          if (l === "mid") drawMetsWith(SY, ctx);
+        }
+      ) },
+      { name: "wreckTick", tick: (
+        /** @param {any} dt */
+        function(dt) {
+          wreckTickWith(SY, dt);
+        }
+      ), draw: (
+        /** @param {CanvasRenderingContext2D} ctx @param {any} l @param {any} x0 @param {any} x1 */
+        function(ctx, l, x0, x1) {
+          if (l === "back") drawWrecksWith(SY, ctx, x0, x1);
+        }
+      ) },
+      { name: "flyTick", tick: (
+        /** @param {any} dt */
+        function(dt) {
+          flyTickWith(SY, dt);
+        }
+      ), draw: (
+        /** @param {CanvasRenderingContext2D} ctx @param {any} l */
+        function(ctx, l) {
+          if (l === "glow") drawFliesWith(SY, ctx);
+        }
+      ) },
+      { name: "harpTick", tick: (
+        /** @param {any} dt */
+        function(dt) {
+          harpTickWith(SY, dt);
+        }
+      ), draw: (
+        /** @param {CanvasRenderingContext2D} ctx @param {any} l @param {any} x0 @param {any} x1 */
+        function(ctx, l, x0, x1) {
+          if (l === "back") drawHarpsWith(SY, ctx, x0, x1);
+        }
+      ) }
+    ];
+  }
+
   // src/legacy.js
   (function() {
     "use strict";
@@ -7178,6 +7606,39 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     const AP = { get talkLock() {
       return ST.talkLock;
     }, vcMiss };
+    const SY = {
+      get S() {
+        return S;
+      },
+      get SEED() {
+        return SEED;
+      },
+      get W() {
+        return W;
+      },
+      get nightA() {
+        return nightA;
+      },
+      get realm() {
+        return realm;
+      },
+      get time() {
+        return time;
+      },
+      get INK() {
+        return INK;
+      },
+      get trees() {
+        return trees;
+      },
+      banner,
+      circle,
+      confetti,
+      ground,
+      reward,
+      shout,
+      spawn
+    };
     try {
       const mv = localStorage.getItem(K_MUTE);
       AU.muted = mv === "1";
@@ -7508,9 +7969,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       ST.zips = Array.isArray(sv.zips) ? sv.zips.filter(zipOk).slice(-ZIPMAX) : [];
       P.zip = null;
       MONS.length = 0;
-      METS = [];
-      MROCKS = [];
-      FLIES = [];
+      METS.length = 0;
+      MROCKS.length = 0;
+      FLIES.length = 0;
       ARROWS.length = 0;
       ST.tracks = [];
       (sv.tracks || []).forEach(function(t) {
@@ -7584,9 +8045,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       ST.zips = [];
       P.zip = null;
       MONS.length = 0;
-      METS = [];
-      MROCKS = [];
-      FLIES = [];
+      METS.length = 0;
+      MROCKS.length = 0;
+      FLIES.length = 0;
       ARROWS.length = 0;
       ST.props = [];
       bombs.length = 0;
@@ -10384,233 +10845,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         }
       }
     }
-    const GEYT = { 1: 1, 6: 1, 13: 1, 15: 1, 16: 1, 18: 1 };
-    function geysers() {
-      const a = realm ? [] : [4280];
-      for (const b of ST.BIO) if (GEYT[b.t]) a.push(24 * Math.round((b.px + b.qx) / 48));
-      return a;
-    }
-    let GEYS = [], geyKey = "";
-    function geyPhase(x) {
-      return (time + x * 0.013) % 8;
-    }
-    function geyTick(dt) {
-      const k = realm + SEED + ST.BIO.length;
-      if (k !== geyKey) {
-        geyKey = k;
-        GEYS = geysers();
-      }
-      for (const x of GEYS) {
-        if (Math.abs(x - P.x) > W / S + 200) continue;
-        const ph = geyPhase(x), gy = ground(x);
-        if (ph < 6) {
-          if (Math.random() < dt * (ph > 5 ? 14 : 3)) spawn(7, x + (Math.random() - 0.5) * 10, gy - 4, (Math.random() - 0.5) * 20, -30 - Math.random() * 30, 0.9, 4 + Math.random() * 3);
-          continue;
-        }
-        if (Math.random() < dt * 60) {
-          spawn(6, x + (Math.random() - 0.5) * 12, gy - 6, (Math.random() - 0.5) * 70, -560 - Math.random() * 240, 1.1, 3 + Math.random() * 2, "#7fd0ff");
-          spawn(7, x, gy - 10, (Math.random() - 0.5) * 60, -200 - Math.random() * 200, 0.8, 7);
-        }
-        if (ph - dt < 6) {
-          sfx("whoosh");
-          if (Math.abs(x - P.x) < 400) shout(x, gy - 80, "PSCHHH!", "#bfe9f5");
-        }
-        if (P.mode !== "coaster" && !P.zip && Math.abs(P.x - x) < 26 && P.y > gy - 300 && P.y < gy + 24) {
-          P.vy = Math.min(P.vy, -820);
-          P.on = false;
-          P.chute = false;
-          P.wall = false;
-          if (P.y > gy - 30) P.y -= 4;
-        }
-      }
-    }
-    function drawGeys(x0, x1) {
-      for (const x of GEYS) {
-        if (x < x0 - 40 || x > x1 + 40) continue;
-        const gy = ground(x), ph = geyPhase(x);
-        ctx.fillStyle = INK;
-        ctx.beginPath();
-        ctx.ellipse(x, gy, 26, 9, 0, Math.PI, 0);
-        ctx.fill();
-        ctx.fillStyle = "#9aa7b4";
-        ctx.beginPath();
-        ctx.ellipse(x, gy, 23, 7, 0, Math.PI, 0);
-        ctx.fill();
-        ctx.fillStyle = "#3a6f9a";
-        ctx.beginPath();
-        ctx.ellipse(x, gy - 2, 9, 3, 0, 0, TAU);
-        ctx.fill();
-        if (ph >= 6) {
-          const h = Math.min(1, (ph - 6) * 4) * Math.min(1, (8 - ph) * 3) * 260;
-          ctx.fillStyle = "rgba(127,208,255,.75)";
-          ctx.beginPath();
-          ctx.moveTo(x - 8, gy - 2);
-          ctx.quadraticCurveTo(x - 14, gy - h * 0.6, x - 4, gy - h);
-          ctx.lineTo(x + 4, gy - h);
-          ctx.quadraticCurveTo(x + 14, gy - h * 0.6, x + 8, gy - 2);
-          ctx.closePath();
-          ctx.fill();
-          ctx.fillStyle = "rgba(255,255,255,.8)";
-          circle(x, gy - h, 10);
-        }
-      }
-    }
-    let METS = [], MROCKS = [], metNext = 8;
-    function metSky() {
-      return nightA > 0.7 || realm && BT[bio[clamp(Math.floor(P.x / CELL), 0, GX - 1)]].space;
-    }
-    function metTick(dt) {
-      if (metSky() && time > metNext && P.y > -2e3) {
-        metNext = time + 5 + Math.random() * 9;
-        const land = MROCKS.length < 3 && Math.random() < 0.4, d = Math.random() < 0.5 ? -1 : 1, tx = P.x + d * (140 + Math.random() * 240);
-        const sx = land ? tx - d * 520 : P.x + (Math.random() - 0.5) * 600, sy = P.y - W / S * 0.7 - 200;
-        const ty = land ? ground(tx) : sy + 260 + Math.random() * 120, tt = land ? 1.4 : 1.1;
-        METS.push({ x: sx, y: sy, vx: (tx - sx) / tt, vy: (ty - sy) / tt, t: tt, land, tr: [] });
-      }
-      for (const m of METS.slice()) {
-        m.t -= dt;
-        if (m.g) m.vy += m.g * dt;
-        m.x += m.vx * dt;
-        m.y += m.vy * dt;
-        m.tr.unshift([m.x, m.y]);
-        if (m.tr.length > 14) m.tr.pop();
-        if (m.t > 0) continue;
-        METS.splice(METS.indexOf(m), 1);
-        if (m.land) {
-          const gy = ground(m.x);
-          MROCKS.push({ x: m.x, y: gy, t: 0 });
-          sfx("pop");
-          for (let i = 0; i < 14; i++) spawn(6, m.x, gy - 4, (Math.random() - 0.5) * 260, -120 - Math.random() * 220, 0.8, 3, "#ffd23f");
-          if (Math.abs(m.x - P.x) < 500) shout(m.x, gy - 50, "BUMM!", "#ffd23f");
-        }
-      }
-      for (const r of MROCKS.slice()) {
-        r.t += dt;
-        r.y = ground(r.x);
-        if (r.t > 60) {
-          MROCKS.splice(MROCKS.indexOf(r), 1);
-          continue;
-        }
-        if (Math.abs(P.x - r.x) < 28 && Math.abs(P.y - r.y) < 44) {
-          MROCKS.splice(MROCKS.indexOf(r), 1);
-          reward();
-        }
-      }
-    }
-    function drawMets() {
-      for (const m of METS) {
-        for (let i = 1; i < m.tr.length; i++) {
-          const a = m.tr[i - 1], b = m.tr[i];
-          ctx.strokeStyle = "rgba(255,236,170," + (1 - i / m.tr.length) + ")";
-          ctx.lineWidth = 5 * (1 - i / m.tr.length) + 1;
-          ctx.lineCap = "round";
-          ctx.beginPath();
-          ctx.moveTo(a[0], a[1]);
-          ctx.lineTo(b[0], b[1]);
-          ctx.stroke();
-        }
-        ctx.fillStyle = "#fff8e6";
-        circle(m.x, m.y, 4.5);
-      }
-      for (const r of MROCKS) {
-        const cool = clamp((r.t - 40) / 20, 0, 1), gl = (1 - cool) * (0.6 + 0.4 * Math.sin(time * 6 + r.x));
-        ctx.fillStyle = "rgba(255,200,60," + 0.35 * gl + ")";
-        circle(r.x, r.y - 9, 22);
-        ctx.fillStyle = INK;
-        circle(r.x, r.y - 9, 11);
-        ctx.fillStyle = cool < 1 ? "#ff9a3c" : "#7a7068";
-        circle(r.x, r.y - 9, 8.5);
-        ctx.fillStyle = "rgba(255,240,170," + gl + ")";
-        circle(r.x - 3, r.y - 12, 2.8);
-      }
-    }
-    function wrecks() {
-      const a = [];
-      for (const b of ST.BIO) if (b.t === 7) {
-        const x = 24 * Math.round((b.x0 + (b.x1 - b.x0) * 0.78) / 24);
-        a.push({ x, k: "wr" + (realm || "") + b.i });
-      }
-      return a;
-    }
-    let WRECKS = [], wrKey = "";
-    function wreckTick(dt) {
-      const k = realm + SEED + ST.BIO.length;
-      if (k !== wrKey) {
-        wrKey = k;
-        WRECKS = wrecks();
-      }
-      for (const w of WRECKS) {
-        if (ST.orbGot[w.k] || Math.abs(w.x - P.x) > W / S + 200) continue;
-        const gy = ground(w.x);
-        if (Math.random() < dt * 2.5) spawn(7, w.x + (Math.random() - 0.5) * 8, gy - 14, (Math.random() - 0.5) * 10, -60 - Math.random() * 30, 1.6, 3 + Math.random() * 2);
-        if (Math.abs(P.x - w.x) < 30 && P.y > gy - 70 && P.y < gy + 20) {
-          ST.orbGot[w.k] = 1;
-          ST.lootDirty = true;
-          confetti(w.x, gy - 20);
-          jingle();
-          banner("🏴‍☠️", 2600);
-          shout(w.x, gy - 60, "SCHATZ!", "#ffd23f");
-        }
-      }
-    }
-    function drawWrecks(x0, x1) {
-      for (const w of WRECKS) {
-        if (w.x < x0 - 200 || w.x > x1 + 200) continue;
-        const gy = ground(w.x), open = !!ST.orbGot[w.k];
-        ctx.save();
-        ctx.translate(w.x - 70, gy + 6);
-        ctx.rotate(-0.12);
-        ctx.fillStyle = INK;
-        ctx.beginPath();
-        ctx.moveTo(-74, -34);
-        ctx.lineTo(54, -34);
-        ctx.lineTo(40, 0);
-        ctx.lineTo(-58, 0);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = "#6b4a32";
-        ctx.beginPath();
-        ctx.moveTo(-70, -31);
-        ctx.lineTo(50, -31);
-        ctx.lineTo(38, -3);
-        ctx.lineTo(-56, -3);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = "#4e3524";
-        ctx.fillRect(-64, -22, 108, 3);
-        ctx.fillStyle = "#1d2b3a";
-        circle(-30, -17, 5);
-        circle(-4, -17, 5);
-        circle(22, -17, 5);
-        ctx.fillStyle = INK;
-        ctx.fillRect(-12, -110, 7, 78);
-        ctx.fillStyle = "#8a6a4a";
-        ctx.fillRect(-10, -108, 3, 76);
-        ctx.fillStyle = "rgba(240,232,210,.7)";
-        ctx.beginPath();
-        ctx.moveTo(-5, -104);
-        ctx.lineTo(28, -80);
-        ctx.lineTo(-5, -58);
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
-        ctx.fillStyle = INK;
-        ctx.fillRect(w.x - 15, gy - 22, 30, 22);
-        ctx.fillStyle = "#b5762d";
-        ctx.fillRect(w.x - 13, gy - 20, 26, 18);
-        ctx.fillStyle = "#6b4a32";
-        ctx.fillRect(w.x - 13, gy - 13, 26, 3);
-        if (open) {
-          ctx.fillStyle = INK;
-          ctx.fillRect(w.x - 15, gy - 34, 30, 8);
-          ctx.fillStyle = "#b5762d";
-          ctx.fillRect(w.x - 13, gy - 33, 26, 6);
-        } else {
-          ctx.fillStyle = "#ffd23f";
-          ctx.fillRect(w.x - 3, gy - 15, 6, 6);
-        }
-      }
-    }
     const SCOPEX = 1450;
     let SCQ = null;
     function nearScope() {
@@ -10708,133 +10942,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       ctx.fillStyle = "#9fd3ff";
       ctx.fillRect(24, -5, 2, 10);
       ctx.restore();
-    }
-    let FLIES = [], JAR = [];
-    function flyTick(dt) {
-      const night = nightA > 0.5 && !realm;
-      if (night && FLIES.length < 6 && P.y < 400 && Math.random() < dt * 1.5) {
-        const tr = trees.filter(function(t) {
-          return t.state === 0 && Math.abs(t.x - P.x) < W / S * 0.6;
-        });
-        if (tr.length) {
-          const t = tr[Math.floor(Math.random() * tr.length)];
-          FLIES.push({ hx: t.x + (Math.random() - 0.5) * 60, hy: t.gy - 30 - Math.random() * 70, x: t.x, y: t.gy - 40, ph: Math.random() * 9, t: 0 });
-        }
-      }
-      for (const f of FLIES.slice()) {
-        f.t += dt;
-        f.x = f.hx + Math.sin(f.t * 1.3 + f.ph) * 22;
-        f.y = f.hy + Math.sin(f.t * 1.9 + f.ph * 2) * 12;
-        if (!night && Math.random() < dt * 0.5 || Math.abs(f.x - P.x) > W / S * 1.5) {
-          FLIES.splice(FLIES.indexOf(f), 1);
-          continue;
-        }
-        if (JAR.length < 5 && Math.hypot(f.x - P.x, f.y - (P.y - 20)) < 26) {
-          FLIES.splice(FLIES.indexOf(f), 1);
-          JAR.push({ t: 120, a: Math.random() * TAU });
-          blip(900, 1400, 0.12, "sine", 0.05);
-        }
-      }
-      for (const j of JAR.slice()) {
-        j.t -= dt;
-        j.a += dt * 2.2;
-        if (j.t <= 0) JAR.splice(JAR.indexOf(j), 1);
-      }
-    }
-    function jarPos(j) {
-      return [P.x + Math.cos(j.a) * 24, P.y - 34 + Math.sin(j.a * 1.7) * 10];
-    }
-    function drawFlies() {
-      const k = 0.6 + 0.4 * Math.sin(time * 5);
-      for (const f of FLIES) {
-        ctx.fillStyle = "rgba(200,255,90," + 0.35 * k + ")";
-        circle(f.x, f.y, 10);
-        ctx.fillStyle = "#eaff8a";
-        circle(f.x, f.y, 2.4);
-      }
-      for (const j of JAR) {
-        const p = jarPos(j), fade = Math.min(1, j.t / 10);
-        ctx.fillStyle = "rgba(220,255,120," + 0.3 * k * fade + ")";
-        circle(p[0], p[1], 8);
-        ctx.fillStyle = "rgba(234,255,138," + fade + ")";
-        circle(p[0], p[1], 2.6);
-      }
-    }
-    const HARPN = [523, 587, 659, 784, 880], HARPC = ["#ff7aa8", "#ffb347", "#ffe066", "#7be0a8", "#7ab8ff"];
-    let HARPS = [], harpKey = "";
-    function harpTick(dt) {
-      const k = realm + SEED + ST.BIO.length;
-      if (k !== harpKey) {
-        harpKey = k;
-        HARPS = [];
-        for (const b of ST.BIO) if (b.t === 8) {
-          const x0 = 24 * Math.round(b.px / 24) - 68;
-          HARPS.push({ x0, k: "hp" + (realm || "") + b.i, last: -1, seq: [], sh: [0, 0, 0, 0, 0] });
-        }
-      }
-      for (const h of HARPS) {
-        for (let i2 = 0; i2 < 5; i2++) h.sh[i2] = Math.max(0, h.sh[i2] - dt * 2);
-        if (P.x < h.x0 - 30 || P.x > h.x0 + 166) {
-          h.last = -1;
-          continue;
-        }
-        const i = Math.round((P.x - h.x0) / 34);
-        if (i < 0 || i > 4) {
-          h.last = -1;
-          continue;
-        }
-        const cx = h.x0 + i * 34, gy = ground(cx);
-        if (Math.abs(P.x - cx) > 12 || P.y < gy - 110 || P.y > gy + 20 || i === h.last) continue;
-        h.last = i;
-        h.sh[i] = 1;
-        tone([HARPN[i]], "sine");
-        spawn(6, cx, gy - 30 - i * 10, (Math.random() - 0.5) * 60, -80, 0.8, 3, HARPC[i]);
-        h.seq.push(i);
-        if (h.seq.length > 5) h.seq.shift();
-        if (h.seq.join("") === "01234") {
-          h.seq = [];
-          confetti(cx, gy - 60);
-          tone([523, 659, 784, 1046]);
-          if (!ST.orbGot[h.k]) {
-            ST.orbGot[h.k] = 1;
-            ST.lootDirty = true;
-            banner("🎶", 2e3);
-          }
-        }
-      }
-    }
-    function drawHarps(x0, x1) {
-      for (const h of HARPS) {
-        if (h.x0 > x1 + 60 || h.x0 + 170 < x0 - 60) continue;
-        for (let i = 0; i < 5; i++) {
-          const cx = h.x0 + i * 34, gy = ground(cx), ht = 34 + i * 11, w = 9, sh = h.sh[i] * Math.sin(time * 40) * 2;
-          ctx.fillStyle = INK;
-          ctx.beginPath();
-          ctx.moveTo(cx + sh, gy - ht - 4);
-          ctx.lineTo(cx + w + 2, gy - ht * 0.35);
-          ctx.lineTo(cx + w, gy + 2);
-          ctx.lineTo(cx - w, gy + 2);
-          ctx.lineTo(cx - w - 2, gy - ht * 0.35);
-          ctx.closePath();
-          ctx.fill();
-          ctx.fillStyle = HARPC[i];
-          ctx.beginPath();
-          ctx.moveTo(cx + sh, gy - ht);
-          ctx.lineTo(cx + w, gy - ht * 0.35);
-          ctx.lineTo(cx + w - 1, gy);
-          ctx.lineTo(cx - w + 1, gy);
-          ctx.lineTo(cx - w, gy - ht * 0.35);
-          ctx.closePath();
-          ctx.fill();
-          ctx.fillStyle = "rgba(255,255,255," + (0.35 + 0.5 * h.sh[i]) + ")";
-          ctx.beginPath();
-          ctx.moveTo(cx + sh - 1, gy - ht + 4);
-          ctx.lineTo(cx - w + 3, gy - ht * 0.35);
-          ctx.lineTo(cx - 3, gy - 4);
-          ctx.closePath();
-          ctx.fill();
-        }
-      }
     }
     function drawHandTool() {
       if (!HANDT[ST.tool] || P.mode !== "walk" || P.zip) return;
@@ -15765,11 +15872,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         }
       }
       drawZips(x0, x1);
-      drawWrecks(x0, x1);
-      drawHarps(x0, x1);
+      drawLayer(ctx, "back", x0, x1);
       drawScope(x0, x1);
-      drawGeys(x0, x1);
-      drawMets();
+      drawLayer(ctx, "mid", x0, x1);
       drawArrows();
       drawMons(false);
       if (ST.tool === "track") {
@@ -15864,7 +15969,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       drawWorldFront();
       drawDark();
       drawMons(true);
-      drawFlies();
+      drawLayer(ctx, "glow", x0, x1);
       if (bx1 >= bx0) {
         const cx0 = Math.max(bx0, Math.floor(x0 / CELL), 1), cx1 = Math.min(bx1, Math.floor(x1 / CELL), GX - 2);
         const cy0 = Math.max(by0, Math.floor((y0 - TOP) / CELL), 1), cy1 = Math.min(by1, Math.floor((y1 - TOP) / CELL), GY - 2);
@@ -17046,11 +17151,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     register("arrowsTick", arrowsTick);
     register("monTick", monTick);
-    register("geyTick", geyTick);
-    register("metTick", metTick);
-    register("wreckTick", wreckTick);
-    register("flyTick", flyTick);
-    register("harpTick", harpTick);
+    for (const s of sightsWith(SY)) register(s.name, s.tick, s.draw);
     register("worldTick", worldTick);
     register("deepTick", deepTick);
     register("winterTick", winterTick);

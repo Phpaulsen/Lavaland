@@ -67,6 +67,9 @@ jobs:
           git fetch --depth=1 origin main
           git show FETCH_HEAD:index.html > "$RUNNER_TEMP/old.html"
           OLD="$RUNNER_TEMP/old.html" node tests/upgrade.mjs
+      - name: Bildvergleich mit main (drei feste Szenen, Zeichenreihenfolge)
+        if: github.event_name == 'pull_request'
+        run: OLD="$RUNNER_TEMP/old.html" node tests/pixels.mjs
       - name: Vorlesetexte haben Aufnahmen
         run: |
           node tools/voice/collect.mjs > "$RUNNER_TEMP/texts.json"
