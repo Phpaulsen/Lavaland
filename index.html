@@ -12921,6 +12921,79 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     });
   }
 
+  // src/core/world/grow.js
+  function migrateSnowWith(WG) {
+    for (let cx = SNC0; cx < Math.min(WG.genF, SNC1); cx++) WG.winterCol(cx);
+    WG.carveCave();
+    const up = (
+      /** @param {any} o */
+      function(o) {
+        if (o && o.x > SL0 && o.x < BEND && o.y > msurf(o.x)) o.y = msurf(o.x);
+      }
+    );
+    for (const k in WG.parked) up(WG.parked[k]);
+    WG.ST.props.forEach(up);
+    if (WG.P.x > SL0 && WG.P.y > msurf(WG.P.x) && WG.P.y < rawH(WG.P.x) + 8) WG.P.y = msurf(WG.P.x) - 2;
+    for (const h of WG.ST.hidden) {
+      if (h.got || h.x < SL0) continue;
+      if (h.tree >= 0 && WG.trees[h.tree]) {
+        const t = WG.trees[h.tree];
+        h.y = t.gy - t.h - 4;
+      } else if (h.zone === "shallow" || h.zone === "edge") h.y -= rawH(h.x) - msurf(h.x);
+      else if (h.zone === "sky" && h.y > msurf(h.x) - 20) h.y = msurf(h.x) - 24;
+    }
+  }
+  function planetGenWith(WG) {
+    WG.grid.fill(0);
+    WG.LIFE.clear();
+    WG.stamp.fill(0);
+    WG.genF = 0;
+    WG.ST.stI = 0;
+    growWith(WG, LANDX + 3200);
+  }
+  function growWith(WG, toX) {
+    const c1 = Math.min(GX, Math.ceil(toX / CELL) + 1);
+    if (c1 <= WG.genF) return;
+    for (let cx = WG.genF; cx < c1; cx++) WG.genCol(cx);
+    WG.genF = c1;
+    while (WG.ST.stI < WG.ST.STR.length && WG.ST.STR[WG.ST.stI].c1 < WG.genF) {
+      WG.build(WG.ST.STR[WG.ST.stI]);
+      WG.ST.stI++;
+    }
+  }
+  function loadCellsWith(WG, sv) {
+    const old = sv.v < 4, f0 = sv.v >= 3 ? sv.f : HOME_GX;
+    let f = Math.min(f0, GX);
+    if (old && sv.v === 3) f = Math.min(f, Math.floor((WG.OLD_END - 300) / CELL));
+    WG.cutX = 0;
+    if (sv.v >= 4 && !sv.w && f > Math.floor((WG.OLD_END - 300) / CELL)) {
+      f = Math.floor((WG.OLD_END - 300) / CELL);
+      WG.cutX = f * CELL - 300;
+    }
+    WG.grid.fill(0);
+    if (sv.v >= 5) {
+      if (!WG.unpackRuns(sv.runs, f0)) throw new Error("runs");
+    } else {
+      const rows = old ? KEEPR : GY;
+      for (let cy = 0; cy < rows; cy++) WG.grid.set(sv.grid.subarray(cy * f0, cy * f0 + f), cy * GX);
+    }
+    WG.genF = sv.v >= 3 ? f : HOME_GX - 1;
+    if (old) for (let cx = 0; cx < WG.genF; cx++) WG.genCol(cx, KEEPR);
+    WG.ST.stI = 0;
+    while (WG.ST.stI < WG.ST.STR.length && WG.ST.STR[WG.ST.stI].c1 < WG.genF) {
+      if (old && WG.ST.STR[WG.ST.stI].nw) WG.build(WG.ST.STR[WG.ST.stI]);
+      WG.ST.stI++;
+    }
+    if (!sv.vt && !old) {
+      for (const s of WG.ST.STR) if (s.k === "vault" && s.c1 < WG.genF) WG.build(s);
+    }
+    WG.ST.seen = sv.seen || {};
+    WG.ST.eggGot = sv.eggGot || {};
+    WG.ST.lootGot = sv.lootGot || {};
+    WG.ST.orbGot = sv.orbGot || {};
+    WG.ST.DROPS = [];
+  }
+
   // src/legacy.js
   (function() {
     "use strict";
@@ -13344,22 +13417,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       return carveCaveWith(WD);
     }
     function migrateSnow() {
-      for (let cx = SNC0; cx < Math.min(genF, SNC1); cx++) winterCol(cx);
-      carveCave();
-      const up = function(o) {
-        if (o && o.x > SL0 && o.x < BEND && o.y > msurf(o.x)) o.y = msurf(o.x);
-      };
-      for (const k in parked) up(parked[k]);
-      ST.props.forEach(up);
-      if (P.x > SL0 && P.y > msurf(P.x) && P.y < rawH(P.x) + 8) P.y = msurf(P.x) - 2;
-      for (const h of ST.hidden) {
-        if (h.got || h.x < SL0) continue;
-        if (h.tree >= 0 && trees[h.tree]) {
-          const t = trees[h.tree];
-          h.y = t.gy - t.h - 4;
-        } else if (h.zone === "shallow" || h.zone === "edge") h.y -= rawH(h.x) - msurf(h.x);
-        else if (h.zone === "sky" && h.y > msurf(h.x) - 20) h.y = msurf(h.x) - 24;
-      }
+      return migrateSnowWith(WG);
     }
     let SEED = 1;
     function setCell(cx, cy, m, lf) {
@@ -13573,22 +13631,10 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       return genWith(WD);
     }
     function planetGen() {
-      grid.fill(0);
-      LIFE.clear();
-      stamp.fill(0);
-      genF = 0;
-      ST.stI = 0;
-      grow(LANDX + 3200);
+      return planetGenWith(WG);
     }
     function grow(toX) {
-      const c1 = Math.min(GX, Math.ceil(toX / CELL) + 1);
-      if (c1 <= genF) return;
-      for (let cx = genF; cx < c1; cx++) genCol(cx);
-      genF = c1;
-      while (ST.stI < ST.STR.length && ST.STR[ST.stI].c1 < genF) {
-        build(ST.STR[ST.stI]);
-        ST.stI++;
-      }
+      return growWith(WG, toX);
     }
     function packRuns(f) {
       return packRunsWith(grid, f);
@@ -13597,37 +13643,39 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       return unpackRunsWith(grid, b, f);
     }
     let cutX = 0;
+    const WG = {
+      get genF() {
+        return genF;
+      },
+      set genF(v) {
+        genF = v;
+      },
+      parked,
+      ST,
+      P,
+      get trees() {
+        return trees;
+      },
+      grid,
+      LIFE,
+      stamp,
+      get OLD_END() {
+        return OLD_END;
+      },
+      get cutX() {
+        return cutX;
+      },
+      set cutX(v) {
+        cutX = v;
+      },
+      build,
+      carveCave,
+      genCol,
+      unpackRuns,
+      winterCol
+    };
     function loadCells(sv) {
-      const old = sv.v < 4, f0 = sv.v >= 3 ? sv.f : HOME_GX;
-      let f = Math.min(f0, GX);
-      if (old && sv.v === 3) f = Math.min(f, Math.floor((OLD_END - 300) / CELL));
-      cutX = 0;
-      if (sv.v >= 4 && !sv.w && f > Math.floor((OLD_END - 300) / CELL)) {
-        f = Math.floor((OLD_END - 300) / CELL);
-        cutX = f * CELL - 300;
-      }
-      grid.fill(0);
-      if (sv.v >= 5) {
-        if (!unpackRuns(sv.runs, f0)) throw new Error("runs");
-      } else {
-        const rows = old ? KEEPR : GY;
-        for (let cy = 0; cy < rows; cy++) grid.set(sv.grid.subarray(cy * f0, cy * f0 + f), cy * GX);
-      }
-      genF = sv.v >= 3 ? f : HOME_GX - 1;
-      if (old) for (let cx = 0; cx < genF; cx++) genCol(cx, KEEPR);
-      ST.stI = 0;
-      while (ST.stI < ST.STR.length && ST.STR[ST.stI].c1 < genF) {
-        if (old && ST.STR[ST.stI].nw) build(ST.STR[ST.stI]);
-        ST.stI++;
-      }
-      if (!sv.vt && !old) {
-        for (const s of ST.STR) if (s.k === "vault" && s.c1 < genF) build(s);
-      }
-      ST.seen = sv.seen || {};
-      ST.eggGot = sv.eggGot || {};
-      ST.lootGot = sv.lootGot || {};
-      ST.orbGot = sv.orbGot || {};
-      ST.DROPS = [];
+      return loadCellsWith(WG, sv);
     }
     function putUp(cx, cy, t) {
       if (cx < 1 || cx >= GX - 1) return;
