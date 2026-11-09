@@ -61,9 +61,13 @@ test('Escape schließt die Aufgabe und gibt das Spiel frei', async ({ ev, page }
 
 test('Zahnrad 3 s halten öffnet die Rechensperre, kurz tippen das Menü', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false");
+  await page.evaluate(() => { window.__gearEv = []; ['pointerdown', 'pointerup', 'click'].forEach((n) => document.addEventListener(n, (e) => window.__gearEv.push(n + ':' + (e.target.id || e.target.className || e.target.tagName) + ':' + (document.getElementById('menu').hidden ? 'zu' : 'offen')), true)); });
   const [x, y] = await page.evaluate(() => { const r = document.getElementById('btn-menu').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; });
   await page.mouse.move(x, y); await page.mouse.down(); await page.waitForTimeout(150); await page.mouse.up(); await page.waitForTimeout(300);
-  if (await ev("$('menu').hidden") || !(await ev("$('pgate').hidden"))) throw new Error('Kurzes Tippen öffnet nicht nur das Menü');
+  if (await ev("$('menu').hidden") || !(await ev("$('pgate').hidden"))) {
+    const d = await page.evaluate(([x, y]) => { const e = document.elementFromPoint(x, y); return 'menu ' + (document.getElementById('menu').hidden ? 'zu' : 'offen') + ', Sperre ' + (document.getElementById('pgate').hidden ? 'zu' : 'offen') + ', unter dem Zeiger ' + (e ? e.tagName + '#' + e.id + '.' + e.className : '-') + ', Ereignisse ' + (window.__gearEv || []).join(' '); }, [x, y]);
+    throw new Error('Kurzes Tippen öffnet nicht nur das Menü (' + d + ')');
+  }
   await ev("OVS.forEach(o=>o.hidden=true)");
   await page.mouse.down(); await page.waitForTimeout(3300); await page.mouse.up(); await page.waitForTimeout(300);
   if (await ev("$('pgate').hidden")) throw new Error('Rechensperre nach 3 s Halten nicht offen');
