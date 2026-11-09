@@ -48,7 +48,7 @@ import { takeWith, baggerActWith, loaderActWith, dumperActWith, boreWith, updCar
 import { gravWith, parkWith, setModeWith, rotWith, bucketWith, scoopWith, drillHeadWith, doActionWith, burnWith, moverWith, updateWith, nearLiftWith, rideLiftWith, liftRideWith, zipOkWith, zipAddWith, zipNearWith, handDigWith } from './systems/player/player.js';
 import { restoreWith, newRealmWith, travelWith, resetWorldWith, frameWith, startWith } from './app/app.js';
 import { migrateSnowWith, planetGenWith, growWith, loadCellsWith } from './core/world/grow.js';
-import { rlmWith, setRealmWith, wcWith, realm, RW, RX0, RC0, RC1 } from './state/realm.js';
+import { rlmWith, setRealmWith, wcWith, realm, RW, RX0, RC0, RC1, newSeed } from './state/realm.js';
 import { pal, setPal, drawCellsWith } from './render/cells.js';
 import { headWith, drawKidWith, drawChuteWith, drawCarWith, drawBaggerWith, drawLoaderWith, drawDumperWith, drawTbmWith, drawRocketWith, drawPlaneWith, drawCartWith, drawSubWith, drawBalloonWith, drawHeliWith, drawBoatWith, drawBugWith, drawZipsWith, drawHandToolWith } from './render/vehicles.js';
 import { rrWith, circleWith, mixWith, lerpCWith, emoWith, arrowWith, knobWith, drawTreeWith, drawCloudWith, drawSpaceWith, hillsWith, drawDarkWith, drawFarWith, drawNebulaWith, drawFindsWith, drawPropWith, drawDoorWith, drawScopeWith } from './render/scenery.js';
@@ -61,6 +61,13 @@ import { setToolWith, syncUIWith, pulseWith, flashWith, bannerWith, postMaxWith,
 import { dayLoadWith, daySaveWith, dayAddWith, dayTickWith, limCheckWith, campSoonWith, pluralWith, openCampWith, campRestWith, goldSwapWith } from './systems/day.js';
 import { errLoad, errAdd, vcMiss } from './persistence/errlog.js';
 import { skyLim, nextLand, eggLand } from './state/progress.js';
+import { optSaveWith, voiceSaveWith, marksLoadWith } from './persistence/prefs.js';
+import { star4With, pointToWith } from './render/hints.js';
+import { bakDoneWith, bakSaveWith, bakPickWith } from './ui/backup.js';
+import { keyShortWith, canScrollWith } from './ui/keys.js';
+import { demoTrackWith } from './systems/tracks.js';
+import { Q, trackAt } from './core/world/track.js';
+import { FX, fxSpeed, kidScale } from './state/fx.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -143,7 +150,15 @@ window.addEventListener('unhandledrejection',function(e){ const r=e&&e.reason; e
 const cv=$('c'); let ctx=cv.getContext('2d');
 /* Elternoptionen: Höhlenmonster an/aus, ruhige Darstellung (wie „Bewegung reduzieren“ im System). */
 let OPT={mon:true,calm:false}; try{ const o=JSON.parse(localStorage.getItem(K_OPT)||'{}')||{}; OPT.mon=o.mon!==false; OPT.calm=o.calm===true; }catch(_){}
-function optSave(){ try{ localStorage.setItem(K_OPT,JSON.stringify(OPT)); }catch(_){} }
+function optSave(){ return optSaveWith(PF); }
+/* Einstellungen und Leuchtmarken speichern (persistence/prefs.js) */
+const PF={
+  get OPT(){ return OPT; },
+  get VOICE(){ return VOICE; },
+  get MKS(){ return MKS; },
+  get MKMAX(){ return MKMAX; },
+  mkKey
+};
 const reducedSys=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
 let reduced=reducedSys||OPT.calm;
 const K='#1d2a3a';
@@ -467,26 +482,11 @@ for(const c of clouds) HOME_C.push(Object.assign({},c));
 
 /* ---------- Schienen ---------- */
 function makeTrack(raw,user){ return makeTrackWith(WD,raw,user); }
-const Q={x:0,y:0,tx:1,ty:0};
-function trackAt(T,s){
-  const n=T.pts.length, f=clamp(s/8,0,n-1.001), i=Math.floor(f), u=f-i;
-  const a=T.pts[i], b=T.pts[i+1], p=T.pts[Math.max(0,i-1)], q=T.pts[Math.min(n-1,i+2)];
-  Q.x=a[0]+(b[0]-a[0])*u; Q.y=a[1]+(b[1]-a[1])*u;
-  const tx=q[0]-p[0], ty=q[1]-p[1], l=Math.hypot(tx,ty)||1;
-  Q.tx=tx/l; Q.ty=ty/l;
-  return Q;
-}
-function demoTrack(){
-  let b=1e9; for(let x=1040;x<=1960;x+=40) b=Math.min(b,ground(x));
-  b-=26;
-  const raw=[[1050,b],[1090,b-10]];
-  for(let i=1;i<=10;i++) raw.push([1090+i*14,b-10-i*26]);
-  for(let i=1;i<=12;i++){ const t=i/12; raw.push([1230+t*150,b-270+(1-Math.cos(t*Math.PI))/2*265]); }
-  for(let i=0;i<=24;i++){ const a=i/24*TAU; raw.push([1440+70*Math.sin(a)+a*5,b-75+70*Math.cos(a)]); }
-  for(let i=1;i<=14;i++){ const t=i/14; raw.push([1471+t*330,b-5-80*Math.sin(t*Math.PI)-t*40]); }
-  raw.push([1840,b-15],[1880,b-5],[1920,b-15],[1950,b-40]);
-  return makeTrack(raw,false);
-}
+function demoTrack(){ return demoTrackWith(TK); }
+/* Vorführbahn (systems/tracks.js) */
+const TK={
+  makeTrack
+};
 
 /* ---------- Teilchen ---------- */
 const parts=[];
@@ -650,7 +650,7 @@ cv.addEventListener('pointercancel',endPointer);
 /* ---------- Ton und Sprache (Klänge und Vorlesen in src/audio/sound.js; hier, was Speicher und Spielzustand braucht) ---------- */
 try{ const o=JSON.parse(localStorage.getItem(K_VOICE)||'null'); if(o&&typeof o==='object'){ if(typeof o.v==='string') VOICE.v=o.v.slice(0,120); if(VRATES.indexOf(o.r)>=0) VOICE.r=o.r; } }catch(_){}
 try{ if('speechSynthesis' in window) speechSynthesis.addEventListener('voiceschanged',function(){ if(typeof parLoad==='function'&&!$('par').hidden) parLoad(); }); }catch(_){}
-function voiceSave(){ try{ localStorage.setItem(K_VOICE,JSON.stringify(VOICE)); }catch(_){} }
+function voiceSave(){ return voiceSaveWith(PF); }
 /* Sätze ohne Aufnahme merken (die letzten 40), damit sie beim nächsten Erzeugen dazukommen. Sie stehen in der Elternansicht. */
 function speak(text){ return speakWith(AP,text); }
 const AP={ get talkLock(){ return ST.talkLock; }, vcMiss };
@@ -1016,7 +1016,19 @@ function saveFinds(){ return saveFindsWith(SV); }
 function placeFind(zone,r){ return placeFindWith(TW,zone,r); }
 function hideFinds(){ return hideFindsWith(TW); }
 function findOpen(h){ return findOpenWith(DP,h); }
-function star4(x,y,r){ ctx.beginPath(); ctx.moveTo(x,y-r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.quadraticCurveTo(x,y,x,y+r); ctx.quadraticCurveTo(x,y,x-r,y); ctx.quadraticCurveTo(x,y,x,y-r); ctx.fill(); }
+function star4(x,y,r){ return star4With(HI,ctx,x,y,r); }
+/* Funkeln und Zielpfeil (render/hints.js) */
+const HI={
+  get S(){ return S; },
+  get W(){ return W; },
+  get H(){ return H; },
+  get reduced(){ return reduced; },
+  get time(){ return time; },
+  get DPR(){ return DPR; },
+  get INK(){ return INK; },
+  arrow,
+  circle
+};
 function drawFinds(front,x0,x1,y0,y1){ return drawFindsWith(SC,ctx,front,x0,x1,y0,y1); }
 function renderAlbum(){ return renderAlbumWith(TW); }
 
@@ -1028,7 +1040,6 @@ function packStep(){ return packStepWith(SV); }
 function saveGame(manual){ return saveGameWith(SV,manual); }
 function autosave(dt){ return autosaveWith(SV,dt); }
 function restore(sv){ return restoreWith(APP,sv); }
-function newSeed(){ return 1+Math.floor(Math.random()*999983); }
 
 /* ---------- Reisen zwischen den Welten: Die Welt, die man verlässt, wird gespeichert, die neue geladen oder zum ersten Mal erzeugt. ---------- */
 let portalT=0, portalOff='', exitHint=false, portO=null;
@@ -1051,16 +1062,7 @@ const BOMBE=15;
 function dropBomb(x,y){ return dropBombWith(TW,x,y); }
 function blast(x,y){ return blastWith(TW,x,y); }
 function drawProp(o){ return drawPropWith(SC,ctx,o); }
-/* Pfeil zu einem Ziel: im Bild direkt darüber, sonst am Bildrand. */
-function pointTo(mx,my,col){
-  const sx=(mx-cam.x)*S+W/2, sy=(my-cam.y)*S+H/2, topS=Math.min(H*.4,215), botS=H-Math.min(H*.3,170);
-  if(sx>24&&sx<W-24&&sy>topS-40&&sy<botS){ arrow(mx,my-16+(reduced?0:5*Math.sin(time*6)),Math.PI/2,13,col); return; }
-  ctx.save(); ctx.setTransform(DPR,0,0,DPR,0,0);
-  const ex=clamp(sx,34,W-34), ey=clamp(sy,topS,botS);
-  ctx.fillStyle='rgba(255,248,230,.92)'; circle(ex,ey,24); ctx.strokeStyle=INK; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(ex,ey,24,0,TAU); ctx.stroke();
-  arrow(ex,ey,Math.atan2(sy-ey,sx-ex),13,col);
-  ctx.restore();
-}
+function pointTo(mx,my,col){ return pointToWith(HI,ctx,mx,my,col); }
 
 /* ---------- Aufträge: Immer ein kleines Ziel mit Belohnung. Die ersten sieben führen durch das Spiel. Danach zeigt der Auftrag auf das nächste Ziel
    in der Tiefe oder im Weltraum (Vereinfachungsplan Schritt 3). Ist es noch zu, nennt er das fehlende Gerät und schickt zu den Rätselmaschinen.
@@ -1176,7 +1178,6 @@ function drawFront(){ return drawFrontWith(WM,ctx); }
 function drawSnowfall(){ return drawSnowfallWith(WM,ctx); }
 
 /* ---------- Leben in der großen Welt: Tiere, Fundsachen, Sprungpilze, goldene Eier, Schätze, Planeten, U-Boot, Karte und versteckte Späße ---------- */
-const FX={hot:0,slip:0,sugar:0,big:0,tiny:0,pump:0,star:0,float:0,stink:0,rainbow:0,sonar:0};
 const PETS={dog:'🐕',cat:'🐈',dragon:'🐉',chick:'🐥',dino:'🦕',rex:'🦖',uni:'🦄',ghost:'👻',robot:'🤖',ufo:'🛸',alien:'👽',sala:'🦎'}, EHAT={cap:'🧢',grad:'🎓',helm:'⛑️'};
 /* Belohnungen für goldene Eier: Anzahl, Art, Kennung, Name */
 /* Haustiere und Hüte gibt es nicht mehr (Vereinfachungsplan Schritt 2). Für goldene Eier bleibt die Regenbogen-Spur. */
@@ -1201,12 +1202,6 @@ const EGGSVG='<svg viewBox="0 0 24 24" aria-hidden="true">'+QI.egg+'</svg>';
 let eruT=40, eruOn=0;
 let skySay=0, ufo=null, ufoNext=20, skyRb=0, tkN=0, tkT=0, nightOn=false, nightA=0, discoT=0, beatT=0, keySeq='', dTaps=[], idleT=0, zT=0, skyBonk=0, bolt=null, mapPg=0, slipWas=false;
 
-function fxSpeed(){ return (FX.slip>0?2.5:1)*(FX.hot>0?1.7:1)*(FX.sugar>0?1.8:1)*(FX.star>0?1.4:1)*(FX.rainbow>0?1.6:1)*(FX.big>0?1.2:1)*(FX.tiny>0?.8:1); }
-function kidScale(){
-  if(FX.big>0) return 1+1.2*Math.min(1,(12-FX.big)*4,FX.big*2);
-  if(FX.tiny>0) return 1-.55*Math.min(1,(12-FX.tiny)*4,FX.tiny*2);
-  return 1;
-}
 
 /* ---------- Tiere ---------- */
 function creHit(c,tap){ return creHitWith(CR,c,tap); }
@@ -1665,13 +1660,7 @@ const CRYC=['#7fe3f0','#c77dff','#ff9fd0'], CRYH=[30,46,38,24];
 /* ---------- Leuchtmarken: Unter der Erde kann man bis zu acht Lichter setzen, um sich Stellen zu merken. Sie leuchten im Dunkeln und stehen auf der Karte. ---------- */
 const MKMAX=8, MKS={};
 function mkKey(){ return mkKeyWith(ZO); }
-function marks(){
-  const k=mkKey(); if(MKS[k]) return MKS[k];
-  let a=[]; try{ a=JSON.parse(localStorage.getItem(k)||'[]'); }catch(_){}
-  if(!Array.isArray(a)) a=[];
-  MKS[k]=a.filter(function(m){ return Array.isArray(m)&&isFinite(m[0])&&isFinite(m[1]); }).slice(0,MKMAX);
-  return MKS[k];
-}
+function marks(){ return marksLoadWith(PF); }
 function mkSave(){ return mkSaveWith(ZO); }
 let mkShown=null;
 function mkTap(){ return mkTapWith(DP); }
@@ -1929,41 +1918,21 @@ $('sound').addEventListener('click',function(){
 /* ---------- Spielstand umziehen: Alles aus diesem Browser (Welt, Held, Funde, Einstellungen, Protokoll) als eine Datei. Der Speicher gehört zur Adresse, darum braucht der Umzug vom Artefakt auf eine eigene Seite oder in die Homescreen-App diesen Weg. ---------- */
 let bakIn=null;
 function bakMake(){ return bakMakeWith(TP); }
-function bakDone(ok){
-  if(ok){ flash('exp','ok'); tone([660,880]); try{ localStorage.setItem(K_BAK_AT,String(Date.now())); }catch(_){} }
-  else { flash('exp','warn'); tone([170],'sawtooth'); }
-}
-function bakSave(){
-  bakMake().then(function(b){
-    const name='lavaland-'+b.at.slice(0,10)+'.json';
-    const blob=new Blob([JSON.stringify(b)],{type:'application/json'});
-    const dl=function(){
-      try{
-        const a=document.createElement('a'), u=URL.createObjectURL(blob);
-        a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(function(){ URL.revokeObjectURL(u); },4000); bakDone(true);
-      }catch(_){ bakDone(false); }
-    };
-    let f=null;
-    try{ f=new File([blob],name,{type:'application/json'}); }catch(_){}
-    if(f&&navigator.canShare&&navigator.canShare({files:[f]})){
-      navigator.share({files:[f]}).then(function(){ bakDone(true); },function(e){ if(e&&e.name==='AbortError') return; dl(); });
-    } else dl();
-  },function(){ bakDone(false); });
-}
-function bakPick(file){
-  if(!file) return;
-  if(file.size>BAK_MAX){ flash('imp','warn'); tone([170],'sawtooth'); return; }
-  const rd=new FileReader();
-  rd.onload=function(){
-    let b=null;
-    try{ b=JSON.parse(rd.result); }catch(_){}
-    if(!bakOk(b)){ flash('imp','warn'); tone([170],'sawtooth'); return; }
-    bakIn=b; $('menu').hidden=true; $('imp-ok').hidden=false; speak('Spielstand laden? Die Welt hier wird dann ersetzt.');
-  };
-  rd.onerror=function(){ flash('imp','warn'); tone([170],'sawtooth'); };
-  rd.readAsText(file);
-}
+function bakDone(ok){ return bakDoneWith(BK,ok); }
+/* Spielstand als Datei sichern und wählen (ui/backup.js) */
+const BK={
+  get K_BAK_AT(){ return K_BAK_AT; },
+  get BAK_MAX(){ return BAK_MAX; },
+  get bakOk(){ return bakOk; },
+  get bakIn(){ return bakIn; },
+  set bakIn(v){ bakIn=v; },
+  get $(){ return $; },
+  bakMake,
+  flash,
+  speak
+};
+function bakSave(){ return bakSaveWith(BK); }
+function bakPick(file){ return bakPickWith(BK,file); }
 function bakLoad(){ return bakLoadWith(TP); }
 
 /* ---------- Vollbild im Browser-Tab (Android, Desktop). iPhone kennt das nicht, dort hilft nur „Zum Home-Bildschirm“. Als installierte App ist das Spiel schon im Vollbild, der Knopf bleibt dann weg. ---------- */
@@ -2136,26 +2105,19 @@ window.addEventListener('keydown',function(e){
 });
 /* Tastenkürzel für Tablet-Tastatur und Laptop: dieselben Knöpfe wie oben in der Leiste. Fragezeichen zeigt die Liste. */
 const SHORT={f:'btn-veh',t:'btn-tool',k:'btn-map',e:'batt',m:'btn-menu'};
-function keyShort(k){
-  if(k==='x'){ if(P.mode!=='walk') setMode('walk'); else if(ST.tool) setTool(null,true); return; }
-  if(k==='?'||k==='h'){ banner('⌨️ F Fahrzeuge · T Werkzeug · K Karte · E Aufgabe · B Buch · M Menü · X Aussteigen',4200); return; }
-  const el=SHORT[k]&&$(SHORT[k]);
-  if(el&&!el.hidden&&el.offsetParent) el.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}));
-}
+function keyShort(k){ return keyShortWith(KY,k); }
+/* Tastenkürzel und Wischen in Fenstern (ui/keys.js) */
+const KY={
+  get SHORT(){ return SHORT; },
+  get $(){ return $; },
+  banner,
+  setMode,
+  setTool
+};
 window.addEventListener('keyup',function(e){ const k=keymap[e.key]; if(k) keys[k]=false; if(e.key===' ') keys.a=false; });
 window.addEventListener('blur',function(){ keys.l=keys.r=keys.u=keys.d=keys.a=false; });
 document.addEventListener('contextmenu',function(e){ e.preventDefault(); });
-// Wischen bleibt gesperrt, damit die Seite beim Spielen nicht wackelt. Ausnahme: ein Fenster hat mehr Inhalt als Platz (Elternansicht, Rechentafel, Karte, Fenster im Querformat).
-function canScroll(n){
-  for(;n&&n.nodeType===1&&n!==document.body;n=n.parentElement){
-    if(n.scrollHeight>n.clientHeight+1||n.scrollWidth>n.clientWidth+1){
-      const cs=getComputedStyle(n);
-      if(n.scrollHeight>n.clientHeight+1&&/auto|scroll/.test(cs.overflowY)) return true;
-      if(n.scrollWidth>n.clientWidth+1&&/auto|scroll/.test(cs.overflowX)) return true;
-    }
-  }
-  return false;
-}
+function canScroll(n){ return canScrollWith(KY,n); }
 document.addEventListener('touchmove',function(e){ if(!canScroll(e.target)) e.preventDefault(); },{passive:false});
 document.addEventListener('gesturestart',function(e){ e.preventDefault(); });
 
