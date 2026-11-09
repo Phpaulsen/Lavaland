@@ -39,15 +39,18 @@ import * as acorn from 'acorn';
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 
-/** Top-Level-Deklarationen und sonstige Anweisungen einer Datei. In legacy.js zählt der Körper der äußeren IIFE als oberste Ebene. */
+/** Top-Level-Deklarationen und sonstige Anweisungen einer Datei. In legacy.js zählt der Körper der äußeren IIFE als oberste Ebene, in app/wire.js der Körper von wire(). */
 export function topOf(code, file) {
   const ast = acorn.parse(code, { ecmaVersion: 'latest', sourceType: 'module', allowHashBang: true });
   const decl = new Map(), stmts = [];
+  let inWire = false; // im Körper von wire() gelten dieselben Regeln wie im IIFE-Körper von legacy.js (auch für innere IIFEs)
   const take = body => {
     for (let s of body) {
       if (s.type === 'ImportDeclaration') continue;
       if ((s.type === 'ExportNamedDeclaration' || s.type === 'ExportDefaultDeclaration') && s.declaration) s = s.declaration;
-      if (s.type === 'ExpressionStatement' && s.expression.type === 'CallExpression' && s.expression.callee.type === 'FunctionExpression' && !s.expression.arguments.length && /(^|\/)legacy\.js$/.test(file)) { take(s.expression.callee.body.body); continue; }
+      if (s.type === 'ExpressionStatement' && s.expression.type === 'CallExpression' && s.expression.callee.type === 'FunctionExpression' && !s.expression.arguments.length && (inWire || /(^|\/)legacy\.js$/.test(file))) { take(s.expression.callee.body.body); continue; }
+      // Ab 29g2e steht der frühere IIFE-Körper als export function wire(){…} in app/wire.js und zählt genauso als oberste Ebene.
+      if (s.type === 'FunctionDeclaration' && s.id.name === 'wire' && !s.params.length && /(^|\/)app\/wire\.js$/.test(file)) { inWire = true; take(s.body.body); inWire = false; continue; }
       if (s.type === 'FunctionDeclaration' || s.type === 'ClassDeclaration') { add(s.id.name, s); continue; }
       if (s.type === 'VariableDeclaration' && s.declarations.every(d => d.id.type === 'Identifier')) {
         for (const d of s.declarations) add(d.id.name, { type: 'Var', kind: s.kind, init: d.init });
@@ -276,6 +279,8 @@ function filesNow() {
 function selftest() {
   const L = b => '(function(){\n' + b + '\n})();';
   const T = [
+    ['IIFE-Körper nach wire() bewegt', { 'legacy.js': L('function a(){return 1}\na();') }, { 'legacy.js': 'import {wire} from "./app/wire.js";\nwire();', 'app/wire.js': 'export function wire(){function a(){return 1}\na();}' }, { stmtsAdded: 1 }, 0],
+    ['wire() verändert', { 'legacy.js': L('function a(){return 1}\na();') }, { 'legacy.js': 'import {wire} from "./app/wire.js";\nwire();', 'app/wire.js': 'export function wire(){function a(){return 2}\na();}' }, { stmtsAdded: 1 }, 1],
     ['unverändert', { 'legacy.js': L('function a(){return 1}') }, { 'legacy.js': L('function a(){return 1}') }, {}, 0],
     ['bewegt', { 'legacy.js': L('function a(){return 1}') }, { 'legacy.js': L(''), 'core/a.js': 'export function a(){return 1}' }, {}, 0],
     ['bewegt und verändert', { 'legacy.js': L('function a(){return 1}') }, { 'legacy.js': L(''), 'core/a.js': 'export function a(){return 2}' }, {}, 1],
