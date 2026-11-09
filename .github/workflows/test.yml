@@ -32,7 +32,7 @@ jobs:
         run: node tools/build.mjs
       - name: Statische Prüfung (Syntax, Größe, IDs, Speicherschlüssel)
         run: node tests/static.mjs
-      - name: Typprüfung (neue Module, legacy.js ausgenommen)
+      - name: Typprüfung (alle Module, app/wire.js bis zum Aufräumen ausgenommen)
         run: npx tsc -p .
       - name: Schichtregeln (deps.mjs) und Selbsttests der Umbauwerkzeuge
         run: |
@@ -40,6 +40,9 @@ jobs:
           node tools/arch/deps.mjs
           node tools/arch/movecheck.mjs --selftest
           node tools/arch/codemod.mjs --selftest
+          node tools/arch/doc.mjs --selftest
+      - name: Architekturdoku aktuell (docs/architecture/architecture.md)
+        run: node tools/arch/doc.mjs --check
       - name: Move-Nachweis gegen main (tools/arch/moves.json)
         if: github.event_name == 'pull_request'
         run: |
