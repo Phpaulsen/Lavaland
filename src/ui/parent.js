@@ -1,5 +1,5 @@
 /* ---------- Elternansicht: Schranke, Auswertung des Spielprotokolls, Schulstand, Neuigkeiten, Speicher, Fehler, Stimme, Übungsblatt, Rechentafel-Balken ---------- */
-// PR 27a. Bewegt aus legacy.js. Das Protokoll selbst liegt in log/, das Laden der Daten (errLoad, dayLoad) und die Zustände bleiben in legacy.js. Die Handler stehen seit 29g2c in parBindWith (Port PB).
+// PR 27a. Bewegt aus legacy.js. Das Protokoll selbst liegt in log/, das Laden der Daten (errLoad, dayLoad) und die Zustände bleiben in app/wire.js. Die Handler stehen seit 29g2c in parBindWith (Port PB).
 // Was die Elternansicht vom übrigen Spiel braucht, kommt über den Port PV. parLoad, parRender und guessed laufen auch hier über den Port,
 // weil sie als Rückruf weitergegeben werden (setTimeout, then, sort); der Move-Nachweis kennt nur Aufrufe.
 import { speakStop, voicesDe, VCLIP, VRATES, VOICE, synth } from '../audio/sound.js';
@@ -273,7 +273,7 @@ export function parBarsWith(PV,all){
   g+='<text x="0" y="9">'+minsWith(PV,mx)+'</text>';
   return '<svg class="par-ch" viewBox="0 0 '+W+' '+(H+16)+'" role="img" aria-label="Spielzeit je Tag, letzte 14 Tage">'+g+'</svg>';
 }
-/* Elternansicht, Rechentafel und Lagerfeuer verdrahten. PR 29g2c: Die Anweisungen auf oberster Ebene aus legacy.js stehen unverändert in parBindWith, legacy.js ruft es an der alten Stelle; alles aus legacy.js kommt über den Port PB. */
+/* Elternansicht, Rechentafel und Lagerfeuer verdrahten. PR 29g2c: Die Anweisungen auf oberster Ebene aus legacy.js stehen unverändert in parBindWith, app/wire.js ruft es an der alten Stelle; alles aus legacy.js kommt über den Port PB. */
 /** @param {Port} PB */
 export function parBindWith(PB){
 PB.$('menu').querySelector('.sheet').addEventListener('pointerdown',/** @param {any} e */ function(e){

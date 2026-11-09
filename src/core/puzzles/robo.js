@@ -1,5 +1,5 @@
 // Rätsel „Roboter“: Weg mit den wenigsten Richtungswechseln. Bewegt aus legacy.js (PR 5). Der Generator bekommt Zufall (rand) und gelesenen Zustand als Parameter;
-// legacy.js ruft ihn über einen Einzeiler mit Math.random. Zeichnen, Tippen, Hinweis und Vorlesen bleiben in legacy.js.
+// app/wire.js ruft ihn über einen Einzeiler mit Math.random. Zeichnen, Tippen, Hinweis und Vorlesen bleiben in app/wire.js.
 import { shuffleWith } from '../rng.js';
 import { idxs } from './util.js';
 

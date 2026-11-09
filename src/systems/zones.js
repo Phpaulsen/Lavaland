@@ -1,6 +1,6 @@
 /* ---------- Unter Tage: Erkundungsnebel, Werkstatt-Stufen, Zonen und harte Schichten, Wissenstüren, Heimweg aus der Tiefe, Maschinen und Werkstatt-Nähe, Leuchtmarken speichern und Dunkelheit ---------- */
 // PR 29e2. Bewegt aus legacy.js. Was die Funktionen vom übrigen Spiel brauchen, kommt über den Port ZO; die Speicherschlüssel K_FOG und K_MARKS kommen über den Port (Schichtregel).
-// pzOpen läuft über einen Getter (Tests ersetzen es), canBuild über den Port (Rückruf). In legacy.js bleiben marks (marksWith gibt es schon in systems/deep.js) und skyLim (die Weltentstehung ruft es vor dem Port). legacy.js ruft alle Funktionen über Einzeiler.
+// pzOpen läuft über einen Getter (Tests ersetzen es), canBuild über den Port (Rückruf). In app/wire.js bleiben marks (marksWith gibt es schon in systems/deep.js) und skyLim (die Weltentstehung ruft es vor dem Port). app/wire.js ruft alle Funktionen über Einzeiler.
 import { clamp, TOP, CELL, GX, SH, BED, KEEPR } from '../core/world/const.js';
 import { realm, RC0, RC1 } from '../state/realm.js';
 import { bix, zS3, zS2, z4, zS1, rH, rD, grid } from '../state/world.js';

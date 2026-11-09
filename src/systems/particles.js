@@ -1,6 +1,6 @@
 /* ---------- Teilchen erzeugen: Obergrenze, Funken, Rauch, Staub, Konfetti und Explosion ---------- */
 // PR 29d2. Bewegt aus legacy.js. Die Teilchenliste parts, CONF, maxDpr, reduced und shake (mit Setter) kommen über den Port PA.
-// legacy.js ruft alle Funktionen über Einzeiler (viele Abschnitte und Ports).
+// app/wire.js ruft alle Funktionen über Einzeiler (viele Abschnitte und Ports).
 import { CELL, TOP, FIRE } from '../core/world/const.js';
 import { colTop, putUp } from '../state/queries.js';
 import { sfx } from '../audio/sound.js';

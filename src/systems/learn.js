@@ -1,7 +1,7 @@
 /* ---------- Lernkern-Rest: Akku leeren, Antwortauswahl, Tageszahl, Fakten laden, Fakt wählen, Fakt verbuchen, Meisterstein, Aufgabe erzeugen, Schulstand speichern ---------- */
-// PR 29c. Bewegt aus legacy.js. Zustand (FS, SCH, kindHist, retry, lastF, lastDom) bleibt vorerst in legacy.js und kommt mit Settern über den Port LK.
-// Die Speicherschlüssel K_FACTS, K_SKILL, K_SCHOOL kommen über den Port (systems/ darf persistence/ nicht importieren). legacy.js ruft alle Funktionen über Einzeiler (Start, Ports QZ, PV und Tests).
-// genQ ruft pickFact über den Port (Getter auf den Einzeiler), damit Tests ihn in legacy.js ersetzen können.
+// PR 29c. Bewegt aus legacy.js. Zustand (FS, SCH, kindHist, retry, lastF, lastDom) bleibt vorerst in app/wire.js und kommt mit Settern über den Port LK.
+// Die Speicherschlüssel K_FACTS, K_SKILL, K_SCHOOL kommen über den Port (systems/ darf persistence/ nicht importieren). app/wire.js ruft alle Funktionen über Einzeiler (Start, Ports QZ, PV und Tests).
+// genQ ruft pickFact über den Port (Getter auf den Einzeiler), damit Tests ihn in app/wire.js ersetzen können.
 import { P, hero } from '../state/game.js';
 import { ST } from '../state/facade.js';
 import { blip } from '../audio/sound.js';

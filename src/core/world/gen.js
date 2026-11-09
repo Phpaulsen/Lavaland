@@ -1,5 +1,5 @@
 // Weltgenerierung: Form der Welt, Länder, Höhlen, Tiefe, Planeten und das spaltenweise Erzeugen. Bewegt aus legacy.js (PR 8b).
-// Jede Funktion bekommt das Weltobjekt WD vorn (legacy.js: const WD). Bezüge auf Felder und Zustand der Welt lauten WD.x statt x,
+// Jede Funktion bekommt das Weltobjekt WD vorn (app/wire.js: const WD). Bezüge auf Felder und Zustand der Welt lauten WD.x statt x,
 // Aufrufe untereinander geben WD weiter. Sonst ist der Text unverändert. Zufall nur über rng(seed) und hash2, kein Math.random.
 /** Weltobjekt aus legacy.js: Felder, Zustand und Ports der Welt (siehe const WD dort). @typedef {Record<string, any>} World */
 import { rng } from '../rng.js';

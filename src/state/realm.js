@@ -1,5 +1,5 @@
 // Aktuelle Welt: Erde oder Mond/Planet (realm), ihre Breite und Lage im Gitter, Randspalten. Bewegt aus legacy.js (PR 28e).
-// realm, RW, RX0, RC0, RC1 sind export let: legacy.js und die Ports lesen sie als Live-Binding, geschrieben werden sie nur in setRealm.
+// realm, RW, RX0, RC0, RC1 sind export let: app/wire.js und die Ports lesen sie als Live-Binding, geschrieben werden sie nur in setRealm.
 // Die Weltliste RLM und setPal kommen über den Port RM.
 import { WORLD_W, CELL, GX } from '../core/world/const.js';
 import { PX0, PMC } from '../core/world/shape.js';

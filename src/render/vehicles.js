@@ -1,6 +1,6 @@
 /* ---------- Fahrzeuge und Held malen: Kopf, Kind, Fallschirm, Auto, Bagger, Radlader, Kipper, Tunnelbohrer, Rakete, Flugzeug, Lore, U-Boot, Ballon, Hubschrauber, Boot, Käfer, Seilrutschen und Handwerkzeug ---------- */
 // PR 29a. Bewegt aus legacy.js. Was das Malen vom übrigen Spiel braucht, kommt über den Port VR; gezeichnet wird auf den übergebenen ctx.
-// Die Zeichenhelfer circle, rr und emo bleiben vorerst in legacy.js (PR 29b). legacy.js ruft alle Funktionen über Einzeiler (Port DR, WM und Abschnitte).
+// Die Zeichenhelfer circle, rr und emo bleiben vorerst in app/wire.js (PR 29b). app/wire.js ruft alle Funktionen über Einzeiler (Port DR, WM und Abschnitte).
 import { P, hero, parked, keys } from '../state/game.js';
 import { TAU, CELL, TOP, GY, GX } from '../core/world/const.js';
 import { ST } from '../state/facade.js';

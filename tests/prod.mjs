@@ -23,9 +23,9 @@ try {
   const s = await page.evaluate(() => {
     const c = document.getElementById('c'), g = c.getContext('2d');
     const d = g.getImageData(c.width >> 1, c.height >> 1, 1, 1).data;
-    return { ev: typeof window.__ev, drawn: d[3] > 0, err: localStorage.getItem('lavaland-err') };
+    return { ev: typeof window.__ev + typeof window.__lv + typeof window.__lvEv, drawn: d[3] > 0, err: localStorage.getItem('lavaland-err') };
   });
-  if (s.ev !== 'undefined') fail = 'Produktionsbundle enthält den Testzugang';
+  if (s.ev !== 'undefinedundefinedundefined') fail = 'Produktionsbundle enthält den Testzugang';
   else if (!s.drawn) fail = 'Spielwelt nicht gezeichnet';
   else if (s.err && s.err !== '[]') fail = 'Fehlerprotokoll: ' + s.err;
   else if (errs.length) fail = 'Seitenfehler: ' + errs.join(' | ');

@@ -1,6 +1,6 @@
 /* ---------- Lernen auf dem Bildschirm: Akku-Anzeige, Lernaufgabe mit Ziffernblock, Rechentafel ---------- */
 // PR 25. Bewegt aus legacy.js. Die Fakten, Leitner und die Aufgaben selbst liegen in core/learn/, Auswahl und Buchführung (pickFact, factDone, genQ)
-// bleiben vorerst in legacy.js. Was die Oberfläche vom übrigen Spiel braucht, kommt über den Port QZ.
+// bleiben vorerst in app/wire.js. Was die Oberfläche vom übrigen Spiel braucht, kommt über den Port QZ.
 import { ST } from '../state/facade.js';
 import { clamp } from '../core/world/const.js';
 import { keys, hero, P } from '../state/game.js';

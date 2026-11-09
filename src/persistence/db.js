@@ -1,5 +1,5 @@
 // Zugriff auf die Datenbank lavaland (Ablage save). Bewegt aus legacy.js (PR 11).
-// diskLock kommt als Parameter gleichen Namens: legacy.js setzt ihn, wenn die Datenbank beim Start nicht lesbar war.
+// diskLock kommt als Parameter gleichen Namens: app/wire.js setzt ihn, wenn die Datenbank beim Start nicht lesbar war.
 
 /** @returns {Promise<IDBDatabase>} */
 export function idbOpen(){

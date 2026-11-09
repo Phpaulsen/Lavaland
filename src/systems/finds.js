@@ -1,6 +1,6 @@
 // Fundsachen, Sprungpilze, goldene Eier und Schätze (PR 19b): Aufheben, Wirkung, Fallen der Fundsachen, geworfene Bananen. Bewegt aus legacy.js.
 // Was sie vom übrigen Spiel brauchen (Zeit, Welt, Effekte, Belohnung, Oberfläche, Werkzeugspitzen), kommt über den Port FP.
-// Keine eigenen Systeme in SIDE: pickTick, padsTick und secretsTick laufen in worldTick; legacy.js ruft sie über Einzeiler.
+// Keine eigenen Systeme in SIDE: pickTick, padsTick und secretsTick laufen in worldTick; app/wire.js ruft sie über Einzeiler.
 import { P, hero } from '../state/game.js';
 import { sfx, jingle } from '../audio/sound.js';
 import { ST } from '../state/facade.js';

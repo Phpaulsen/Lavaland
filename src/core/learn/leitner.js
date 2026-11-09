@@ -1,6 +1,6 @@
 // Leitner-Regeln ohne Speicher und Uhr: Konstanten, Stufenaufstieg, Schulstand-Filter, Abwechslung, Ruhen nach Fehlern. Bewegt aus legacy.js (PR 6).
-// Gelesener und geschriebener Zustand (FS, SCH, kindHist) kommt als Parameter; legacy.js übergibt ihn über Einzeiler zur Aufrufzeit.
-// Fachwechsel (factDone), Auswahl (pickFact0) und MBOX bleiben in legacy.js, siehe migration-plan.md PR 6.
+// Gelesener und geschriebener Zustand (FS, SCH, kindHist) kommt als Parameter; app/wire.js übergibt ihn über Einzeiler zur Aufrufzeit.
+// Fachwechsel (factDone), Auswahl (pickFact0) und MBOX bleiben in app/wire.js, siehe migration-plan.md PR 6.
 import { STAGES, fDom, fKind } from './facts.js';
 
 /**

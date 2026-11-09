@@ -1,7 +1,7 @@
 // Tiere (PR 19a): Laufen, Fliegen, Schwimmen, Anstoßen, Schlüpfen und Zeichnen. Bewegt aus legacy.js.
 // Was sie vom übrigen Spiel brauchen (Zeit, Welt, Effekte, Wackeln, Belohnung, Zeichenhelfer), kommt über den Port CR.
-// Tiere sind keine eigenen Systeme in SIDE: creTick läuft in worldTick, drawCres im Weltzeichnen, creHit beim Antippen; legacy.js ruft sie über Einzeiler.
-// throws (geworfene Bananen) gehört hierher; pickTick und draw in legacy.js lesen es.
+// Tiere sind keine eigenen Systeme in SIDE: creTick läuft in worldTick, drawCres im Weltzeichnen, creHit beim Antippen; app/wire.js ruft sie über Einzeiler.
+// throws (geworfene Bananen) gehört hierher; pickTick und draw in app/wire.js lesen es.
 import { CELL, clamp, WORLD_W, WATER, FIRE, LAVA, WL } from '../core/world/const.js';
 import { jingle, sfx } from '../audio/sound.js';
 import { hero, P, cam } from '../state/game.js';

@@ -1,5 +1,5 @@
 /* ---------- Karten, Werkstatt und Aufzug: Reisekarte, Erkundungskarte, goldene Eier, Werkstatt von Professor Zahnrad, Aufzugskarten ---------- */
-// PR 26. Bewegt aus legacy.js. Nebel und Leuchtmarken speichern (fogArr, fogSet, marks) und die Baupläne (GEAR, canBuild, gearSet) bleiben in legacy.js.
+// PR 26. Bewegt aus legacy.js. Nebel und Leuchtmarken speichern (fogArr, fogSet, marks) und die Baupläne (GEAR, canBuild, gearSet) bleiben in app/wire.js.
 // Was die Fenster vom übrigen Spiel brauchen, kommt über den Port LM.
 import { LANDX, BT, WSX, LIFTX } from '../core/world/shape.js';
 import { ST } from '../state/facade.js';
@@ -154,7 +154,7 @@ export function liftGoWith(LM,k){
     LM.speak(k?'Station '+LM.ZN[k].s+'.':'Wieder zu Hause.');
   },430);
 }
-/* Klicks in Werkstatt, Aufzug und auf die Leuchtmarke verdrahten. PR 29g2d: Die Anweisungen auf oberster Ebene aus legacy.js stehen unverändert in labBindWith, legacy.js ruft es an der alten Stelle; alles aus legacy.js kommt über den Port LH. */
+/* Klicks in Werkstatt, Aufzug und auf die Leuchtmarke verdrahten. PR 29g2d: Die Anweisungen auf oberster Ebene aus legacy.js stehen unverändert in labBindWith, app/wire.js ruft es an der alten Stelle; alles aus legacy.js kommt über den Port LH. */
 /** @param {Port} LH */
 export function labBindWith(LH){
 LH.$('lab').addEventListener('click',/** @param {any} e */ function(e){

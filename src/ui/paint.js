@@ -1,6 +1,6 @@
 /* ---------- Malen mit dem Finger: Bildschirm zu Welt, Pinsel, Radierer, Zauberkasten-Kosten, Werkzeuge je Finger, Loslassen ---------- */
 // PR 27b. Bewegt aus legacy.js. Die Finger (pointers), die Pointer-Handler, die Werkzeuge selbst (putUp, fillBlock, handDig, shoot …) und der Strich
-// für Schienen und Seile bleiben in legacy.js. Was das Malen vom übrigen Spiel braucht, kommt über den Port PT.
+// für Schienen und Seile bleiben in app/wire.js. Was das Malen vom übrigen Spiel braucht, kommt über den Port PT.
 import { cam, P } from '../state/game.js';
 import { inGrid } from '../core/world/shape.js';
 import { grid } from '../state/world.js';
@@ -121,7 +121,7 @@ export function endPointerWith(PT,e){
     PT.stroke=null; PT.strokeId=null; PT.strokeExt=null;
   }
 }
-/* Zeiger auf der Leinwand verdrahten (Tippen, Malen, Loslassen). PR 29g2d: Die Anweisungen auf oberster Ebene aus legacy.js stehen unverändert in ptrBindWith, legacy.js ruft es an der alten Stelle; alles aus legacy.js kommt über den Port PN. */
+/* Zeiger auf der Leinwand verdrahten (Tippen, Malen, Loslassen). PR 29g2d: Die Anweisungen auf oberster Ebene aus legacy.js stehen unverändert in ptrBindWith, app/wire.js ruft es an der alten Stelle; alles aus legacy.js kommt über den Port PN. */
 /** @param {Port} PN */
 export function ptrBindWith(PN){
 PN.cv.addEventListener('pointerdown',/** @param {any} e */ function(e){

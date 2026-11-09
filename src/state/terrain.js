@@ -1,6 +1,6 @@
 /* ---------- Welt beim Laden: Boden der Heimat (g0), harte Schichten und Zonen je Spalte, Oberkante des Schneebergs ---------- */
 // PR 29g2a. Unverändert aus legacy.js bewegt (Anweisungen auf oberster Ebene, gleiche Reihenfolge). Das Modul exportiert nichts; es füllt die Felder
-// aus state/world.js einmal beim Laden. state/home.js importiert es (legacy.js über home.js); die Schleifen laufen wie vorher, bevor legacy.js die Felder liest.
+// aus state/world.js einmal beim Laden. state/home.js importiert es (app/wire.js über home.js); die Schleifen laufen wie vorher, bevor app/wire.js die Felder liest.
 import { GX, CELL, TOP, GY, rawH, baseG, bump } from '../core/world/const.js';
 import { g0, zS1, z4, zS2, zS3, grow0, rA, rB, rD, rH, rC, mtop } from './world.js';
 import { SNC0, SNC1, msurf } from '../core/world/shape.js';

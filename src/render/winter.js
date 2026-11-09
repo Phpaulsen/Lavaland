@@ -1,7 +1,7 @@
 /* ---------- Winter malen: Schneemänner, Yeti, Drachen, Iglu, Lift mit Gondeln, Skifahrer, Schneeball-Rolle, Figuren am Berg, Schneebälle, Feuerwerk und Schneefall ---------- */
 // PR 23a. Bewegt aus legacy.js. Was das Malen vom übrigen Spiel braucht, kommt über den Port WM; gezeichnet wird auf den übergebenen ctx.
-// Die Zeichenhelfer circle, rr, emo und head bleiben vorerst in legacy.js und malen auf denselben Kontext.
-// drawSnowman (auch für systems/winter.js), drawDragon, drawGondola, drawSkier, drawRoll, drawWinter, drawFront und drawSnowfall ruft legacy.js über Einzeiler.
+// Die Zeichenhelfer circle, rr, emo und head bleiben vorerst in app/wire.js und malen auf denselben Kontext.
+// drawSnowman (auch für systems/winter.js), drawDragon, drawGondola, drawSkier, drawRoll, drawWinter, drawFront und drawSnowfall ruft app/wire.js über Einzeiler.
 import { TAU, VOLC, clamp } from '../core/world/const.js';
 import { P, hero, cam } from '../state/game.js';
 import { msurf } from '../core/world/shape.js';

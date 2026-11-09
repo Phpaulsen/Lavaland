@@ -1,6 +1,6 @@
 // Spielzustand (PR 14a/b): Held, Gold, Edelsteine, Merker fürs Speichern; Spielfigur P, geparkte Fahrzeuge, Kamera, Verschieben, Tasten. Bewegt aus legacy.js.
-// hero, P, parked, cam, pan und keys werden nie neu zugewiesen, nur verändert: legacy.js importiert sie direkt (Live-Binding), ohne Fassade.
-// gold, gems, lootDirty und heroDirty werden neu zugewiesen: legacy.js schreibt sie als ST.x, die Fassade ruft die Setter.
+// hero, P, parked, cam, pan und keys werden nie neu zugewiesen, nur verändert: app/wire.js importiert sie direkt (Live-Binding), ohne Fassade.
+// gold, gems, lootDirty und heroDirty werden neu zugewiesen: app/wire.js schreibt sie als ST.x, die Fassade ruft die Setter.
 
 /** @type {any} */
 export let hero={xp:0,lvl:1,up:{dig:0,motor:0,jet:0,compass:0,luck:0,heat:0},own:{},pet:'',hat:'',tnt:0,qn:0,quest:null,day:'',st:{ch:1,on:false},eggs:0,trail:false,ext:false,big:false,dr:0,rk:0,lp:0,zn:0,mat:{},mk:{},pz:{},pzn:0,deep:false,fin:0};
@@ -28,7 +28,7 @@ export let ready=false, saving=false, frozen=false, diskLock=false, traveling=fa
 /** @param {boolean} v */ export function setDiskLock(v){ diskLock=v; }
 /** @param {boolean} v */ export function setTraveling(v){ traveling=v; }
 /** @param {boolean} v */ export function setPaused(v){ paused=v; }
-/** @param {any} v (setTool gibt es schon in legacy.js: Werkzeug wählen) */ export function setToolV(v){ tool=v; }
+/** @param {any} v (setTool gibt es schon in app/wire.js: Werkzeug wählen) */ export function setToolV(v){ tool=v; }
 /** @param {any} v */ export function setTask(v){ task=v; }
 /** @param {number} v */ export function setTalkLock(v){ talkLock=v; }
 

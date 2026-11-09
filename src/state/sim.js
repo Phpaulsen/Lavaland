@@ -1,7 +1,7 @@
 // Zellautomat: Lava, Wasser, Feuer und Dampf, das Rechenfenster um die Kamera und das Setzen einzelner Zellen. Bewegt aus legacy.js (PR 9).
 // Der Fensterzustand (rx0…qx1, bx0…, px0…, winC, winR, sx0, tick, Zähler) gehört diesem Modul: Nur die Funktionen hier schreiben ihn,
-// legacy.js liest ihn über Importe (direkte Bindungen, kein Getter). Gitter, Stempel und Brenndauer kommen direkt aus state/world.js.
-// step, scanMobile und steam bekommen SP vorn: Ports für das, was noch in legacy.js steht (cam, trees, genF, dust, spawn, wc).
+// app/wire.js liest ihn über Importe (direkte Bindungen, kein Getter). Gitter, Stempel und Brenndauer kommen direkt aus state/world.js.
+// step, scanMobile und steam bekommen SP vorn: Ports für das, was noch in app/wire.js steht (cam, trees, genF, dust, spawn, wc).
 // Sonst ist der Text unverändert, Math.random bleibt (kein core/, Golden Master unberührt). Nicht nach core/: ADR 0001, Nachtrag 8.11.2026.
 import { grid, stamp, LIFE } from './world.js';
 import { BED, CELL, FIRE, GX, GY, ICE, LAVA, MAX_FIRE, MAX_LAVA, MAX_WATER, ROCK, ROWW, SNOW, SW, TOP, WATER, WINW, WOOD } from '../core/world/const.js';

@@ -1,7 +1,7 @@
 /* ---------- Was jede Sekunde in der großen Welt passiert ---------- */
 // PR 19c: Welt wachsen lassen, Effekte herunterzählen, Nacht überblenden, Länder entdecken,
 // Tiere, Fundsachen, Planetenlandung, Regenwolken, Blitz, UFO, Himmelsgrenze, Einschlafen, Disco und Spuren der Fundsachen. Bewegt aus legacy.js.
-// Was das braucht, kommt über den Port WT. Die Zustände (nightA, discoT, ufo …) bleiben in legacy.js, weil auch Zeichnen und Antippen sie nutzen;
+// Was das braucht, kommt über den Port WT. Die Zustände (nightA, discoT, ufo …) bleiben in app/wire.js, weil auch Zeichnen und Antippen sie nutzen;
 // worldTick schreibt sie über Setter im Port.
 import { P, cam, hero, keys } from '../state/game.js';
 import { CELL, clamp, GX, TOP, WATER } from '../core/world/const.js';

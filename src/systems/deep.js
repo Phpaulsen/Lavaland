@@ -1,8 +1,8 @@
 /* ---------- Tiefe und Erkunden: Jede Sekunde (Zonen, Planetenkerne, Maschinen, Ziele), Funde, Erkundungsnebel, Leuchtmarken ---------- */
 // PR 21. Bewegt aus legacy.js. Was sie vom übrigen Spiel brauchen, kommt über den Port DP.
-// Die Zustände (nearF, nearD, nearT, fogT, mkShown, mhT, guide) bleiben in legacy.js, weil Zeichnen, Laden und Tests sie nutzen; geschrieben wird über Setter.
-// Speichern und Laden von Nebel und Leuchtmarken (fogArr, fogSet, marks, mkSave), die Wissenstüren und alles Zeichnen bleiben in legacy.js.
-// deepTick, findsTick, fogTick und mkTick laufen als Systeme in SIDE (deepWith, findsWith, marksWith); findOpen, mkTap, zoneGifts und deepIntro ruft legacy.js über Einzeiler.
+// Die Zustände (nearF, nearD, nearT, fogT, mkShown, mhT, guide) bleiben in app/wire.js, weil Zeichnen, Laden und Tests sie nutzen; geschrieben wird über Setter.
+// Speichern und Laden von Nebel und Leuchtmarken (fogArr, fogSet, marks, mkSave), die Wissenstüren und alles Zeichnen bleiben in app/wire.js.
+// deepTick, findsTick, fogTick und mkTick laufen als Systeme in SIDE (deepWith, findsWith, marksWith); findOpen, mkTap, zoneGifts und deepIntro ruft app/wire.js über Einzeiler.
 import { ST } from '../state/facade.js';
 import { jingle, sfx, tone } from '../audio/sound.js';
 import { P, hero } from '../state/game.js';

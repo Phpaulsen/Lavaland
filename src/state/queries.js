@@ -1,6 +1,6 @@
 /* ---------- Weltabfragen: Boden, fest, Mond, brennt, Säulenoberkante, Boden unter einem Punkt, Oberfläche, Zelle setzen ---------- */
 // PR 29d. Unverändert aus legacy.js bewegt (gleiche Namen, ohne Port und ohne Einzeiler): Diese Abfragen laufen im heißen Pfad (Physik, Fahrzeuge, Tiere).
-// Sie lesen nur Modulbindungen (Gitter, Höhen, Held); legacy.js und die Ports importieren sie direkt. ORBS (Mond und Planeten am Himmel) zieht mit, weil inMoon und floorAt es lesen.
+// Sie lesen nur Modulbindungen (Gitter, Höhen, Held); app/wire.js und die Ports importieren sie direkt. ORBS (Mond und Planeten am Himmel) zieht mit, weil inMoon und floorAt es lesen.
 import { MOON, clamp, CELL, GX, GY, TOP, FIRE, LAVA } from '../core/world/const.js';
 import { inGrid } from '../core/world/shape.js';
 import { g0, grid } from './world.js';

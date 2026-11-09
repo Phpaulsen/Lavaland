@@ -1,2 +1,3 @@
-// Einstieg für den Build. Solange das Spiel noch in legacy.js steht, lädt diese Datei nur das.
-import './legacy.js';
+// Einstieg für den Build: verdrahtet und startet das Spiel (app/wire.js).
+import { wire } from './app/wire.js';
+wire();

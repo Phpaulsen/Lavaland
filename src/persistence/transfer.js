@@ -1,5 +1,5 @@
 // Spielstand umziehen: Sicherungsdatei prüfen, kodieren, Datenbanken auslesen und einspielen. Bewegt aus legacy.js (PR 12), Text unverändert.
-// bakMake und bakLoad kamen mit PR 14f dazu (…With(TP), Port TP in legacy.js); bakIn setzt die Oberfläche (bakPick) und kommt über den Port.
+// bakMake und bakLoad kamen mit PR 14f dazu (…With(TP), Port TP in app/wire.js); bakIn setzt die Oberfläche (bakPick) und kommt über den Port.
 import { ST } from '../state/facade.js';
 import { realmKey } from './keys.js';
 

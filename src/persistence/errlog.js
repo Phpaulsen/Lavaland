@@ -1,5 +1,5 @@
 /* ---------- Fehlerprotokoll und fehlende Sprachaufnahmen: Technische Fehler bleiben nur auf diesem Gerät (höchstens 20, gleiche zusammengefasst); Sätze ohne Aufnahme werden gemerkt ---------- */
-// PR 29f2. Unverändert aus legacy.js bewegt (gleiche Namen, ohne Port): Die Funktionen lesen nur localStorage und die Schlüssel. legacy.js importiert sie, darum gibt es keinen TDZ-Fehler beim Start.
+// PR 29f2. Unverändert aus legacy.js bewegt (gleiche Namen, ohne Port): Die Funktionen lesen nur localStorage und die Schlüssel. app/wire.js importiert sie, darum gibt es keinen TDZ-Fehler beim Start.
 import { ERRK, K_VMISS } from './keys.js';
 
 export function errLoad(){ try{ const a=JSON.parse(localStorage.getItem(ERRK)||'[]'); return Array.isArray(a)?a.filter(function(e){ return e&&typeof e.m==='string'; }):[]; }catch(_){ return []; } }

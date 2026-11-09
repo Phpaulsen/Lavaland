@@ -1,5 +1,5 @@
 // Lernaufgaben: aus einem Faktschlüssel die Aufgabe bauen (mkQWith), dazu Zahlenfolgen (mkSeqWith) und die Text- und Bildbausteine. Bewegt aus legacy.js (PR 6).
-// Zufall (rand), Bildtabellen (IC, QI) und Lernstand (FS) kommen als Parameter. Anzeigen, Tippen und Vorlesen bleiben in legacy.js.
+// Zufall (rand), Bildtabellen (IC, QI) und Lernstand (FS) kommen als Parameter. Anzeigen, Tippen und Vorlesen bleiben in app/wire.js.
 import { riWith, shuffleWith } from '../rng.js';
 import { WORDS, SYL, CLAP, RHYW, LETTERS, fStage } from './facts.js';
 

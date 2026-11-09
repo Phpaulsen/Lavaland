@@ -1,6 +1,6 @@
 /* ---------- Spielfigur: Modus wechseln, Laufen, Aktionstaste, Lift, Seilrutsche, Graben zu Fuß und das Update je Bild ---------- */
 // PR 28b. Bewegt aus legacy.js. Die Fahrzeuge liegen in vehicles.js und kommen wie alles übrige Spiel über den Port PL
-// (vehicles.js erreicht die Spielfigur weiter über seinen Port VH und die Einzeiler in legacy.js).
+// (vehicles.js erreicht die Spielfigur weiter über seinen Port VH und die Einzeiler in app/wire.js).
 import { P, parked, keys, cam, hero, pan } from '../../state/game.js';
 import { G, WORLD_W, clamp, WATER, LAVA, ICE, CORE, VOLC, CELL, TOP, GX, BED, SHELL } from '../../core/world/const.js';
 import { ST } from '../../state/facade.js';

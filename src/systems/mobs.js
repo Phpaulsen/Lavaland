@@ -1,6 +1,6 @@
 // Pfeile und Höhlenmonster (PR 18), je mit tick und draw. Bewegt aus legacy.js.
 // Was sie vom übrigen Spiel brauchen (Zeit, Welt, Einstellungen, Teilchen, Zeichenhelfer), kommt über den Port MP.
-// ARROWS und MONS gehören hierher; legacy.js leert sie beim Weltwechsel, shoot und monStrike ruft es über Einzeiler.
+// ARROWS und MONS gehören hierher; app/wire.js leert sie beim Weltwechsel, shoot und monStrike ruft es über Einzeiler.
 import { P, cam, hero, keys } from '../state/game.js';
 import { blip, jingle, sfx } from '../audio/sound.js';
 import { G, TAU } from '../core/world/const.js';

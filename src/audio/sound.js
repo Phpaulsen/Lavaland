@@ -1,6 +1,6 @@
 // Ton und Sprache (PR 15): Klänge über Web Audio, Vorlesen mit Aufnahmen aus audio/ oder der Browserstimme.
 // Schicht audio: darf nur core/ und audio/ importieren. Was Speicher oder Spielzustand braucht, kommt über den Port AP
-// (talkLock, vcMiss); legacy.js schreibt muted, fxOff und tapT über die Fassade AU.
+// (talkLock, vcMiss); app/wire.js schreibt muted, fxOff und tapT über die Fassade AU.
 /** @type {any} */
 export let AC=null;
 export let tapT=0;
@@ -169,7 +169,7 @@ export function tone(list,type){
   }catch(_){}
 }
 
-/** Übergangsfassade für die Namen, die legacy.js neu zuweist (wie ST). */
+/** Übergangsfassade für die Namen, die app/wire.js neu zuweist (wie ST). */
 export const AU={
   get muted(){ return muted; }, set muted/** @param {any} v */ (v){ muted=v; },
   get fxOff(){ return fxOff; }, set fxOff/** @param {any} v */ (v){ fxOff=v; },

@@ -1,6 +1,6 @@
 /* ---------- Einstellungen und Leuchtmarken: Elternoptionen und Stimme speichern, Leuchtmarken der Welt laden ---------- */
-// PR 29g1. Bewegt aus legacy.js. Zustand (OPT, MKS) bleibt vorerst in legacy.js und kommt über den Port PF; VOICE über den Port (Schichtregel).
-// legacy.js ruft alle Funktionen über Einzeiler.
+// PR 29g1. Bewegt aus legacy.js. Zustand (OPT, MKS) bleibt vorerst in app/wire.js und kommt über den Port PF; VOICE über den Port (Schichtregel).
+// app/wire.js ruft alle Funktionen über Einzeiler.
 import { K_OPT, K_VOICE } from './keys.js';
 
 /** @typedef {Record<string, any>} Port */

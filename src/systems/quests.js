@@ -1,7 +1,7 @@
 // Aufträge (PR 20): Einführungskette, Kette aus Tiefe und Höhe, Zufallsaufträge, Fortschritt, Anzeige und Zeiger. Bewegt aus legacy.js.
-// Was sie vom übrigen Spiel brauchen, kommt über den Port QP. Die Auftragsdaten (QSCRIPT, QDEF, QDEEP, QSKY) und qEmo bleiben vorerst in legacy.js,
+// Was sie vom übrigen Spiel brauchen, kommt über den Port QP. Die Auftragsdaten (QSCRIPT, QDEF, QDEEP, QSKY) und qEmo bleiben vorerst in app/wire.js,
 // weil QDEF Texte mit Bildchen aus der Oberfläche baut. quest, qShown und qDoneT bleiben dort und werden über Setter geschrieben.
-// questTick läuft als System in SIDE (questsWith); qEvent, skyMark, newQuest, showQuest, questPoint und questTick (für den Rauchtest) ruft legacy.js über Einzeiler.
+// questTick läuft als System in SIDE (questsWith); qEvent, skyMark, newQuest, showQuest, questPoint und questTick (für den Rauchtest) ruft app/wire.js über Einzeiler.
 import { hero, P } from '../state/game.js';
 import { ST } from '../state/facade.js';
 import { WORLD_W, VOLC, STALL_X, MOON } from '../core/world/const.js';

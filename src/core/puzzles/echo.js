@@ -1,5 +1,5 @@
 // Rätsel „Kristall-Echo“ (Streichkandidat, plan-vereinfachung.md). Bewegt aus legacy.js (PR 5). Der Generator bekommt Zufall (rand) und gelesenen Zustand als Parameter;
-// legacy.js ruft ihn über einen Einzeiler mit Math.random. Zeichnen, Tippen, Hinweis und Vorlesen bleiben in legacy.js.
+// app/wire.js ruft ihn über einen Einzeiler mit Math.random. Zeichnen, Tippen, Hinweis und Vorlesen bleiben in app/wire.js.
 import { riWith } from '../rng.js';
 
 export const ECL=[[4,2,0],[4,3,0],[4,3,0],[4,4,0],[6,4,0],[4,5,0],[6,5,0],[4,3,1],[6,6,0],[6,4,1]];

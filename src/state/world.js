@@ -1,8 +1,8 @@
 // Welt-Felder: die Zellen und die Spaltenwerte der Welt als Typed Arrays mit fester Größe. Bewegt aus legacy.js (PR 7a).
 // Die Bindungen sind const und werden nie neu zugewiesen; geschrieben wird nur über den Index (Weltgenerierung, Zellautomat, Graben, Laden).
-// Gefüllt werden sie weiter in legacy.js, in derselben Reihenfolge wie vorher.
-// Darunter die neu zugewiesenen Welt-Namen (PR 7b): export let mit je einem Setter. legacy.js liest und schreibt sie über die Fassade ST (state/facade.js).
-// genF und winC bleiben vorerst in legacy.js: Sie werden in heißen Schleifen gelesen (step, Nebel), dort keine Getter (ADR 0001 Punkt 9).
+// Gefüllt werden sie weiter in app/wire.js, in derselben Reihenfolge wie vorher.
+// Darunter die neu zugewiesenen Welt-Namen (PR 7b): export let mit je einem Setter. app/wire.js liest und schreibt sie über die Fassade ST (state/facade.js).
+// genF und winC bleiben vorerst in app/wire.js: Sie werden in heißen Schleifen gelesen (step, Nebel), dort keine Getter (ADR 0001 Punkt 9).
 import { GX, GY, SW } from '../core/world/const.js';
 
 /** Bodenhöhe je Spalte (Pixel), mit einem Rand rechts für die Interpolation in ground(). */
