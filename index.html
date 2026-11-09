@@ -282,6 +282,7 @@ body.lefty #mark{left:auto;right:15px}
 .brain i{display:block;width:100%;height:8px;box-sizing:border-box;border:2px solid var(--ink);border-radius:5px;background:#fff;overflow:hidden}
 .brain i b{display:block;height:100%;background:#7b4fd6}
 .tafb{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:10px;padding:8px 12px;width:100%;background:#eef4ff;border:2.5px solid var(--ink);border-radius:14px;color:var(--ink);font:700 20px/1 var(--font-learn);cursor:pointer}
+.tafb svg{width:26px;height:26px;display:block}
 .tafs{max-width:520px;max-height:88vh;overflow:auto}
 #map .sheet{min-width:0}
 .mapv{width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;margin:4px 0 10px;border:2.5px solid var(--ink);border-radius:12px;background:#151522;-webkit-overflow-scrolling:touch}
@@ -623,6 +624,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     <div id="lab-rcp"></div>
     <div class="brain" id="lab-brain"></div>
     <button class="tafb" id="lab-taf" aria-label="Rechentafel und Buchstaben anschauen"></button>
+    <button class="tafb" id="lab-finds" aria-label="Funde ansehen"></button>
   </div>
 </div>
 <div id="tafel" class="ov" hidden>
@@ -6290,7 +6292,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     FP.qEvent("egg", 1);
     FP.confetti(e.x, e.y + 20);
     jingle();
-    FP.pulse("btn-finds");
+    FP.pulse("btn-lab");
     FP.banner(FP.EGGSVG + " " + hero.eggs, 2400);
     let w = null;
     for (const q of FP.WEAR) if (q[0] === hero.eggs) w = q;
@@ -6952,7 +6954,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     DP.qEvent("find", 1);
     sfx("pop");
     DP.spawn(8, h.x, h.y, 0, -46, 2.4, 30, h.e);
-    DP.pulse("btn-finds");
+    DP.pulse("btn-lab");
   }
   function findsTickWith(DP, dt) {
     const pts = [[P.x, P.y - 18]];
@@ -6976,7 +6978,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     DP.nearT -= dt;
     if (DP.nearT <= 0) {
       DP.nearT = 0.3;
-      const b = DP.$("btn-finds");
+      const b = DP.$("btn-map");
       b.classList.toggle("near", best < 420 && best >= 170);
       b.classList.toggle("hot", best < 170);
     }
@@ -16510,7 +16512,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
   // src/ui/bind.js
   function uiBindWith(UB) {
     const LOCK = '<span class="lock">' + UB.svg24(QI.lock) + "</span>";
-    UB.$("grid").innerHTML = '<button class="btn veh cool" id="btn-veh" aria-label="Fahrzeug wählen">' + UB.svg24(IC.walk) + LOCK + '</button><button class="btn cool" id="btn-tool" aria-label="Werkzeug wählen" aria-pressed="false">' + UB.svg24(QI.hand) + LOCK + '</button><button class="btn" id="btn-map" aria-label="Karte: zu einem entdeckten Land reisen">' + UB.svg24(QI.map) + '</button><button class="btn" id="btn-lab" aria-label="Werkstatt: Bohrer, Rakete, Lampe und Schutz bauen">' + UB.svg24(QI.lab) + '<span class="badge" id="lab-n" hidden>!</span></button><button class="btn" id="btn-finds" aria-label="Funde ansehen">' + UB.svg24(QI.gem) + '<span class="badge" id="found" hidden>0</span></button><button class="btn" id="btn-menu" aria-label="Menü: Speichern, Ton, neue Welt, Vollbild, Spielstand umziehen">' + UB.svg24(QI.gear) + "</button>";
+    UB.$("grid").innerHTML = '<button class="btn veh cool" id="btn-veh" aria-label="Fahrzeug wählen">' + UB.svg24(IC.walk) + LOCK + '</button><button class="btn cool" id="btn-tool" aria-label="Werkzeug wählen" aria-pressed="false">' + UB.svg24(QI.hand) + LOCK + '</button><button class="btn" id="btn-map" aria-label="Karte: zu einem entdeckten Land reisen">' + UB.svg24(QI.map) + '</button><button class="btn" id="btn-lab" aria-label="Werkstatt: Bohrer, Rakete, Lampe und Schutz bauen, Funde ansehen">' + UB.svg24(QI.lab) + '<span class="badge" id="lab-n" hidden>!</span></button><button class="btn" id="btn-menu" aria-label="Menü: Speichern, Ton, neue Welt, Vollbild, Spielstand umziehen">' + UB.svg24(QI.gear) + "</button>";
     UB.$("save").innerHTML = UB.svg24(QI.save);
     UB.$("reset").innerHTML = UB.svg24(IC.reset);
     UB.$("exp").innerHTML = UB.svg24(QI.exp);
@@ -16642,7 +16644,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       UB.$("toolbox").hidden = true;
       UB.$("magic").hidden = false;
     });
-    UB.tap(UB.$("btn-finds"), function() {
+    UB.$("lab-finds").innerHTML = '<span aria-hidden="true">' + UB.svg24(QI.gem) + '</span><span id="found" hidden>0</span>';
+    UB.$("lab-finds").addEventListener("click", function() {
+      UB.$("lab").hidden = true;
       UB.renderAlbum();
       UB.$("finds").hidden = false;
     });

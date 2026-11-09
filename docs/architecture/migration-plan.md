@@ -232,6 +232,12 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 - `tests/voice.mjs` scheitert jetzt, wenn eine Aufnahme keinem Satz mehr gehört; `--prune` löscht sie.
 - Größenbudget 800/240 KB → 750/195 KB (Ratsche). Golden Master unverändert.
 
+### Streich-PR 4c: Funde in die Werkstatt (Vereinfachungsplan Schritt 6, verhaltensändernd)
+
+- HUD hat sechs Knöpfe plus Menü: Akku, Auftrag, Fahrzeug, Werkzeug, Karte, Werkstatt. Der Funde-Knopf `#btn-finds` entfällt; Funde öffnen sich über `#lab-finds` in der Werkstatt, die Fundzahl `#found` steht dort.
+- Neue Funde und goldene Eier lassen die Werkstatt pulsieren. Die Spürnase (`near`/`hot`, Fund in der Nähe) leuchtet an der Karte.
+- Golden Master und Bildvergleich unverändert (Szenen zeigen nur das Spielfeld).
+
 ### PR 16: Systemschnittstelle
 
 - **Bewegt:** `SIDE`, `SAFE`, `safe()` → `systems/index.js` mit `{ name, tick }` je Eintrag, gleiche Reihenfolge, `name` = heutiger Funktionsname. Die Tick-Funktionen selbst bleiben noch in `legacy.js` und werden nur registriert.

@@ -23,7 +23,7 @@ export function collectWith(DP,h){
   h.got=true; ST.found[h.id]=1; DP.saveFinds(); DP.renderAlbum();
   DP.confetti(h.x,h.y+20); jingle(); DP.speak('Du hast '+h.name+' gefunden!');
   ST.lootDirty=true; DP.qEvent('find',1); sfx('pop');
-  DP.spawn(8,h.x,h.y,0,-46,2.4,30,h.e); DP.pulse('btn-finds');
+  DP.spawn(8,h.x,h.y,0,-46,2.4,30,h.e); DP.pulse('btn-lab');
 }
 /** @param {Port} DP @param {any} dt */
 export function findsTickWith(DP,dt){
@@ -42,7 +42,8 @@ export function findsTickWith(DP,dt){
   DP.nearT-=dt;
   if(DP.nearT<=0){
     DP.nearT=.3;
-    const b=DP.$('btn-finds'); b.classList.toggle('near',best<420&&best>=170); b.classList.toggle('hot',best<170);
+    /* Spürnase: Seit die Funde in der Werkstatt liegen, leuchtet die Karte, wenn ein Fund nah ist. */
+    const b=DP.$('btn-map'); b.classList.toggle('near',best<420&&best>=170); b.classList.toggle('hot',best<170);
   }
 }
 /** @param {Port} DP @param {any} dt */

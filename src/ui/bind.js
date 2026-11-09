@@ -16,8 +16,7 @@ UB.$('grid').innerHTML=
   '<button class="btn veh cool" id="btn-veh" aria-label="Fahrzeug wählen">'+UB.svg24(IC.walk)+LOCK+'</button>'+
   '<button class="btn cool" id="btn-tool" aria-label="Werkzeug wählen" aria-pressed="false">'+UB.svg24(QI.hand)+LOCK+'</button>'+
   '<button class="btn" id="btn-map" aria-label="Karte: zu einem entdeckten Land reisen">'+UB.svg24(QI.map)+'</button>'+
-  '<button class="btn" id="btn-lab" aria-label="Werkstatt: Bohrer, Rakete, Lampe und Schutz bauen">'+UB.svg24(QI.lab)+'<span class="badge" id="lab-n" hidden>!</span></button>'+
-  '<button class="btn" id="btn-finds" aria-label="Funde ansehen">'+UB.svg24(QI.gem)+'<span class="badge" id="found" hidden>0</span></button>'+
+  '<button class="btn" id="btn-lab" aria-label="Werkstatt: Bohrer, Rakete, Lampe und Schutz bauen, Funde ansehen">'+UB.svg24(QI.lab)+'<span class="badge" id="lab-n" hidden>!</span></button>'+
   '<button class="btn" id="btn-menu" aria-label="Menü: Speichern, Ton, neue Welt, Vollbild, Spielstand umziehen">'+UB.svg24(QI.gear)+'</button>';
 UB.$('save').innerHTML=UB.svg24(QI.save); UB.$('reset').innerHTML=UB.svg24(IC.reset); UB.$('exp').innerHTML=UB.svg24(QI.exp); UB.$('imp').innerHTML=UB.svg24(QI.imp);
 UB.$('imp-ask').innerHTML=UB.svg24(QI.imp)+'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h14m-6-6l6 6-6 6" stroke="'+K+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>'+UB.svg24(IC.blocks);
@@ -57,7 +56,9 @@ document.querySelectorAll('[data-tool]').forEach(function(b){ b.addEventListener
 UB.tap(UB.$('btn-veh'),function(){ UB.$('garage').hidden=false; });
 UB.tap(UB.$('btn-tool'),function(){ UB.$('toolbox').hidden=false; });
 UB.$('tool-magic').addEventListener('click',function(){ UB.$('toolbox').hidden=true; UB.$('magic').hidden=false; });
-UB.tap(UB.$('btn-finds'),function(){ UB.renderAlbum(); UB.$('finds').hidden=false; });
+/* Funde liegen in der Werkstatt (Vereinfachungsplan: 6 Knöpfe im HUD). */
+UB.$('lab-finds').innerHTML='<span aria-hidden="true">'+UB.svg24(QI.gem)+'</span><span id="found" hidden>0</span>';
+UB.$('lab-finds').addEventListener('click',function(){ UB.$('lab').hidden=true; UB.renderAlbum(); UB.$('finds').hidden=false; });
 UB.tap(UB.$('save'),function(){ UB.saveGame(true); });
 UB.$('album').addEventListener('click',/** @param {any} e */ function(e){
   const b=e.target.closest('[data-find]');
