@@ -345,6 +345,8 @@ Danach folgt der Schluss als 29g. Ports zwischen Modulen aufzulösen ist dort Um
 
 **Umgesetzt PR 29g2c:** Wie in 29g2b: die Tastatur-Handler (`keydown`, `keyup`, `blur`, Kontextmenü, Wischen, `keymap` lokal) in `keysBindWith` in `ui/keys.js` (Port `KB`), die Handler von Elternschranke, Elternansicht, Rechentafel und Lagerfeuer in `parBindWith` in `ui/parent.js` (Port `PB`; `errLoad`, `ERRK`, `K_VMISS`, `K_LIMIT` über den Port wegen der Schichtregel). Nicht gesammelt: die Start-Anweisungen des Lernkerns (`loadFacts();`, Meisterstein-Nachtrag, Schulstand laden). Sie laufen vor `const MBOX` und müssen dort bleiben, sonst verschwände der TDZ-Fehler aus F1 (`findings.md`), also eine Verhaltensänderung. Absicherung: movecheck, Rauchtest (Tastatur, Elternansicht), Knopftest, Golden Master.
 
+**Umgesetzt PR 29g2d:** Wie in 29g2b: die Klicks im Rätselrahmen und am Akku in `pzBindWith` (`ui/puzzles.js`, Port `PQ`; `pzOpen` als Getter, weil Rauch- und Knopftest es in `legacy.js` ersetzen), Werkstatt, Aufzug und Leuchtmarke in `labBindWith` (`ui/map.js`, Port `LH`), die Zeiger auf der Leinwand in `ptrBindWith` (`ui/paint.js`, Port `PN`). Absicherung: movecheck, Rauchtest, Knopftest, Golden Master, Bildvergleich.
+
 ### PR 29g: Schluss
 
 - `legacy.js` ist leer und gelöscht. `G` ist leer und gelöscht. Testzugang ist die benannte API `window.__lv` im Testbuild, kein `eval`.

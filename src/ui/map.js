@@ -154,3 +154,25 @@ export function liftGoWith(LM,k){
     LM.speak(k?'Station '+LM.ZN[k].s+'.':'Wieder zu Hause.');
   },430);
 }
+/* Klicks in Werkstatt, Aufzug und auf die Leuchtmarke verdrahten. PR 29g2d: Die Anweisungen auf oberster Ebene aus legacy.js stehen unverändert in labBindWith, legacy.js ruft es an der alten Stelle; alles aus legacy.js kommt über den Port LH. */
+/** @param {Port} LH */
+export function labBindWith(LH){
+LH.$('lab').addEventListener('click',/** @param {any} e */ function(e){
+  let b=e.target.closest('[data-mat]');
+  if(b&&b.dataset.mat==='ms'){ LH.speak(LH.MAT.ms[1]+'. Du hast '+(hero.mat.ms|0)+'. '+LH.MAT.ms[3]); return; }
+  if(b){ const k=b.dataset.mat; LH.guide={k:k,t:LH.time+300}; LH.speak(LH.MAT[k][1]+'. Du hast '+(hero.mat[k]|0)+'. '+LH.MAT[k][3]+' Der orange Pfeil zeigt dir den Weg.'); return; }
+  b=e.target.closest('[data-tl]');
+  if(b){ const g=b.dataset.tl, G=LH.GEAR[g], t=LH.gearLv(g); LH.speak(t>=3?G.n+' ist ganz fertig.':G.n+', Stufe '+(t+1)+'. '+G.what[t]+(LH.canBuild(g)?' Du hast alles dafür. Tippe auf den Hammer.':' Dafür fehlen noch '+LH.missing(g)+'.')); return; }
+  b=e.target.closest('[data-mk]');
+  if(b){ LH.labBuild(b.dataset.mk); return; }
+  b=e.target.closest('[data-pzt]');
+  if(b){ const p=LH.PZI[b.dataset.pzt]; LH.speak(p.n+': Stufe '+((hero.pz[p.id]|0)+1)+' von 10. Je mehr Rätsel du ohne Fehler löst, desto kniffliger werden sie.'); }
+});
+LH.$('mine-cards').addEventListener('click',/** @param {any} e */ function(e){
+  const b=e.target.closest('[data-st]'); if(!b) return;
+  const k=+b.dataset.st;
+  if(k>hero.zn){ tone([170],'sawtooth'); LH.speak('Dahin fährt der Aufzug erst, wenn du selbst einmal dort warst. '+LH.ZN[k].need); return; }
+  LH.$('mine').hidden=true; LH.liftGo(k);
+});
+LH.$('mark').addEventListener('click',/** @param {any} e */ function(e){ e.preventDefault(); LH.mkTap(); });
+}

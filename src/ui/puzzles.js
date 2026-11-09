@@ -461,3 +461,26 @@ export function hiSudokuWith(PZ,st){
 }
 /** @param {Port} PZ @param {any} st */
 export function sySudokuWith(PZ,st){ return 'In jeder Reihe und in jeder Spalte darf jedes Bild nur einmal vorkommen.'+(st.n===4?' Auch in jedem der vier Kästchen.':'')+' Tippe auf ein leeres Feld, bis das richtige Bild da ist. Rot heißt: Das Bild gibt es dort schon.'; }
+/* Klicks im Rätselrahmen und am Akku verdrahten. PR 29g2d: Die Anweisungen auf oberster Ebene aus legacy.js stehen unverändert in pzBindWith, legacy.js ruft es an der alten Stelle; alles aus legacy.js kommt über den Port PQ. */
+/** @param {Port} PQ */
+export function pzBindWith(PQ){
+PQ.$('pz').addEventListener('click',/** @param {any} e */ function(e){
+  if(e.target===PQ.$('pz')||e.target.closest('.xb')){ PQ.pzClose(); return; }
+  if(!PQ.pzc) return;
+  if(e.target.closest('#pz-say')){ PQ.speak(PQ.pzc.T.say(PQ.pzc.st)); return; }
+  if(PQ.pzc.busy) return;
+  if(e.target.closest('#pz-hint')){
+    if(PQ.pzc.hint>=PQ.pzHintMax(PQ.pzc)){ PQ.speak('Den Tipp hast du schon bekommen. Du schaffst den Rest!'); return; }
+    if(PQ.pzc.fails<1){ PQ.speak('Probier es erst einmal selbst. Wenn es nicht klappt, gibt es einen Tipp.'); return; }
+    PQ.LOG.pHint(PQ.pzc); PQ.pzc.hint++; PQ.pzHintUi(); PQ.pzc.T.hint(PQ.pzc.st); return;
+  }
+  const b=e.target.closest('[data-a]');
+  if(b&&!b.disabled) PQ.pzc.T.act(PQ.pzc.st,b.dataset.a,b);
+});
+/* Am Akku: ein Rätsel statt fünf Lernaufgaben. Die Arten wechseln der Reihe nach, damit keine ausgelassen wird. */
+PQ.$('quiz-pz').addEventListener('click',function(){
+  PQ.LOG.qSwitch();
+  PQ.$('quiz').hidden=true; ST.paused=false;
+  PQ.pzOpen({id:'quiz',t:PQ.PZON[(hero.pzn|0)%PQ.PZON.length].id,zb:0,quiz:true});
+});
+}

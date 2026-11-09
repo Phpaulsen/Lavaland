@@ -9621,6 +9621,47 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
   function sySudokuWith(PZ, st) {
     return "In jeder Reihe und in jeder Spalte darf jedes Bild nur einmal vorkommen." + (st.n === 4 ? " Auch in jedem der vier Kästchen." : "") + " Tippe auf ein leeres Feld, bis das richtige Bild da ist. Rot heißt: Das Bild gibt es dort schon.";
   }
+  function pzBindWith(PQ) {
+    PQ.$("pz").addEventListener(
+      "click",
+      /** @param {any} e */
+      function(e) {
+        if (e.target === PQ.$("pz") || e.target.closest(".xb")) {
+          PQ.pzClose();
+          return;
+        }
+        if (!PQ.pzc) return;
+        if (e.target.closest("#pz-say")) {
+          PQ.speak(PQ.pzc.T.say(PQ.pzc.st));
+          return;
+        }
+        if (PQ.pzc.busy) return;
+        if (e.target.closest("#pz-hint")) {
+          if (PQ.pzc.hint >= PQ.pzHintMax(PQ.pzc)) {
+            PQ.speak("Den Tipp hast du schon bekommen. Du schaffst den Rest!");
+            return;
+          }
+          if (PQ.pzc.fails < 1) {
+            PQ.speak("Probier es erst einmal selbst. Wenn es nicht klappt, gibt es einen Tipp.");
+            return;
+          }
+          PQ.LOG.pHint(PQ.pzc);
+          PQ.pzc.hint++;
+          PQ.pzHintUi();
+          PQ.pzc.T.hint(PQ.pzc.st);
+          return;
+        }
+        const b = e.target.closest("[data-a]");
+        if (b && !b.disabled) PQ.pzc.T.act(PQ.pzc.st, b.dataset.a, b);
+      }
+    );
+    PQ.$("quiz-pz").addEventListener("click", function() {
+      PQ.LOG.qSwitch();
+      PQ.$("quiz").hidden = true;
+      ST.paused = false;
+      PQ.pzOpen({ id: "quiz", t: PQ.PZON[(hero.pzn | 0) % PQ.PZON.length].id, zb: 0, quiz: true });
+    });
+  }
 
   // src/ui/learn.js
   function renderBattWith(QZ) {
@@ -10184,6 +10225,65 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }, 380);
       LM.speak(k ? "Station " + LM.ZN[k].s + "." : "Wieder zu Hause.");
     }, 430);
+  }
+  function labBindWith(LH) {
+    LH.$("lab").addEventListener(
+      "click",
+      /** @param {any} e */
+      function(e) {
+        let b = e.target.closest("[data-mat]");
+        if (b && b.dataset.mat === "ms") {
+          LH.speak(LH.MAT.ms[1] + ". Du hast " + (hero.mat.ms | 0) + ". " + LH.MAT.ms[3]);
+          return;
+        }
+        if (b) {
+          const k = b.dataset.mat;
+          LH.guide = { k, t: LH.time + 300 };
+          LH.speak(LH.MAT[k][1] + ". Du hast " + (hero.mat[k] | 0) + ". " + LH.MAT[k][3] + " Der orange Pfeil zeigt dir den Weg.");
+          return;
+        }
+        b = e.target.closest("[data-tl]");
+        if (b) {
+          const g = b.dataset.tl, G2 = LH.GEAR[g], t = LH.gearLv(g);
+          LH.speak(t >= 3 ? G2.n + " ist ganz fertig." : G2.n + ", Stufe " + (t + 1) + ". " + G2.what[t] + (LH.canBuild(g) ? " Du hast alles dafür. Tippe auf den Hammer." : " Dafür fehlen noch " + LH.missing(g) + "."));
+          return;
+        }
+        b = e.target.closest("[data-mk]");
+        if (b) {
+          LH.labBuild(b.dataset.mk);
+          return;
+        }
+        b = e.target.closest("[data-pzt]");
+        if (b) {
+          const p = LH.PZI[b.dataset.pzt];
+          LH.speak(p.n + ": Stufe " + ((hero.pz[p.id] | 0) + 1) + " von 10. Je mehr Rätsel du ohne Fehler löst, desto kniffliger werden sie.");
+        }
+      }
+    );
+    LH.$("mine-cards").addEventListener(
+      "click",
+      /** @param {any} e */
+      function(e) {
+        const b = e.target.closest("[data-st]");
+        if (!b) return;
+        const k = +b.dataset.st;
+        if (k > hero.zn) {
+          tone([170], "sawtooth");
+          LH.speak("Dahin fährt der Aufzug erst, wenn du selbst einmal dort warst. " + LH.ZN[k].need);
+          return;
+        }
+        LH.$("mine").hidden = true;
+        LH.liftGo(k);
+      }
+    );
+    LH.$("mark").addEventListener(
+      "click",
+      /** @param {any} e */
+      function(e) {
+        e.preventDefault();
+        LH.mkTap();
+      }
+    );
   }
 
   // src/ui/parent.js
@@ -11300,6 +11400,58 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       PT.strokeId = null;
       PT.strokeExt = null;
     }
+  }
+  function ptrBindWith(PN) {
+    PN.cv.addEventListener(
+      "pointerdown",
+      /** @param {any} e */
+      function(e) {
+        e.preventDefault();
+        try {
+          PN.cv.setPointerCapture(e.pointerId);
+        } catch (_) {
+        }
+        PN.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, has: false, lx: 0, ly: 0 });
+        PN.armGhost(PN.cv);
+        if (!ST.tool) PN.tapWorld(e.clientX, e.clientY);
+        if (ST.tool === "rope") PN.pointers.get(e.pointerId).rs = PN.toWorld(e.clientX, e.clientY);
+        if (ST.tool === "track" && PN.strokeId === null) {
+          const w = PN.toWorld(e.clientX, e.clientY);
+          PN.strokeId = e.pointerId;
+          PN.strokeExt = null;
+          PN.stroke = [w];
+          for (const T of ST.tracks) {
+            const a = T.pts[0], b = T.pts[T.pts.length - 1];
+            if (Math.hypot(w[0] - b[0], w[1] - b[1]) < 46) {
+              PN.strokeExt = { T, end: true };
+              PN.stroke = [[b[0], b[1]]];
+              break;
+            }
+            if (Math.hypot(w[0] - a[0], w[1] - a[1]) < 46) {
+              PN.strokeExt = { T, end: false };
+              PN.stroke = [[a[0], a[1]]];
+              break;
+            }
+          }
+        }
+      }
+    );
+    PN.cv.addEventListener(
+      "pointermove",
+      /** @param {any} e */
+      function(e) {
+        const p = PN.pointers.get(e.pointerId);
+        if (!p) return;
+        p.x = e.clientX;
+        p.y = e.clientY;
+        if (e.pointerId === PN.strokeId && PN.stroke && PN.stroke.length < 900) {
+          const w = PN.toWorld(p.x, p.y), l = PN.stroke[PN.stroke.length - 1];
+          if (Math.hypot(w[0] - l[0], w[1] - l[1]) > 10) PN.stroke.push(w);
+        }
+      }
+    );
+    PN.cv.addEventListener("pointerup", PN.endPointer);
+    PN.cv.addEventListener("pointercancel", PN.endPointer);
   }
 
   // src/systems/player/vehicles.js
@@ -17644,51 +17796,43 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function paintStep() {
       return paintStepWith(PT);
     }
-    cv.addEventListener("pointerdown", function(e) {
-      e.preventDefault();
-      try {
-        cv.setPointerCapture(e.pointerId);
-      } catch (_) {
-      }
-      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, has: false, lx: 0, ly: 0 });
-      armGhost(cv);
-      if (!ST.tool) tapWorld(e.clientX, e.clientY);
-      if (ST.tool === "rope") pointers.get(e.pointerId).rs = toWorld(e.clientX, e.clientY);
-      if (ST.tool === "track" && strokeId === null) {
-        const w = toWorld(e.clientX, e.clientY);
-        strokeId = e.pointerId;
-        strokeExt = null;
-        stroke = [w];
-        for (const T of ST.tracks) {
-          const a = T.pts[0], b = T.pts[T.pts.length - 1];
-          if (Math.hypot(w[0] - b[0], w[1] - b[1]) < 46) {
-            strokeExt = { T, end: true };
-            stroke = [[b[0], b[1]]];
-            break;
-          }
-          if (Math.hypot(w[0] - a[0], w[1] - a[1]) < 46) {
-            strokeExt = { T, end: false };
-            stroke = [[a[0], a[1]]];
-            break;
-          }
-        }
-      }
-    });
-    cv.addEventListener("pointermove", function(e) {
-      const p = pointers.get(e.pointerId);
-      if (!p) return;
-      p.x = e.clientX;
-      p.y = e.clientY;
-      if (e.pointerId === strokeId && stroke && stroke.length < 900) {
-        const w = toWorld(p.x, p.y), l = stroke[stroke.length - 1];
-        if (Math.hypot(w[0] - l[0], w[1] - l[1]) > 10) stroke.push(w);
-      }
-    });
     function endPointer(e) {
       return endPointerWith(PT, e);
     }
-    cv.addEventListener("pointerup", endPointer);
-    cv.addEventListener("pointercancel", endPointer);
+    function ptrBind() {
+      return ptrBindWith(PN);
+    }
+    const PN = {
+      get cv() {
+        return cv;
+      },
+      get pointers() {
+        return pointers;
+      },
+      get strokeId() {
+        return strokeId;
+      },
+      set strokeId(v) {
+        strokeId = v;
+      },
+      get strokeExt() {
+        return strokeExt;
+      },
+      set strokeExt(v) {
+        strokeExt = v;
+      },
+      get stroke() {
+        return stroke;
+      },
+      set stroke(v) {
+        stroke = v;
+      },
+      armGhost,
+      endPointer,
+      tapWorld,
+      toWorld
+    };
+    ptrBind();
     try {
       const o = JSON.parse(localStorage.getItem(K_VOICE) || "null");
       if (o && typeof o === "object") {
@@ -19694,53 +19838,12 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function labBuild(g) {
       return labBuildWith(LM, g);
     }
-    $("lab").addEventListener("click", function(e) {
-      let b = e.target.closest("[data-mat]");
-      if (b && b.dataset.mat === "ms") {
-        speak(MAT.ms[1] + ". Du hast " + (hero.mat.ms | 0) + ". " + MAT.ms[3]);
-        return;
-      }
-      if (b) {
-        const k = b.dataset.mat;
-        guide = { k, t: time + 300 };
-        speak(MAT[k][1] + ". Du hast " + (hero.mat[k] | 0) + ". " + MAT[k][3] + " Der orange Pfeil zeigt dir den Weg.");
-        return;
-      }
-      b = e.target.closest("[data-tl]");
-      if (b) {
-        const g = b.dataset.tl, G2 = GEAR[g], t = gearLv(g);
-        speak(t >= 3 ? G2.n + " ist ganz fertig." : G2.n + ", Stufe " + (t + 1) + ". " + G2.what[t] + (canBuild(g) ? " Du hast alles dafür. Tippe auf den Hammer." : " Dafür fehlen noch " + missing(g) + "."));
-        return;
-      }
-      b = e.target.closest("[data-mk]");
-      if (b) {
-        labBuild(b.dataset.mk);
-        return;
-      }
-      b = e.target.closest("[data-pzt]");
-      if (b) {
-        const p = PZI[b.dataset.pzt];
-        speak(p.n + ": Stufe " + ((hero.pz[p.id] | 0) + 1) + " von 10. Je mehr Rätsel du ohne Fehler löst, desto kniffliger werden sie.");
-      }
-    });
     function openMine() {
       return openMineWith(LM);
     }
     function liftGo(k) {
       return liftGoWith(LM, k);
     }
-    $("mine-cards").addEventListener("click", function(e) {
-      const b = e.target.closest("[data-st]");
-      if (!b) return;
-      const k = +b.dataset.st;
-      if (k > hero.zn) {
-        tone([170], "sawtooth");
-        speak("Dahin fährt der Aufzug erst, wenn du selbst einmal dort warst. " + ZN[k].need);
-        return;
-      }
-      $("mine").hidden = true;
-      liftGo(k);
-    });
     const CRYC = ["#7fe3f0", "#c77dff", "#ff9fd0"], CRYH = [30, 46, 38, 24];
     const MKMAX = 8, MKS = {};
     function mkKey() {
@@ -19756,10 +19859,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function mkTap() {
       return mkTapWith(DP);
     }
-    $("mark").addEventListener("click", function(e) {
-      e.preventDefault();
-      mkTap();
-    });
     function drawDeep(x0, x1, y0, y1) {
       return drawDeepWith(RP, ctx, x0, x1, y0, y1);
     }
@@ -19772,6 +19871,43 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function drawFar() {
       return drawFarWith(SC, ctx);
     }
+    function labBind() {
+      return labBindWith(LH);
+    }
+    const LH = {
+      get $() {
+        return $;
+      },
+      get MAT() {
+        return MAT;
+      },
+      get guide() {
+        return guide;
+      },
+      set guide(v) {
+        guide = v;
+      },
+      get time() {
+        return time;
+      },
+      get GEAR() {
+        return GEAR;
+      },
+      get PZI() {
+        return PZI;
+      },
+      get ZN() {
+        return ZN;
+      },
+      canBuild,
+      gearLv,
+      labBuild,
+      liftGo,
+      missing,
+      mkTap,
+      speak
+    };
+    labBind();
     function drawNebula() {
       return drawNebulaWith(SC, ctx);
     }
@@ -19881,41 +20017,31 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function pzHintUi() {
       return pzHintUiWith(PZ);
     }
-    $("pz").addEventListener("click", function(e) {
-      if (e.target === $("pz") || e.target.closest(".xb")) {
-        pzClose();
-        return;
-      }
-      if (!pzc) return;
-      if (e.target.closest("#pz-say")) {
-        speak(pzc.T.say(pzc.st));
-        return;
-      }
-      if (pzc.busy) return;
-      if (e.target.closest("#pz-hint")) {
-        if (pzc.hint >= pzHintMax(pzc)) {
-          speak("Den Tipp hast du schon bekommen. Du schaffst den Rest!");
-          return;
-        }
-        if (pzc.fails < 1) {
-          speak("Probier es erst einmal selbst. Wenn es nicht klappt, gibt es einen Tipp.");
-          return;
-        }
-        LOG.pHint(pzc);
-        pzc.hint++;
-        pzHintUi();
-        pzc.T.hint(pzc.st);
-        return;
-      }
-      const b = e.target.closest("[data-a]");
-      if (b && !b.disabled) pzc.T.act(pzc.st, b.dataset.a, b);
-    });
-    $("quiz-pz").addEventListener("click", function() {
-      LOG.qSwitch();
-      $("quiz").hidden = true;
-      ST.paused = false;
-      pzOpen({ id: "quiz", t: PZON[(hero.pzn | 0) % PZON.length].id, zb: 0, quiz: true });
-    });
+    function pzBind() {
+      return pzBindWith(PQ);
+    }
+    const PQ = {
+      get $() {
+        return $;
+      },
+      get pzc() {
+        return pzc;
+      },
+      get LOG() {
+        return LOG;
+      },
+      get PZON() {
+        return PZON;
+      },
+      pzClose,
+      pzHintMax,
+      pzHintUi,
+      get pzOpen() {
+        return pzOpen;
+      },
+      speak
+    };
+    pzBind();
     function mkMuster(lv) {
       return mkMusterWith(Math.random, lv);
     }
