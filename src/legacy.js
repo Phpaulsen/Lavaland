@@ -46,6 +46,7 @@ import { hudLootWith, svg24With, armGhostWith, tapWith, holdWith, syncHandWith, 
 import { toWorldWith, discWith, paintPayWith, paintStepWith, endPointerWith } from './ui/paint.js';
 import { takeWith, baggerActWith, loaderActWith, dumperActWith, boreWith, updCarWith, updBaggerWith, updLoaderWith, updDumperWith, updTbmWith, updRocketWith, updPlaneWith, updCoasterWith, onSnowWith, updSkiWith, skiActWith, updDragonWith, updSubWith, updBalloonWith, updHeliWith, heliHookWith, heliDropWith, boatWetWith, updBoatWith, updBugWith } from './systems/player/vehicles.js';
 import { gravWith, parkWith, setModeWith, rotWith, bucketWith, scoopWith, drillHeadWith, doActionWith, burnWith, moverWith, updateWith, nearLiftWith, rideLiftWith, liftRideWith, zipOkWith, zipAddWith, zipNearWith, handDigWith } from './systems/player/player.js';
+import { restoreWith, newRealmWith, travelWith, resetWorldWith, frameWith, startWith } from './app/app.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -1154,85 +1155,14 @@ function packStart(){ return packStartWith(SV); }
 function packStep(){ return packStepWith(SV); }
 function saveGame(manual){ return saveGameWith(SV,manual); }
 function autosave(dt){ return autosaveWith(SV,dt); }
-function restore(sv){
-  SEED=sv.seed; shapeWorld(); loadCells(sv); LIFE.clear(); stamp.fill(0);
-  parts.length=0; ghost=null; stroke=null; strokeId=null;
-  trees.forEach(function(t,i){ t.state=(sv.trees&&sv.trees[i])|0; t.t=0; });
-  ST.zips=Array.isArray(sv.zips)?sv.zips.filter(zipOk).slice(-ZIPMAX):[]; P.zip=null; MONS.length=0; METS.length=0; MROCKS.length=0; FLIES.length=0; ARROWS.length=0;
-  ST.tracks=[]; (sv.tracks||[]).forEach(function(t){ const T=makeTrack(t.raw,t.user); if(T){ if(t.rb) T.rb=true; ST.tracks.push(T); } });
-  ST.hidden=sv.hidden||[]; ST.props=(sv.props||[]).filter(function(o){ return o.type==='man'; }); bombs.length=0;
-  for(const k in parked) parked[k]=(sv.parked&&sv.parked[k])||null; heliLoad='';
-  P.mode='walk'; P.x=sv.px; P.y=sv.py; P.vx=0; P.vy=0; P.on=false; P.face=1; P.chute=false; P.soot=0; P.hurt=0; P.turbo=0; P.track=null; P.load=0;
-  P.ball=0; P.spin=0; P.rot=0; P.frost=0;
-  deepRestore(sv);
-  if(!sv.snow) migrateSnow();
-  grow(Math.max(HOME_END*CELL,P.x+3200));
-  ST.energy=sv.energy||0; cam.x=P.x; cam.y=P.y-80; ST.tool=null; pan.x=0; pan.y=0;
-  scanMobile();
-}
+function restore(sv){ return restoreWith(APP,sv); }
 function newSeed(){ return 1+Math.floor(Math.random()*999983); }
 
 /* ---------- Reisen zwischen den Welten: Die Welt, die man verlässt, wird gespeichert, die neue geladen oder zum ersten Mal erzeugt. ---------- */
 let portalT=0, portalOff='', exitHint=false, portO=null;
 function orbsOf(id){ const R=RLM[id]; return R.orb?[R.orb()]:R.orbs(); }
-function newRealm(){
-  ST.seen={}; ST.eggGot={}; ST.lootGot={}; ST.orbGot={}; ST.matGot={}; ST.pzGot={};
-  shapeWorld(); planetGen();
-  parts.length=0; ghost=null; stroke=null; strokeId=null;
-  for(const tr of trees){ tr.state=0; tr.t=0; }
-  ST.tracks=[]; ST.zips=[]; P.zip=null; MONS.length=0; METS.length=0; MROCKS.length=0; FLIES.length=0; ARROWS.length=0; ST.props=[]; bombs.length=0; ST.hidden=[]; guide=null;
-  for(const k in parked) parked[k]=null;
-  P.x=LANDX; P.y=surfaceY(LANDX);
-  scanMobile();
-}
-function travel(to){
-  if(ST.traveling||to===realm||(to&&!RLM[to])) return;
-  ST.traveling=true; portalT=0;
-  const from=realm, m=P.mode, en=ST.energy, f=$('fade');
-  f.hidden=false; void f.offsetWidth; f.classList.add('on'); sfx('whoosh');
-  const done=function(){ f.classList.remove('on'); setTimeout(function(){ f.hidden=true; },380); ST.traveling=false; };
-  setTimeout(function(){
-    let sv0=null;
-    try{ sv0=snapshot(); }catch(_){ done(); return; }
-    idbDo('readwrite',function(st){ return st.put(sv0,realmKey(from)); }).then(function(){
-      return idbDo('readonly',function(st){ return st.get(realmKey(to)); });
-    }).then(function(sv){
-      try{
-        setRealm(to);
-        if(sv&&runsOk(sv)&&sv.seed===SEED&&(sv.rl||'')===to) restore(sv);
-        else if(to) newRealm();
-        else throw new Error('earth');
-      }catch(e){
-        setRealm(from); try{ restore(sv0); }catch(_){}
-        ST.energy=en; done(); tone([170],'sawtooth'); return;
-      }
-      ST.energy=en; arrive(from,to,m);
-      try{ if(to) localStorage.setItem(K_REALM,to); else localStorage.removeItem(K_REALM); }catch(_){}
-      ST.traveling=false; saveGame(false); ST.traveling=true;
-      done();
-    },function(){ done(); tone([170],'sawtooth'); });
-  },450);
-}
-function arrive(from,to,m){
-  const R=rlm();
-  if(m==='rocket'||m==='plane'){ P.mode=m; parked[m]=null; P.ang=0; }
-  if(R){
-    P.x=LANDX; P.y=surfaceY(LANDX)-(P.mode==='walk'?2:260);
-    if(!ST.seen.hi){ ST.seen.hi=1; later(1,function(){ say('',R.hello); }); }
-    else later(.6,function(){ banner(R.e,1800); speak('Wieder auf '+R.n+'.'); });
-    if(to==='moon'){ skyMark('moon'); if(quest&&quest.type==='moon') quest.p=1; }
-    if(to==='disco') disco(12);
-  }else{
-    const L=orbsOf(from); let o=L[0];
-    for(const q of L) if(portO&&Math.hypot(q.x-portO.x,q.y-portO.y)<1) o=q;
-    portO=o; grow(o.x+3200);
-    P.x=o.x; P.y=o.y-o.r-40; portalOff=from;
-    later(.6,function(){ say('','Zurück im Weltraum! Unten liegt die Erde.'); });
-  }
-  P.vx=0; P.vy=0; P.on=false; P.chute=false;
-  cam.x=P.x; cam.y=P.y-80; dkA=darkAt(cam.y); exitHint=false;
-  scanMobile(); syncUI();
-}
+function newRealm(){ return newRealmWith(APP); }
+function travel(to){ return travelWith(APP,to); }
 /* Landet man auf dem Mond oder einem Planeten und bleibt kurz stehen, beginnt die Reise. Oben über einer fremden Welt geht es zurück. */
 function portalTick(dt){
   if(ST.traveling||uiOpen()) return;
@@ -3171,31 +3101,7 @@ function actIcon(){
   return 'exit';
 }
 
-function resetWorld(seed){
-  SEED=seed||newSeed();
-  /* Eine neue Erde: Mond und Planeten werden dann auch neu. */
-  setRealm('');
-  try{ localStorage.removeItem(K_REALM); for(const k in FOG) delete FOG[k]; for(const k in MKS) delete MKS[k]; Object.keys(localStorage).forEach(function(k){ if(k.indexOf(K_FOG)===0||k.indexOf(K_MARKS)===0) localStorage.removeItem(k); }); }catch(_){}
-  idbDo('readwrite',function(st){ for(const id in RLM) st.delete(realmKey(id)); return st.count(); }).catch(function(){});
-  ST.seen={}; ST.eggGot={}; ST.lootGot={}; ST.orbGot={}; ST.matGot={}; ST.pzGot={};
-  shapeWorld();
-  gen();
-  parts.length=0; ghost=null; stroke=null; strokeId=null;
-  for(const tr of trees){ tr.state=0; tr.t=0; }
-  ST.tracks=[]; ST.zips=[]; P.zip=null; const d=demoTrack(); if(d) ST.tracks.push(d);
-  P.mode='walk'; P.x=820; P.y=surfaceY(820); P.vx=0; P.vy=0; P.on=true; P.face=1; P.chute=false; P.soot=0; P.hurt=0; P.turbo=0; P.track=null; P.load=0; P.arm=.75; P.ball=0; P.spin=0; P.rot=0; P.frost=0;
-  for(const k in parked) parked[k]=null;
-  heliLoad='';
-  parked.car={x:720,y:surfaceY(720),vy:0,ang:0,face:1,arm:0,load:0};
-  parked.plane={x:630,y:surfaceY(630),vy:0,ang:0,face:1};
-  parked.rocket={x:556,y:surfaceY(556),vy:0,ang:0,face:1,load:0};
-  cam.x=P.x; cam.y=P.y-80; ST.tool=null; pan.x=0; pan.y=0; ST.props=[]; bombs.length=0;
-  deepHome();
-  hideFinds();
-  stEnter();
-  syncUI();
-  scanMobile();
-}
+function resetWorld(seed){ return resetWorldWith(APP,seed); }
 
 /* ---------- Spielprotokoll für Eltern: Was er wann spielt und wie er Aufgaben löst. Liegt nur auf diesem Gerät, in einer eigenen Datenbank, damit ein Fehler hier nie den Spielstand trifft. Das Protokoll schaut nur zu: Nichts davon ändert Belohnung oder Schwierigkeit. ---------- */
 /* Was das Protokoll vom Spiel liest (log/ darf state/ nicht importieren, ADR 0001). */
@@ -3431,6 +3337,117 @@ $('par-body').addEventListener('click',function(e){
 });
 
 let last=0, accum=0, lastIcon='', drawN=0;
+/* Port für app/app.js: Start, Bildschleife, Reisen zwischen den Welten, neue Welt und Laden. Steht vor frame, nach allen Konstanten: Konstanten als Werte, veränderliche Namen (let) als Getter, die die Abläufe schreiben, mit Setter. */
+const APP={
+  get SEED(){ return SEED; },
+  set SEED(v){ SEED=v; },
+  parts:parts,
+  get ghost(){ return ghost; },
+  set ghost(v){ ghost=v; },
+  get stroke(){ return stroke; },
+  set stroke(v){ stroke=v; },
+  get strokeId(){ return strokeId; },
+  set strokeId(v){ strokeId=v; },
+  trees:trees,
+  ZIPMAX:ZIPMAX,
+  bombs:bombs,
+  get heliLoad(){ return heliLoad; },
+  set heliLoad(v){ heliLoad=v; },
+  get guide(){ return guide; },
+  set guide(v){ guide=v; },
+  get realm(){ return realm; },
+  RLM:RLM,
+  get portalT(){ return portalT; },
+  set portalT(v){ portalT=v; },
+  $:$,
+  get quest(){ return quest; },
+  get portO(){ return portO; },
+  set portO(v){ portO=v; },
+  get portalOff(){ return portalOff; },
+  set portalOff(v){ portalOff=v; },
+  get dkA(){ return dkA; },
+  set dkA(v){ dkA=v; },
+  get exitHint(){ return exitHint; },
+  set exitHint(v){ exitHint=v; },
+  FOG:FOG,
+  MKS:MKS,
+  get last(){ return last; },
+  set last(v){ last=v; },
+  LOG:LOG,
+  get accum(){ return accum; },
+  set accum(v){ accum=v; },
+  get perfT(){ return perfT; },
+  set perfT(v){ perfT=v; },
+  get perfN(){ return perfN; },
+  set perfN(v){ perfN=v; },
+  get maxDpr(){ return maxDpr; },
+  set maxDpr(v){ maxDpr=v; },
+  get drawN(){ return drawN; },
+  set drawN(v){ drawN=v; },
+  get lastIcon(){ return lastIcon; },
+  set lastIcon(v){ lastIcon=v; },
+  actEl:actEl,
+  AI:AI,
+  get ctx(){ return ctx; },
+  get battShown(){ return battShown; },
+  set battShown(v){ battShown=v; },
+  QDEF:QDEF,
+  actIcon,
+  banner,
+  darkAt,
+  dayTick,
+  deepHome,
+  deepIntro,
+  deepRestore,
+  demoTrack,
+  disco,
+  draw,
+  errAdd,
+  frame,
+  gen,
+  goldSwap,
+  grow,
+  hideFinds,
+  hudLoot,
+  idbDo,
+  labBadge,
+  later,
+  loadCells,
+  makeTrack,
+  migrateSnow,
+  newQuest,
+  newSeed,
+  nextLand,
+  orbsOf,
+  paintStep,
+  planetGen,
+  pulse,
+  renderAlbum,
+  renderBatt,
+  resize,
+  rlm,
+  safe,
+  saveGame,
+  saveHero,
+  say,
+  scanMobile,
+  setRealm,
+  shapeWorld,
+  showQuest,
+  skyMark,
+  snapshot,
+  speak,
+  stEnter,
+  step,
+  surfaceY,
+  syncOwn,
+  syncSound,
+  syncUI,
+  uiOpen,
+  update,
+  zipOk,
+  zoneGifts
+};
 /* Port für systems/player/player.js: Spielfigur, Laufen, Werkzeuge zu Fuß, Lift, Seilrutsche und das Bild-Update. Steht direkt vor frame, nach allen Konstanten: Konstanten als Werte (heißer Pfad, update läuft jedes Bild), veränderliche Namen (let) als Getter, die update schreibt, mit Setter. */
 const PL={
   get heliLoad(){ return heliLoad; },
@@ -3532,33 +3549,7 @@ const PL={
   updSub,
   updTbm
 };
-function frame(t){
-  /* Der nächste Frame wird zuerst bestellt: Ein Fehler irgendwo darf das Spiel nicht einfrieren. */
-  requestAnimationFrame(frame);
-  try{
-    const raw=(t-last)/1000||0, dt=Math.min(.034,raw); last=t;
-    LOG.tick(raw); LOG.beat(raw);
-    if(ST.ready&&!document.hidden){ const ls=LOG.state(); if(ls&&ls!=='idle') dayTick(Math.min(1,raw)); }
-    /* Solange ein Fenster offen ist, steht das Spiel still und der Akku läuft nicht leer. */
-    if(!(ST.paused||uiOpen())){
-      accum+=dt; let n=0;
-      while(accum>=1/30&&n<2){ paintStep(); step(); accum-=1/30; n++; }
-      if(accum>.1) accum=0;
-      update(dt); for(const f of SIDE) safe(f,dt);
-      /* Läuft es auf diesem Gerät zu langsam, sinkt die Auflösung in Stufen. */
-      if(raw<.2){ perfT+=raw; perfN++; }
-      if(perfN>=150){ if(perfT/perfN>.026&&maxDpr>1){ maxDpr=Math.max(1,maxDpr-.5); resize(); } perfT=0; perfN=0; }
-    }
-    /* Akku sparen: Hinter einem offenen Fenster steht die Welt still, dann reichen 6 Bilder pro Sekunde. Ohne Berührung reichen 30. */
-    drawN++;
-    const every=(ST.paused||uiOpen())?10:LOG.state()==='idle'?2:1;
-    if(drawN>=every){ drawN=0; draw(); }
-    const ic=actIcon(); if(ic!==lastIcon){ actEl.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+AI[ic]+'</svg>'; lastIcon=ic; }
-  }catch(e){
-    errAdd((e&&e.message)||e,'frame'); console.error(e);
-    try{ if(ctx.reset) ctx.reset(); else ctx.setTransform(1,0,0,1,0,0); }catch(_){}
-  }
-}
+function frame(t){ return frameWith(APP,t); }
 /* Absturzschutz für Nebensysteme: Wirft eins dreimal einen Fehler, wird es für diese Sitzung abgeschaltet und steht im Fehlerprotokoll. Der Rest läuft weiter. */
 for(const s of mobsWith(MP)) register(s.name,s.tick,s.draw);
 for(const s of sightsWith(SY)) register(s.name,s.tick,s.draw);
@@ -3583,81 +3574,7 @@ function goldSwap(){
   saveHero(); saveFinds(); labBadge(false);
   setTimeout(function(){ banner('⚙️ +'+z,2600); say('','Professor Zahnrad hat deinen Schatz in '+z+(z>1?' Zahnräder':' Zahnrad')+' getauscht. Damit kannst du in der Werkstatt bauen.'); },1300);
 }
-function start(){
-  resize();
-  const go=function(){
-    ST.ready=true; LOG.start(); renderAlbum(); syncUI(); syncSound(); battShown=-1; renderBatt();
-    stEnter(); syncOwn(); zoneGifts(false);
-    if(!hero.big) setTimeout(function(){ if(!uiOpen()&&!ST.paused){ hero.big=true; if(nextLand()){ hero.quest={type:'land',goal:1,p:0}; showQuest(false); } saveHero(); say('','Neu! Hinter dem Schneeberg liegen jetzt viele fremde Länder. Fahr hinten am Berg hinunter und entdecke sie!'); pulse('btn-map'); } },2800);
-    if(hero.quest&&hero.quest.type==='core'&&hero.dr<3) hero.quest=null;
-    if(hero.big&&!hero.deep) setTimeout(function(){ if(!uiOpen()&&!ST.paused) deepIntro(); },2800);
-    labBadge(false);
-    if(!hero.quest||hero.quest.done||!QDEF[hero.quest.type]) hero.quest=newQuest();
-    showQuest(false); pulse('quest');
-    /* Einmal am Tag gibt es ein kleines Geschenk. Kein Zähler, nichts geht verloren, wenn man einen Tag auslässt. */
-    const today=new Date().toDateString();
-    if(hero.day!==today){ hero.day=today; saveHero(); }
-    goldSwap();
-    hudLoot();
-    if(ST.energy<=0) pulse('batt');
-    requestAnimationFrame(function(t){ last=t; requestAnimationFrame(frame); });
-  };
-  const tryLoad=function(sv){
-    /* Ein Spielstand aus der alten, kleinen Welt bleibt zur Sicherheit unter eigenem Namen liegen. */
-    if(sv&&sv.v<4) idbDo('readwrite',function(st){ return st.put(sv,sv.v===2?'world-alt':'world-v3'); }).catch(function(){});
-    if(sv&&(runsOk(sv)||(sv.grid&&((sv.v===4&&sv.gy===GY&&sv.grid.length===sv.f*GY)||(sv.v===3&&sv.grid.length===sv.f*GY0)||(sv.v===2&&sv.grid.length===HOME_GX*GY0))))){ try{ restore(sv); return true; }catch(_){} }
-    return false;
-  };
-  /* Erst der neue Spielstand, dann der alte. Erst wenn beides fehlt oder kaputt ist, gibt es eine neue Welt. */
-  /* Ein Spielstand, der da ist, sich aber nicht laden lässt (etwa nach einem Fehler in einer neuen Spielversion), wird nie überschrieben:
-     Er bleibt vorher unter 'rescue-…' liegen und kommt mit „Spielstand sichern“ in die Datei. Dasselbe gilt für Mond und Planeten, die zu ihm gehören. */
-  const rescue=function(keys,why){
-    errAdd('Spielstand nicht ladbar, gerettet: '+keys.join(', '),why);
-    return idbDo('readwrite',function(st){
-      keys.forEach(function(k){
-        const g=st.get(k);
-        g.onsuccess=function(){
-          const v=g.result; if(v===undefined) return;
-          /* Derselbe kaputte Stand wird nur einmal abgelegt, auch wenn das Laden bei jedem Start scheitert. */
-          const rk='rescue-'+k+'-'+(v&&v.seed)+'-'+(v&&(v.runs||v.grid)?(v.runs||v.grid).length:0), r=st.get(rk);
-          r.onsuccess=function(){ if(r.result===undefined) st.put(v,rk); };
-        };
-      });
-      return st.count();
-    }).catch(function(){});
-  };
-  const planets=function(){ return Object.keys(RLM).map(realmKey); };
-  /* War das Kind zuletzt auf dem Mond oder einem Planeten, geht es dort weiter. Klappt das nicht, geht es auf der Erde weiter. */
-  let rl=''; try{ rl=localStorage.getItem(K_REALM)||''; }catch(_){}
-  const load=function(retry){
-    const away=RLM[rl]?idbDo('readonly',function(st){ return st.get(realmKey(rl)); }).then(function(sv){
-      if(sv===undefined) return false;
-      if(sv&&runsOk(sv)&&sv.rl===rl){ try{ setRealm(rl); restore(sv); return true; }catch(_){ setRealm(''); } }
-      return rescue([realmKey(rl)],'start '+rl).then(function(){ return false; });
-    }):Promise.resolve(false);
-    return away.then(function(ok){
-      if(ok) return true;
-      setRealm('');
-      return idbDo('readonly',function(st){ return st.get(SAVEKEY); }).then(function(sv){
-        if(tryLoad(sv)) return true;
-        const bad=sv!==undefined;
-        return (bad?rescue([SAVEKEY].concat(planets()),'start'):Promise.resolve()).then(function(){
-          return idbDo('readonly',function(st){ return st.get('world'); });
-        }).then(function(old){
-          if(tryLoad(old)) return true;
-          /* Eine neue Erde löscht Mond und Planeten. Gehörten sie zu einem Stand, der nicht ladbar war, sind sie oben schon gerettet. */
-          resetWorld(newSeed()); return true;
-        });
-      });
-    }).catch(function(e){
-      /* Die Datenbank ist gerade nicht lesbar (auf Android etwa bei vollem Speicher). Erst noch einmal versuchen, dann ohne Speichern weiterspielen. */
-      if(!retry) return new Promise(function(res){ setTimeout(res,800); }).then(function(){ return load(true); });
-      errAdd('Datenbank nicht lesbar: '+((e&&e.message)||e),'start');
-      ST.diskLock=true; setRealm(''); resetWorld(newSeed()); return true;
-    });
-  };
-  load(false).then(go,function(){ ST.diskLock=true; setRealm(''); resetWorld(newSeed()); go(); });
-}
+function start(){ return startWith(APP); }
 /*@test-hook*/
 document.addEventListener('visibilitychange',function(){ if(document.hidden) saveGame(false); });
 const hot=window.claude&&window.claude.hot;
