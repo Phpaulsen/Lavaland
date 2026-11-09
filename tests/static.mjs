@@ -26,7 +26,7 @@ check('Skripte in der gebauten index.html sind gültiges JavaScript', () => {
 check('sw.js ist gültiges JavaScript', () => { new vm.Script(fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8'), { filename: 'sw.js' }); });
 
 // Budget: die Seite soll auf dem Handy auch mit schwachem Netz schnell da sein.
-const MAX_RAW = 800 * 1024, MAX_GZ = 240 * 1024;
+const MAX_RAW = 750 * 1024, MAX_GZ = 195 * 1024;   // Ratsche (Vereinfachungsplan Schritt 7): nach jedem Streich-PR auf den neuen Stand senken, nie anheben ohne ADR
 check('Größenbudget index.html', () => {
   const raw = Buffer.byteLength(html), gz = zlib.gzipSync(html, { level: 9 }).length;
   console.log('     ' + Math.round(raw / 1024) + ' KB, gzip ' + Math.round(gz / 1024) + ' KB (Grenzen ' + MAX_RAW / 1024 + ' / ' + MAX_GZ / 1024 + ' KB)');

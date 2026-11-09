@@ -226,6 +226,12 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 - Elternansicht: `PZOLD` zeigt die beiden nur noch, wenn alte Protokolle Einträge haben.
 - Golden Master: 20 Einträge gestrichen (`pz echo 0–9`, `pz sudoku 0–9`), kein Wert geändert.
 
+### Streich-PR 4b: Verwaiste Aufnahmen raus, Budget gesenkt (Vereinfachungsplan Schritt 7)
+
+- 259 Aufnahmen (0,96 MB) und ihre Einträge in `audio/index.json` entfernt: Kein Satz im Spiel braucht sie mehr (Geschichte, Missionen, Bau-Aufgaben, Markt, Echo, Sudoku …). `tools/voice/texts.json` neu gesammelt (1 638 Sätze). 24 neue Sätze haben noch keine Aufnahme (Schutz, Werkstatt …), dafür braucht es die Stimme lokal (`tools/voice/README.md`).
+- `tests/voice.mjs` scheitert jetzt, wenn eine Aufnahme keinem Satz mehr gehört; `--prune` löscht sie.
+- Größenbudget 800/240 KB → 750/195 KB (Ratsche). Golden Master unverändert.
+
 ### PR 16: Systemschnittstelle
 
 - **Bewegt:** `SIDE`, `SAFE`, `safe()` → `systems/index.js` mit `{ name, tick }` je Eintrag, gleiche Reihenfolge, `name` = heutiger Funktionsname. Die Tick-Funktionen selbst bleiben noch in `legacy.js` und werden nur registriert.

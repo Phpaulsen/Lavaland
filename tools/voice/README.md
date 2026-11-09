@@ -9,3 +9,5 @@ Neu erzeugen, wenn sich Texte im Spiel ändern:
 3. `pip install piper-tts` und `python3 tools/voice/build.py pfad/zu/de-thorsten-low.onnx` (braucht ffmpeg)
 
 Vorhandene Aufnahmen werden wiederverwendet, überflüssige gelöscht. Sätze, die im Spiel ohne Aufnahme vorkamen, lassen sich in der Elternansicht unter „Vorlesen“ kopieren.
+
+Nur löschen (ohne Stimme): `node tests/voice.mjs tools/voice/texts.json --prune` entfernt Aufnahmen, die kein Satz mehr braucht. CI scheitert, solange es solche gibt.
