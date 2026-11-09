@@ -45,6 +45,7 @@ import { pgOpenWith, pgDrawWith, parOpenWith, parGetWith, guessedWith, parLoadWi
 import { hudLootWith, svg24With, armGhostWith, tapWith, holdWith, syncHandWith, fsSyncWith, fsToggleWith } from './ui/controls.js';
 import { toWorldWith, discWith, paintPayWith, paintStepWith, endPointerWith } from './ui/paint.js';
 import { takeWith, baggerActWith, loaderActWith, dumperActWith, boreWith, updCarWith, updBaggerWith, updLoaderWith, updDumperWith, updTbmWith, updRocketWith, updPlaneWith, updCoasterWith, onSnowWith, updSkiWith, skiActWith, updDragonWith, updSubWith, updBalloonWith, updHeliWith, heliHookWith, heliDropWith, boatWetWith, updBoatWith, updBugWith } from './systems/player/vehicles.js';
+import { gravWith, parkWith, setModeWith, rotWith, bucketWith, scoopWith, drillHeadWith, doActionWith, burnWith, moverWith, updateWith, nearLiftWith, rideLiftWith, liftRideWith, zipOkWith, zipAddWith, zipNearWith, handDigWith } from './systems/player/player.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -563,44 +564,12 @@ function explode(x,y){
 }
 
 /* ---------- Spielfigur ---------- */
-function grav(){ return P.y<-1700?G*.3:G; }
+function grav(){ return gravWith(PL); }
 let ghost=null;
 let time=0, volT=3, stroke=null, strokeId=null, strokeExt=null;
 
-function park(){ return {x:P.x,y:P.y,vy:P.vy,ang:P.mode==='rocket'?0:P.ang,face:P.face,arm:P.arm,lift:P.lift,da:P.da,load:P.load}; }
-function leaveVehicle(){
-  const m=P.mode;
-  if(m==='walk'||m==='coaster'||m==='ski') return;
-  if(m==='heli'&&heliLoad) heliDrop();
-  if(m==='dragon'){ smoke(P.x,P.y-40,10); return; }
-  if((m==='plane'||m==='rocket')&&!P.on) ghost={kind:m,x:P.x,y:P.y,vx:m==='plane'?(Math.abs(P.vx)>120?P.vx:P.face*220):P.vx,vy:P.vy};
-  else parked[m]=park();
-}
-function setMode(m){
-  if(m===P.mode&&m!=='coaster') return;
-  if(m==='coaster'){
-    if(!ST.tracks.length){ setTool('track',true); pulse('tool-track'); return; }
-    leaveVehicle();
-    let best=ST.tracks[0], bd=1e12;
-    for(const T of ST.tracks){ const d=Math.abs(T.pts[0][0]-P.x)+Math.abs(T.pts[0][1]-P.y)-(T.user?4000:0); if(d<bd){bd=d;best=T;} }
-    P.track=best; P.s=0; P.v=130;
-  }else{
-    const jumped=(P.mode==='plane'||P.mode==='rocket'||P.mode==='dragon'||P.mode==='balloon')&&!P.on;
-    leaveVehicle();
-    if(m!=='walk'){
-      const pk=parked[m];
-      P.load=pk?pk.load:(m==='dumper'?200:0);
-      P.arm=.75; P.lift=0; P.da=0; P.ang=0; P.bed=0; P.climb=0;
-      if(m!=='ski'&&m!=='dragon') parked[m]=null;
-      if(m==='plane'&&!P.on) P.vx=P.face*250;
-      if(m==='dragon'){ smoke(P.x,P.y-40,10); sfx('roar'); }
-    }
-    if(m==='walk'&&jumped){ P.vy=-230; P.vx*=.5; pulse('act'); }
-  }
-  P.mode=m; P.chute=false; P.air=0; P.turbo=0; P.ball=0; P.spin=0; P.rot=0; P.wall=false; P.zip=null;
-  if(m==='coaster') P.on=false;
-  syncUI();
-}
+function park(){ return parkWith(PL); }
+function setMode(m){ return setModeWith(PL,m); }
 function setTool(t,force){ ST.tool=(ST.tool===t&&!force)?null:t; stroke=null; strokeId=null; syncUI(); }
 function syncUI(){
   for(const m of MODES) $('mode-'+m).setAttribute('aria-pressed',String(P.mode===m));
@@ -617,10 +586,10 @@ function pulse(id){
   setTimeout(function(){el.classList.remove('pulse');},2700);
 }
 function flash(id,cls){ const el=$(id); el.classList.add(cls); setTimeout(function(){el.classList.remove(cls);},1300); }
-function rot(lx,ly){ const c=Math.cos(P.ang), sn=Math.sin(P.ang); return [P.x+lx*c-ly*sn, P.y+lx*sn+ly*c]; }
-function bucket(){ return rot(P.face*(8+56*Math.cos(P.arm)),-34+56*Math.sin(P.arm)); }
-function scoop(){ return rot(P.face*38,-12-P.lift); }
-function drillHead(){ return [P.x+P.face*24*Math.cos(P.da),P.y-27+24*Math.sin(P.da)]; }
+function rot(lx,ly){ return rotWith(PL,lx,ly); }
+function bucket(){ return bucketWith(PL); }
+function scoop(){ return scoopWith(PL); }
+function drillHead(){ return drillHeadWith(PL); }
 function take(i){ return takeWith(VH,i); }
 /* Graben-Taste: gräbt, was der Löffel trifft. Trifft er nichts, senkt sich der Arm; ist er ganz unten, rollt der Bagger vor.
    Auskippen nur mit hochgehobenem Arm, damit Halten der Taste nicht abwechselnd gräbt und wieder zuschüttet. */
@@ -628,93 +597,10 @@ function baggerAct(){ return baggerActWith(VH); }
 function loaderAct(){ return loaderActWith(VH); }
 function dumperAct(){ return dumperActWith(VH); }
 function bore(x,y,r){ return boreWith(VH,x,y,r); }
-function doAction(){
-  if(P.zip){ keys.u=true; zipRide(0); keys.u=false; return; }
-  if(P.mode==='walk'){
-    const zn=zipNear(); if(zn){ zipGo(zn); return; }
-    if(nearScope()){ scopeOpen(); return; }
-    if(deepAct()) return;
-    if(nearLift()){ rideLift(); return; }
-    if(ST.tool==='bow'){ shoot(); return; }
-    if(DIGT[ST.tool]){ handDig(); return; }
-    if(P.on){ P.vy=-400*(FX.sugar>0?1.3:1)*(FX.tiny>0?.8:1); P.on=false; P.air=0; sfx('jump'); }
-    else P.chute=!P.chute;
-  }else if(P.mode==='car'){
-    P.turbo=1.5; if(P.on) P.vx=P.face*520; else P.vx+=P.face*200;
-  }else if(P.mode==='bagger'){ baggerAct(); P.digT=.25; }
-  else if(P.mode==='loader'){ loaderAct(); P.digT=.25; }
-  else if(P.mode==='dumper'){ dumperAct(); P.digT=.2; }
-  else if(P.mode==='tbm'){ P.digT=0; }
-  else if(P.mode==='ski') skiAct();
-  else if(P.mode==='dragon'){ P.digT=0; }
-  else if(P.mode==='sub') sonar();
-  else if(P.mode==='heli'&&(!P.on||heliLoad)) heliHook();
-  else if(P.mode==='boat'&&boatWet()){ blip(220,210,.5,'sawtooth',.06); shout(P.x,P.y-90,'TUUT!'); }
-  else setMode('walk');
-}
-function burn(){
-  P.hurt=.9; P.soot=4; P.vy=-440; P.on=false; P.vx+=(Math.random()-.5)*160;
-  smoke(P.x,P.y-16,9); shake=Math.max(shake,.25);
-}
-function boundsX(){
-  if(realm){ if(P.x<RX0) wrapX(RW); else if(P.x>=RX0+RW) wrapX(-RW); return; }
-  if(P.x<40){P.x=40; if(P.vx<0)P.vx=0; if(P.mode==='plane')P.face=1;}
-  if(P.x>WORLD_W-40){P.x=WORLD_W-40; if(P.vx>0)P.vx=0; if(P.mode==='plane')P.face=-1;}
-}
-/* Auf einer fremden Welt geht es rundherum: Wer am Ende hinausläuft, kommt am Anfang wieder herein. */
-function wrapX(d){
-  P.x+=d; cam.x+=d; pet.x+=d; parts.length=0; ghost=null;
-  grow(Math.max(P.x,cam.x)+3200); scanMobile();
-  if(!ST.seen.round&&ST.BIO.every(function(b){ return ST.seen[b.i]; })){ ST.seen.round=1; ST.lootDirty=true; confetti(P.x,P.y); jingle(); banner('🌍',2400); say('','Du bist einmal ganz um '+rlm().n+' herum gereist!'); }
-}
-function mover(dt,hw,h,step,half){
-  let hit=false;
-  if(solidW(P.x,P.y-step-3)&&solidW(P.x,P.y-h*.5)){ P.y-=5; if(P.vy>0)P.vy=0; }
-  if(P.vx!==0){
-    const nx=P.x+P.vx*dt, ex=nx+(P.vx>0?hw:-hw);
-    if(solidW(ex,P.y-step-2)||solidW(ex,P.y-h*.55)||solidW(ex,P.y-h+2)) hit=true; else P.x=nx;
-    boundsX();
-  }
-  let ny=P.y+P.vy*dt;
-  if(P.vy<0&&(solidW(P.x,ny-h)||solidW(P.x-hw*.6,ny-h)||solidW(P.x+hw*.6,ny-h))){ ny=P.y; P.vy=0; }
-  const sl=skyLim(); if(ny<sl){ ny=sl; if(P.vy<0)P.vy=0; }
-  const fc=floorAt(P.x,P.y,step), fb=floorAt(P.x-half,P.y,step), ff=floorAt(P.x+half,P.y,step);
-  const f=Math.min(fc,(fb+ff)/2);
-  P.gs=clamp((ff-fb)/(2*half),-1.3,1.3);
-  P.landed=false;
-  if(ny>=f){ if(!P.on) P.landed=true; ny=f; P.on=true; }
-  else if(f-ny>2.5) P.on=false;
-  P.y=ny;
-  return hit;
-}
+function doAction(){ return doActionWith(PL); }
+function burn(){ return burnWith(PL); }
+function mover(dt,hw,h,step,half){ return moverWith(PL,dt,hw,h,step,half); }
 
-function updWalk(dt,ix,u,d){
-  if(FX.slip>0){ ix=P.face; u=0; }
-  if(ix) P.face=ix;
-  if(d) P.chute=false;
-  const wm=cellAt(P.x,P.y-12), wet=wm===WATER||(wm===LAVA&&hero.up.heat>=2), icy=P.on&&cellAt(P.x,P.y+2)===ICE;
-  if(P.on) P.vx+=(ix*150*fxSpeed()*(1+.1*hero.up.motor)-P.vx)*Math.min(1,dt*(icy?1.2:10));
-  else if(ix) P.vx+=(ix*(P.chute?120:220)-P.vx)*Math.min(1,dt*2.5);
-  else P.vx-=P.vx*Math.min(1,dt*.5);
-  if(u){
-    P.vy+=((P.y<-1200?-430:-240)*(1+.25*hero.up.jet)-P.vy)*Math.min(1,dt*6); P.on=false; P.chute=false;
-    if(!wet&&Math.random()<dt*40) spawn(1,P.x-P.face*8,P.y-14,(Math.random()-.5)*30,130,.25,4);
-  }
-  else if(FX.float>0){ P.vy+=(-110-P.vy)*Math.min(1,dt*4); P.on=false; }
-  else if(P.chute) P.vy+=(75-P.vy)*Math.min(1,dt*4);
-  else P.vy+=grav()*dt;
-  if(wet){ P.soot=0; P.chute=false; P.vx-=P.vx*Math.min(1,dt*2); if(!u){ P.vy-=G*.8*dt; P.vy-=P.vy*Math.min(1,dt*3); } }
-  if(P.vy>700) P.vy=700;
-  const pv=P.vy;
-  mover(dt,5,30,14,3);
-  if(P.on){
-    if(P.landed&&pv>350){ dust(P.x,P.y); if(FX.big>0) shake=Math.max(shake,.3); }
-    P.chute=false; P.air=0; P.vy=P.gs*P.vx; P.run+=Math.abs(P.vx)*dt*.11;
-  }else{
-    P.air+=dt;
-    if(!P.chute&&!u&&!wet&&P.vy>520&&floorAt(P.x,P.y,0)-P.y<300) P.chute=true;
-  }
-}
 function updCar(dt,ix,u,d){ return updCarWith(VH,dt,ix,u,d); }
 function updBagger(dt,ix,u,d){ return updBaggerWith(VH,dt,ix,u,d); }
 function updLoader(dt,ix,u,d){ return updLoaderWith(VH,dt,ix,u,d); }
@@ -725,121 +611,8 @@ function updTbm(dt,ix,u,d){ return updTbmWith(VH,dt,ix,u,d); }
 function updRocket(dt,ix,u,d){ return updRocketWith(VH,dt,ix,u,d); }
 function updPlane(dt,ix,u,d){ return updPlaneWith(VH,dt,ix,u,d); }
 function updCoaster(dt,ix){ return updCoasterWith(VH,dt,ix); }
-function settle(o,dt){
-  const f=floorAt(o.x,o.y,26);
-  if(o.y<f-1){ o.vy+=G*dt; if(o===parked.balloon&&o.vy>70) o.vy=70; o.y=Math.min(f,o.y+o.vy*dt); }
-  else{ o.y=f; o.vy=0; o.ang+=(Math.atan(clamp((floorAt(o.x+16,o.y,26)-floorAt(o.x-16,o.y,26))/32,-1.3,1.3))-o.ang)*Math.min(1,dt*10); }
-}
 
-function update(dt){
-  time+=dt;
-  const ix=(keys.r?1:0)-(keys.l?1:0), u=keys.u?1:0, d=keys.d?1:0;
-  if(P.hurt>0)P.hurt-=dt; if(P.soot>0)P.soot-=dt; if(P.frost>0)P.frost-=dt; if(P.turbo>0)P.turbo-=dt; if(shake>0)shake-=dt;
-  popT-=dt;
-  if(popT<=0&&(popG||popM)){
-    if(popG) spawn(9,P.x-12,P.y-60,0,-55,.9,17,'+'+popG,'#ffd23f');
-    if(popM) spawn(9,P.x+16,P.y-74,0,-55,.9,17,'+'+popM,'#7fe3f0');
-    popG=0; popM=0; popT=.4;
-  }
-  if(P.swing>0) P.swing=Math.max(0,P.swing-dt*5);
-  if(keys.a&&DIGT[ST.tool]&&P.mode==='walk'&&!ST.paused&&!zipNear()&&!deepIcon()) handDig();
-  else if(P.mode==='walk'&&!ST.paused&&(ix||u||d)) pushDig(ix,u,d);
-  if(P.zip) zipRide(dt);
-  else if(P.mode==='walk') updWalk(dt,ix,u,d);
-  else if(P.mode==='car') updCar(dt,ix,u,d);
-  else if(P.mode==='plane') updPlane(dt,ix,u,d);
-  else if(P.mode==='bagger') updBagger(dt,ix,u,d);
-  else if(P.mode==='loader') updLoader(dt,ix,u,d);
-  else if(P.mode==='dumper') updDumper(dt,ix,u,d);
-  else if(P.mode==='tbm') updTbm(dt,ix,u,d);
-  else if(P.mode==='rocket') updRocket(dt,ix,u,d);
-  else if(P.mode==='ski') updSki(dt,ix,u,d);
-  else if(P.mode==='dragon') updDragon(dt,ix,u,d);
-  else if(P.mode==='sub') updSub(dt,ix,u,d);
-  else if(P.mode==='balloon') updBalloon(dt,ix,u,d);
-  else if(P.mode==='heli') updHeli(dt,ix,u,d);
-  else if(P.mode==='boat') updBoat(dt,ix,u,d);
-  else if(P.mode==='bug') updBug(dt,ix,u,d);
-  else updCoaster(dt,ix);
-
-  if(P.mode!=='coaster'&&P.mode!=='dragon'&&P.hurt<=0&&FX.star<=0){
-    let hot=burns(P.x,P.y-4)||burns(P.x,P.y-16);
-    if(P.mode!=='walk'&&P.mode!=='ski'&&P.mode!=='plane'&&P.mode!=='rocket') hot=hot||burns(P.x-20,P.y-5)||burns(P.x+20,P.y-5);
-    if(P.mode==='plane') hot=hot||burns(P.x+24*P.face,P.y-10);
-    if(cellAt(P.x,P.y+3)===CORE) qEvent('core',1);
-    if(hot||(hero.up.heat<3&&cellAt(P.x,P.y+3)===CORE)) burn();
-  }
-  if(P.soot>0&&Math.random()<dt*8) spawn(0,P.x,P.y-30,(Math.random()-.5)*20,-40,.7,4);
-
-  for(let i=bombs.length-1;i>=0;i--){
-    const bm=bombs[i]; bm.t-=dt;
-    if(!solidW(bm.x,bm.y+7)){ bm.vy=Math.min(bm.vy+G*dt,560); bm.y+=bm.vy*dt; } else bm.vy=0;
-    if(bm.t<=0){ bombs.splice(i,1); blast(bm.x,bm.y); }
-  }
-  if(hero.pet){ pet.x+=(P.x-P.face*30-pet.x)*Math.min(1,dt*4); pet.y+=(P.y-16-pet.y)*Math.min(1,dt*5); }
-  for(const k in parked) if(parked[k]&&!(k===heliLoad&&P.mode==='heli')) settle(parked[k],dt);
-  if(parked.rocket) parked.rocket.ang=0;
-  if(ghost){
-    ghost.vy+=150*dt; ghost.x+=ghost.vx*dt; ghost.y+=ghost.vy*dt;
-    if(ghost.x<50||ghost.x>WORLD_W-50) ghost.vx*=-1;
-    if(Math.random()<dt*18) spawn(0,ghost.x,ghost.y-14,0,-10,.9,5);
-    if(solidW(ghost.x,ghost.y)||solidW(ghost.x+(ghost.vx>0?30:-30),ghost.y-14)||hotAt(ghost.x,ghost.y-8)){ explode(ghost.x,ghost.y); ghost=null; }
-  }
-  for(const tr of trees){
-    if(tr.state!==1) continue;
-    tr.t-=dt;
-    if(Math.random()<dt*22) spawn(1,tr.x+(Math.random()-.5)*34*tr.s,tr.gy-tr.h+(Math.random()-.3)*30,(Math.random()-.5)*20,-50-Math.random()*50,.5+Math.random()*.4,6+Math.random()*5);
-    if(Math.random()<dt*5) spawn(0,tr.x,tr.gy-tr.h-20,(Math.random()-.5)*20,-50,1.2,7);
-    if(tr.t<=0) tr.state=2;
-  }
-  if(Math.abs(cam.x-VOLC)<1500){
-    const cy=ground(VOLC)-30, live=cellAt(VOLC,cy+8)===LAVA||cellAt(VOLC-30,cy+8)===LAVA||cellAt(VOLC+30,cy+8)===LAVA;
-    if(live&&Math.random()<dt*5) spawn(0,VOLC+(Math.random()-.5)*90,cy,(Math.random()-.5)*20,-45-Math.random()*30,2.2,9+Math.random()*8);
-    volT-=dt;
-    if(volT<=0){
-      volT=6+Math.random()*6;
-      if(live) for(let i=0;i<10;i++) spawn(4,VOLC+(Math.random()-.5)*60,cy,(Math.random()-.5)*340,-380-Math.random()*220,2.4,4+Math.random()*3);
-    }
-    /* Ab und zu ein großer Ausbruch: Es rumpelt, Lava spritzt hoch und ein paar glühende Lavabrocken landen am Hang. Dem Kind passiert nichts. */
-    eruT-=dt;
-    if(live&&eruT<=0&&Math.abs(P.x-VOLC)<900){
-      eruT=80+Math.random()*50; eruOn=3; blip(70,40,1.2,'sawtooth',.09); shout(VOLC,cy-120,'RUMMS!','#ff9a3c');
-      for(let i=0;i<3&&MROCKS.length<6;i++){ const d=(i%2?1:-1), tx=VOLC+d*(140+Math.random()*180), ty=ground(tx), tt=1.6, sy=cy-10;
-        METS.push({x:VOLC,y:sy,vx:(tx-VOLC)/tt,vy:(ty-sy-300*tt*tt)/tt,g:600,t:tt,land:true,tr:[]}); }
-    }
-    if(eruOn>0){ eruOn-=dt; for(let i=0;i<3;i++) spawn(4,VOLC+(Math.random()-.5)*40,cy,(Math.random()-.5)*260,-520-Math.random()*300,2.6,4+Math.random()*4); if(Math.random()<dt*20) spawn(0,VOLC+(Math.random()-.5)*60,cy-20,(Math.random()-.5)*30,-90,3,14+Math.random()*10); }
-  }
-  let pw=0;
-  for(let i=0;i<parts.length;i++){
-    const p=parts[i]; p.life-=dt;
-    if(p.life<=0) continue;
-    parts[pw++]=p;
-    if(p.type===0||p.type===7){ p.vy-=20*dt; p.size+=9*dt; }
-    else if(p.type===1) p.vy-=70*dt;
-    else if(p.type===2) p.vy-=10*dt;
-    else if(p.type===6){ p.vy+=G*.35*dt; p.vx-=p.vx*dt*1.5; }
-    else if(p.type<8) p.vy+=G*.6*dt;
-    else if(p.type===10) p.vy+=G*.45*dt;
-    else if(p.type===12){ p.vy-=18*dt; p.size+=5*dt; }
-    p.x+=p.vx*dt; p.y+=p.vy*dt;
-    if(p.type===4&&p.vy>0&&solidW(p.x,p.y)) p.life=0;
-  }
-  parts.length=pw;
-  const vw=W/S, vh=H/S;
-  /* Beim Schienenmalen schiebt der Finger am Bildrand die Kamera weiter, so lassen sich lange und hohe Bahnen in einem Zug malen. */
-  const sp=strokeId!==null&&stroke?pointers.get(strokeId):null;
-  if(sp){
-    const v=330*dt, topS=Math.min(H*.4,150);
-    if(sp.x<64) pan.x-=v; else if(sp.x>W-64) pan.x+=v;
-    if(sp.y<topS+56) pan.y-=v; else if(sp.y>H-190) pan.y+=v;
-    pan.x=clamp(pan.x,-3000,3000); pan.y=clamp(pan.y,-5200,1500);
-    const w=toWorld(sp.x,sp.y), l=stroke[stroke.length-1];
-    if(stroke.length<900&&Math.hypot(w[0]-l[0],w[1]-l[1])>10) stroke.push(w);
-  }else{ pan.x-=pan.x*Math.min(1,dt*2.5); pan.y-=pan.y*Math.min(1,dt*2.5); }
-  const tx=P.x+clamp(P.vx*.3,-110,110)+pan.x, ty=P.y-vh*.08-20+pan.y;
-  cam.x+=(tx-cam.x)*Math.min(1,dt*4); cam.y+=(ty-cam.y)*Math.min(1,dt*5);
-  if(!realm&&vw<WORLD_W) cam.x=clamp(cam.x,vw/2,WORLD_W-vw/2);
-}
+function update(dt){ return updateWith(PL,dt); }
 
 /* ---------- Malen mit dem Finger ---------- */
 const pointers=new Map();
@@ -1604,16 +1377,9 @@ function reward(){
 }
 
 /* ---------- Lift ---------- */
-function nearLift(){ return (P.mode==='walk'||P.mode==='ski')&&P.on&&P.ball<=0&&Math.abs(P.x-LIFT0)<48&&Math.abs(P.y-surfaceY(LIFT0))<60; }
-function rideLift(){
-  need(function(){ P.back=P.mode==='ski'; P.mode='coaster'; P.track=LIFT; P.s=0; P.v=220; P.on=false; P.chute=false; P.spin=0; P.rot=0; syncUI(); sfx('pop'); });
-}
-function liftRide(dt){
-  P.s+=220*dt;
-  const q=trackAt(LIFT,P.s);
-  P.x=q.x; P.y=q.y+46; P.vx=q.tx*220; P.vy=q.ty*220; P.ang=0; P.face=1;
-  if(P.s>=LIFT.len){ P.mode=P.back?'ski':'walk'; P.on=false; P.air=0; P.vx=60; P.vy=0; P.chute=false; syncUI(); }
-}
+function nearLift(){ return nearLiftWith(PL); }
+function rideLift(){ return rideLiftWith(PL); }
+function liftRide(dt){ return liftRideWith(PL,dt); }
 
 function onSnow(){ return onSnowWith(VH); }
 /* ---------- Ski: ◀ ▶ anschieben, ▼ bremsen, ▲ Düse, rote Taste springt und macht in der Luft einen Salto ---------- */
@@ -1832,27 +1598,9 @@ function updBoat(dt,ix,u,d){ return updBoatWith(VH,dt,ix,u,d); }
 function updBug(dt,ix,u,d){ return updBugWith(VH,dt,ix,u,d); }
 /* Seilrutsche: Mit dem Werkzeug zieht man ein Seil von einem Punkt zum anderen. Am oberen Ende hängt man sich mit der Aktionstaste dran und saust hinunter. Rutschen kostet keinen Akku, nur das Spannen. */
 const ZIPMAX=8;
-function zipOk(z){ return z&&Array.isArray(z.a)&&Array.isArray(z.b)&&isFinite(z.a[0]+z.a[1]+z.b[0]+z.b[1]); }
-function zipAdd(x0,y0,x1,y1){
-  const L=Math.hypot(x1-x0,y1-y0);
-  if(L<120||L>2400||Math.abs(y1-y0)<10){ pulse('tool-rope'); tone([200],'triangle'); return; }
-  const z=y0<=y1?{a:[x0,y0],b:[x1,y1]}:{a:[x1,y1],b:[x0,y0]};
-  ST.zips.push(z); if(ST.zips.length>ZIPMAX) ST.zips.shift(); sfx('pop');
-}
-function zipNear(){
-  if(P.mode!=='walk'||P.zip) return null;
-  for(const z of ST.zips){ const dx=P.x-z.a[0], dy=P.y-46-z.a[1]; if(Math.abs(dx)<44&&dy>-40&&dy<140) return z; }
-  return null;
-}
-function zipGo(z){ P.zip={z:z,s:0,v:120}; P.chute=false; P.on=false; sfx('whoosh'); }
-function zipRide(dt){
-  const z=P.zip.z, L=Math.hypot(z.b[0]-z.a[0],z.b[1]-z.a[1]), ux=(z.b[0]-z.a[0])/L, uy=(z.b[1]-z.a[1])/L;
-  P.zip.v=clamp(P.zip.v+G*.7*uy*dt-P.zip.v*.15*dt,90,620); P.zip.s+=P.zip.v*dt;
-  P.x=z.a[0]+ux*P.zip.s; P.y=z.a[1]+uy*P.zip.s+46; P.face=ux>=0?1:-1;
-  const end=P.zip.s>=L-14||keys.u||(P.zip.s>24&&solidW(P.x+P.face*8,P.y-14));
-  if(Math.random()<dt*8) spawn(3,P.x,P.y-46,(Math.random()-.5)*40,-20,.3,2);
-  if(end){ P.vx=ux*P.zip.v*.8; P.vy=uy*P.zip.v*.5-(keys.u?160:40); P.zip=null; P.air=0; if(keys.u) sfx('jump'); }
-}
+function zipOk(z){ return zipOkWith(PL,z); }
+function zipAdd(x0,y0,x1,y1){ return zipAddWith(PL,x0,y0,x1,y1); }
+function zipNear(){ return zipNearWith(PL); }
 function drawZips(x0,x1){
   for(const z of ST.zips){
     if(Math.max(z.a[0],z.b[0])<x0-40||Math.min(z.a[0],z.b[0])>x1+40) continue;
@@ -1869,44 +1617,7 @@ function drawZips(x0,x1){
 /* Schaufel und Spitzhacke: zu Fuß graben, ohne Akku. Die Schaufel ist schnell, schafft aber nur Erde, Sand und Schnee. Die Spitzhacke schafft auch Fels und Eis, nur langsamer. Harte Schichten bleiben wie beim Bagger dem Bohrer vorbehalten. Aktionstaste gräbt in die Richtung, die man drückt: nach vorn, oben, unten oder schräg. */
 const HANDT={shovel:1,pick:1,bow:1}, DIGT={shovel:1,pick:1}, SOFT={4:1,14:1};
 let handT=0, handHint=0;
-function handDig(wx,wy){
-  if(P.mode!=='walk'||P.zip||time<handT) return 0;
-  const sh=ST.tool==='shovel', r=(sh?15:12)*(1+.12*hero.up.dig);
-  handT=time+(sh?.14:.22); P.swing=1;
-  if(wx===undefined){
-    const hx=(keys.r?1:0)-(keys.l?1:0);
-    if(keys.u){ wx=P.x+hx*13; wy=P.y-(hx?36:40); }
-    else if(keys.d){ wx=P.x+hx*13; wy=P.y+(hx?4:9); }
-    else{ wx=P.x+P.face*15; wy=P.y-17; }
-  }
-  else if(Math.abs(wx-P.x)>4) P.face=wx>P.x?1:-1;
-  if(monStrike(wx,wy,r)) return 0;
-  const c0=Math.floor((wx-r)/CELL), c1=Math.floor((wx+r)/CELL), r0=Math.floor((wy-r*1.5-TOP)/CELL), r1=Math.floor((wy+r*1.5-TOP)/CELL);
-  let n=0, hard=0;
-  for(let cy=r0;cy<=r1;cy++) for(let cx=c0;cx<=c1;cx++){
-    if(!inGrid(cx,cy)) continue;
-    const dx=(cx+.5)*CELL-wx, dy=(TOP+(cy+.5)*CELL-wy)/1.5;
-    if(dx*dx+dy*dy>r*r) continue;
-    const i=cy*GX+cx, m=grid[i];
-    if(m<4) continue;
-    if(sh&&!SOFT[m]){ if(m!==BED&&m!==CORE&&m!==SHELL) hard++; continue; }
-    n+=take(i);
-  }
-  if(n){
-    sfx('dig');
-    for(let k=0;k<4;k++) spawn(3,wx+(Math.random()-.5)*16,wy+(Math.random()-.5)*16,(Math.random()-.5)*140-P.face*40,-60-Math.random()*100,.5,2.5+Math.random()*2);
-  }else if(hard){
-    sfx('tick'); for(let k=0;k<3;k++) spawn(5,wx,wy,(Math.random()-.5)*160,-50-Math.random()*90,.4,2);
-    if(time>handHint){ handHint=time+60; say('','Tock! Das ist zu hart für die Schaufel. Nimm die Spitzhacke.'); pulse('tool-pick'); }
-  }
-  return n;
-}
-/* Unter der Erde gräbt man sich frei, indem man einfach dagegen drückt, auch ohne Werkzeug: gegen eine Wand, nach oben gegen die Decke oder im Stehen nach unten. Das geht so schnell wie mit der Spitzhacke, mit der Schaufel nur durch weiche Erde. An der Oberfläche passiert nichts, damit das Laufen dort bleibt, wie es ist. */
-function pushDig(ix,u,d){
-  if(P.zip||P.y<-3000||P.y<ground(P.x)+24) return;
-  const ex=P.x+ix*10;
-  if((ix&&(solidW(ex,P.y-16)||solidW(ex,P.y-28)))||(u&&(solidW(P.x,P.y-34)||solidW(P.x-4,P.y-34)||solidW(P.x+4,P.y-34)))||(d&&P.on)) handDig();
-}
+function handDig(wx,wy){ return handDigWith(PL,wx,wy); }
 function shoot(wx,wy){ return shootWith(MP,wx,wy); }
 function monStrike(wx,wy,r){ return monStrikeWith(MP,wx,wy,r); }
 /* Sternwarte: Zwischen Missionsbrett und Zielscheiben steht ein Fernrohr. Ein Blick hinein zeigt ein Sternbild. Wie viele Sterne hat es? Drei große Zahlen zum Antippen. Bei einem Fehler zählt das Fernrohr die Sterne laut vor. Zahlenraum aus dem Schulstand. */
@@ -3720,6 +3431,107 @@ $('par-body').addEventListener('click',function(e){
 });
 
 let last=0, accum=0, lastIcon='', drawN=0;
+/* Port für systems/player/player.js: Spielfigur, Laufen, Werkzeuge zu Fuß, Lift, Seilrutsche und das Bild-Update. Steht direkt vor frame, nach allen Konstanten: Konstanten als Werte (heißer Pfad, update läuft jedes Bild), veränderliche Namen (let) als Getter, die update schreibt, mit Setter. */
+const PL={
+  get heliLoad(){ return heliLoad; },
+  get ghost(){ return ghost; },
+  set ghost(v){ ghost=v; },
+  DIGT:DIGT,
+  FX:FX,
+  get shake(){ return shake; },
+  set shake(v){ shake=v; },
+  get realm(){ return realm; },
+  get RX0(){ return RX0; },
+  get RW(){ return RW; },
+  pet:pet,
+  parts:parts,
+  get time(){ return time; },
+  set time(v){ time=v; },
+  get popT(){ return popT; },
+  set popT(v){ popT=v; },
+  get popG(){ return popG; },
+  set popG(v){ popG=v; },
+  get popM(){ return popM; },
+  set popM(v){ popM=v; },
+  bombs:bombs,
+  trees:trees,
+  get volT(){ return volT; },
+  set volT(v){ volT=v; },
+  get eruT(){ return eruT; },
+  set eruT(v){ eruT=v; },
+  get eruOn(){ return eruOn; },
+  set eruOn(v){ eruOn=v; },
+  get W(){ return W; },
+  get S(){ return S; },
+  get H(){ return H; },
+  get strokeId(){ return strokeId; },
+  get stroke(){ return stroke; },
+  pointers:pointers,
+  LIFT0:LIFT0,
+  LIFT:LIFT,
+  ZIPMAX:ZIPMAX,
+  get handT(){ return handT; },
+  set handT(v){ handT=v; },
+  SOFT:SOFT,
+  get handHint(){ return handHint; },
+  set handHint(v){ handHint=v; },
+  baggerAct,
+  banner,
+  blast,
+  boatWet,
+  burns,
+  confetti,
+  deepAct,
+  deepIcon,
+  dumperAct,
+  dust,
+  explode,
+  floorAt,
+  fxSpeed,
+  ground,
+  grow,
+  heliDrop,
+  heliHook,
+  loaderAct,
+  monStrike,
+  nearScope,
+  need,
+  pulse,
+  qEvent,
+  rlm,
+  say,
+  scanMobile,
+  scopeOpen,
+  setTool,
+  shoot,
+  shout,
+  skiAct,
+  skyLim,
+  smoke,
+  solidW,
+  sonar,
+  spawn,
+  surfaceY,
+  syncUI,
+  take,
+  toWorld,
+  trackAt,
+  updBagger,
+  updBalloon,
+  updBoat,
+  updBug,
+  updCar,
+  updCoaster,
+  updDragon,
+  updDumper,
+  updHeli,
+  updLoader,
+  updPlane,
+  updRocket,
+  updSki,
+  updSub,
+  updTbm
+};
 function frame(t){
   /* Der nächste Frame wird zuerst bestellt: Ein Fehler irgendwo darf das Spiel nicht einfrieren. */
   requestAnimationFrame(frame);
