@@ -29,7 +29,7 @@ export function openQuizWith(QZ,then){
   if(then) QZ.pending=then;
   ST.paused=true; keys.l=keys.r=keys.u=keys.d=keys.a=false; ST.talkLock=0;
   QZ.$('quiz').hidden=false; QZ.LOG.qOpen(); nextQWith(QZ);
-  QZ.$('quiz-pz').textContent=QZ.PZON[(hero.pzn|0)%QZ.PZON.length].e; QZ.$('quiz-pz').classList.toggle('near',(hero.pzn|0)<3);
+  QZ.$('quiz-pz').textContent=QZ.PZT[(hero.pzn|0)%QZ.PZT.length].e; QZ.$('quiz-pz').classList.toggle('near',(hero.pzn|0)<3);
 }
 /** @param {Port} QZ */
 export function closeQuizWith(QZ){

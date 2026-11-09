@@ -219,6 +219,13 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 - Besuchte Weltraumziele merkt `hero.mk.o` (Bitmaske, nur gesetzt, wenn es passiert). Alte Spielstände: `ST.orbGot` (nur auf der Erde), `hero.fin`, `hero.rk`. Kein neuer Speicherschlüssel.
 - Golden Master unverändert. Neuer Smoke-Test für die Kette.
 
+### Streich-PR 4a: Echo und Sudoku ganz raus (Vereinfachungsplan Schritt 7, verhaltensändernd)
+
+- Kristall-Echo und Bilder-Sudoku waren seit Streich-PR 1 nur noch eingefroren. Jetzt sind `core/puzzles/echo.js`, `core/puzzles/sudoku.js`, ihr Zeichnen, Antippen, Tipps, Ansagen, Töne (`ECF`) und CSS entfernt. `PZT` hat sechs Arten, `PZON` entfällt (war `PZT` ohne die beiden).
+- Welt unverändert: `deepWorldWith` mischt weiter über die sieben alten Namen (gleicher Zufallsstrom). `hero.pz.echo`/`hero.pz.sudoku` bleiben im Spielstand und werden ignoriert.
+- Elternansicht: `PZOLD` zeigt die beiden nur noch, wenn alte Protokolle Einträge haben.
+- Golden Master: 20 Einträge gestrichen (`pz echo 0–9`, `pz sudoku 0–9`), kein Wert geändert.
+
 ### PR 16: Systemschnittstelle
 
 - **Bewegt:** `SIDE`, `SAFE`, `safe()` → `systems/index.js` mit `{ name, tick }` je Eintrag, gleiche Reihenfolge, `name` = heutiger Funktionsname. Die Tick-Funktionen selbst bleiben noch in `legacy.js` und werden nur registriert.

@@ -295,7 +295,7 @@ function closure(root) {
   while (q.length) { const v = q.pop(); const t = TOP.get(v); if (!t || t.kind !== 'function') continue; for (const w of useBy.get(v) || []) if (!seen.has(w)) { seen.add(w); q.push(w); } }
   return seen;
 }
-const LEAFROOTS = ['rng', 'hash2', 'shapeWorld', 'gen', 'newRealm', 'mkQ', 'nextQ', 'mkMuster', 'mkStern', 'mkSpiegel', 'mkRobo', 'mkWaage', 'mkEcho', 'mkRohre', 'mkSudoku', 'snapshot', 'restore', 'packRuns', 'loadCells', 'step', 'idbDo'].filter(n => TOP.has(n));
+const LEAFROOTS = ['rng', 'hash2', 'shapeWorld', 'gen', 'newRealm', 'mkQ', 'nextQ', 'mkMuster', 'mkStern', 'mkSpiegel', 'mkRobo', 'mkWaage', 'mkRohre', 'snapshot', 'restore', 'packRuns', 'loadCells', 'step', 'idbDo'].filter(n => TOP.has(n));
 const leaves = LEAFROOTS.map(r => {
   const c = closure(r); const fs = [...c].map(n => funcByName.get(n)).filter(Boolean);
   const vars = [...c].filter(n => TOP.get(n).kind !== 'function');
