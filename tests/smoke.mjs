@@ -59,6 +59,18 @@ test('Escape schließt die Aufgabe und gibt das Spiel frei', async ({ ev, page }
   if (!(await ev("$('quiz').hidden")) || await ev('ST.paused')) throw new Error('Aufgabe offen oder Spiel pausiert');
 });
 
+test('Zahnrad 3 s halten öffnet die Rechensperre, kurz tippen das Menü', async ({ ev, page }) => {
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false");
+  const [x, y] = await page.evaluate(() => { const r = document.getElementById('btn-menu').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; });
+  await page.mouse.move(x, y); await page.mouse.down(); await page.waitForTimeout(150); await page.mouse.up(); await page.waitForTimeout(300);
+  if (await ev("$('menu').hidden") || !(await ev("$('pgate').hidden"))) throw new Error('Kurzes Tippen öffnet nicht nur das Menü');
+  await ev("OVS.forEach(o=>o.hidden=true)");
+  await page.mouse.down(); await page.waitForTimeout(3300); await page.mouse.up(); await page.waitForTimeout(300);
+  if (await ev("$('pgate').hidden")) throw new Error('Rechensperre nach 3 s Halten nicht offen');
+  if (!(await ev("$('menu').hidden"))) throw new Error('Menü bleibt unter der Rechensperre offen');
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false");
+});
+
 test('Elternansicht zeigt das Protokoll', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; parOpen()");
   await page.waitForTimeout(1500);
