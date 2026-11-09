@@ -47,6 +47,7 @@ import { toWorldWith, discWith, paintPayWith, paintStepWith, endPointerWith } fr
 import { takeWith, baggerActWith, loaderActWith, dumperActWith, boreWith, updCarWith, updBaggerWith, updLoaderWith, updDumperWith, updTbmWith, updRocketWith, updPlaneWith, updCoasterWith, onSnowWith, updSkiWith, skiActWith, updDragonWith, updSubWith, updBalloonWith, updHeliWith, heliHookWith, heliDropWith, boatWetWith, updBoatWith, updBugWith } from './systems/player/vehicles.js';
 import { gravWith, parkWith, setModeWith, rotWith, bucketWith, scoopWith, drillHeadWith, doActionWith, burnWith, moverWith, updateWith, nearLiftWith, rideLiftWith, liftRideWith, zipOkWith, zipAddWith, zipNearWith, handDigWith } from './systems/player/player.js';
 import { restoreWith, newRealmWith, travelWith, resetWorldWith, frameWith, startWith } from './app/app.js';
+import { migrateSnowWith, planetGenWith, growWith, loadCellsWith } from './core/world/grow.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -259,21 +260,7 @@ for(let cx=0;cx<GX;cx++) mtop[cx]=cx<SNC0||cx>SNC1?grow0[cx]:Math.min(grow0[cx],
 function winterCol(cx){ return winterColWith(WD,cx); }
 /* Die Höhle, aus der das Hick kommt */
 function carveCave(){ return carveCaveWith(WD); }
-/* Alte Spielstände bekommen den Berg nachträglich. Was dort stand, rückt nach oben auf den Schnee. */
-function migrateSnow(){
-  for(let cx=SNC0;cx<Math.min(genF,SNC1);cx++) winterCol(cx);
-  carveCave();
-  const up=function(o){ if(o&&o.x>SL0&&o.x<BEND&&o.y>msurf(o.x)) o.y=msurf(o.x); };
-  for(const k in parked) up(parked[k]);
-  ST.props.forEach(up);
-  if(P.x>SL0&&P.y>msurf(P.x)&&P.y<rawH(P.x)+8) P.y=msurf(P.x)-2;
-  for(const h of ST.hidden){
-    if(h.got||h.x<SL0) continue;
-    if(h.tree>=0&&trees[h.tree]){ const t=trees[h.tree]; h.y=t.gy-t.h-4; }
-    else if(h.zone==='shallow'||h.zone==='edge') h.y-=rawH(h.x)-msurf(h.x);
-    else if(h.zone==='sky'&&h.y>msurf(h.x)-20) h.y=msurf(h.x)-24;
-  }
-}
+function migrateSnow(){ return migrateSnowWith(WG); }
 let SEED=1;
 
 function setCell(cx,cy,m,lf){ if(!inGrid(cx,cy)) return; const i=cy*GX+cx; grid[i]=m; lifeS(i,lf||0); if(m>0&&m<4) ext(cx,cy); }
@@ -428,42 +415,32 @@ function scanMobile(){ return scanMobileWith(SP); }
 function genCol(cx,from){ return genColWith(WD,cx,from); }
 /* Die Heimat entsteht sofort, der Rest der Welt wächst beim Reisen. */
 function gen(){ return genWith(WD); }
-/* Eine fremde Welt zum ersten Mal: Sie entsteht rund um den Landeplatz und wächst beim Reisen. */
-function planetGen(){
-  grid.fill(0); LIFE.clear(); stamp.fill(0); genF=0; ST.stI=0;
-  grow(LANDX+3200);
-}
-function grow(toX){
-  const c1=Math.min(GX,Math.ceil(toX/CELL)+1);
-  if(c1<=genF) return;
-  for(let cx=genF;cx<c1;cx++) genCol(cx);
-  genF=c1;
-  while(ST.stI<ST.STR.length&&ST.STR[ST.stI].c1<genF){ build(ST.STR[ST.stI]); ST.stI++; }
-}
+function planetGen(){ return planetGenWith(WG); }
+function grow(toX){ return growWith(WG,toX); }
 function packRuns(f){ return packRunsWith(grid,f); }
 function unpackRuns(b,f){ return unpackRunsWith(grid,b,f); }
 let cutX=0;
-function loadCells(sv){
-  const old=sv.v<4, f0=sv.v>=3?sv.f:HOME_GX;
-  let f=Math.min(f0,GX);
-  if(old&&sv.v===3) f=Math.min(f,Math.floor((OLD_END-300)/CELL));
-  /* Spielstände aus der halb so breiten Welt: Wo früher das Ende der Welt lag, liegt jetzt ein neues Land. Dieser Teil wird neu erzeugt. */
-  cutX=0;
-  if(sv.v>=4&&!sv.w&&f>Math.floor((OLD_END-300)/CELL)){ f=Math.floor((OLD_END-300)/CELL); cutX=f*CELL-300; }
-  grid.fill(0);
-  if(sv.v>=5){ if(!unpackRuns(sv.runs,f0)) throw new Error('runs'); }
-  else{
-    const rows=old?KEEPR:GY;
-    for(let cy=0;cy<rows;cy++) grid.set(sv.grid.subarray(cy*f0,cy*f0+f),cy*GX);
-  }
-  genF=sv.v>=3?f:HOME_GX-1;
-  if(old) for(let cx=0;cx<genF;cx++) genCol(cx,KEEPR);
-  ST.stI=0;
-  while(ST.stI<ST.STR.length&&ST.STR[ST.stI].c1<genF){ if(old&&ST.STR[ST.stI].nw) build(ST.STR[ST.stI]); ST.stI++; }
-  /* Spielstände von vor den Wissenstüren bekommen die Schatzkammern in schon erzeugte Tiefe nachträglich. */
-  if(!sv.vt&&!old) for(const s of ST.STR) if(s.k==='vault'&&s.c1<genF) build(s);
-  ST.seen=sv.seen||{}; ST.eggGot=sv.eggGot||{}; ST.lootGot=sv.lootGot||{}; ST.orbGot=sv.orbGot||{}; ST.DROPS=[];
-}
+/* Port für core/world/grow.js: Welt wachsen lassen, Planeten erzeugen, Zellen laden und den Schneeberg nachrüsten. core/ darf state/ nicht importieren, darum kommen Gitter, Held, Fahrzeuge und Fassade über den Port. */
+const WG={
+  get genF(){ return genF; },
+  set genF(v){ genF=v; },
+  parked:parked,
+  ST:ST,
+  P:P,
+  get trees(){ return trees; },
+  grid:grid,
+  LIFE:LIFE,
+  stamp:stamp,
+  get OLD_END(){ return OLD_END; },
+  get cutX(){ return cutX; },
+  set cutX(v){ cutX=v; },
+  build,
+  carveCave,
+  genCol,
+  unpackRuns,
+  winterCol
+};
+function loadCells(sv){ return loadCellsWith(WG,sv); }
 
 function putUp(cx,cy,t){
   if(cx<1||cx>=GX-1) return;
