@@ -317,6 +317,8 @@ Danach folgt der Schluss als 29g. Ports zwischen Modulen aufzulösen ist dort Um
 
 **Umgesetzt PR 29a:** Kopf, Kind, Fallschirm, alle Fahrzeugbilder, Seilrutschen und Handwerkzeug ziehen nach `render/vehicles.js` (Port `VR`). Die Zeichenhelfer `circle`, `rr`, `emo` und `kidScale`, `colTop`, `toWorld` kommen über den Port. Konstanten, die vor dem Port deklariert sind (`EHAT`, `FX`, `pointers`, `HANDT`), stehen als Werte darin, `INK` (später deklariert) und die `let` (`time`, `reduced`, `heliLoad`) als Getter. Einzeiler für alle 18 Funktionen, weil `DR`, `WM` und die Winter- und Ski-Bilder sie aufrufen. Absicherung: Bildvergleich, Rauchtest, Knopftest, `perf.mjs` (`draw`).
 
+**Umgesetzt PR 29b:** Die Zeichenhelfer (`rr`, `circle`, `mix`, `lerpC`, `emo`, `arrow`, `knob`) und die Kulisse (`drawTree`, `drawCloud`, `drawSpace`, `hills`, `drawDark`, `drawFar`, `drawNebula`, `drawFinds`, `drawProp`, `drawDoor`, `drawScope`) ziehen nach `render/scenery.js` (Port `SC`). `JAR` kommt über den Port, weil `render/` `systems/` nicht importieren darf; `dkA` hat einen Setter. Abweichung vom Vorschlag: Paletten (`pal`, `pal4`, `c32`, `setPal`, `P_*`) und `drawCells` bleiben noch, sie sind mit Anweisungen auf oberster Ebene verwoben und der heißeste Zeichenpfad; sie ziehen in einem eigenen Schritt (29b2) als `export let` wie in PR 28e. `resize` bleibt bei den Handlern (29f), weil es `W`, `H`, `DPR`, `S` schreibt. Einzeiler für alle 18. Absicherung: Bildvergleich, Rauchtest, Knopftest, `perf.mjs` (`draw` im Rauschen).
+
 ### PR 29g: Schluss
 
 - `legacy.js` ist leer und gelöscht. `G` ist leer und gelöscht. Testzugang ist die benannte API `window.__lv` im Testbuild, kein `eval`.
