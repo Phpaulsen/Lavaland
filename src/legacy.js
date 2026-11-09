@@ -41,6 +41,8 @@ import { drawWith } from './render/draw.js';
 import { pzOpenWith, pzCloseWith, pzHintMaxWith, pzHintUiWith, drMusterWith, acMusterWith, hiMusterWith, syMusterWith, drSternWith, acSternWith, hiSternWith, sySternWith, drSpiegelWith, acSpiegelWith, hiSpiegelWith, sySpiegelWith, drRoboWith, acRoboWith, hiRoboWith, syRoboWith, drWaageWith, poWaageWith, acWaageWith, hiWaageWith, syWaageWith, drEchoWith, stEchoWith, acEchoWith, hiEchoWith, syEchoWith, drRohreWith, acRohreWith, hiRohreWith, syRohreWith, drSudokuWith, acSudokuWith, hiSudokuWith, sySudokuWith } from './ui/puzzles.js';
 import { renderBattWith, needWith, openQuizWith, closeQuizWith, nextQWith, padKeyWith, padSubmitWith, tafCellWith, renderTafelWith, openTafelWith } from './ui/learn.js';
 import { renderMapWith, renderFogWith, mapClickWith, renderEggsWith, eggClickWith, missingWith, openLabWith, labBuildWith, openMineWith, liftGoWith } from './ui/map.js';
+import { pgOpenWith, pgDrawWith, parOpenWith, parGetWith, guessedWith, parLoadWith, parRenderWith, sheetPrintWith } from './ui/parent.js';
+import { hudLootWith, svg24With, armGhostWith, tapWith, holdWith, syncHandWith, fsSyncWith, fsToggleWith } from './ui/controls.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -1764,9 +1766,7 @@ try{
 let nearF=null, nearD=1e9;
 const bombs=[], pet={x:820,y:0};
 function saveHero(){ return saveHeroWith(SV); }
-function hudLoot(){
-  $('tnt-n').textContent=String(hero.tnt); $('tnt-n').hidden=hero.tnt<=0;
-}
+function hudLoot(){ return hudLootWith(CT); }
 /* Eine Bombe kostet BOMBE Akku. Bomben aus dem alten Vorrat werden zuerst verbraucht. */
 const BOMBE=15;
 function dropBomb(x,y){
@@ -3060,12 +3060,23 @@ function hiSudoku(st){ return hiSudokuWith(PZ,st); }
 function sySudoku(st){ return sySudokuWith(PZ,st); }
 
 /* ---------- Tasten ---------- */
+/* Port für ui/controls.js: Tasten, Knöpfe, Händigkeit, Vollbild, Bombenzahl im HUD */
+const CT={
+  get $(){ return $; },
+  get ghostEl(){ return ghostEl; },
+  set ghostEl(v){ ghostEl=v; },
+  get lefty(){ return lefty; },
+  get QI(){ return QI; },
+  get DE(){ return DE; },
+  flash,
+  keyTap
+};
 const VEH=[['walk','Laufen'],['ski','Ski fahren'],['car','Auto'],['plane','Flugzeug'],['rocket','Rakete'],['bagger','Bagger'],['loader','Radlader'],['dumper','Kipper'],['tbm','Tunnelbohrmaschine'],['sub','U-Boot'],['balloon','Heißluftballon'],['heli','Hubschrauber'],['boat','Segelboot'],['bug','Kletterkäfer'],['coaster','Achterbahn fahren'],['dragon','Auf Mama Glut fliegen']];
 const TOOLS=[['tnt','Bombe legen'],['lava','Lava malen'],['fire','Feuer malen'],['water','Wasser malen'],['ice','Eis malen'],['earth','Erde malen'],['blocks','Bauklötze setzen'],['track','Schiene malen'],['erase','Radierer'],['snow','Schnee malen'],['ball','Schneeball werfen'],['man','Schneemann bauen'],['fw','Feuerwerk zünden'],['rope','Seilrutsche spannen'],['shovel','Schaufel'],['pick','Spitzhacke'],['bow','Pfeil und Bogen']];
 const MODES=VEH.map(function(v){return v[0];}), TOOLN=TOOLS.map(function(t){return t[0];});
 /* Zauberkasten (Vereinfachungsplan 1b): Die sechs Malstoffe stecken in einer Karte der Werkzeugkiste und öffnen sich als eigenes Fenster. */
 const PAINT={lava:1,fire:1,water:1,ice:1,earth:1,snow:1};
-function svg24(inner){ return '<svg viewBox="0 0 24 24" aria-hidden="true">'+inner+'</svg>'; }
+function svg24(inner){ return svg24With(CT,inner); }
 const LOCK='<span class="lock">'+svg24(QI.lock)+'</span>';
 $('grid').innerHTML=
   '<button class="btn veh cool" id="btn-veh" aria-label="Fahrzeug wählen">'+svg24(IC.walk)+LOCK+'</button>'+
@@ -3092,24 +3103,15 @@ $('magic-cards').innerHTML=TOOLS.filter(function(t){ return PAINT[t[0]]; }).map(
 
 /* Geister-Klick: Öffnet ein Tippen schon beim Aufsetzen ein Fenster, landet der Klick nach dem Loslassen im neuen Fenster, etwa auf dem Hintergrund, der es wieder schließt. Ein Klick, der nicht dort ankommt, wo der Finger aufgesetzt hat, wird verschluckt. */
 let ghostEl=null;
-function armGhost(el){ ghostEl=el; }
+function armGhost(el){ return armGhostWith(CT,el); }
 window.addEventListener('pointerdown',function(){ ghostEl=null; },true);
 window.addEventListener('keydown',function(){ ghostEl=null; },true);
 window.addEventListener('click',function(e){
   const g=ghostEl; ghostEl=null;
   if(g&&!g.contains(e.target)){ e.stopPropagation(); e.preventDefault(); }
 },true);
-function tap(el,fn){
-  el.addEventListener('pointerdown',function(e){ e.preventDefault(); armGhost(el); fn(e); });
-  el.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); fn(e); } });
-}
-function hold(id,k){
-  const el=$(id);
-  const dn=function(e){ e.preventDefault(); try{el.setPointerCapture(e.pointerId);}catch(_){} keys[k]=true; el.classList.add('down'); keyTap(k); };
-  const up=function(){ keys[k]=false; el.classList.remove('down'); };
-  el.addEventListener('pointerdown',dn); el.addEventListener('pointerup',up);
-  el.addEventListener('pointercancel',up); el.addEventListener('lostpointercapture',up);
-}
+function tap(el,fn){ return tapWith(CT,el,fn); }
+function hold(id,k){ return holdWith(CT,id,k); }
 hold('key-l','l'); hold('key-r','r'); hold('key-u','u'); hold('key-d','d');
 const actEl=$('act');
 actEl.addEventListener('pointerdown',function(e){ e.preventDefault(); try{actEl.setPointerCapture(e.pointerId);}catch(_){} actEl.classList.add('down'); keys.a=true; doAction(); });
@@ -3150,7 +3152,7 @@ tap($('quest'),function(){ if(quest&&!quest.done){ const d=QDEF[quest.type]; spe
 /* Linkshänder: Laufen rechts, Springen und Aktion links. */
 document.body.classList.toggle('calm',OPT.calm);
 let lefty=false; try{ lefty=localStorage.getItem(K_LEFTY)==='1'; }catch(_){}
-function syncHand(){ document.body.classList.toggle('lefty',lefty); $('hand').innerHTML='<span style="font-size:34px;display:inline-block;transform:scaleX('+(lefty?-1:1)+')" aria-hidden="true">🫲</span>'; $('hand').setAttribute('aria-pressed',String(lefty)); }
+function syncHand(){ return syncHandWith(CT); }
 $('hand').addEventListener('click',function(){ lefty=!lefty; try{ localStorage.setItem(K_LEFTY,lefty?'1':'0'); }catch(_){} syncHand(); sfx('pop'); speak(lefty?'Steuerung gespiegelt: Laufen jetzt rechts.':'Steuerung wie vorher: Laufen links.'); });
 syncHand();
 $('sound').addEventListener('click',function(){
@@ -3201,16 +3203,8 @@ function bakLoad(){ return bakLoadWith(TP); }
 
 /* ---------- Vollbild im Browser-Tab (Android, Desktop). iPhone kennt das nicht, dort hilft nur „Zum Home-Bildschirm“. Als installierte App ist das Spiel schon im Vollbild, der Knopf bleibt dann weg. ---------- */
 const DE=document.documentElement;
-function fsOn(){ return !!(document.fullscreenElement||document.webkitFullscreenElement); }
-function fsSync(){ const on=fsOn(); $('fs').innerHTML=svg24(on?QI.fsx:QI.fs); $('fs').setAttribute('aria-pressed',String(on)); }
-function fsToggle(){
-  try{
-    if(fsOn()){ (document.exitFullscreen||document.webkitExitFullscreen).call(document); return; }
-    const p=(DE.requestFullscreen||DE.webkitRequestFullscreen).call(DE,{navigationUI:'hide'});
-    if(p&&p.catch) p.catch(function(){ flash('fs','warn'); });
-    $('menu').hidden=true;
-  }catch(_){ flash('fs','warn'); }
-}
+function fsSync(){ return fsSyncWith(CT); }
+function fsToggle(){ return fsToggleWith(CT); }
 (function(){
   let app=false;
   try{ app=matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches||navigator.standalone===true; }catch(_){}
@@ -3938,6 +3932,57 @@ const LP={
 };
 const LOG=logWith(LP);
 /* ---------- Elternansicht: 3 Sekunden auf eine freie Stelle im Menü drücken, dann eine Malaufgabe. Die Schranke wird nicht vorgelesen, sonst wäre sie nur ein weiteres Rätsel. ---------- */
+/* Port für ui/parent.js: Elternansicht mit Schranke, Protokoll-Auswertung, Übungsblatt */
+const PV={
+  get $(){ return $; },
+  get pgA(){ return pgA; },
+  set pgA(v){ pgA=v; },
+  get pgB(){ return pgB; },
+  set pgB(v){ pgB=v; },
+  get pgIn(){ return pgIn; },
+  set pgIn(v){ pgIn=v; },
+  get pgMiss(){ return pgMiss; },
+  set pgMiss(v){ pgMiss=v; },
+  get parDel(){ return parDel; },
+  set parDel(v){ parDel=v; },
+  get LOG(){ return LOG; },
+  get parRange(){ return parRange; },
+  get SNAME(){ return SNAME; },
+  get SCOL(){ return SCOL; },
+  get PMIN(){ return PMIN; },
+  get QNAME(){ return QNAME; },
+  get PZT(){ return PZT; },
+  get VEH(){ return VEH; },
+  get TOOLS(){ return TOOLS; },
+  get SCH(){ return SCH; },
+  get ZRN(){ return ZRN; },
+  get ABC(){ return ABC; },
+  get DAY(){ return DAY; },
+  get LIMS(){ return LIMS; },
+  get LIM(){ return LIM; },
+  get OPT(){ return OPT; },
+  get reducedSys(){ return reducedSys; },
+  get reduced(){ return reduced; },
+  get newsOpen(){ return newsOpen; },
+  set newsOpen(v){ newsOpen=v; },
+  get K_NEWS(){ return K_NEWS; },
+  get NEWS(){ return NEWS; },
+  get K_BAK_AT(){ return K_BAK_AT; },
+  get parStore(){ return parStore; },
+  set parStore(v){ parStore=v; },
+  get K_VMISS(){ return K_VMISS; },
+  get SHEETN(){ return SHEETN; },
+  get FS(){ return FS; },
+  get parStum(){ return parStum; },
+  set parStum(v){ parStum=v; },
+  dayLoad,
+  errLoad,
+  guessed,
+  parLoad,
+  parRender,
+  ri,
+  schoolOk
+};
 const QNAME={count:'Zählen',fb:'Blitzblick',nb:'Nachbarzahl',zl:'Zerlegen',syl:'Silben',rhy:'Reime',add:'Plus',sub:'Minus',seq:'Zahlenfolge',anlaut:'Anlaut',case:'Groß/klein',word:'Wort zum Bild'};
 const SNAME={quiz:'Rechnen/Buchstaben',pz:'Rätsel',play:'Sandbox',empty:'Sandbox, Akku leer',ui:'Menüs'};
 const SCOL={quiz:'#2f6fd6',pz:'#7b4fd6',play:'#58b548',empty:'#ff5a1f',ui:'#c4bca6'};
@@ -3948,12 +3993,8 @@ $('menu').querySelector('.sheet').addEventListener('pointerdown',function(e){
   clearTimeout(holdT); holdT=setTimeout(pgOpen,3000);
 });
 ['pointerup','pointercancel','pointerleave'].forEach(function(n){ $('menu').querySelector('.sheet').addEventListener(n,function(){ clearTimeout(holdT); }); });
-function pgOpen(){
-  $('menu').hidden=true; pgA=ri(3,9); pgB=ri(3,9); pgIn=''; pgMiss=0;
-  speakStop();
-  pgDraw(); $('pgate').hidden=false;
-}
-function pgDraw(){ $('pg-q').textContent=pgA+' × '+pgB+' = '+(pgIn||'?'); }
+function pgOpen(){ return pgOpenWith(PV); }
+function pgDraw(){ return pgDrawWith(PV); }
 $('pg-keys').innerHTML=[1,2,3,4,5,6,7,8,9,'⌫',0,'OK'].map(function(k){ return '<button class="pzb sm" data-k="'+k+'">'+k+'</button>'; }).join('');
 $('pg-keys').addEventListener('click',function(e){
   const b=e.target.closest('[data-k]'); if(!b) return;
@@ -3969,117 +4010,11 @@ $('pg-keys').addEventListener('click',function(e){
 });
 $('pgate').querySelector('.xb').addEventListener('click',function(){ $('pgate').hidden=true; });
 $('par').querySelector('.xb').addEventListener('click',function(){ $('par').hidden=true; });
-function parOpen(){
-  parDel=false; parStoreInfo(); $('par').hidden=false; $('par-body').innerHTML='<p>Lade …</p>';
-  LOG.flush();
-  setTimeout(parLoad,150);
-}
-function parGet(){
-  return LOG.trx(['ev','day'],'readonly').then(function(tx){
-    return new Promise(function(res,rej){
-      const o={ev:[],day:[]};
-      tx.objectStore('ev').getAll().onsuccess=function(e){ o.ev=e.target.result; };
-      tx.objectStore('day').getAll().onsuccess=function(e){ o.day=e.target.result; };
-      tx.oncomplete=function(){ res(o); }; tx.onerror=function(){ rej(tx.error); };
-    });
-  });
-}
-function med(a){ if(!a.length) return null; const s=a.slice().sort(function(x,y){return x-y;}), m=s.length>>1; return s.length%2?s[m]:(s[m-1]+s[m])/2; }
-function pct(x){ return Math.round(x*100)+' %'; }
-function mins(s){ return s<90?Math.round(s)+' s':Math.round(s/60)+' min'; }
-/* Geraten: erster Tap falsch und dabei zu schnell (vor Ende der Vorlesung), Taps dicht hintereinander oder alle Antworten durchprobiert. */
-function guessed(e){
-  if(!e.taps.length||e.first) return false;
-  const t=e.taps, lim=e.tts||1500;
-  if(t[0][1]<lim) return true;
-  for(let i=1;i<t.length;i++) if(t[i][1]-t[i-1][1]<700) return true;
-  return t.length>=e.n;
-}
-function parLoad(){
-  parGet().then(parRender,function(){ $('par-body').innerHTML='<p>Das Protokoll ist auf diesem Gerät nicht lesbar (privater Modus oder blockierter Speicher).</p>'; });
-}
-function parRender(o){
-  const now=Date.now(), from=LOG.day(now-(parRange-1)*864e5);
-  const ev=o.ev.filter(function(e){ return e.d>=from; }), days=o.day.filter(function(r){ return r.d>=from; });
-  const sum={quiz:0,pz:0,play:0,empty:0,ui:0,idle:0}; let sess=0;
-  days.forEach(function(r){ for(const k in sum) sum[k]+=r.sec[k]||0; sess+=r.sess|0; });
-  const act=sum.quiz+sum.pz+sum.play+sum.empty+sum.ui, learn=sum.quiz+sum.pz;
-  let h='<div class="par-tabs">'+[1,7,30].map(function(n){ return '<button data-r="'+n+'"'+(n===parRange?' class="on"':'')+'>'+(n===1?'Heute':n+' Tage')+'</button>'; }).join('')+'</div>';
-  h=parNews()+h;
-  h+=parSchool();
-  h+=parSafe();
-  h+=parVoice();
-  h+='<h3>Zeit</h3>';
-  if(!act) h+='<p>Noch keine Spielzeit in diesem Zeitraum.</p>';
-  else{
-    h+='<p><b>Lernanteil '+pct(learn/act)+'</b> von '+mins(act)+' aktiver Zeit in '+sess+' Sitzung'+(sess===1?'':'en')+'. Dazu '+mins(sum.idle)+' ohne Berührung.</p>';
-    h+=parBars(o.day);
-    h+='<div class="par-leg">'+Object.keys(SNAME).map(function(k){ return '<span><i style="background:'+SCOL[k]+'"></i>'+SNAME[k]+' '+mins(sum[k])+'</span>'; }).join('')+'</div>';
-  }
-  h+=parSand(days,act);
-  const qs=ev.filter(function(e){ return e.k==='q'&&e.taps.length; });
-  const qo=ev.filter(function(e){ return e.k==='qo'; }).length, xq=ev.filter(function(e){ return e.k==='x'&&e.what==='quiz'; }).length, xs=ev.filter(function(e){ return e.k==='x'&&e.what==='switch'; }).length;
-  const ps=ev.filter(function(e){ return e.k==='p'; }), pq=ps.filter(function(e){ return e.end==='quit'; }).length;
-  h+='<h3>Umgehung</h3><table><tr><td>Sandbox mit leerem Akku</td><td'+(act&&sum.empty>learn&&sum.empty>300?' class="warn"':'')+'>'+mins(sum.empty)+'</td></tr>';
-  h+='<tr><td>Lernaufgaben-Fenster geöffnet</td><td>'+qo+'</td></tr><tr><td>davon vorzeitig geschlossen</td><td>'+xq+'</td></tr>';
-  h+='<tr><td>„Lieber ein Rätsel“ gewählt</td><td>'+xs+'</td></tr><tr><td>Rätsel ohne Lösung geschlossen</td><td>'+pq+' von '+ps.length+'</td></tr></table>';
-  h+='<h3>Rechnen und Buchstaben</h3>';
-  h+=parFacts();
-  if(!qs.length) h+='<p>Noch keine beantworteten Aufgaben.</p>';
-  else{
-    h+='<p>Denkanteil = Treffer beim ersten Tippen, um Zufall bereinigt. 0 % ist reines Raten, 100 % immer gleich richtig. Unter '+PMIN+' Aufgaben grau.</p>';
-    h+='<table><tr><th>Typ</th><th>Anzahl</th><th>Denkanteil</th><th>Zeit bis 1. Tipp</th><th>geraten</th></tr>';
-    const by={}; qs.forEach(function(e){ (by[e.ty]=by[e.ty]||[]).push(e); });
-    const row=function(name,a){
-      const p=a.filter(function(e){ return e.first; }).length/a.length, c=a.reduce(function(s,e){ return s+1/e.n; },0)/a.length;
-      const k=(p-c)/(1-c), few=a.length<PMIN, m=med(a.map(function(e){ return e.taps[0][1]; })), g=a.filter(guessed).length/a.length;
-      return '<tr'+(few?' class="few"':'')+'><td>'+name+'</td><td>'+a.length+'</td><td'+(!few&&k<.3?' class="warn"':'')+'>'+(k<0?'0 % ↓':pct(k))+'</td><td>'+(m/1000).toFixed(1)+' s</td><td'+(!few&&g>.3?' class="warn"':'')+'>'+pct(g)+'</td></tr>';
-    };
-    Object.keys(QNAME).forEach(function(t){ if(by[t]) h+=row(QNAME[t],by[t]); });
-    h+=row('<b>Alle</b>',qs)+'</table>';
-  }
-  h+=parStumble(qs);
-  h+='<div class="par-act"><button id="par-sheet">Übungsblatt drucken</button></div>';
-  h+='<h3>Rätselmaschinen</h3><table><tr><th>Maschine</th><th>Stufe</th><th>gelöst</th><th>Fehler</th><th>Tipps</th><th>abgebr.</th></tr>';
-  PZT.forEach(function(T){
-    const a=ps.filter(function(e){ return e.id===T.id; }), w=a.filter(function(e){ return e.end==='won'; }), n=w.length||1;
-    const lv0=a.length?a[0].lv+1:null, lv1=(hero.pz[T.id]|0)+1;
-    const sf=w.reduce(function(s,e){ return s+e.fails; },0)/n, sh=w.reduce(function(s,e){ return s+e.hint; },0)/n;
-    h+='<tr'+(a.length<5?' class="few"':'')+'><td>'+T.e+'&nbsp;'+T.n.replace('Kristall-','').replace('Bilder-','')+'</td><td>'+(lv0&&lv0!==lv1?lv0+' → ':'')+lv1+'</td><td>'+w.length+'</td><td>'+(w.length?sf.toFixed(1):'–')+'</td><td'+(w.length>=5&&sh>=1?' class="warn"':'')+'>'+(w.length?sh.toFixed(1):'–')+'</td><td>'+(a.length-w.length)+'</td></tr>';
-  });
-  h+='</table><p>Fehler und Tipps je gelöstem Rätsel. „0 % ↓“ oben heißt: schlechter als reines Raten. Fehler sind zwischen Maschinen nicht vergleichbar (Spiegel und Rohre zählen einzelne Fehlklicks). Vergleiche eine Maschine mit sich selbst über die Zeit.</p>';
-  h+=parErr();
-  h+='<h3>Daten</h3><p>Alles liegt nur in diesem Browser. Rohdaten werden nach 90 Tagen gelöscht, die Tageszeiten bleiben.</p><details class="par-news"><summary>Datenschutz</summary><ul><li>Das Spiel sendet nichts: kein Konto, keine Werbung, keine Statistik, keine Anfragen an fremde Server. Spielstand und Protokoll verlassen das Gerät nur, wenn Sie selbst sichern oder exportieren.</li><li>Beim Laden der Seite sieht GitHub (Betreiber von GitHub Pages) wie bei jeder Webseite die IP-Adresse. Die installierte App lädt danach aus dem Speicher.</li><li>Vorlesen: Stimmen mit ☁ (unter „Vorlesen“) sind Online-Stimmen des Browser-Herstellers. Mit ihnen geht der vorgelesene Text (Aufgaben, Ansagen, nie Namen) an dessen Server. Lokale Stimmen arbeiten nur auf dem Gerät.</li></ul></details><div class="par-act"><button id="par-exp">Protokoll exportieren</button><button id="par-del">'+(parDel?'Wirklich löschen?':'Protokoll löschen')+'</button></div>';
-  $('par-body').innerHTML=h;
-}
-/* Sandbox-Zeit nach Fahrzeug und Werkzeug, als Anteil an der aktiven Zeit. Über 20 % ist markiert: Ab da frisst ein Nebensystem laut Plan zu viel Denkzeit. */
-function parSand(days,act){
-  const by={};
-  days.forEach(function(r){ for(const k in r.sec) if(/^[mt]:/.test(k)) by[k]=(by[k]||0)+r.sec[k]; });
-  const ks=Object.keys(by).filter(function(k){ return by[k]>=30; }).sort(function(a,b){ return by[b]-by[a]; });
-  if(!act||!ks.length) return '';
-  const nm={}; VEH.forEach(function(v){ nm['m:'+v[0]]=v[1]; }); TOOLS.forEach(function(t){ nm['t:'+t[0]]=t[1]; });
-  let h='<h3>Sandbox: womit</h3><table><tr><th>Fahrzeug / Werkzeug</th><th>Zeit</th><th>Anteil</th></tr>';
-  ks.forEach(function(k){ const p=by[k]/act; h+='<tr><td>'+esc(nm[k]||k.slice(2))+'</td><td>'+mins(by[k])+'</td><td'+(p>.2&&k!=='m:walk'?' class="warn"':'')+'>'+pct(p)+'</td></tr>'; });
-  return h+'</table><p>Anteil an der ganzen aktiven Zeit. Werkzeuge laufen neben dem Fahrzeug mit. Erst ab diesem Update gezählt.</p>';
-}
-function parSchool(){
-  let h='<h3>Schulstand</h3>';
-  const wk=SCH.on?Math.floor((Date.now()-SCH.at)/(7*864e5)):0;
-  if(SCH.on&&wk>=4) h+='<p class="par-note">Der Schulstand wurde seit '+wk+' Wochen nicht geändert. Stimmt er noch?</p>';
-  h+='<p>'+(SCH.on?'Neue Aufgaben kommen nur aus dem, was hier eingestellt ist.':'Noch nicht eingestellt: Das Spiel nimmt alles in Schulbuch-Reihenfolge.')+'</p>';
-  h+='<div class="par-tabs">'+ZRN.map(function(n,i){ return '<button data-zr="'+i+'"'+(SCH.on&&SCH.zr===i?' class="on"':'')+'>'+n+'</button>'; }).join('')+'</div>';
-  h+='<p>Buchstaben, die schon dran waren:</p><div class="par-lt">'+ABC.map(function(c){ return '<button data-lt="'+c+'"'+(SCH.on&&SCH.l.indexOf(c)>=0?' class="on"':'')+'>'+c+'</button>'; }).join('')+'</div>';
-  if(SCH.on) h+='<div class="par-act"><button id="par-sall">Schulstand aufheben</button></div>';
-  dayLoad();
-  h+='<h3>Spielzeit am Tag</h3><p>Heute bisher '+mins(DAY.t)+'. Ist die Zeit erreicht, kommt das Lagerfeuer mit Gute-Nacht-Ansage, danach alle 10 Minuten wieder. Das Spiel sperrt nicht.</p>';
-  h+='<div class="par-tabs">'+LIMS.map(function(n){ return '<button data-lim="'+n+'"'+(LIM===n?' class="on"':'')+'>'+(n?n+' min':'aus')+'</button>'; }).join('')+'</div>';
-  h+='<h3>Spielwelt</h3><p>Höhlenmonster tief unter der Erde. Sie tun nichts, schubsen nur zurück und platzen bei einem Treffer zu Sternen.</p>';
-  h+='<div class="par-tabs"><button data-opt="mon1"'+(OPT.mon?' class="on"':'')+'>an</button><button data-opt="mon0"'+(OPT.mon?'':' class="on"')+'>aus</button></div>';
-  h+='<p>Ruhige Darstellung: kein Wackeln, kein Blinken, weniger Konfetti.'+(reducedSys?' Ist schon an, weil das Gerät „Bewegung reduzieren“ eingestellt hat.':'')+'</p>';
-  h+='<div class="par-tabs"><button data-opt="calm1"'+(reduced?' class="on"':'')+'>an</button><button data-opt="calm0"'+(reduced?'':' class="on"')+'>aus</button></div>';
-  return h;
-}
+function parOpen(){ return parOpenWith(PV); }
+function parGet(){ return parGetWith(PV); }
+function guessed(e){ return guessedWith(PV,e); }
+function parLoad(){ return parLoadWith(PV); }
+function parRender(o){ return parRenderWith(PV,o); }
 /* Was ist neu: kurze Liste für Eltern. Beim ersten Öffnen nach einem Update steht sie offen oben, danach zugeklappt. */
 const NEWS={v:4,t:'Fahrzeuge, Missionen, Werkzeuge',items:[
   'Neue Fahrzeuge: Heißluftballon, Hubschrauber mit Lastenhaken, Segelboot, Kletterkäfer. Dazu eine Seilrutsche zum Selberspannen.',
@@ -4089,110 +4024,12 @@ const NEWS={v:4,t:'Fahrzeuge, Missionen, Werkzeuge',items:[
   'Für Eltern: ruhige Darstellung ohne Wackeln und Blinken (hier unten), Sandbox-Zeit je Fahrzeug und Werkzeug, Tastenkürzel am Rechner (Taste ? zeigt sie).',
   'Unter der Haube: Fehler in einem Teil des Spiels halten nicht mehr das ganze Spiel an, weniger Rechenlast bei vielen Funken.']};
 let newsOpen=null;
-function parNews(){
-  if(newsOpen===null){ let seen=0; try{ seen=+localStorage.getItem(K_NEWS)||0; }catch(_){} newsOpen=seen<NEWS.v; if(newsOpen) try{ localStorage.setItem(K_NEWS,String(NEWS.v)); }catch(_){} }
-  const fresh=newsOpen;
-  return '<details class="par-news"'+(fresh?' open':'')+'><summary>Neu: '+NEWS.t+'</summary><ul>'+NEWS.items.map(function(t){ return '<li>'+t+'</li>'; }).join('')+'</ul></details>';
-}
 /* Spielstand absichern: Der Stand liegt nur in diesem Browser. Wann zuletzt gesichert wurde und ob der Browser den Speicher schützt, steht hier. */
 let parStore='';
-function parSafe(){
-  let at=0; try{ at=+localStorage.getItem(K_BAK_AT)||0; }catch(_){}
-  const d=at?Math.floor((Date.now()-at)/864e5):-1;
-  let h='<h3>Spielstand</h3>';
-  if(d<0||d>=14) h+='<p class="par-note">'+(d<0?'Noch nie als Datei gesichert.':'Letzte Sicherung vor '+d+' Tagen.')+' Wird der Browser-Speicher gelöscht, ist sonst alles weg.</p>';
-  else h+='<p>Zuletzt gesichert '+(d===0?'heute':d===1?'gestern':'vor '+d+' Tagen')+'.</p>';
-  if(parStore) h+='<p>'+parStore+'</p>';
-  /* Welche Spielversion läuft: Datum, an dem GitHub Pages die geladene Seite veröffentlicht hat (kommt auch aus dem Offline-Speicher mit). */
-  const lm=new Date(document.lastModified);
-  /* Ohne Last-Modified-Kopf meldet der Browser die Ladezeit; die wäre keine Version. */
-  if(!isNaN(lm)&&Math.abs(lm-(performance.timeOrigin||0))>5000) h+='<p>Spielversion vom '+lm.toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})+'.</p>';
-  return h+'<div class="par-act"><button id="par-bak">Jetzt sichern</button></div>';
-}
-function parStoreInfo(){
-  if(!(navigator.storage&&navigator.storage.persisted)) return;
-  Promise.all([navigator.storage.persisted(),navigator.storage.estimate?navigator.storage.estimate():Promise.resolve(null)]).then(function(r){
-    const t=(r[0]?'Der Browser schützt den Speicher vor automatischem Löschen.':'Der Browser darf den Speicher bei Platzmangel löschen. Installiert (Zum Startbildschirm) ist er meist geschützt.')+(r[1]&&r[1].usage?' Belegt: '+(r[1].usage/1048576).toFixed(1)+' MB.':'');
-    if(t!==parStore){ parStore=t; if(!$('par').hidden) parLoad(); }
-  }).catch(function(){});
-}
-function parErr(){
-  const a=errLoad();
-  if(!a.length) return '';
-  let h='<h3>Technische Fehler</h3><p>Diese Fehler sind im Spiel aufgetreten. Für eine Fehlermeldung kopieren und weitergeben, es stehen keine persönlichen Daten darin.</p><table class="par-err">';
-  a.slice().reverse().forEach(function(e){ h+='<tr><td>'+new Date(e.t).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</td><td>'+esc(e.m)+(e.w?' <small>('+esc(e.w)+')</small>':'')+(e.n>1?' ×'+(e.n|0):'')+'</td></tr>'; });
-  return h+'</table><div class="par-act"><button id="par-errc">Kopieren</button><button id="par-errx">Löschen</button></div>';
-}
-function parVoice(){
-  const vs=voicesDe();
-  let miss=[]; try{ miss=JSON.parse(localStorage.getItem(K_VMISS)||'[]'); if(!Array.isArray(miss)) miss=[]; }catch(_){}
-  let h='<h3>Vorlesen</h3>'+(VCLIP?'<p>Vorgelesen wird mit Aufnahmen einer natürlichen Stimme ('+Object.keys(VCLIP).length+' Sätze). Die Browserstimme springt nur bei Sätzen ohne Aufnahme ein'+(miss.length?', bisher '+miss.length+'. <button id="par-vmc">Sätze kopieren</button>':'.')+'</p>':'')+'<p>Tempo der Vorlesestimme:</p><div class="par-tabs">'+VRATES.map(function(r,i){ return '<button data-vr="'+r+'"'+(VOICE.r===r?' class="on"':'')+'>'+['langsam','normal','schnell'][i]+'</button>'; }).join('')+'</div>';
-  if(vs.length>1){
-    h+='<p>'+(VCLIP?'Browserstimme für Sätze ohne Aufnahme:':'Stimme:')+'</p><div class="par-tabs par-voices"><button data-vv=""'+(!VOICE.v?' class="on"':'')+'>Standard</button>';
-    vs.forEach(function(v){ h+='<button data-vv="'+esc(v.name)+'"'+(VOICE.v===v.name?' class="on"':'')+'>'+esc(v.name.replace(/^(Google|Microsoft)\s*/,'').replace(/\s*\(.*\)$/,'').slice(0,28))+(v.localService?'':' ☁')+'</button>'; });
-    h+='</div>';
-  }
-  return h+'<div class="par-act"><button id="par-vt">Probe hören</button>'+(VCLIP&&vs.length?'<button id="par-vs">Browserstimme hören</button>':'')+'</div>'+(vs.some(function(v){ return !v.localService; })?'<p class="par-note">☁ = braucht Internet.</p>':'');
-}
 /* Übungsblatt: Die gerade wackligen Rechenaufgaben (Fach 0 bis 2, Stolperaufgaben zuerst) als Blatt zum Ausdrucken, für Üben mit Stift am Küchentisch. Reicht das nicht für ein Blatt, kommen die nächsten neuen Aufgaben dazu. */
 const SHEETN=16;
-function sheetOk(k){ return /^\d+[+-]\d+$/.test(k)||/^zl:\d+:\d+$/.test(k)||/^nb:[+-]:\d+$/.test(k); }
-function sheetPick(stumble){
-  const out=[], seen={};
-  const add=function(k){ if(out.length<SHEETN&&!seen[k]&&sheetOk(k)){ seen[k]=1; out.push(k); } };
-  stumble.forEach(add);
-  Object.keys(FS.f).filter(function(k){ return FS.f[k][0]<=2; }).sort(function(a,b){ return FS.f[a][0]-FS.f[b][0]; }).forEach(add);
-  for(let st=0;st<STAGES.m.length&&out.length<SHEETN;st++){
-    const fr=STAGES.m[st].filter(function(k){ return !FS.f[k]&&schoolOk(k,st); });
-    for(let i=fr.length-1;i>0;i--){ const j=ri(0,i), t=fr[i]; fr[i]=fr[j]; fr[j]=t; }
-    fr.forEach(add);
-    if(st>=FS.u.m&&out.length>=8) break;
-  }
-  for(let i=out.length-1;i>0;i--){ const j=ri(0,i), t=out[i]; out[i]=out[j]; out[j]=t; }
-  return out;
-}
-function sheetLine(k){
-  const bl='<span class="bl"></span>'; let m;
-  if((m=/^(\d+)([+-])(\d+)$/.exec(k))) return m[1]+(m[2]==='+'?' + ':' − ')+m[3]+' = '+bl;
-  if((m=/^zl:(\d+):(\d+)$/.exec(k))) return m[1]+' = '+m[2]+' + '+bl;
-  if((m=/^nb:\+:(\d+)$/.exec(k))) return m[1]+', '+bl;
-  if((m=/^nb:-:(\d+)$/.exec(k))) return bl+', '+m[1];
-  return '';
-}
-function sheetPrint(stumble){
-  const ks=sheetPick(stumble||[]);
-  const ls=(SCH.on&&SCH.l?SCH.l:CASES).split('').filter(function(c){ return CASES.indexOf(c)>=0||SCH.on; }).slice(0,9);
-  let h='<h1>Übungsblatt</h1><div class="sd">'+new Date().toLocaleDateString('de-DE')+' · Lavaland</div><div class="sg">';
-  ks.forEach(function(k){ h+='<div>'+sheetLine(k)+'</div>'; });
-  h+='</div><h2>Groß und klein</h2><div class="sd">Den kleinen Buchstaben dazuschreiben.</div><div class="cs">';
-  ls.forEach(function(c){ h+='<div>'+esc(c)+' <span class="bl"></span></div>'; });
-  $('sheet').innerHTML=h+'</div>';
-  window.print();
-}
-/* Stolperaufgaben: Fakten, die im Zeitraum oft nicht auf Anhieb saßen, mit der häufigsten falschen Antwort. Daten aus der Sicherung gelten als fremd, darum wird alles maskiert. */
-function esc(t){ return String(t).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-function fLabel(k){
-  let m;
-  if((m=/^(\d+)([+-])(\d+)$/.exec(k))) return m[1]+(m[2]==='+'?' + ':' − ')+m[3];
-  if((m=/^zl:(\d+):(\d+)$/.exec(k))) return m[1]+' = '+m[2]+' + ?';
-  if((m=/^fb:(\d+)$/.exec(k))) return m[1]+' Punkte (Blitzblick)';
-  if((m=/^nb:([+-]):(\d+)$/.exec(k))) return m[1]==='+'?m[2]+' → ?':'? ← '+m[2];
-  if((m=/^count:(\d+)$/.exec(k))) return m[1]+' Sterne zählen';
-  if((m=/^(anlaut|syl|rhy|word|case):(.+)$/.exec(k))) return ({anlaut:'Anlaut ',syl:'Silben ',rhy:'Reim auf ',word:'Wort ',case:'Klein zu '})[m[1]]+m[2];
-  return k;
-}
+function sheetPrint(stumble){ return sheetPrintWith(PV,stumble); }
 let parStum=[];
-function parStumble(qs){
-  const by={};
-  qs.forEach(function(e){ if(typeof e.f!=='string'||e.f.indexOf('seq:')===0) return; const r=by[e.f]||(by[e.f]={n:0,x:0,w:{}}); r.n++; if(!e.first){ r.x++; const v=e.taps[0]&&e.taps[0][0]; if(v!=null&&v!==e.ok) r.w[v]=(r.w[v]||0)+1; } });
-  const L0=Object.keys(by).filter(function(k){ return by[k].n>=2&&by[k].x>0; }).sort(function(a,b){ return by[b].x/by[b].n-by[a].x/by[a].n||by[b].n-by[a].n; });
-  parStum=L0; const L=L0.slice(0,6);
-  let h='<h3>Stolperaufgaben</h3>';
-  if(!L.length) return h+'<p>Keine Aufgabe ist im Zeitraum mehrfach danebengegangen.</p>';
-  h+='<table><tr><th>Aufgabe</th><th>gestellt</th><th>nicht auf Anhieb</th><th>meist getippt</th></tr>';
-  L.forEach(function(k){ const r=by[k], w=Object.keys(r.w).sort(function(a,b){ return r.w[b]-r.w[a]; })[0]; h+='<tr><td>'+esc(fLabel(k))+'</td><td>'+r.n+'</td><td>'+r.x+'</td><td>'+(w!=null?esc(w):'–')+'</td></tr>'; });
-  return h+'</table><p>Das Spiel holt diese Aufgaben von selbst öfter. Wenn eine dauerhaft hakt, hilft oft ein Gespräch mit Material (Finger, Steckwürfel).</p>';
-}
 /* ---------- Rechentafel: Alle Plus- und Minusaufgaben bis 20 und die Buchstaben. Die Farbe zeigt, wie gut eine Aufgabe sitzt; 💠 heißt Meisterstein, ⭐ heißt ganz sicher. ---------- */
 let tafTab='p';
 function tafCell(k,t){ return tafCellWith(QZ,k,t); }
@@ -4257,29 +4094,6 @@ function campRest(){
 }
 $('camp-go').addEventListener('click',function(){ $('camp').hidden=true; });
 $('camp-rest').addEventListener('click',function(){ if($('camp-s').classList.contains('night')){ $('camp').hidden=true; return; } campRest(); });
-/* Lernstand nach Leitner: wie viele Fakten in welchem Fach liegen, getrennt nach Rechnen und Buchstaben. */
-function parFacts(){
-  const c={m:[0,0,0,0,0,0],l:[0,0,0,0,0,0]};
-  for(const k in FS.f) c[fDom(k)][FS.f[k][0]]++;
-  const tot={m:0,l:0}; ['m','l'].forEach(function(d){ STAGES[d].forEach(function(s,i){ if(i<=FS.u[d]) tot[d]+=s.length; }); });
-  const row=function(n,d){ const a=c[d]; return '<tr><td>'+n+'</td><td>'+(tot[d]-a[1]-a[2]-a[3]-a[4]-a[5])+'</td><td>'+a[1]+'</td><td>'+a[2]+'</td><td>'+(a[3]+a[4])+'</td><td>'+a[5]+'</td><td>'+(FS.u[d]+1)+' / '+STAGES[d].length+'</td></tr>'; };
-  return '<table><tr><th>Fakten</th><th>neu</th><th>Fach 1</th><th>Fach 2</th><th>Fach 3–4</th><th>sitzt</th><th>Stufe</th></tr>'+row('Rechnen','m')+row('Buchstaben','l')+'</table><p>Fach 1 übt er gerade, „sitzt“ heißt mehrfach mit Abstand richtig. Neu zählt nur, was in den freigeschalteten Stufen noch nicht drankam.</p>';
-}
-/* Gestapelte Balken für die letzten 14 Tage, Minuten je Tag. */
-function parBars(all){
-  const n=14, W=320, H=110, bw=W/n, by={}, ks=Object.keys(SNAME);
-  all.forEach(function(r){ by[r.d]=r; });
-  const ds=[]; for(let i=n-1;i>=0;i--) ds.push(LOG.day(Date.now()-i*864e5));
-  let mx=1; ds.forEach(function(d){ const r=by[d]; if(r){ let s=0; ks.forEach(function(k){ s+=r.sec[k]||0; }); mx=Math.max(mx,s); } });
-  let g='';
-  ds.forEach(function(d,i){
-    const r=by[d]; let y=H;
-    if(r) ks.forEach(function(k){ const v=(r.sec[k]||0)/mx*(H-14); if(v>0){ y-=v; g+='<rect x="'+(i*bw+2).toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+(bw-4).toFixed(1)+'" height="'+v.toFixed(1)+'" fill="'+SCOL[k]+'"><title>'+d+' '+SNAME[k]+': '+mins(r.sec[k])+'</title></rect>'; } });
-    if(i%2===n%2||i===n-1) g+='<text x="'+(i*bw+bw/2).toFixed(1)+'" y="'+(H+12)+'" text-anchor="middle">'+(+d.slice(8))+'.</text>';
-  });
-  g+='<text x="0" y="9">'+mins(mx)+'</text>';
-  return '<svg class="par-ch" viewBox="0 0 '+W+' '+(H+16)+'" role="img" aria-label="Spielzeit je Tag, letzte 14 Tage">'+g+'</svg>';
-}
 $('par-body').addEventListener('click',function(e){
   const r=e.target.closest('[data-r]');
   if(r){ parRange=+r.dataset.r; parLoad(); return; }
