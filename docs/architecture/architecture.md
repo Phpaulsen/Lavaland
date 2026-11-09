@@ -375,7 +375,7 @@ Regeln: Formate nur rückwärtskompatibel ändern; neue Daten bekommen neue Schl
 - `node tools/build.mjs` baut `index.html` (Produktion) und `dist/index.test.html` (Testbuild), `--check` vergleicht nur, `--watch` baut laufend. Grundlage: `src/index.html` mit den Marken `<!-- @css -->` und `<!-- @js -->`.
 - **Testbuild:** An der Marke `/*@test-hook*/` in `wire()` steht `window.__lv`, ein Objekt mit Gettern für jeden dort sichtbaren Namen und Settern für `let`, `var` und `function`, erzeugt aus dem AST des fertigen Bundles. Ein eigenes Skript davor stellt `window.__ev(s)` bereit: Tests schreiben Ausdrücke, die über `with(window.__lv)` ausgewertet werden. Im Produktionsbuild gibt es beides nicht (`tests/prod.mjs`).
 - **CSP** in `src/index.html`: nur eigene Quellen, Skript und Stil inline, kein `eval`. Keine fremden Skripte (`tests/static.mjs`).
-- **Größenbudget:** 800 KB roh, 240 KB gzip (`tests/static.mjs`).
+- **Größenbudget:** 750 KB roh, 195 KB gzip (`tests/static.mjs`), Ratsche aus dem Vereinfachungsplan Schritt 7.
 - **Auslieferung:** Jeder Merge auf `main` geht über GitHub Pages sofort live. Die gebaute `index.html` liegt im Repo (ADR 0002).
 - **Service Worker** `sw.js`: lädt die Seite zuerst aus dem Netz, Dateien aus dem Cache. Ändert sich die Dateiliste, steigt `CACHE`.
 
