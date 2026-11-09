@@ -17,6 +17,8 @@
 //   iife     [neuerName, ...]                 der alte Name war const X=(function(){…})(); die Funktion zieht als function neuerName(…){…} um
 //                                             (Körper gleich, mit params/world wie oben; PR 13, LOG → logWith(LP))
 //   changed  [...]                            Name bleibt, Inhalt ändert sich bewusst (z. B. Einzeiler, der an core/ weitergibt)
+//   rewritten [neuerName, ...]                Inhalt bewusst umgebaut, ohne Move-Nachweis (PR 23c, draw nach Ebenen zerlegt; Absicherung
+//                                             nur über Bildvergleich). Gilt für einen umbenannten Namen wie für einen gleichnamigen.
 //   added, removed [...]                      neue bzw. gelöschte Namen
 //   stmtsChanged N                            so viele Anweisungen ohne Namen ändern sich bewusst (nur verhaltensändernde PRs)
 //   stmtsAdded N                              so viele Anweisungen ohne Namen kommen bewusst dazu (ebenso)
@@ -105,7 +107,7 @@ export function transform(node, moves, own, file) {
   // Bezüge auf umbenannte Namen werden nur innerhalb bewegter Funktionen umgeschrieben; legacy.js ruft weiter den alten Namen (Einzeiler).
   const n0 = clone(node);
   // Fassade nur für Bezüge, die nicht auf eine gleichnamige lokale Deklaration zeigen (wie codemod.mjs). sh = verdeckte Namen.
-  const shadow = (x, sh) => { if (!fac && !wn) return sh; const d = localDecl(x).filter(n => (fac && fac.has(n)) || (wn && (wn.has(n) || n === wo.from))); return d.length ? new Set([...sh, ...d]) : sh; };
+  const shadow = (x, sh) => { if (!fac && !wn && !moved) return sh; const d = localDecl(x).filter(n => (fac && fac.has(n)) || (wn && (wn.has(n) || n === wo.from)) || (moved && ren[n])); return d.length ? new Set([...sh, ...d]) : sh; };
   const walk = (x, parent, key, sh = new Set()) => {
     if (!x || typeof x !== 'object') return x;
     if (Array.isArray(x)) { for (let i = 0; i < x.length; i++) x[i] = walk(x[i], parent, key, sh); return x; }
@@ -116,7 +118,7 @@ export function transform(node, moves, own, file) {
     if (moved && x.type === 'CallExpression' && x.callee.type === 'Identifier' && !(wn && wn.has(x.callee.name) && !sh.has(x.callee.name))) {
       const c = x.callee.name;
       // Aufruf einer mit Parametern bewegten Funktion: neuer Name, ihre Parameter vorn (gleich benannt wie hier)
-      if (ren[c] && plist(ren[c]).length) { x.callee = id(ren[c]); x.arguments = [...plist(ren[c]).map(e => id(e.name)), ...x.arguments.map(a => walk(a, x, 'arguments', sh))]; return x; }
+      if (ren[c] && !sh.has(c) && plist(ren[c]).length) { x.callee = id(ren[c]); x.arguments = [...plist(ren[c]).map(e => id(e.name)), ...x.arguments.map(a => walk(a, x, 'arguments', sh))]; return x; }
       // Aufruf eines Einzeilers aus legacy.js (z. B. ri → riWith): die core-Fassung mit dem Zufallsparameter vorn
       if (wrap[c] && rnd) { x.callee = id(wrap[c]); x.arguments = [id(rnd), ...x.arguments.map(a => walk(a, x, 'arguments', sh))]; return x; }
     }
@@ -129,7 +131,7 @@ export function transform(node, moves, own, file) {
     if (x.type === 'Identifier') {
       if (wn && wn.has(x.name) && !sh.has(x.name)) return mem(wo.param, x.name);
       if (fac && fac.has(x.name) && !sh.has(x.name)) return { type: 'MemberExpression', object: id(fac.get(x.name)), property: id(x.name), computed: false, optional: false };
-      if (moved && ren[x.name]) return id(ren[x.name]);
+      if (moved && ren[x.name] && !sh.has(x.name)) return id(ren[x.name]); // eine lokale Variable gleichen Namens (const mood in drawWinter) bleibt
       return x;
     }
     for (const k of Object.keys(x)) if (!SKIP.has(k) && k !== 'type') x[k] = walk(x[k], x, k, sh);
@@ -195,7 +197,8 @@ export function compare(base, head, moves) {
   const err = [], rep = { same: 0, moved: [], changed: [], added: [], removed: [] };
   const renames = moves.renames || {}, srcOf = new Set(Object.values(renames));
   const listed = k => new Set(moves[k] || []);
-  const changed = listed('changed'), added = listed('added'), removed = listed('removed');
+  const changed = listed('changed'), added = listed('added'), removed = listed('removed'), rewritten = listed('rewritten');
+  for (const n of rewritten) changed.add(n);
   for (const [n, o] of Object.entries(renames)) {
     if (!B.decl.has(o)) { err.push(`rename ${n}=${o}: ${o} gibt es im Basisstand nicht`); continue; }
     if (!H.decl.has(n)) { err.push(`rename ${n}=${o}: ${n} gibt es im neuen Stand nicht`); continue; }
@@ -205,6 +208,7 @@ export function compare(base, head, moves) {
       if (!c || c.type !== 'FunctionExpression' || c.id) { err.push(`iife ${n}=${o}: ${o} ist kein const ${o}=(function(){…})()`); continue; }
       bn = { ...c, type: 'FunctionDeclaration', id: id(n) };
     }
+    if (rewritten.has(n)) { rep.changed.push(`${o} → ${n} (${H.decl.get(n).file}), umgebaut`); continue; }
     if (norm(transform(bn, moves, n, H.decl.get(n).file)) !== norm(H.decl.get(n).node)) err.push(`${o} → ${n} (${H.decl.get(n).file}): AST weicht über die erlaubten Umschreibungen hinaus ab`);
     else rep.moved.push(`${o} → ${H.decl.get(n).file}:${n}`);
   }
@@ -257,6 +261,12 @@ function selftest() {
     ['Zustand als Parameter, Körper geändert', { 'legacy.js': L('let FS={u:1};\nfunction mk(lv){return FS.u+lv}') },
       { 'legacy.js': L('let FS={u:1};\nfunction mk(lv){return mkW(FS,lv)}'), 'core/m.js': 'export function mkW(FS,lv){return FS.u-lv}' },
       { renames: { mkW: 'mk' }, params: { mkW: ['FS'] }, changed: ['mk'] }, 1],
+    ['Umbenannte Funktion, lokale Variable gleichen Namens bleibt', { 'legacy.js': L('function m(){return 1}\nfunction d(){const m=2;return m}') },
+      { 'legacy.js': L('function m(){return mW(P)}\nfunction d(){return dW(P)}\nconst P={}'), 'render/d.js': 'export function mW(P){return 1}\nexport function dW(P){const m=2;return m}' },
+      { renames: { mW: 'm', dW: 'd' }, params: { mW: ['P'], dW: ['P'] }, changed: ['m', 'd'], added: ['P'] }, 0],
+    ['Umbenannte Funktion, lokaler Name fälschlich umbenannt', { 'legacy.js': L('function m(){return 1}\nfunction d(){const m=2;return m}') },
+      { 'legacy.js': L('function m(){return mW(P)}\nfunction d(){return dW(P)}\nconst P={}'), 'render/d.js': 'export function mW(P){return 1}\nexport function dW(P){const m=2;return mW}' },
+      { renames: { mW: 'm', dW: 'd' }, params: { mW: ['P'], dW: ['P'] }, changed: ['m', 'd'], added: ['P'] }, 1],
     ['Fassade', { 'legacy.js': L('let x=1;\nfunction f(){x++;return {x,y:x}}') }, { 'legacy.js': L('function f(){W.x++;return {x:W.x,y:W.x}}'), 'state/w.js': 'export const W={x:1}' },
       { facade: { name: 'W', names: ['x'] }, removed: ['x'], added: ['W'] }, 0],
     ['Fassade, lokaler Name verdeckt', { 'legacy.js': L('let x=1;\nfunction f(){const x=2;return x}\nfunction g(x){return x}\nfunction h(){if(1){let x=3;x++}return x}\nfunction k(){try{}catch(x){x}for(const x of[]){x}return [1].map(x=>x)}') },
@@ -298,6 +308,11 @@ function selftest() {
     ['Handler weg', { 'legacy.js': L('let a=1;\nf(a);') }, { 'legacy.js': L('let a=1;') }, { stmtsRemoved: 1 }, 0],
     ['Handler weg ohne Nachweis', { 'legacy.js': L('let a=1;\nf(a);') }, { 'legacy.js': L('let a=1;') }, {}, 1],
     ['Handler geändert, nicht angegeben', { 'legacy.js': L('let a=1;\nf(a);') }, { 'legacy.js': L('let a=1;\nf(a+1);') }, {}, 1],
+    ['umgebaut nach Umzug', { 'legacy.js': L('function d(){a();b()}') }, { 'legacy.js': L('function d(){dW(P)}'), 'r/d.js': 'export function dW(P){x(P)}\nfunction x(P){P.a();P.b()}' },
+      { renames: { dW: 'd' }, params: { dW: ['P'] }, changed: ['d'], rewritten: ['dW'], added: ['x'] }, 0],
+    ['umgebaut, ohne Angabe', { 'legacy.js': L('function d(){a();b()}') }, { 'legacy.js': L('function d(){dW(P)}'), 'r/d.js': 'export function dW(P){x(P)}\nfunction x(P){P.a();P.b()}' },
+      { renames: { dW: 'd' }, params: { dW: ['P'] }, changed: ['d'], added: ['x'] }, 1],
+    ['umgebaut, gleichnamig', { 'r/d.js': 'export function dW(P){P.a();P.b()}' }, { 'r/d.js': 'export function dW(P){x(P)}\nfunction x(P){P.a();P.b()}' }, { rewritten: ['dW'], added: ['x'] }, 0],
     ['changed, aber gleich', { 'legacy.js': L('function a(){}') }, { 'legacy.js': L('function a(){}') }, { changed: ['a'] }, 1],
   ];
   const st = { stack: [{ pr: 11, renames: { a: 'b' }, added: ['x'], changed: ['c'] }, { pr: 12, renames: { d: 'e' }, changed: ['x', 'f'] }] };

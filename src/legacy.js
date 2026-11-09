@@ -31,6 +31,13 @@ import { sightsWith, METS, MROCKS, FLIES, JAR } from './systems/sights.js';
 import { mobsWith, shootWith, monStrikeWith, ARROWS, MONS } from './systems/mobs.js';
 import { creHitWith, creTickWith, drawCresWith, throws } from './systems/creatures.js';
 import { pickTickWith, padsTickWith, secretsTickWith } from './systems/finds.js';
+import { worldWith } from './systems/worldtick.js';
+import { questsWith, questTickWith, qEventWith, skyMarkWith, newQuestWith, showQuestWith, questPointWith } from './systems/quests.js';
+import { winterWith, throwBallWith, fireworkWith, burstWith, addManWith, drawManWith, pinFlyWith, yetiHitWith, stEnterWith } from './systems/winter.js';
+import { deepWith, findsWith, marksWith, findOpenWith, mkTapWith, zoneGiftsWith, deepIntroWith } from './systems/deep.js';
+import { moodWith, drawMoodWith, drawFloraWith, drawOrbWith, drawWorldBackWith, drawWorldFrontWith, drawDeepWith } from './render/world.js';
+import { drawSnowmanWith, drawDragonWith, drawGondolaWith, drawSkierWith, drawRollWith, drawWinterWith, drawFrontWith, drawSnowfallWith } from './render/winter.js';
+import { drawWith } from './render/draw.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -1265,6 +1272,259 @@ const FP={
   spawn,
   surfaceY
 };
+/* Port für systems/worldtick.js: Welt, Tag und Nacht, Disco, Wolken, Blitz, UFO und die Ticks der Tiere und Fundsachen. Zustände, die worldTick schreibt, haben einen Setter. */
+const WT={
+  get genF(){ return genF; },
+  get FX(){ return FX; },
+  get nightA(){ return nightA; },
+  set nightA(v){ nightA=v; },
+  get nightOn(){ return nightOn; },
+  get realm(){ return realm; },
+  get ORBS(){ return ORBS; },
+  get ORBN(){ return ORBN; },
+  get clouds(){ return clouds; },
+  get bolt(){ return bolt; },
+  set bolt(v){ bolt=v; },
+  get time(){ return time; },
+  get skyBonk(){ return skyBonk; },
+  set skyBonk(v){ skyBonk=v; },
+  get skySay(){ return skySay; },
+  set skySay(v){ skySay=v; },
+  get idleT(){ return idleT; },
+  set idleT(v){ idleT=v; },
+  get zT(){ return zT; },
+  set zT(v){ zT=v; },
+  get discoT(){ return discoT; },
+  set discoT(v){ discoT=v; },
+  get beatT(){ return beatT; },
+  set beatT(v){ beatT=v; },
+  get CONF(){ return CONF; },
+  get slipWas(){ return slipWas; },
+  set slipWas(v){ slipWas=v; },
+  get ufo(){ return ufo; },
+  set ufo(v){ ufo=v; },
+  get ufoNext(){ return ufoNext; },
+  set ufoNext(v){ ufoNext=v; },
+  banner,
+  confetti,
+  creTick,
+  disco,
+  discover,
+  dust,
+  grow,
+  padsTick,
+  pickTick,
+  portalTick,
+  pulse,
+  saveHero,
+  say,
+  secretsTick,
+  shout,
+  skyLim,
+  smoke,
+  spawn
+};
+/* Port für systems/quests.js: Auftragsdaten, Welt, Werkstatt, Rätselmaschinen, Oberfläche und Sprache für die Aufträge. Der Auftrag selbst (quest, qShown, qDoneT) bleibt in legacy.js, weil Zeichnen, Speichern und Tests ihn lesen; geschrieben wird er über Setter. */
+const QP={
+  get QSKY(){ return QSKY; },
+  get realm(){ return realm; },
+  get GEAR(){ return GEAR; },
+  get QDEEP(){ return QDEEP; },
+  get quest(){ return quest; },
+  set quest(v){ quest=v; },
+  get QSCRIPT(){ return QSCRIPT; },
+  get QDEF(){ return QDEF; },
+  get $(){ return $; },
+  get qShown(){ return qShown; },
+  set qShown(v){ qShown=v; },
+  get qDoneT(){ return qDoneT; },
+  set qDoneT(v){ qDoneT=v; },
+  get SPACE(){ return SPACE; },
+  get LIFT0(){ return LIFT0; },
+  banner,
+  canBuild,
+  confetti,
+  eggLand,
+  gearLv,
+  ground,
+  nextLand,
+  nextMach,
+  onSnow,
+  pulse,
+  ri,
+  saveHero,
+  solidW,
+  speak,
+  stationY,
+  surfaceY
+};
+/* Port für systems/winter.js: Winterzustand (Schneebälle, Feuerwerk, Figuren, Warteschlange), Welt, Teilchen und Zeichenhelfer für Schneebälle, Feuerwerk, Schneemänner, Pinguine und die Figuren am Schneeberg und am Vulkan. */
+const WP={
+  get balls(){ return balls; },
+  get N(){ return N; },
+  get fws(){ return fws; },
+  get CONF(){ return CONF; },
+  get reduced(){ return reduced; },
+  get time(){ return time; },
+  get pinT(){ return pinT; },
+  set pinT(v){ pinT=v; },
+  get pinN(){ return pinN; },
+  set pinN(v){ pinN=v; },
+  get PENX(){ return PENX; },
+  get YETX(){ return YETX; },
+  get RIMY(){ return RIMY; },
+  get stq(){ return stq; },
+  get realm(){ return realm; },
+  get manT(){ return manT; },
+  set manT(v){ manT=v; },
+  confetti,
+  disc,
+  drawSnowman,
+  flX,
+  floorAt,
+  puff,
+  ri,
+  shout,
+  solidW,
+  spawn,
+  steam,
+  surfaceY
+};
+/* Port für systems/deep.js: Welt, Tiefe (Maschinen, Planetenkerne, Zonen), Funde, Erkundungsnebel, Leuchtmarken und Oberflächenhelfer für Tiefe, Funde, Nebel und Leuchtmarken. */
+const DP={
+  get trees(){ return trees; },
+  get nearF(){ return nearF; },
+  set nearF(v){ nearF=v; },
+  get nearD(){ return nearD; },
+  set nearD(v){ nearD=v; },
+  get nearT(){ return nearT; },
+  set nearT(v){ nearT=v; },
+  get $(){ return $; },
+  get fogT(){ return fogT; },
+  set fogT(v){ fogT=v; },
+  get FGT(){ return FGT; },
+  get mkShown(){ return mkShown; },
+  set mkShown(v){ mkShown=v; },
+  get MKMAX(){ return MKMAX; },
+  get ZGIFT(){ return ZGIFT; },
+  get quest(){ return quest; },
+  get mhT(){ return mhT; },
+  set mhT(v){ mhT=v; },
+  get genF(){ return genF; },
+  get MACH(){ return MACH; },
+  get ZN(){ return ZN; },
+  get MATS(){ return MATS; },
+  get MATON(){ return MATON; },
+  get SPACE(){ return SPACE; },
+  get realm(){ return realm; },
+  get guide(){ return guide; },
+  set guide(v){ guide=v; },
+  get time(){ return time; },
+  banner,
+  bucket,
+  campSoon,
+  confetti,
+  dayAdd,
+  drillHead,
+  fRow,
+  firework,
+  fogArr,
+  fogSet,
+  ground,
+  labBadge,
+  later,
+  marks,
+  mkSave,
+  pulse,
+  qEvent,
+  renderAlbum,
+  renderEggs,
+  rlm,
+  saveFinds,
+  saveHero,
+  say,
+  scoop,
+  showQuest,
+  skyMark,
+  solidW,
+  spawn,
+  speak,
+  surfaceY,
+  syncOwn,
+  tell,
+  zoneAt
+};
+/* Port für render/world.js: Stimmung, Zeit, Bildschirm, Zeichenhelfer, Welt (Maschinen, Türen, Planetenkerne, Leuchtmarken), Tiere, Ufo und Blitz zum Malen der großen Welt und der Tiefe. */
+const RP={
+  get throws(){ return throws; },
+  get nightA(){ return nightA; },
+  get MD(){ return MD; },
+  get discoT(){ return discoT; },
+  get DPR(){ return DPR; },
+  get W(){ return W; },
+  get H(){ return H; },
+  get reduced(){ return reduced; },
+  get time(){ return time; },
+  get S(){ return S; },
+  get CONF(){ return CONF; },
+  get INK(){ return INK; },
+  get OHOLE(){ return OHOLE; },
+  get bolt(){ return bolt; },
+  get ufo(){ return ufo; },
+  get FX(){ return FX; },
+  get PZI(){ return PZI; },
+  get MAT(){ return MAT; },
+  get CRYH(){ return CRYH; },
+  get CRYC(){ return CRYC; },
+  get ZN(){ return ZN; },
+  get ZDEC(){ return ZDEC; },
+  get MACH(){ return MACH; },
+  get VAULTS(){ return VAULTS; },
+  get MATS(){ return MATS; },
+  get MATON(){ return MATON; },
+  circle,
+  doorShut,
+  drawCres,
+  drawDoor,
+  emo,
+  ground,
+  kidScale,
+  lerpC,
+  marks,
+  rr,
+  solidW,
+  star4,
+  stationY,
+  surfaceY
+};
+/* Port für render/winter.js: Zeichenhelfer, Zeit, Bildschirm, Winterzustand (Figuren, Schneebälle, Feuerwerk, Flocken), Lift und Schneeberg zum Malen des Winters. */
+const WM={
+  get INK(){ return INK; },
+  get LIFT(){ return LIFT; },
+  get reduced(){ return reduced; },
+  get time(){ return time; },
+  get LIFT0(){ return LIFT0; },
+  get LIFT1(){ return LIFT1; },
+  get N(){ return N; },
+  get RIMY(){ return RIMY; },
+  get IGX(){ return IGX; },
+  get balls(){ return balls; },
+  get fws(){ return fws; },
+  get CONF(){ return CONF; },
+  get DPR(){ return DPR; },
+  get FLK(){ return FLK; },
+  get W(){ return W; },
+  get S(){ return S; },
+  get H(){ return H; },
+  circle,
+  emo,
+  flX,
+  head,
+  mix,
+  rr,
+  surfaceY,
+  trackAt
+};
 /* Drei Stufen: alles an, nur Sprache (ohne Piepen und Klänge), alles aus. Sprache braucht das Kind, Effekte nerven manchmal die Großen. */
 try{ const mv=localStorage.getItem(K_MUTE); AU.muted=mv==='1'; AU.fxOff=mv==='s'; }catch(_){}
 document.addEventListener('pointerdown',function(e){
@@ -1359,36 +1619,7 @@ function hideFinds(){
   const first=ST.hidden.find(function(h){return h.zone==='shallow';})||ST.hidden.find(function(h){return h.zone==='deep';});
   if(first){ first.zone='shallow'; first.x=772; first.y=ground(772)+58; first.hint=true; }
 }
-function findOpen(h){
-  if(h.zone==='sky'||h.zone==='space'||h.zone==='moon'||h.zone==='edge'||h.zone==='core') return true;
-  if(h.tree>=0) return trees[h.tree].state>=1;
-  return !solidW(h.x,h.y);
-}
-function collect(h){
-  h.got=true; ST.found[h.id]=1; saveFinds(); renderAlbum();
-  confetti(h.x,h.y+20); jingle(); speak('Du hast '+h.name+' gefunden!');
-  ST.lootDirty=true; qEvent('find',1); sfx('pop');
-  spawn(8,h.x,h.y,0,-46,2.4,30,h.e); pulse('btn-finds');
-}
-function findsTick(dt){
-  const pts=[[P.x,P.y-18]];
-  if(P.mode==='bagger') pts.push(bucket()); else if(P.mode==='loader') pts.push(scoop()); else if(P.mode==='tbm') pts.push(drillHead());
-  let best=1e9, nf=null;
-  for(const h of ST.hidden){
-    if(h.got) continue;
-    let d=1e9;
-    for(const q of pts) d=Math.min(d,Math.hypot(q[0]-h.x,q[1]-h.y));
-    if(d<best){ best=d; nf=h; }
-    if(d<36&&(findOpen(h)||(h.tree>=0&&d<24))) collect(h);
-  }
-  nearF=nf; nearD=best;
-  if(cellAt(P.x,P.y+3)===CORE&&!ST.found.crystal) collect({id:'crystal',e:'🔮',name:'den Kristall vom Erdkern',zone:'core',x:P.x,y:P.y-30,tree:-1,got:false});
-  nearT-=dt;
-  if(nearT<=0){
-    nearT=.3;
-    const b=$('btn-finds'); b.classList.toggle('near',best<420&&best>=170); b.classList.toggle('hot',best<170);
-  }
-}
+function findOpen(h){ return findOpenWith(DP,h); }
 function star4(x,y,r){ ctx.beginPath(); ctx.moveTo(x,y-r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.quadraticCurveTo(x,y,x,y+r); ctx.quadraticCurveTo(x,y,x-r,y); ctx.quadraticCurveTo(x,y,x,y-r); ctx.fill(); }
 function drawFinds(front,x0,x1,y0,y1){
   ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -1593,132 +1824,17 @@ const QDEEP=[[1,0],[2,0],[3,1],[4,1],[5,2],[6,3]];
 const QSKY={moon:[1,'🌙','Lande mit der Rakete auf dem Mond.',0],stn:[2,'🛰️','Flieg mit der Rakete über den Mond hinaus und lande auf der Raumstation.',1],
   ice:[4,'🧊','Flieg mit der Rakete weit hinauf und lande auf dem Eisplaneten.',2],jun:[8,'🟣','Flieg mit der Rakete weit hinauf und lande auf dem Blubberplaneten.',2],
   gate:[16,'🌀','Flieg mit der Rakete bis zum Sternentor am Ende des Weltraums.',3]};
-function skyMark(k){ const b=QSKY[k][0], o=hero.mk.o|0; if(o&b) return; hero.mk.o=o|b; ST.heroDirty=true; }
-function skyDone(k){
-  if((hero.mk.o|0)&QSKY[k][0]) return true;
-  if(k==='gate') return !!(hero.fin&1);
-  if(k==='moon') return hero.rk>=1||(hero.mk.o|0)>1;
-  return !realm&&!!ST.orbGot[k];
-}
-/* Nächster Schritt zu Gerät g: bauen, wenn alles da ist, sonst Zahnräder aus Rätseln. null, wenn nur Meistersteine fehlen. */
-function gearStep(g){
-  if(canBuild(g)) return {type:'make',g:g,lv:gearLv(g)+1,goal:1,p:0};
-  const t=gearLv(g); if(t>=3) return null;
-  const miss=(GEAR[g].rc[t].zr|0)-(hero.mat.zr|0);
-  return miss>0&&nextMach()?{type:'pz',g:g,goal:Math.min(3,miss),p:0}:null;
-}
-function chainQuest(kind){
-  if(kind==='d'){
-    for(const s of QDEEP) if(hero.zn<s[0]) return hero.dr>=s[1]?{type:'zone',z:s[0],goal:1,p:0}:gearStep('dr');
-    if(hero.fin&2) return null;
-    return hero.up.heat>=3?{type:'core',goal:1,p:0}:gearStep('hs');
-  }
-  if(realm) return null;
-  for(const k in QSKY) if(!skyDone(k)) return hero.rk>=QSKY[k][3]?{type:'orb',k:k,goal:1,p:0}:gearStep('rk');
-  return null;
-}
+function skyMark(k){ return skyMarkWith(QP,k); }
 let quest=null, qShown='', qDoneT=0, bannerT=0;
 function banner(html,ms){
   $('banner-in').innerHTML=html; $('banner').classList.add('show');
   clearTimeout(bannerT); bannerT=setTimeout(function(){ $('banner').classList.remove('show'); },ms||1800);
 }
-function qEvent(type,n){ if(quest&&quest.type===type&&!quest.done) quest.p+=n; }
-function newQuest(){
-  const n=hero.qn;
-  if(n<QSCRIPT.length) return Object.assign({p:0},QSCRIPT[n]);
-  const first=n&1?'h':'d', cq=chainQuest(first)||chainQuest(first==='d'?'h':'d');
-  if(cq) return cq;
-  const tier=Math.floor((n-QSCRIPT.length)/4), lastT=hero.quest?hero.quest.type:'';
-  const pool=['dig','quiz','drive','deep','high','ride','moon','ski','salto','pz','pz'];
-  if(nextLand()) pool.push('land','land'); if(eggLand()) pool.push('egg','poke');
-  if(ST.hidden.some(function(h){return !h.got;})) pool.push('find','find');
-  pool.push('bomb');
-  let type=pool[ri(0,pool.length-1)], guard=0;
-  while(type===lastT&&guard++<20) type=pool[ri(0,pool.length-1)];
-  const q={type:type,goal:1,p:0};
-  if(type==='dig') q.goal=400+200*Math.min(tier,8);
-  else if(type==='quiz') q.goal=2+Math.min(tier,3);
-  else if(type==='drive'){ q.veh=['car','dumper','loader','tbm'][ri(0,3)]; q.goal=1200; }
-  else if(type==='deep') q.goal=[800,1500,2300][ri(0,2)];
-  else if(type==='high') q.goal=4000;
-  else if(type==='ski') q.goal=1500+500*Math.min(tier,4);
-  else if(type==='salto') q.goal=1+Math.min(tier,3);
-  else if(type==='poke') q.goal=3+Math.min(tier,4);
-  else if(type==='pz') q.goal=1+Math.min(tier,2);
-  return q;
-}
-/* Für einen Such-Auftrag wird ein noch fehlender Fund glitzernd in die Nähe gelegt, damit er sicher zu schaffen ist. */
-function prepFind(){
-  let h=null;
-  for(const q of ST.hidden) if(!q.got&&(q.zone==='shallow'||q.zone==='deep'||q.zone==='deeper'||q.zone==='hot')){ h=q; if(q.zone==='shallow') break; }
-  if(!h) return;
-  if(h.hint&&h.zone==='shallow'&&Math.abs(h.x-P.x)<700) return;
-  const offs=[170,-170,260,-260,360,-360,480,-480];
-  for(const o of offs){
-    const x=P.x+o;
-    if(x<120||x>WORLD_W-120||Math.abs(x-VOLC)<560||Math.abs(x-STALL_X)<70) continue;
-    const gy=ground(x);
-    if(Math.abs(surfaceY(x)-gy)>14||!solidW(x,gy+58)) continue;
-    h.zone='shallow'; h.x=x; h.y=gy+58; h.hint=true; h.tree=-1;
-    return;
-  }
-}
-function showQuest(talk){
-  quest=hero.quest;
-  if(quest.type==='find'&&!quest.prep){ quest.prep=true; prepFind(); }
-  const d=QDEF[quest.type];
-  $('q-ic').innerHTML=d.ic(quest); $('quest').classList.remove('done'); qShown=''; renderQuest();
-  if(talk){ speak(d.say(quest)); pulse(d.hint(quest)); pulse('quest'); }
-}
-function renderQuest(){
-  if(!quest) return;
-  const v=Math.min(quest.goal,Math.max(0,Math.floor(quest.p))), txt=v+'/'+quest.goal;
-  if(txt===qShown) return;
-  qShown=txt;
-  $('q-txt').textContent=quest.goal>1?txt:''; $('q-bar').style.width=Math.round(v/quest.goal*100)+'%';
-}
-function questTick(dt){
-  if(!quest) return;
-  if(quest.done){
-    qDoneT-=dt;
-    if(qDoneT<=0){ hero.quest=newQuest(); saveHero(); showQuest(true); }
-    return;
-  }
-  const t=quest.type;
-  if(t==='deep') quest.p=Math.max(quest.p,P.y);
-  else if(t==='high') quest.p=Math.max(quest.p,-P.y);
-  else if(t==='moon'){ if((P.on&&P.y<-3000&&P.mode!=='coaster')||realm==='moon') quest.p=1; }
-  else if(t==='drive'){ if(P.mode===quest.veh&&P.on) quest.p+=Math.abs(P.vx)*dt; }
-  else if(t==='ski'){ if(P.mode==='ski'&&P.on&&P.ball<=0&&onSnow()) quest.p+=Math.abs(P.vx)*dt; }
-  else if(t==='zone'){ if(hero.zn>=quest.z) quest.p=1; }
-  else if(t==='orb'){ if(skyDone(quest.k)) quest.p=1; }
-  else if(t==='make'){ if(gearLv(quest.g)>=quest.lv) quest.p=1; }
-  else if(t==='core'){ if(hero.fin&2) quest.p=1; }
-  renderQuest();
-  if(quest.p>=quest.goal){
-    quest.done=true; qDoneT=2.3; hero.qn++; ST.lootDirty=true;
-    $('q-bar').style.width='100%'; $('quest').classList.add('done');
-    banner('<svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5" stroke="#2f8f4a" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',2100);
-    confetti(P.x,P.y); jingle(); speak('Auftrag geschafft!'); saveHero();
-  }
-}
-function questPoint(){
-  if(!quest||quest.done) return null;
-  if(realm&&(quest.type==='moon'||quest.type==='ski'||quest.type==='salto'||quest.type==='orb'||quest.type==='make'||quest.type==='zone')) return null;
-  if(quest.type==='make') return [WSX,ground(WSX)-70];
-  if(quest.type==='zone'){ const y=stationY(hero.zn); return P.y<y-150?[LIFTX,y-70]:null; }
-  if(quest.type==='orb'){ if(quest.k==='moon') return [MOON.x,MOON.y-MOON.r-26]; const o=SPACE[quest.k]; return o?[o.x,o.y-o.r-26]:null; }
-  if(quest.type==='pz'){ const m=nextMach(); return m?[m.x,m.y-52]:null; }
-  if(quest.type==='moon') return [MOON.x,MOON.y-MOON.r-26];
-  if((quest.type==='ski'||quest.type==='salto')&&P.x<5500) return [LIFT0,surfaceY(LIFT0)-84];
-  if(quest.type==='land'||quest.type==='egg'){ const b=quest.type==='land'?nextLand():eggLand(); return b?[b.x0+240,ground(b.x0+240)-70]:null; }
-  if(quest.type==='find'){
-    let b=null, bd=1e9;
-    for(const h of ST.hidden){ if(h.got) continue; const d=Math.hypot(h.x-P.x,h.y-P.y)*(h.hint?1:3); if(d<bd){bd=d;b=h;} }
-    return b?[b.x,b.y]:null;
-  }
-  return null;
-}
+function qEvent(type,n){ return qEventWith(QP,type,n); }
+function newQuest(){ return newQuestWith(QP); }
+function showQuest(talk){ return showQuestWith(QP,talk); }
+function questPoint(){ return questPointWith(QP); }
+function questTick(dt){ return questTickWith(QP,dt); }
 /* Höchste Zahl beim Sternezählen im Fernrohr: nach Schulstand bis 10 oder 20. */
 function postMax(){ return SCH.on&&SCH.zr<=1?10:20; }
 
@@ -1877,307 +1993,36 @@ function breathe(){
 }
 
 /* ---------- Schneebälle ---------- */
-function throwBall(tx,ty,from){
-  if(balls.length>14) balls.shift();
-  const sx=from?from[0]:P.x+P.face*6, sy=from?from[1]:P.y-30, dx=tx-sx, dy=ty-sy, T=clamp(Math.hypot(dx,dy)/520,.3,.95);
-  balls.push({x:sx,y:sy,vx:dx/T,vy:dy/T-300*T,foe:!!from,t:0});
-  if(!from){ if(dx&&P.mode==='walk') P.face=dx>0?1:-1; sfx('throw'); }
-}
-function npcHit(b){
-  const y=N.yeti, fx=flX(), h=N.hare;
-  if(Math.abs(b.x-y.x)<27&&b.y>y.y-70&&b.y<y.y){ yetiHit(); return true; }
-  for(const p of N.pen) if(p.s===0&&Math.abs(b.x-p.x)<10&&Math.abs(b.y-(p.y-10))<14){ pinFly(p,b.vx*.5); return true; }
-  if(Math.abs(b.x-fx)<13&&b.y>surfaceY(fx)-58&&b.y<surfaceY(fx)){ shout(fx,surfaceY(fx)-72,'HEY!'); return true; }
-  if(Math.abs(b.x-h.x)<12&&Math.abs(b.y-(h.y-10))<14){ shout(h.x,h.y-36,'MIEP!'); sfx('quack'); return true; }
-  return false;
-}
-function ballsTick(dt){
-  for(let i=balls.length-1;i>=0;i--){
-    const b=balls[i], ox=b.x, oy=b.y;
-    b.t+=dt; b.vy+=600*dt; b.x+=b.vx*dt; b.y+=b.vy*dt;
-    let hit=b.t>4||b.x<10||b.x>WORLD_W-10;
-    if(!hit){
-      if(b.foe){ if(P.mode!=='coaster'&&Math.hypot(b.x-P.x,b.y-(P.y-20))<20){ hit=true; P.frost=2.5; shout(P.x,P.y-56,'PLATSCH!'); } }
-      else if(b.x>5600) hit=npcHit(b);
-    }
-    if(!hit){
-      const m=cellAt(b.x,b.y);
-      if(m===LAVA||m===FIRE){ hit=true; steam(Math.floor(b.x/CELL),Math.floor((b.y-TOP)/CELL)); }
-      else if(m===WATER) hit=true;
-      else if(m>=4){ hit=true; if(!b.foe) disc(Math.floor(ox/CELL),Math.floor((oy-TOP)/CELL),1.3,SNOW); }
-    }
-    if(hit){ balls.splice(i,1); puff(b.x,b.y,6); sfx('splat'); }
-  }
-}
+function throwBall(tx,ty,from){ return throwBallWith(WP,tx,ty,from); }
 
 /* ---------- Feuerwerk ---------- */
-function firework(x,y){
-  if(fws.length>8) return;
-  x=clamp(x,20,WORLD_W-20);
-  fws.push({x:x,y:Math.max(y+70,Math.min(surfaceY(x),y+420)),ty:y,c:ri(0,5)}); sfx('fw');
-}
-function burst(x,y,c){
-  const n=40, c2=CONF[(c+2+ri(0,2))%6];
-  for(let i=0;i<n;i++){ const a=i/n*TAU, v=150+Math.random()*130; spawn(6,x,y,Math.cos(a)*v,Math.sin(a)*v-60,1.1+Math.random()*.6,3,i%3?CONF[c]:c2); }
-  for(let i=0;i<8;i++) spawn(5,x,y,(Math.random()-.5)*200,(Math.random()-.5)*200,.6,2);
-  sfx('bang');
-}
-function fwsTick(dt){
-  for(let i=fws.length-1;i>=0;i--){
-    const f=fws[i]; f.y-=620*dt;
-    if(Math.random()<dt*40) spawn(5,f.x,f.y+8,(Math.random()-.5)*30,90,.3,2);
-    if(f.y<=f.ty){ fws.splice(i,1); burst(f.x,f.ty,f.c); }
-  }
-}
+function firework(x,y){ return fireworkWith(WP,x,y); }
+function burst(x,y,c){ return burstWith(WP,x,y,c); }
 
 /* ---------- Schneemänner zum Hinstellen. Sie winken, wenn der Held kommt, und schmelzen neben Feuer und Lava. ---------- */
-function addMan(x){
-  x=clamp(x,60,WORLD_W-60);
-  let n=0; for(const o of ST.props) if(o.type==='man') n++;
-  if(n>=24) ST.props.splice(ST.props.findIndex(function(o){return o.type==='man';}),1);
-  const y=surfaceY(x);
-  ST.props.push({type:'man',x:x,y:y}); puff(x,y-24,12); sfx('pop'); shout(x,y-72,'HALLO!');
-}
-function drawMan(o){
-  const near=!reduced&&Math.abs(P.x-o.x)<80&&Math.abs(P.y-o.y)<90;
-  drawSnowman(o.x,o.y,.92,true,near?Math.sin(time*11):0,CONF[Math.floor(o.x)%6],false);
-}
-function menTick(){
-  for(let i=ST.props.length-1;i>=0;i--){
-    const o=ST.props[i]; if(o.type!=='man') continue;
-    o.y=floorAt(o.x,o.y,12);
-    if(hotAt(o.x,o.y-6)||hotAt(o.x-9,o.y-3)||hotAt(o.x+9,o.y-3)||hotAt(o.x,o.y+4)){
-      ST.props.splice(i,1);
-      for(let k=0;k<8;k++) steam(Math.floor(o.x/CELL)+k%3-1,Math.floor((o.y-TOP)/CELL)-(k>>1));
-      shout(o.x,o.y-62,'OH NEIN!'); spawn(8,o.x,o.y-30,0,-30,1.6,20,'🥕'); sfx('splat');
-    }
-  }
-}
+function addMan(x){ return addManWith(WP,x); }
+function drawMan(o){ return drawManWith(WP,o); }
 
 /* ---------- Pinguine: Sie stehen unten an der Piste wie Kegel. Wer hineinsaust, lässt sie fliegen. ---------- */
-function pinFly(p,vx){
-  p.s=1; p.vx=vx+(Math.random()-.5)*120; p.vy=-240-Math.random()*240; p.vr=(Math.random()<.5?-1:1)*(7+Math.random()*9); sfx('quack');
-  if(time-pinT>2.5){ pinT=time; pinN=0; }
-  if(++pinN===6){ shout(PENX+38,p.y-74,'STRIKE!','#ffd23f'); confetti(PENX+38,p.y-20); ST.lootDirty=true; jingle(); }
-}
-function pensTick(dt){
-  for(const p of N.pen){
-    if(p.s===0){
-      p.x=p.hx; p.y=surfaceY(p.hx); p.rot=0;
-      if(P.mode!=='coaster'&&Math.abs(P.x-p.x)<13&&P.y>p.y-26&&P.y<p.y+34&&Math.abs(P.vx)>110) pinFly(p,P.vx*.7);
-    }else if(p.s===1){
-      p.vy+=G*.8*dt; p.x=clamp(p.x+p.vx*dt,30,WORLD_W-30); p.y+=p.vy*dt; p.rot+=p.vr*dt;
-      if((p.vy>0&&solidW(p.x,p.y+2))||p.y>TOP+GY*CELL){ p.y=surfaceY(p.x); p.s=2; p.t=1.6+Math.random()*1.5; p.rot=1.57; puff(p.x,p.y-4,4); }
-    }else if(p.s===2){ p.t-=dt; if(p.t<=0) p.s=3; }
-    else{
-      const dd=p.hx-p.x; p.x+=Math.sign(dd)*Math.min(Math.abs(dd),70*dt); p.y=surfaceY(p.x); p.rot=.25*Math.sin(time*14);
-      if(Math.abs(dd)<1) p.s=0;
-    }
-  }
-}
+function pinFly(p,vx){ return pinFlyWith(WP,p,vx); }
 
 /* ---------- Die Figuren am Schneeberg und am Vulkan. Die Geschichte gibt es nicht mehr (Vereinfachungsplan Schritt 3), sie stehen so da wie nach ihrem Ende. ---------- */
-function hareTick(){
-  const h=N.hare; h.x=flX()+28; h.y=surfaceY(h.x);
-}
-function yetiPups(){
-  const y=N.yeti; y.roll=1.8;
-  for(let i=0;i<26;i++) spawn(7,y.x+24+Math.random()*10,y.y-14,60+Math.random()*130,-20-Math.random()*50,1.4,7+Math.random()*6);
-  shout(y.x+44,y.y-34,'PUPS!'); sfx('pups');
-}
-function yetiHit(){
-  const y=N.yeti; y.laugh=.7; y.hits++; shout(y.x,y.y-88,['HIHI!','HOHO!','HAHA!'][y.hits%3]); sfx('laugh');
-  if(y.hits%5===0) yetiPups();
-}
-function yetiTick(dt){
-  const y=N.yeti; y.y=surfaceY(YETX);
-  if(y.laugh>0) y.laugh-=dt; if(y.roll>0) y.roll-=dt; if(y.hop>0) y.hop-=dt;
-  y.hick-=dt;
-  if(y.hick<=0){ y.hick=6+Math.random()*6; if(Math.abs(cam.x-y.x)<500){ shout(y.x,y.y-92,'HICK!'); y.hop=.35; sfx('hick'); } }
-}
-function fauTick(dt){
-  const f=N.fau, tx=VOLC+88, ty=surfaceY(VOLC+88);
-  f.x+=(tx-f.x)*Math.min(1,dt*3); f.y+=(ty-f.y)*Math.min(1,dt*3); f.face=-1;
-}
-function mamaTick(dt){
-  const m=N.mama, tgt=P.mode!=='dragon'?1:0;
-  m.up+=(tgt-m.up)*Math.min(1,dt*1.3);
-  if(m.up>.9&&Math.abs(cam.x-VOLC)<700&&Math.random()<dt*.8) spawn(0,VOLC+(P.x<VOLC?-78:66),RIMY-28,(Math.random()-.5)*10,-30,1.4,5);
-}
+function yetiHit(){ return yetiHitWith(WP); }
 
-function stEnter(){
-  stq.length=0; N.fau.x=VOLC+88; N.fau.y=surfaceY(VOLC+88);
-}
-function winterTick(dt){
-  const due=[];
-  for(let i=stq.length-1;i>=0;i--){ const q=stq[i]; q.t-=dt; if(q.t<=0){ due.push(q); stq.splice(i,1); } }
-  for(const q of due) q.fn();
-  if(balls.length) ballsTick(dt);
-  if(fws.length) fwsTick(dt);
-  if(realm) return;
-  if(cam.x>5100&&cam.x<9600){ hareTick(); yetiTick(dt); pensTick(dt); }
-  fauTick(dt); mamaTick(dt);
-  manT-=dt; if(manT<=0){ manT=.4; menTick(); }
-}
+function stEnter(){ return stEnterWith(WP); }
 function syncOwn(){
   $('mode-dragon').classList.toggle('gone',!hero.own.dragon);
   $('tool-fw').classList.toggle('gone',!hero.own.fw);
 }
 /* ---------- Winter malen ---------- */
-function drawSnowman(x,y,s,nose,wave,hat,sad){
-  ctx.save(); ctx.translate(x,y); ctx.scale(s,s); ctx.lineCap='round';
-  ctx.fillStyle='#9fb4cc'; circle(0,-11,13.4); circle(0,-30,10.4); circle(0,-45,8.4);
-  ctx.fillStyle='#fff'; circle(0,-11,12); circle(0,-30,9); circle(0,-45,7);
-  ctx.strokeStyle='#7a4a2c'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(-8,-32); ctx.lineTo(-19,-37); ctx.moveTo(8,-32); ctx.lineTo(19,-39-7*wave); ctx.stroke();
-  ctx.strokeStyle='#e63946'; ctx.lineWidth=3.2; ctx.beginPath(); ctx.moveTo(-6,-38.5); ctx.lineTo(6,-38.5); ctx.moveTo(4,-38); ctx.lineTo(7,-31); ctx.stroke();
-  ctx.fillStyle=INK; circle(-2.6,-47,1.2); circle(3,-47,1.2); circle(0,-32,1.3); circle(0,-26,1.3);
-  ctx.strokeStyle=INK; ctx.lineWidth=1.1; ctx.beginPath();
-  if(sad) ctx.arc(.5,-40.2,2.6,Math.PI*1.15,Math.PI*1.85); else ctx.arc(.5,-43.8,2.8,Math.PI*.15,Math.PI*.85);
-  ctx.stroke();
-  if(nose){ ctx.fillStyle='#ff8a1f'; ctx.beginPath(); ctx.moveTo(.5,-45.8); ctx.lineTo(11,-44.2); ctx.lineTo(.5,-42.8); ctx.closePath(); ctx.fill(); }
-  ctx.fillStyle=hat; ctx.fillRect(-7.5,-53.5,15,2.6); ctx.fillRect(-4.8,-62,9.6,9);
-  ctx.restore();
-}
-function drawYeti(x,y,face,mood,wob){
-  ctx.save(); ctx.translate(x,y); ctx.rotate(wob); ctx.scale(face,1);
-  const fur=function(col,g){
-    ctx.fillStyle=col; rr(-22-g,-58-g,44+2*g,58+2*g,18);
-    circle(-21,-12,9+g); circle(21,-12,9+g); circle(-25,-34,8.5+g); circle(25,-34,8.5+g); circle(-12,-60,9+g); circle(3,-64,10+g); circle(15,-59,8+g);
-  };
-  fur('#9fb4cc',2); fur('#f4f8fc',0);
-  ctx.fillStyle='#8fb0d6'; rr(-20,-7,16,9,4); rr(4,-7,16,9,4);
-  ctx.beginPath(); ctx.ellipse(3,-40,14.5,12.5,0,0,TAU); ctx.fill();
-  ctx.fillStyle='#fff'; circle(-3,-43,4.2); circle(9,-43,4.2);
-  ctx.fillStyle=INK; circle(-2,-43,2); circle(10,-43,2);
-  ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.lineCap='round'; ctx.beginPath();
-  if(mood===0){ ctx.moveTo(-8,-50.5); ctx.lineTo(0,-47.5); ctx.moveTo(15,-50.5); ctx.lineTo(7,-47.5); ctx.moveTo(-3,-32); ctx.quadraticCurveTo(4,-36.5,11,-32); }
-  else if(mood===1){ ctx.moveTo(-4,-35); ctx.quadraticCurveTo(4,-29,12,-35); }
-  ctx.stroke();
-  if(mood===2){ ctx.fillStyle=INK; ctx.beginPath(); ctx.ellipse(4,-33,7,5.5,0,0,TAU); ctx.fill(); ctx.fillStyle='#e63946'; ctx.beginPath(); ctx.ellipse(4,-31.5,4.5,2.8,0,0,TAU); ctx.fill(); }
-  ctx.restore();
-}
-/* Drache: warm 0 ist blau gefroren, 1 ist feuerrot. Mit Reiter sitzt der Held auf dem Rücken. */
-function drawDragon(x,y,s,face,warm,flap,rider){
-  const body=mix([86,146,214],[226,69,47],warm), belly=mix([196,226,246],[255,201,92],warm), dark=mix([52,100,170],[160,38,34],warm);
-  ctx.save(); ctx.translate(x,y); ctx.scale(face*s,s); ctx.lineJoin='round'; ctx.lineCap='round';
-  ctx.strokeStyle=body; ctx.lineWidth=7; ctx.beginPath(); ctx.moveTo(-12,-9); ctx.quadraticCurveTo(-30,-3,-33,-18); ctx.stroke();
-  ctx.fillStyle=dark; ctx.beginPath(); ctx.moveTo(-33,-27); ctx.lineTo(-39,-17); ctx.lineTo(-28,-17); ctx.closePath(); ctx.fill();
-  const wy=-30-15*flap;
-  ctx.beginPath(); ctx.moveTo(-3,-20); ctx.lineTo(-27,wy-6); ctx.lineTo(-19,wy+7); ctx.lineTo(-13,wy+2); ctx.lineTo(-9,wy+10); ctx.lineTo(-4,-12); ctx.closePath(); ctx.fill();
-  ctx.fillStyle=body; rr(-11,-7,7,7,3); rr(2,-7,7,7,3);
-  ctx.beginPath(); ctx.ellipse(-2,-15,15,11.5,0,0,TAU); ctx.fill();
-  ctx.fillStyle=belly; ctx.beginPath(); ctx.ellipse(2,-12,8.5,7.5,0,0,TAU); ctx.fill();
-  if(rider){ ctx.save(); ctx.translate(-5,-25); ctx.scale(1/s,1/s); ctx.fillStyle=P.soot>0?'#3a3438':'#2f6fd6'; rr(-6,-16,12,18,5); head(0,-22,7); ctx.restore(); }
-  ctx.fillStyle=body; ctx.beginPath(); ctx.ellipse(11,-26,6,10,.55,0,TAU); ctx.fill();
-  ctx.fillStyle=dark; ctx.beginPath(); ctx.moveTo(9,-41); ctx.lineTo(7,-50); ctx.lineTo(14,-44); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(15,-44); ctx.lineTo(16,-52); ctx.lineTo(21,-44); ctx.closePath(); ctx.fill();
-  ctx.fillStyle=body; circle(16,-36,9.5); rr(18,-38,15,9,4.5);
-  ctx.fillStyle='#fff'; circle(18,-38,3.6); ctx.fillStyle=INK; circle(19.2,-38,1.8); circle(30.5,-35.5,1);
-  ctx.strokeStyle=INK; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(22,-31.5); ctx.quadraticCurveTo(27,-29.5,32,-31.5); ctx.stroke();
-  ctx.restore();
-}
-function drawIgloo(x,y){
-  ctx.fillStyle='#9fb4cc'; ctx.beginPath(); ctx.arc(x,y,37,Math.PI,0); ctx.closePath(); ctx.fill();
-  ctx.fillStyle='#f4f8fc'; ctx.beginPath(); ctx.arc(x,y,35,Math.PI,0); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle='#bcd0e4'; ctx.lineWidth=1.5; ctx.beginPath();
-  ctx.moveTo(x-33,y-11); ctx.lineTo(x+33,y-11); ctx.moveTo(x-26,y-23); ctx.lineTo(x+26,y-23);
-  ctx.moveTo(x-16,y); ctx.lineTo(x-16,y-11); ctx.moveTo(x+18,y); ctx.lineTo(x+18,y-11); ctx.moveTo(x-6,y-11); ctx.lineTo(x-6,y-23); ctx.moveTo(x+10,y-11); ctx.lineTo(x+10,y-23); ctx.moveTo(x+2,y-23); ctx.lineTo(x+2,y-34);
-  ctx.stroke();
-  ctx.fillStyle='#2b3c52'; ctx.beginPath(); ctx.arc(x-2,y,12,Math.PI,0); ctx.closePath(); ctx.fill();
-}
-function drawGondola(x,y,occ){
-  ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x,y+14); ctx.stroke();
-  ctx.fillStyle=INK; rr(x-16,y+13,32,34,8);
-  ctx.fillStyle='#e63946'; rr(x-14,y+15,28,30,6);
-  ctx.fillStyle='#bfe9f5'; rr(x-10,y+19,20,13,3);
-  if(occ) head(x,y+27,5);
-  ctx.fillStyle='#ffd23f'; ctx.fillRect(x-14,y+35,28,3);
-}
-function drawStation(x,y){
-  ctx.fillStyle='#7a4a2c'; ctx.fillRect(x-27,y-58,5,60); ctx.fillRect(x+22,y-58,5,60);
-  ctx.fillStyle='#e63946'; ctx.beginPath(); ctx.moveTo(x-38,y-56); ctx.lineTo(x,y-80); ctx.lineTo(x+38,y-56); ctx.closePath(); ctx.fill();
-  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.moveTo(x-19,y-68); ctx.lineTo(x,y-80); ctx.lineTo(x+19,y-68); ctx.lineTo(x+10,y-66); ctx.lineTo(x+3,y-70); ctx.lineTo(x-6,y-65); ctx.closePath(); ctx.fill();
-}
-function drawLift(){
-  ctx.lineCap='round'; ctx.strokeStyle='#5f6b7a'; ctx.lineWidth=4; ctx.beginPath();
-  for(let x=5860;x<=6840;x+=195){ const gy=msurf(x); ctx.moveTo(x,gy+6); ctx.lineTo(x,gy-95); ctx.moveTo(x-9,gy-95); ctx.lineTo(x+9,gy-95); }
-  ctx.stroke();
-  const pts=LIFT.pts;
-  ctx.strokeStyle=INK; ctx.lineWidth=1.8; ctx.lineJoin='round'; ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]);
-  for(let i=3;i<pts.length;i+=3) ctx.lineTo(pts[i][0],pts[i][1]);
-  ctx.lineTo(pts[pts.length-1][0],pts[pts.length-1][1]); ctx.stroke();
-  for(let k=0;k<4;k++){ const q=trackAt(LIFT,((reduced?0:time*70)+k*LIFT.len/4)%LIFT.len); drawGondola(q.x,q.y,false); }
-  drawStation(LIFT0,surfaceY(LIFT0)); drawStation(LIFT1,surfaceY(LIFT1));
-}
-function drawSkier(x,y,ang,face,brake,air){
-  const sooty=P.soot>0, suit=sooty?'#3a3438':P.frost>0?'#dfeefa':'#2f6fd6', sp=Math.min(9,Math.abs(P.vx)/50);
-  ctx.save(); ctx.translate(x,y); ctx.rotate(ang); ctx.scale(face,1); ctx.lineCap='round'; ctx.lineJoin='round';
-  ctx.strokeStyle=INK; ctx.lineWidth=4.8; ctx.beginPath(); ctx.moveTo(-17,-1.5); ctx.lineTo(17,-1.5); ctx.quadraticCurveTo(22,-1.5,23,-6.5); ctx.stroke();
-  ctx.strokeStyle=hero.own.goldski?'#ffd23f':'#e63946'; ctx.lineWidth=2.6; ctx.stroke();
-  ctx.strokeStyle=INK; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(-2,-3.5); ctx.lineTo(4,-9); ctx.lineTo(-2,-15); ctx.stroke();
-  ctx.strokeStyle='#8d99a6'; ctx.lineWidth=1.6; ctx.beginPath(); ctx.moveTo(7,-21); if(air) ctx.lineTo(-15,-31); else ctx.lineTo(brake?12:-9,-2.5); ctx.stroke();
-  ctx.translate(-2,-15); ctx.rotate(brake?.1:.4);
-  ctx.strokeStyle='#e63946'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(-2,-17); ctx.quadraticCurveTo(-9,-19+(reduced?0:2*Math.sin(time*14)),-11-sp,-16+(reduced?0:3*Math.sin(time*11))); ctx.stroke();
-  ctx.fillStyle='#8d99a6'; rr(-10,-15,6,12,2);
-  ctx.fillStyle=suit; rr(-6,-17,12,18,5);
-  ctx.strokeStyle=suit; ctx.lineWidth=3.5; ctx.beginPath(); ctx.moveTo(0,-12); ctx.lineTo(9,-6); ctx.stroke();
-  head(1,-23,7);
-  ctx.restore();
-}
-function drawRoll(){
-  const r=15+7*(1-P.ball/1.7);
-  ctx.save(); ctx.translate(P.x,P.y-r); ctx.rotate(P.ang); ctx.lineCap='round';
-  ctx.strokeStyle=INK; ctx.lineWidth=4.6; ctx.beginPath(); ctx.moveTo(-r-11,5); ctx.lineTo(-r+4,2); ctx.moveTo(r-4,-6); ctx.lineTo(r+12,-10); ctx.stroke();
-  ctx.strokeStyle=hero.own.goldski?'#ffd23f':'#e63946'; ctx.lineWidth=2.4; ctx.stroke();
-  ctx.fillStyle='#9fb4cc'; circle(0,0,r+1.5); ctx.fillStyle='#fff'; circle(0,0,r);
-  ctx.fillStyle='#dbe7f3'; circle(-r*.3,r*.2,r*.22); circle(r*.35,-r*.3,r*.16);
-  head(0,-r-3,6);
-  ctx.restore();
-}
-/* Alles vom Winter, das hinter dem Helden steht */
-function drawWinter(x0,x1){
-  const f=N.fau, m=N.mama;
-  if(x1>VOLC-260&&x0<VOLC+260){
-    if(m.up>.02){
-      ctx.save(); ctx.beginPath(); ctx.rect(VOLC-240,RIMY-430,480,438); ctx.clip();
-      drawDragon(VOLC-6,RIMY+52+130*(1-m.up),2.4,P.x<VOLC?-1:1,1,reduced?0:.3*Math.sin(time*2),false);
-      ctx.restore();
-    }
-    drawDragon(f.x,f.y,.8,f.face,1,reduced?0:.4*Math.sin(time*5),false);
-  }
-  if(x1<LIFT0-90||x0>8500) return;
-  drawLift();
-  drawIgloo(IGX,surfaceY(IGX));
-  const fx=flX();
-  drawSnowman(fx,surfaceY(fx),1.1,true,(!reduced&&Math.abs(P.x-fx)<230)?Math.sin(time*9):0,INK,false);
-  const h=N.hare;
-  emo('🐇',h.x,h.y-11,22);
-  const yt=N.yeti, mood=(yt.laugh>0||yt.roll>0)?2:1;
-  const wob=reduced?0:(yt.roll>0?-1.35+.18*Math.sin(time*22):yt.laugh>0?.1*Math.sin(time*38):0);
-  drawYeti(yt.x,yt.y-(yt.hop>0?16*Math.sin(yt.hop/.35*Math.PI):0)-(yt.roll>0?18:0),P.x<yt.x?-1:1,mood,wob);
-  N.pen.forEach(function(p){
-    ctx.save(); ctx.translate(p.x,p.y-11); ctx.rotate(p.rot); emo('🐧',0,0,20); ctx.restore();
-  });
-}
-/* Alles vom Winter, das vor dem Helden fliegt */
-function drawFront(){
-  if(balls.length){
-    ctx.fillStyle='#9fb4cc'; for(const b of balls) circle(b.x,b.y,5.2);
-    ctx.fillStyle='#fff'; for(const b of balls) circle(b.x,b.y,4.2);
-  }
-  for(const f of fws){ ctx.fillStyle=CONF[f.c]; rr(f.x-2,f.y-8,4,11,2); ctx.fillStyle='#ffd23f'; circle(f.x,f.y+5,2.6); }
-}
-function drawSnowfall(){
-  const amt=clamp((cam.x-5250)/500,0,1)*clamp((9100-cam.x)/500,0,1)*clamp((cam.y+1700)/400,0,1)*clamp((500-cam.y)/300,0,1);
-  if(amt<.02) return;
-  ctx.save(); ctx.setTransform(DPR,0,0,DPR,0,0); ctx.fillStyle='#fff';
-  const t=reduced?0:time;
-  for(const f of FLK){
-    const x=((f[0]*W+Math.sin(t*.8+f[4])*18-cam.x*S*.2*f[2])%W+W)%W, y=((f[1]*H+t*f[3]*f[2]-cam.y*S*.4)%H+H)%H;
-    ctx.globalAlpha=amt*(.45+.25*f[2]); circle(x,y,f[2]*S*.9+.4);
-  }
-  ctx.restore(); ctx.globalAlpha=1;
-}
+function drawSnowman(x,y,s,nose,wave,hat,sad){ return drawSnowmanWith(WM,ctx,x,y,s,nose,wave,hat,sad); }
+function drawDragon(x,y,s,face,warm,flap,rider){ return drawDragonWith(WM,ctx,x,y,s,face,warm,flap,rider); }
+function drawGondola(x,y,occ){ return drawGondolaWith(WM,ctx,x,y,occ); }
+function drawSkier(x,y,ang,face,brake,air){ return drawSkierWith(WM,ctx,x,y,ang,face,brake,air); }
+function drawRoll(){ return drawRollWith(WM,ctx); }
+function drawWinter(x0,x1){ return drawWinterWith(WM,ctx,x0,x1); }
+function drawFront(){ return drawFrontWith(WM,ctx); }
+function drawSnowfall(){ return drawSnowfallWith(WM,ctx); }
 
 /* ---------- Leben in der großen Welt: Tiere, Fundsachen, Sprungpilze, goldene Eier, Schätze, Planeten, U-Boot, Karte und versteckte Späße ---------- */
 const FX={hot:0,slip:0,sugar:0,big:0,tiny:0,pump:0,star:0,float:0,stink:0,rainbow:0,sonar:0};
@@ -2626,274 +2471,16 @@ function drawBug(x,y,ang,face,occ,run){
   ctx.restore();
 }
 
-/* ---------- Was jede Sekunde in der großen Welt passiert ---------- */
-function worldTick(dt){
-  const far=Math.max(P.x,cam.x);
-  if(far+2600>genF*CELL) grow(Math.min(far+3200,(genF+12)*CELL));
-  for(const k in FX) if(FX[k]>0) FX[k]-=dt;
-  nightA+=((nightOn?1:0)-nightA)*Math.min(1,dt*1.5);
-  const bi=bix[clamp(Math.floor(P.x/CELL),0,GX-1)];
-  if(bi&&!ST.seen[bi-1]&&P.x>ST.BIO[bi-1].x0+90) discover(ST.BIO[bi-1]);
-  portalTick(dt);
-  if(!hero.ext&&!realm&&P.x>7340){ hero.ext=true; saveHero(); say('','Hinter dem Schneeberg geht die Welt weiter. Niemand weiß, wie weit!'); }
-  creTick(dt); pickTick(dt); padsTick(); secretsTick();
-  /* Landung auf einem fremden Planeten */
-  if(P.on&&P.y<-3000) for(const o of ORBS){
-    if(!o.i||ST.orbGot[o.i]||Math.hypot(P.x-o.x,P.y-o.y)>o.r+30) continue;
-    ST.orbGot[o.i]=1; ST.lootDirty=true; confetti(P.x,P.y); jingle(); banner('⭐',2400); say('',ORBN[o.k]);
-    if(o.k===2) disco(14);
-  }
-  /* Wolken regnen, wenn man sie antippt. */
-  for(const c of clouds){
-    if(!(c.rain>0)) continue;
-    c.rain-=dt;
-    const cy=Math.floor((c.y+16*c.s-TOP)/CELL);
-    for(let k=0;k<2;k++){ const x=c.x+(Math.random()-.5)*60*c.s; if(cy>1) put(Math.floor(x/CELL),cy,WATER); else spawn(6,x,c.y+16*c.s,0,200,.7,2.5,'#6ab8f0'); }
-  }
-  if(bolt){ bolt.t-=dt; if(bolt.t<=0) bolt=null; }
-  ufoTick(dt);
-  if(P.y<=skyLim()+2&&time>skyBonk){ skyBonk=time+9; shout(P.x,P.y+40,'STOPP!'); sfx('splat'); if(time>skySay){ skySay=time+90; say('',hero.rk<3?'Höher schafft es die Rakete noch nicht. Professor Zahnrad kann sie in der Werkstatt stärker bauen.':'Hier ist der Weltraum wirklich zu Ende.'); if(hero.rk<3) pulse('btn-lab'); } }
-  /* Wer lange stillsteht, schläft ein. */
-  if(P.mode==='walk'&&P.on&&!keys.l&&!keys.r&&!keys.u&&!keys.a&&Math.abs(P.vx)<4){
-    idleT+=dt;
-    if(idleT>25){ zT-=dt; if(zT<=0){ zT=2.2; shout(P.x+8,P.y-48,idleT<28?'GÄHN!':'Zzz'); } }
-  }else idleT=0;
-  if(discoT>0){
-    discoT-=dt; beatT-=dt;
-    if(beatT<=0){ beatT=.24; const n=[262,330,392,523,392,330][Math.floor(discoT/.24)%6]; blip(n,n,.12,'square',.05); }
-  }
-  /* Spuren der Fundsachen */
-  const x=P.x, y=P.y;
-  if(FX.hot>0&&Math.random()<dt*30) spawn(1,x-P.face*8,y-10,-P.face*60,-20,.35,5);
-  if((FX.sugar>0||FX.rainbow>0||(hero.trail&&Math.abs(P.vx)>120))&&Math.random()<dt*40) spawn(12,x-P.face*6,y-8-Math.random()*20,-P.vx*.1,-10,.7,3,CONF[Math.floor(time*12)%6]);
-  if(FX.star>0&&Math.random()<dt*30) spawn(5,x+(Math.random()-.5)*24,y-Math.random()*40,0,-30,.5,2);
-  if(FX.stink>0&&Math.random()<dt*14) spawn(12,x+(Math.random()-.5)*20,y-20,(Math.random()-.5)*30,-30,1,6,'#9bd84a');
-  if(slipWas&&FX.slip<=0){ shout(x,y-52,'PLUMPS!'); dust(x,y); }
-  slipWas=FX.slip>0;
-}
-
-/* Nachts kommt manchmal ein UFO. Wer unter dem Lichtstrahl stehen bleibt, wird auf einen fremden Planeten gebracht. */
-function ufoTick(dt){
-  if(realm){ ufo=null; return; }
-  if(!ufo){
-    if(nightA>.8&&P.mode==='walk'&&P.on&&P.y>-800&&P.y<300&&time>ufoNext) ufo={x:P.x-520,y:P.y-420,t:0,hold:0};
-    return;
-  }
-  ufo.t+=dt;
-  if(ufo.t>10||nightA<.5){ ufo.y-=260*dt; ufo.x+=200*dt; if(ufo.t>12||nightA<.5){ ufo=null; ufoNext=time+40+Math.random()*30; } return; }
-  ufo.x+=(P.x-ufo.x)*Math.min(1,dt*1.6); ufo.y+=(P.y-200-ufo.y)*Math.min(1,dt*1.6);
-  ufo.beam=Math.abs(P.x-ufo.x)<34;
-  ufo.hold=ufo.beam&&P.mode==='walk'&&Math.abs(P.vx)<30?ufo.hold+dt:0;
-  if(ufo.hold>1.6){
-    const o=ORBS[ORBS.length>1?1:0];
-    ufo=null; ufoNext=time+70; grow(o.x+3200);
-    P.x=o.x; P.y=o.y-o.r-6; P.vx=0; P.vy=0; P.on=false; cam.x=P.x; cam.y=P.y-80; sfx('whoosh'); smoke(P.x,P.y-20,8);
-    say('','Hui! Ein UFO hat dich mitgenommen und auf einem fremden Planeten abgesetzt.');
-  }
-}
 /* ---------- Stimmung: Jedes Land färbt Himmel, Hügel und Wasser. Nachts wird es dunkel. ---------- */
-function mood(){
-  const ia=bix[clamp(Math.floor((cam.x-260)/CELL),0,GX-1)], ib=bix[clamp(Math.floor((cam.x+260)/CELL),0,GX-1)];
-  const A=BT[ia?ST.BIO[ia-1].t:0], B=BT[ib?ST.BIO[ib-1].t:0];
-  let t=0; if(ia!==ib&&ib) t=clamp((cam.x-(ST.BIO[ib-1].x0-260))/520,0,1);
-  const nl=Math.max(nightA,A.night+(B.night-A.night)*t), dk=1-.5*nl, D=t<.5?A:B;
-  const h1=lerpC(A.hill[0],B.hill[0],t), h2=lerpC(A.hill[1],B.hill[1],t);
-  MD.st=lerpC(A.sky[0],B.sky[0],t); MD.sb=lerpC(A.sky[1],B.sky[1],t); MD.nl=nl;
-  MD.h1='rgb('+(h1[0]*dk|0)+','+(h1[1]*dk|0)+','+(h1[2]*dk|0)+')'; MD.h2='rgb('+(h2[0]*dk|0)+','+(h2[1]*dk|0)+','+(h2[2]*dk|0)+')';
-  MD.w1=D.wat?D.wat[0]:'rgba(48,140,224,.74)'; MD.w2=D.wat?D.wat[1]:'rgba(132,204,246,.8)';
-  return MD;
-}
-function drawMood(){
-  const nl=MD.nl;
-  if(nl<.03&&discoT<=0) return;
-  ctx.save(); ctx.setTransform(DPR,0,0,DPR,0,0);
-  if(nl>=.03){
-    ctx.fillStyle='rgba(8,12,48,'+(.36*nl).toFixed(3)+')'; ctx.fillRect(0,0,W,H);
-    if(cam.y>-900&&cam.y<400){
-      ctx.fillStyle='#ffe98a';
-      for(let i=0;i<12;i++){
-        const t=reduced?i:time*.3+i*1.7, x=(((Math.sin(t*1.3+i)*.5+.5)*W+i*97-cam.x*S*.6)%W+W)%W, y=H*(.35+.3*(Math.sin(t+i*2.1)*.5+.5));
-        ctx.globalAlpha=nl*(.3+.7*Math.abs(Math.sin(t*3+i))); circle(x,y,1.8*S+.6);
-      }
-      ctx.globalAlpha=1;
-    }
-  }
-  if(discoT>0){ ctx.globalAlpha=.16; ctx.fillStyle='hsl('+(reduced?300:Math.floor(time*240)%360)+',90%,55%)'; ctx.fillRect(0,0,W,H); }
-  ctx.restore(); ctx.globalAlpha=1;
-}
+function mood(){ return moodWith(RP); }
+function drawMood(){ return drawMoodWith(RP,ctx); }
 
 /* ---------- Die große Welt malen ---------- */
-function drawFlora(tr,x,y,h,s){
-  const k=tr.kind, on=tr.state===1, ci=Math.floor(tr.x)%6;
-  ctx.lineCap='round'; ctx.lineJoin='round';
-  if(k==='cactus'){
-    ctx.fillStyle=on?'#7a5a24':'#3f9d57';
-    rr(x-6*s,y-h,12*s,h+4,6*s); rr(x-17*s,y-h*.66,8*s,h*.36,4*s); rr(x-17*s,y-h*.38,14*s,7*s,3.5*s); rr(x+9*s,y-h*.84,8*s,h*.38,4*s); rr(x+3*s,y-h*.54,14*s,7*s,3.5*s);
-    ctx.fillStyle='#ff7ab0'; circle(x,y-h-1,3*s);
-  }else if(k==='palm'){
-    const tx=x+4*s, ty=y-h;
-    ctx.strokeStyle='#8a5a3c'; ctx.lineWidth=6*s; ctx.beginPath(); ctx.moveTo(x,y+4); ctx.quadraticCurveTo(x+10*s,y-h*.5,tx,ty); ctx.stroke();
-    ctx.strokeStyle=on?'#7a5a24':'#2f8f4a'; ctx.lineWidth=5*s; ctx.beginPath();
-    for(let i=0;i<5;i++){ const a=-2.7+i*.565; ctx.moveTo(tx,ty); ctx.quadraticCurveTo(tx+22*s*Math.cos(a),ty+22*s*Math.sin(a),tx+38*s*Math.cos(a),ty+22*s*Math.sin(a)+16*s); }
-    ctx.stroke();
-    ctx.fillStyle='#6a4428'; circle(tx-3*s,ty+4*s,3.4*s); circle(tx+4*s,ty+5*s,3.4*s);
-  }else if(k==='jungle'||k==='giant'){
-    const g=k==='giant'?2:1;
-    ctx.fillStyle='#6a4428'; ctx.fillRect(x-4.5*s*g,y-h*.82,9*s*g,h*.82+6);
-    ctx.strokeStyle='#3d8f3a'; ctx.lineWidth=1.6; ctx.beginPath();
-    for(let i=-1;i<=1;i++){ ctx.moveTo(x+i*15*s*g,y-h*.72); ctx.quadraticCurveTo(x+i*15*s*g+4,y-h*.55,x+i*13*s*g,y-h*.72+34+i*8); }
-    ctx.stroke();
-    ctx.fillStyle=on?'#7a5a24':'#1f7a44'; circle(x-18*s*g,y-h*.8,21*s*g); circle(x+18*s*g,y-h*.82,21*s*g);
-    ctx.fillStyle=on?'#96702a':'#2a9552'; circle(x,y-h,25*s*g);
-  }else if(k==='lolly'){
-    ctx.strokeStyle='#fff'; ctx.lineWidth=3.2*s; ctx.beginPath(); ctx.moveTo(x,y+3); ctx.lineTo(x,y-h); ctx.stroke();
-    ctx.fillStyle=CONF[ci]; circle(x,y-h,13*s);
-    ctx.strokeStyle='#fff'; ctx.lineWidth=2.4*s; ctx.beginPath(); ctx.arc(x,y-h,8*s,0,4.4); ctx.moveTo(x+3.5*s,y-h); ctx.arc(x,y-h,3.5*s,0,4); ctx.stroke();
-  }else if(k==='cane'){
-    ctx.lineWidth=6*s; ctx.strokeStyle='#fff'; ctx.beginPath(); ctx.moveTo(x,y+3); ctx.lineTo(x,y-h+9*s); ctx.arc(x+9*s,y-h+9*s,9*s,Math.PI,0); ctx.stroke();
-    ctx.strokeStyle='#e63946'; ctx.setLineDash([6*s,7*s]); ctx.lineCap='butt'; ctx.stroke(); ctx.setLineDash([]);
-  }else if(k==='shroom'){
-    ctx.fillStyle='#f3e9d2'; rr(x-2.5*s,y-h*.6,5*s,h*.6+3,2);
-    ctx.fillStyle=['#e63946','#ff8a1f','#7b4fd6','#3aa0e8','#ff7ab0','#58b548'][ci]; ctx.beginPath(); ctx.arc(x,y-h*.6,8*s,Math.PI,0); ctx.closePath(); ctx.fill();
-    ctx.fillStyle='#fff'; circle(x-3*s,y-h*.6-3.5*s,1.5*s); circle(x+3*s,y-h*.6-4.5*s,1.8*s);
-  }else if(k==='dead'){
-    ctx.strokeStyle='#3a3244'; ctx.lineWidth=6*s; ctx.beginPath(); ctx.moveTo(x,y+4); ctx.lineTo(x,y-h*.75); ctx.stroke();
-    ctx.lineWidth=3*s; ctx.beginPath(); ctx.moveTo(x,y-h*.5); ctx.lineTo(x-16*s,y-h*.85); ctx.moveTo(x,y-h*.62); ctx.lineTo(x+14*s,y-h); ctx.moveTo(x-9*s,y-h*.7); ctx.lineTo(x-20*s,y-h*.7); ctx.stroke();
-  }else if(k==='grave'){
-    ctx.fillStyle='#6f7688'; rr(x-9*s,y-h-1,18*s,h+4,8*s);
-    ctx.fillStyle='#9aa0b2'; rr(x-7*s,y-h+1,14*s,h+2,6.5*s);
-    ctx.strokeStyle='#6f7688'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x,y-h*.8); ctx.lineTo(x,y-h*.3); ctx.moveTo(x-4*s,y-h*.62); ctx.lineTo(x+4*s,y-h*.62); ctx.stroke();
-  }else if(k==='fern'){
-    ctx.strokeStyle=on?'#7a5a24':'#2f9a4a'; ctx.lineWidth=3*s; ctx.beginPath();
-    for(let i=-2;i<=2;i++){ ctx.moveTo(x,y+2); ctx.quadraticCurveTo(x+i*8*s,y-h,x+i*15*s,y-h*.55); }
-    ctx.stroke();
-  }else if(k==='crystal'){
-    const col=['#7fe3f0','#c79bff','#8ef0b8'][ci%3];
-    ctx.fillStyle='#4a5a8a'; ctx.beginPath(); ctx.moveTo(x-9*s,y+3); ctx.lineTo(x-3*s,y-h-2); ctx.lineTo(x+6*s,y-h*.8-2); ctx.lineTo(x+10*s,y+3); ctx.closePath(); ctx.fill();
-    ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(x-7*s,y+3); ctx.lineTo(x-3*s,y-h); ctx.lineTo(x+5*s,y-h*.8); ctx.lineTo(x+8*s,y+3); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(x-17*s,y+3); ctx.lineTo(x-13*s,y-h*.5); ctx.lineTo(x-8*s,y+3); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle='rgba(255,255,255,.8)'; ctx.lineWidth=1.6; ctx.beginPath(); ctx.moveTo(x-3*s,y-h+4); ctx.lineTo(x-4.5*s,y-4); ctx.stroke();
-  }else if(k==='flower'){
-    ctx.strokeStyle='#2f8f4a'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x,y+2); ctx.lineTo(x,y-h); ctx.stroke();
-    ctx.fillStyle=CONF[ci]; for(let i=0;i<5;i++){ const a=i*1.257; circle(x+4.2*s*Math.cos(a),y-h+4.2*s*Math.sin(a),2.8*s); }
-    ctx.fillStyle='#ffd23f'; circle(x,y-h,2.4*s);
-  }else{
-    ctx.fillStyle=on?'#7a5a24':'#3d9a50'; circle(x-8*s,y-h*.4,9*s); circle(x+8*s,y-h*.4,9*s); circle(x,y-h*.75,10*s);
-  }
-}
-function drawDeco(d){
-  const x=d.x;
-  if(d.k==='gate'){
-    const g=ground(x), on=ST.seen[d.b.i];
-    ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle=INK; ctx.lineWidth=8; ctx.beginPath(); ctx.moveTo(x-26,g+4); ctx.lineTo(x-26,g-56); ctx.quadraticCurveTo(x,g-86,x+26,g-56); ctx.lineTo(x+26,g+4); ctx.stroke();
-    ctx.strokeStyle=on?'#ffd23f':'#cfd6dd'; ctx.lineWidth=4; ctx.stroke();
-    ctx.fillStyle=INK; circle(x,g-80,18); ctx.fillStyle='#fff8e6'; circle(x,g-80,15.5); emo(BT[d.b.t].e,x,g-79,19);
-  }else if(d.k==='mill'){
-    const y=d.y;
-    ctx.fillStyle='#fff8e6'; ctx.beginPath(); ctx.moveTo(x-17,y+3); ctx.lineTo(x-10,y-70); ctx.lineTo(x+10,y-70); ctx.lineTo(x+17,y+3); ctx.closePath(); ctx.fill();
-    ctx.fillStyle='#e63946'; ctx.beginPath(); ctx.moveTo(x-13,y-70); ctx.lineTo(x,y-88); ctx.lineTo(x+13,y-70); ctx.closePath(); ctx.fill();
-    ctx.fillStyle='#7a4a2c'; rr(x-5,y-16,10,19,3);
-    ctx.strokeStyle='#7a4a2c'; ctx.lineWidth=4; ctx.lineCap='round'; ctx.beginPath();
-    for(let k=0;k<4;k++){ const a=(reduced?.4:time*.9)+k*Math.PI/2; ctx.moveTo(x,y-66); ctx.lineTo(x+40*Math.cos(a),y-66+40*Math.sin(a)); }
-    ctx.stroke(); ctx.fillStyle=INK; circle(x,y-66,4);
-  }else if(d.k==='sign'){
-    ctx.fillStyle='#7a4a2c'; ctx.fillRect(x-2.5,d.y-40,5,43);
-    ctx.fillStyle=INK; rr(x-19,d.y-62,38,28,6); ctx.fillStyle='#fff8e6'; rr(x-17,d.y-60,34,24,4.5); emo(d.e,x,d.y-47,17);
-  }else if(d.k==='mast'){
-    ctx.strokeStyle='#7a4a2c'; ctx.lineWidth=5; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(x,d.y); ctx.lineTo(x,d.y-70); ctx.stroke();
-    ctx.fillStyle=INK; ctx.beginPath(); ctx.moveTo(x,d.y-70); ctx.lineTo(x+30,d.y-60); ctx.lineTo(x,d.y-48); ctx.closePath(); ctx.fill();
-    ctx.fillStyle='#fff'; circle(x+10,d.y-60,4);
-  }else if(d.k==='door'){
-    ctx.fillStyle=INK; rr(x-13,d.y-38,24,40,10); ctx.fillStyle='#b9793a'; rr(x-11,d.y-36,20,38,8); ctx.fillStyle='#ffd23f'; circle(x+4,d.y-16,2.4);
-  }
-}
-function drawPad(p){
-  const sq=p.bt>time?(p.bt-time)/.25:0;
-  if(p.k==='hay'){
-    ctx.fillStyle='#c79a2e'; rr(p.x-p.w-1,p.y-1+sq*5,p.w*2+2,p.h+4-sq*5,6);
-    ctx.fillStyle='#ecc94e'; rr(p.x-p.w+1,p.y+1+sq*5,p.w*2-2,p.h-sq*5,4.5);
-    ctx.strokeStyle='#c79a2e'; ctx.lineWidth=1.6; ctx.beginPath(); ctx.moveTo(p.x-5,p.y+3+sq*5); ctx.lineTo(p.x-5,p.y+p.h); ctx.moveTo(p.x+6,p.y+3+sq*5); ctx.lineTo(p.x+6,p.y+p.h); ctx.stroke();
-    return;
-  }
-  const cy=p.y+sq*7, w=p.w+sq*5;
-  ctx.fillStyle='#f3e9d2'; rr(p.x-6,cy,12,p.y+p.h-cy+3,5);
-  ctx.fillStyle=['#e63946','#ff8a1f','#7b4fd6','#3aa0e8','#ff7ab0','#58b548'][p.c%6]; ctx.beginPath(); ctx.ellipse(p.x,cy+3,w+4,17-sq*5,0,Math.PI,0); ctx.closePath(); ctx.fill();
-  ctx.fillStyle='#fff'; circle(p.x-w*.45,cy-4,3.2); circle(p.x+w*.3,cy-8,3.8); circle(p.x+w*.62,cy-2,2.4);
-}
-function drawEgg(x,y){
-  ctx.fillStyle='rgba(255,220,90,.35)'; circle(x,y-2,17+(reduced?0:2*Math.sin(time*5)));
-  ctx.fillStyle=INK; ctx.beginPath(); ctx.ellipse(x,y-2,9.5,12.5,0,0,TAU); ctx.fill();
-  ctx.fillStyle='#ffd23f'; ctx.beginPath(); ctx.ellipse(x,y-2,8,11,0,0,TAU); ctx.fill();
-  ctx.fillStyle='#fff3b0'; ctx.beginPath(); ctx.ellipse(x-3,y-6,2,3.4,-.5,0,TAU); ctx.fill();
-}
-function drawSecrets(x0,x1,y0,y1){
-  for(const e of ST.EGGS){
-    if(ST.eggGot[e.b]||e.x<x0-30||e.x>x1+30) continue;
-    if(solidW(e.x,e.y)){
-      if(e.hint){ const sy=surfaceY(e.x)-12, a=Math.max(0,Math.sin(time*2.2+e.x)); if(a>0){ ctx.globalAlpha=a; ctx.fillStyle='#ffd23f'; star4(e.x,sy,9); ctx.globalAlpha=1; } }
-      continue;
-    }
-    if(e.y>y0-30&&e.y<y1+30) drawEgg(e.x,e.y+(reduced?0:2.5*Math.sin(time*3+e.x)));
-  }
-  for(const l of ST.LOOT){
-    if(ST.lootGot[l.id]||l.x<x0-30||l.x>x1+30) continue;
-    if(l.bur&&solidW(l.x,l.y)){
-      const sy=surfaceY(l.x), a=Math.max(0,Math.sin(time*2.2+l.x));
-      if(l.xm){ ctx.strokeStyle='#e63946'; ctx.lineWidth=4; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(l.x-8,sy-9); ctx.lineTo(l.x+8,sy+5); ctx.moveTo(l.x+8,sy-9); ctx.lineTo(l.x-8,sy+5); ctx.stroke(); }
-      else if(a>0){ ctx.globalAlpha=a; ctx.fillStyle='#fff8e6'; star4(l.x,sy-12,8); ctx.globalAlpha=1; }
-      continue;
-    }
-    if(l.tro) emo('🏆',l.x,l.y-8,36);
-    else if(l.pot){ ctx.fillStyle='#ffd23f'; circle(l.x-5,l.y-9,4.5); circle(l.x+4,l.y-10,4.5); circle(l.x,l.y-13,4.5); ctx.fillStyle=INK; rr(l.x-12,l.y-8,24,18,8); ctx.fillRect(l.x-14,l.y-9,28,4); }
-    else{ ctx.fillStyle=INK; rr(l.x-13,l.y-9,26,19,3); ctx.fillStyle='#b9793a'; rr(l.x-11,l.y-7,22,15,2); ctx.fillStyle='#d89a4a'; rr(l.x-11,l.y-13,22,9,4.5); ctx.fillStyle='#ffd23f'; rr(l.x-2.5,l.y-6,5,6,1.5); }
-  }
-}
+function drawFlora(tr,x,y,h,s){ return drawFloraWith(RP,ctx,tr,x,y,h,s); }
 const OHOLE=[[-.4,-.3,.2],[.3,-.45,.13],[.45,.1,.22],[-.1,.35,.16],[-.55,.25,.11],[.1,-.05,.09]];
-function drawOrb(o){
-  const x=o.x, y=o.y, r=o.r;
-  if(o.k===0||o.k===1){
-    ctx.fillStyle=o.k?'#d9a066':'#f5c63c'; circle(x,y,r);
-    ctx.fillStyle=o.k?'#5a3620':'#d9a520'; for(const q of OHOLE) circle(x+q[0]*r,y+q[1]*r,q[2]*r*(o.k?.6:1));
-    emo(o.k?'🍪':'🐭',x,y-r-12,24);
-  }else if(o.k===2){
-    ctx.fillStyle='#aab3c2'; circle(x,y,r);
-    for(let i=0;i<14;i++){ const a=i*2.4, d=r*(.2+.7*((i*37)%10)/10); ctx.fillStyle='hsl('+((i*47+(reduced?0:Math.floor(time*90)))%360)+',80%,70%)'; ctx.fillRect(x+d*Math.cos(a)-7,y+d*Math.sin(a)-7,14,14); }
-    emo('🕺',x,y-r-14,24);
-  }else{
-    const a=Math.atan2(P.y-y,P.x-x), ix=x+r*.34*Math.cos(a), iy=y+r*.34*Math.sin(a);
-    ctx.fillStyle='#f4f8fc'; circle(x,y,r); ctx.fillStyle='#3aa0e8'; circle(ix,iy,r*.46); ctx.fillStyle=INK; circle(ix,iy,r*.24); ctx.fillStyle='#fff'; circle(ix-r*.12,iy-r*.14,r*.08);
-  }
-}
-/* Alles aus der großen Welt, das hinter dem Helden steht */
-function drawWorldBack(x0,x1,y0,y1){
-  for(const d of ST.DECO) if(d.x>x0-70&&d.x<x1+70) drawDeco(d);
-  for(const p of ST.PADS) if(p.x>x0-60&&p.x<x1+60) drawPad(p);
-  drawSecrets(x0,x1,y0,y1);
-  drawCres(x0,x1,y0,y1);
-  const pk=function(q){ const b=reduced?0:2.5*Math.sin(time*3.4+q.x); ctx.fillStyle='rgba(255,255,255,.35)'; circle(q.x,q.y+b,13); emo(q.e,q.x,q.y+b+1,19); };
-  for(const q of ST.PICKS) if(q.t<=time&&q.y===q.y&&q.x>x0-20&&q.x<x1+20) pk(q);
-  for(const d of ST.DROPS) if(d.x>x0-20&&d.x<x1+20) pk(d);
-}
-/* Alles aus der großen Welt, das vor dem Helden fliegt */
-function drawWorldFront(){
-  for(const t of throws) emo(t.e,t.x,t.y,18);
-  if(bolt){
-    ctx.strokeStyle='#fff7a8'; ctx.lineWidth=4; ctx.lineJoin='miter'; ctx.beginPath(); ctx.moveTo(bolt.x,bolt.y0);
-    let y=bolt.y0, k=0; while(y<bolt.y1){ y+=34; ctx.lineTo(bolt.x+((k++%2)?-14:14),Math.min(y,bolt.y1)); }
-    ctx.stroke();
-  }
-  if(ufo){
-    if(ufo.beam&&ufo.t<10){ ctx.fillStyle='rgba(255,246,160,.3)'; ctx.beginPath(); ctx.moveTo(ufo.x-8,ufo.y+6); ctx.lineTo(ufo.x+8,ufo.y+6); ctx.lineTo(ufo.x+34,P.y+4); ctx.lineTo(ufo.x-34,P.y+4); ctx.closePath(); ctx.fill(); }
-    emo('🛸',ufo.x,ufo.y+(reduced?0:3*Math.sin(time*5)),30);
-  }
-  if(P.mode!=='walk') return;
-  if(FX.float>0){
-    const ks=kidScale();
-    ctx.strokeStyle=INK; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(P.x+P.face*4,P.y-22*ks); ctx.lineTo(P.x+P.face*6,P.y-52*ks); ctx.stroke();
-    emo('🎈',P.x+P.face*6,P.y-64*ks,24);
-  }
-  if(FX.stink>0){ ctx.fillStyle=INK; for(let i=0;i<3;i++){ const a=time*7+i*2.1; circle(P.x+16*Math.cos(a),P.y-34+9*Math.sin(a*1.3),1.6); } }
-}
+function drawOrb(o){ return drawOrbWith(RP,ctx,o); }
+function drawWorldBack(x0,x1,y0,y1){ return drawWorldBackWith(RP,ctx,x0,x1,y0,y1); }
+function drawWorldFront(){ return drawWorldFrontWith(RP,ctx); }
 
 /* ---------- Karte zum Reisen und die Belohnungen für goldene Eier ---------- */
 function renderMap(){
@@ -2936,12 +2523,6 @@ function fogSeed(a){
   }
   if(!realm&&hero.zn>0){ const tx=Math.floor(LIFTX/CELL/FGT), r=ZN[Math.min(hero.zn,ZN.length-1)].row; for(let ty=0;ty<=Math.floor(r/FGT)+1;ty++){ fogSet(a,tx,ty); fogSet(a,tx-1,ty); } }
   fogDirty=true;
-}
-function fogTick(dt){
-  fogT-=dt; if(fogT>0) return; fogT=.4;
-  const a=fogArr(), tx=Math.floor(P.x/CELL/FGT), ty=fRow(P.y), r=1+(hero.lp|0);
-  for(let dy=-r;dy<=r;dy++) for(let dx=-r-1;dx<=r+1;dx++) if(dx*dx+dy*dy<=(r+1)*(r+1)) fogSet(a,tx+dx,ty+dy);
-  if(P.y<ground(P.x)) for(let y=0,gy=fRow(ground(P.x));y<=gy;y++) fogSet(a,tx,y);
 }
 function fogSave(){
   if(!fogDirty||ST.frozen) return; fogDirty=false;
@@ -3126,13 +2707,6 @@ function deepRestore(sv){
 }
 
 /* ---------- Jede Sekunde: Zonen entdecken, Planetenkerne einsammeln, Maschinen auf den Boden stellen, Ziele erreichen ---------- */
-function matFound(m){
-  const k=m.k, n=(hero.mat[k]|0)+1;
-  ST.matGot[m.id]=1; hero.mat[k]=n; ST.heroDirty=true;
-  sfx('coin'); dayAdd('mat');
-  for(let i=0;i<10;i++) spawn(5,m.x,m.y,(Math.random()-.5)*180,-60-Math.random()*160,.7,2);
-  hero.mk.pk=1; ST.lootDirty=true; confetti(m.x,m.y); jingle(); banner('🪐 '+n+' / 3',2600); say('',n>=3?'Alle drei Planetenkerne! Du hast jede große Welt bis ganz nach unten erforscht.':'Ein Planetenkern! Er leuchtet wie ein kleiner Stern. In jedem großen Planeten liegt einer.'); dayAdd('z','🪐'); campSoon(); labBadge(true);
-}
 function canBuild(g){
   const t=gearLv(g); if(t>=3) return false;
   const rc=GEAR[g].rc[t];
@@ -3145,70 +2719,11 @@ function labBadge(talk){
   if(can&&!labHi&&talk){ later(2.2,function(){ say('','Du hast genug gesammelt! In der Werkstatt kannst du jetzt etwas Neues bauen.'); pulse('btn-lab'); }); }
   labHi=can;
 }
-function finale(n){
-  hero.fin|=n;
-  if(n===1){
-    for(let i=0;i<8;i++) later(i*.35,function(){ firework(P.x-240+Math.random()*480,P.y-140-Math.random()*160); });
-    banner('🌟',3000);
-    say('','Du hast das Sternentor erreicht, ganz am Ende vom Weltraum!');
-  }else{
-    banner('🌋',3000);
-    say('','Du stehst auf dem glühenden Erdkern! Tiefer geht es nicht.');
-  }
-  ST.lootDirty=true; confetti(P.x,P.y); jingle(); saveHero(); renderEggs();
-  if(hero.fin===3) later(10,function(){ banner('🏆',3200); say('','Ganz unten und ganz oben: Du hast alles erforscht. Du bist der größte Forscher von Lavaland!'); });
-}
-function deepIntro(){
-  if(hero.deep) return;
-  hero.deep=true; saveHero();
-  if(quest&&!quest.done&&quest.type!=='find'){ hero.quest={type:'pz',goal:1,p:0}; showQuest(false); }
-  pulse('btn-lab');
-  tell([['Professor Zahnrad','Hallo! Ich bin Professor Zahnrad. Meine Werkstatt steht jetzt bei dir zu Hause.'],
-    ['Professor Zahnrad','Unter der Erde geht es jetzt viel tiefer, und der Weltraum ist riesig. Aber dafür brauchst du einen besseren Bohrer und eine stärkere Rakete.'],
-    ['Professor Zahnrad','Die baue ich dir. Bring mir Zahnräder und später Meistersteine. Zahnräder bekommst du von meinen Rätselmaschinen. Die erste steht gleich rechts neben dem Aufzug.']]);
-}
+function deepIntro(){ return deepIntroWith(DP); }
 /* Was früher die Geschichte schenkte, gibt es jetzt für Zonen (Vereinfachungsplan Schritt 3): Feuerwerk, goldene Ski, Drache.
    Wer es schon hat, behält es. Beim Start wird nachgeholt, was zur erreichten Zone gehört. */
 const ZGIFT=[[1,'fw','Das Feuerwerk','Es liegt bei den Werkzeugen.','tool-fw'],[3,'goldski','Die goldenen Ski','Nimm die Ski, dann siehst du sie.','mode-ski'],[5,'dragon','Mama Glut, der Drache','Sie wartet bei den Fahrzeugen. Jetzt kannst du auf ihr fliegen.','mode-dragon']];
-function zoneGifts(talk){
-  let got=null;
-  for(const g of ZGIFT) if(hero.zn>=g[0]&&!hero.own[g[1]]){ hero.own[g[1]]=1; got=g; }
-  if(!got) return;
-  saveHero(); syncOwn();
-  if(talk) later(3,function(){ banner('🎁',2400); say('',got[2]+' gehört jetzt dir! '+got[3]); pulse(got[4]); });
-}
-function deepTick(dt){
-  mhT-=dt;
-  if(mhT<=0){ mhT=.6; const lim=(genF-8)*CELL; for(const m of MACH) if(m.sf&&m.x<lim) m.y=surfaceY(m.x); }
-  if(P.mode!=='coaster'){
-    const z=zoneAt(P.x,P.y-12), R=rlm();
-    if(R){
-      if(z&&!ST.seen['z'+z]){ ST.seen['z'+z]=1; jingle(); confetti(P.x,P.y); banner(R.zn[z-1][0]+' ⭐',2400); say('','Du hast '+R.zn[z-1][1]+' erreicht!'); dayAdd('z',R.zn[z-1][0]); campSoon(); }
-    }else if(z>hero.zn){
-      hero.zn=z; saveHero(); jingle(); confetti(P.x,P.y); banner(ZN[z].e+' ⭐',2400);
-      say('','Du hast '+ZN[z].n+' erreicht! Der Aufzug zu Hause fährt jetzt bis hierher.'); dayAdd('z',ZN[z].e); campSoon();
-      zoneGifts(true);
-    }
-  }
-  const pts=[[P.x,P.y-16]];
-  if(P.mode==='bagger') pts.push(bucket()); else if(P.mode==='loader') pts.push(scoop()); else if(P.mode==='tbm') pts.push(drillHead());
-  for(const m of MATS){
-    if(ST.matGot[m.id]||!MATON[m.k]||Math.abs(m.x-P.x)>260||Math.abs(m.y-P.y)>260) continue;
-    for(const q of pts) if(Math.hypot(q[0]-m.x,q[1]-m.y)<30){ matFound(m); break; }
-  }
-  if(P.on&&P.y<-6000&&SPACE.gate){
-    for(const k of ['stn','ice','jun']){
-      const o=SPACE[k];
-      if(ST.orbGot[k]||Math.hypot(P.x-o.x,P.y-o.y)>o.r+40) continue;
-      ST.orbGot[k]=1; skyMark(k); ST.lootDirty=true; confetti(P.x,P.y); jingle(); banner('⭐',2400);
-      say('',k==='stn'?'Du bist auf der Raumstation gelandet! Ringsum schweben große Felsbrocken.':k==='ice'?'Du bist auf dem Eisplaneten gelandet!':'Du bist auf dem Blubberplaneten gelandet! Hier wohnt Blubb.');
-    }
-    if(!(hero.fin&1)&&Math.hypot(P.x-SPACE.gate.x,P.y-SPACE.gate.y)<SPACE.gate.r+40) finale(1);
-  }
-  if(!(hero.fin&2)&&!realm&&P.y>9000&&cellAt(P.x,P.y+3)===CORE) finale(2);
-  if(!hero.deep&&performance.now()>ST.talkLock&&Math.abs(P.x-WSX)<110&&Math.abs(P.y-ground(WSX))<90) deepIntro();
-  if(guide&&time>guide.t) guide=null;
-}
+function zoneGifts(talk){ return zoneGiftsWith(DP,talk); }
 function nextMach(){
   let b=null, bd=1e12; const lim=(genF-8)*CELL;
   for(const m of MACH){
@@ -3358,86 +2873,7 @@ $('mine-cards').addEventListener('click',function(e){
 });
 
 /* ---------- Zeichnen ---------- */
-function gearShape(x,y,r,a,col){
-  ctx.save(); ctx.translate(x,y); ctx.rotate(a);
-  ctx.fillStyle=INK; for(let i=0;i<8;i++){ ctx.rotate(TAU/8); ctx.fillRect(-r*.22-1.2,-r*1.34-1.2,r*.44+2.4,r*.7); } circle(0,0,r+1.4);
-  ctx.fillStyle=col; for(let i=0;i<8;i++){ ctx.rotate(TAU/8); ctx.fillRect(-r*.22,-r*1.34,r*.44,r*.7); } circle(0,0,r);
-  ctx.fillStyle=INK; circle(0,0,r*.4);
-  ctx.restore();
-}
-function drawLab(){
-  const x=WSX, y=ground(x);
-  ctx.fillStyle=INK; rr(x-39,y-54,78,58,6);
-  ctx.fillStyle='#c98b4a'; rr(x-36,y-51,72,54,4);
-  ctx.fillStyle='#8a5a3c'; ctx.strokeStyle=INK; ctx.lineWidth=3; ctx.lineJoin='round';
-  ctx.beginPath(); ctx.moveTo(x-48,y-50); ctx.lineTo(x,y-84); ctx.lineTo(x+48,y-50); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle='#4a3424'; rr(x-11,y-32,22,34,3);
-  ctx.fillStyle='#ffd23f'; circle(x+6,y-14,2);
-  ctx.fillStyle=INK; rr(x+15,y-41,17,17,3); ctx.fillStyle='#bfe9f5'; rr(x+17,y-39,13,13,2);
-  gearShape(x,y-88,12,reduced?0:time*.8,'#9aa7b4');
-  emo('🤖',x-56,y-14+(reduced?0:1.5*Math.sin(time*3)),27);
-}
-function drawCab(x,y,top){
-  if(top){
-    ctx.strokeStyle=INK; ctx.lineWidth=5; ctx.lineCap='round';
-    ctx.beginPath(); ctx.moveTo(x-30,y+2); ctx.lineTo(x-9,y-96); ctx.moveTo(x+30,y+2); ctx.lineTo(x+9,y-96); ctx.moveTo(x-20,y-52); ctx.lineTo(x+20,y-52); ctx.stroke();
-    ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x,y-96); ctx.lineTo(x,y-44); ctx.stroke();
-    ctx.fillStyle=INK; circle(x,y-100,13); ctx.fillStyle='#e63946'; circle(x,y-100,10); ctx.fillStyle=INK; circle(x,y-100,3.5);
-  }
-  ctx.fillStyle=INK; rr(x-17,y-46,34,48,5);
-  ctx.fillStyle='#ffd23f'; rr(x-14,y-43,28,42,3);
-  ctx.fillStyle=INK; ctx.fillRect(x-1,y-43,2,42);
-  ctx.fillStyle='#bfe9f5'; rr(x-11,y-38,8,11,2); rr(x+3,y-38,8,11,2);
-  ctx.fillStyle=INK; circle(x,y-51,5.5); ctx.fillStyle=reduced||(time*2|0)%2?'#58b548':'#c9f5b8'; circle(x,y-51,3.6);
-}
-function drawMach(m){
-  const x=m.x, y=m.y, done=!!ST.pzGot[m.id], T=PZI[m.t], b=reduced?0:2.5*Math.sin(time*3+x);
-  ctx.strokeStyle=INK; ctx.lineWidth=2.5; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(x,y-40); ctx.lineTo(x,y-50); ctx.stroke();
-  ctx.fillStyle=done?'#58b548':((time*3|0)%2&&!reduced?'#ffd23f':'#ff5a1f'); circle(x,y-52,3.6);
-  ctx.fillStyle=INK; rr(x-17,y-42,34,40,7); rr(x-13,y-4,8,6,2); rr(x+5,y-4,8,6,2);
-  ctx.fillStyle=done?'#a9dba6':T.col; rr(x-14,y-39,28,34,5);
-  ctx.fillStyle=INK; rr(x-11,y-35,22,19,3); ctx.fillStyle='#fff8e6'; rr(x-9.500,y-33.500,19,16,2);
-  emo(T.e,x,y-25,13);
-  ctx.fillStyle=INK; circle(x-6,y-10,2.2); circle(x,y-10,2.2); circle(x+6,y-10,2.2);
-  if(done) emo('✅',x+13,y-40,13);
-  else{ ctx.fillStyle='rgba(255,255,255,.4)'; circle(x,y-68+b,12); gearShape(x,y-68+b,7,reduced?0:time*1.5,'#ffd23f'); }
-}
-function drawMat(m){
-  const b=reduced?0:2*Math.sin(time*3+m.x), emb=m.y>-3000&&cellAt(m.x,m.y)>=4;
-  ctx.fillStyle=emb?'rgba(20,24,40,.5)':'rgba(255,255,255,.32)'; circle(m.x,m.y+b,13);
-  if(emb){ ctx.strokeStyle='rgba(255,248,230,.85)'; ctx.lineWidth=1.5; ctx.setLineDash([3,3]); ctx.beginPath(); ctx.arc(m.x,m.y+b,13,0,TAU); ctx.stroke(); ctx.setLineDash([]); }
-  emo(MAT[m.k][0],m.x,m.y+b+1,emb?15:18);
-}
-function drawBone(d){
-  if(cellAt(d.x,d.y)<4) return;
-  ctx.save(); ctx.translate(d.x,d.y); ctx.scale(d.s*d.f,d.s);
-  ctx.strokeStyle='rgba(250,240,214,.8)'; ctx.fillStyle='rgba(250,240,214,.8)'; ctx.lineWidth=3; ctx.lineCap='round'; ctx.lineJoin='round';
-  if(d.v===0){
-    ctx.beginPath(); ctx.moveTo(-26,0); ctx.lineTo(20,0);
-    for(let i=0;i<5;i++){ const x=-18+i*8, h=10-Math.abs(i-2)*2; ctx.moveTo(x,-h); ctx.lineTo(x,h); }
-    ctx.moveTo(-26,0); ctx.lineTo(-34,-7); ctx.moveTo(-26,0); ctx.lineTo(-34,7); ctx.stroke(); circle(26,0,6);
-  }else if(d.v===1){
-    ctx.beginPath(); ctx.moveTo(2,0);
-    for(let a=.3;a<13;a+=.3){ const r=2+a*1.5; ctx.lineTo(r*Math.cos(a),r*Math.sin(a)); }
-    ctx.stroke();
-  }else{
-    ctx.beginPath(); ctx.ellipse(0,0,20,12,0,0,TAU); ctx.stroke(); circle(-7,-3,3.2);
-    ctx.beginPath(); ctx.moveTo(4,9); ctx.lineTo(4,14); ctx.moveTo(10,8); ctx.lineTo(10,13); ctx.moveTo(15,5); ctx.lineTo(15,10); ctx.stroke();
-  }
-  ctx.restore();
-}
 const CRYC=['#7fe3f0','#c77dff','#ff9fd0'], CRYH=[30,46,38,24];
-function drawCry(d){
-  ctx.save(); ctx.translate(d.x,d.y); ctx.scale(d.s,d.s);
-  for(let i=0;i<4;i++){
-    const h=CRYH[i];
-    ctx.save(); ctx.rotate(-.6+i*.4);
-    ctx.fillStyle=CRYC[(d.c+i)%3]; ctx.beginPath(); ctx.moveTo(-6,0); ctx.lineTo(-5,-h+8); ctx.lineTo(0,-h); ctx.lineTo(5,-h+8); ctx.lineTo(6,0); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle='rgba(255,255,255,.7)'; ctx.lineWidth=1.4; ctx.beginPath(); ctx.moveTo(-2,-4); ctx.lineTo(-2,-h+11); ctx.stroke();
-    ctx.restore();
-  }
-  ctx.restore();
-}
 /* ---------- Leuchtmarken: Unter der Erde kann man bis zu acht Lichter setzen, um sich Stellen zu merken. Sie leuchten im Dunkeln und stehen auf der Karte. ---------- */
 const MKMAX=8, MKS={};
 function mkKey(){ return K_MARKS+(realm?'-'+realm:''); }
@@ -3449,40 +2885,10 @@ function marks(){
   return MKS[k];
 }
 function mkSave(){ try{ localStorage.setItem(mkKey(),JSON.stringify(marks())); }catch(_){} }
-function mkNear(){ const a=marks(); for(let i=0;i<a.length;i++) if(Math.abs(a[i][0]-P.x)<40&&Math.abs(a[i][1]-P.y)<50) return i; return -1; }
-function mkCan(){ return P.mode==='walk'&&P.on&&P.y>ground(P.x)+60; }
 let mkShown=null;
-function mkTick(){
-  const c=mkCan(), n=c?mkNear():-1, st=c?(n>=0?'on':'off'):'';
-  if(st===mkShown) return; mkShown=st;
-  const b=$('mark'); b.hidden=!c; b.classList.toggle('on',n>=0);
-}
-function mkTap(){
-  if(!mkCan()) return;
-  const a=marks(), i=mkNear();
-  if(i>=0){ a.splice(i,1); mkSave(); sfx('tick'); speak('Leuchtmarke aufgehoben. Du hast noch '+(MKMAX-a.length)+'.'); }
-  else if(a.length>=MKMAX){ tone([170],'sawtooth'); speak('Alle acht Leuchtmarken sind schon gesetzt. Geh zu einer hin und heb sie auf, dann kannst du sie woanders hinstellen.'); }
-  else{ a.push([Math.round(P.x),Math.round(P.y)]); mkSave(); sfx('pop'); spawn(5,P.x,P.y-10,0,-80,.6,2); if(a.length===1) speak('Eine Leuchtmarke! Sie leuchtet im Dunkeln und steht auf der Karte. Du hast acht davon.'); }
-  mkShown=null;
-}
+function mkTap(){ return mkTapWith(DP); }
 $('mark').addEventListener('click',function(e){ e.preventDefault(); mkTap(); });
-function drawMark(x,y){
-  const t=performance.now()/600, k=.75+.25*Math.sin(t+x);
-  ctx.fillStyle='rgba(255,226,122,'+(.25*k).toFixed(3)+')'; circle(x,y-14,16);
-  ctx.fillStyle=INK; ctx.fillRect(x-2,y-10,4,10);
-  ctx.fillStyle='#ffe27a'; ctx.beginPath(); ctx.moveTo(x,y-24); ctx.lineTo(x+7,y-14); ctx.lineTo(x,y-6); ctx.lineTo(x-7,y-14); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.stroke();
-}
-function drawDeep(x0,x1,y0,y1){
-  const gy=ground(WSX);
-  if(WSX>x0-80&&WSX<x1+80&&gy>y0-10&&gy<y1+100) drawLab();
-  if(LIFTX>x0-50&&LIFTX<x1+50) for(let k=0;k<ZN.length;k++){ const y=stationY(k); if(y>y0-10&&y<y1+120) drawCab(LIFTX,y,k===0); }
-  for(const d of ZDEC) if(d.x>x0-60&&d.x<x1+60&&d.y>y0-60&&d.y<y1+60){ if(d.k==='bone') drawBone(d); else drawCry(d); }
-  for(const m of MACH) if(m.y===m.y&&m.x>x0-30&&m.x<x1+30&&m.y>y0-10&&m.y<y1+90) drawMach(m);
-  for(const v of VAULTS) if(v.x-v.rx>x0-40&&v.x-v.rx<x1+40&&v.fy>y0-10&&v.fy<y1+70&&doorShut(v)) drawDoor(v);
-  for(const m of MATS) if(!ST.matGot[m.id]&&MATON[m.k]&&m.x>x0-20&&m.x<x1+20&&m.y>y0-20&&m.y<y1+20) drawMat(m);
-  for(const m of marks()) if(m[0]>x0-30&&m[0]<x1+30&&m[1]>y0-10&&m[1]<y1+40) drawMark(m[0],m[1]);
-}
+function drawDeep(x0,x1,y0,y1){ return drawDeepWith(RP,ctx,x0,x1,y0,y1); }
 /* Unter der Erde wird es dunkel. Die Lampe und alles, was leuchtet, machen helle Flecken. Ganz schwarz wird es nie. */
 function darkAt(y){
   if(hero.lp>=3) return 0;
@@ -4833,214 +4239,93 @@ function hills(f,off,amp,col,k){
   }
   ctx.lineTo(W+24,H+2); ctx.closePath(); ctx.fill();
 }
-const LB=2*(MAX_LAVA+2000), WB=2*(MAX_WATER+2000);
-const bufA=new Int16Array(LB), bufB=new Int16Array(LB), bufC=new Int16Array(LB), bufW=new Int16Array(WB), bufV=new Int16Array(WB), bufF=new Int16Array(2*(MAX_FIRE+800));
-function fillCells(buf,n,col,lift){
-  if(!n) return;
-  ctx.fillStyle=col; ctx.beginPath();
-  for(let i=0;i<n;i+=2) ctx.rect(buf[i]*CELL,TOP+buf[i+1]*CELL-lift,CELL+.5,CELL+.5+lift);
-  ctx.fill();
-}
-
-function draw(){
-  const vw=W/S, vh=H/S;
-  ctx.setTransform(DPR,0,0,DPR,0,0);
-  const md=mood(), spc=realm&&BT[bio[clamp(Math.floor(cam.x/CELL),0,GX-1)]].space, nl=md.nl, alt=spc?0:clamp(-cam.y/1100,0,1), sp=clamp((-cam.y-1500)/1400,0,1), sa=spc?1:Math.max(sp,nl*.9);
-  const sky=ctx.createLinearGradient(0,0,0,H);
-  sky.addColorStop(0,mix(lerpC(lerpC(md.st,SKY_TH,alt),NIGHT_T,nl),SPACE_T,sp)); sky.addColorStop(1,mix(lerpC(lerpC(md.sb,SKY_BH,alt),NIGHT_B,nl),SPACE_B,sp));
-  ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
-  if(sa>0){
-    ctx.fillStyle='#ffffff';
-    for(const st of starsBg){
-      const sx=((st[0]*W-cam.x*.04)%W+W)%W, sy=((st[1]*H-cam.y*.04)%H+H)%H;
-      ctx.globalAlpha=sa*(.45+.55*Math.abs(Math.sin(time*st[3]+st[0]*40)));
-      ctx.fillRect(sx,sy,st[2],st[2]);
-    }
-    ctx.globalAlpha=1;
-  }
-  if(cam.y<-5200) drawNebula();
-  /* Tagsüber scheint die Sonne, nachts der Mond. Ein Tipp auf die Sonne schaltet um. */
-  const sunX=W-74, sunY=H*.34-cam.y*S*.03;
-  if(nl<.98){ ctx.globalAlpha=1-nl; ctx.fillStyle='rgba(255,210,63,.28)'; circle(sunX,sunY,46*S); ctx.fillStyle='#ffd23f'; circle(sunX,sunY,30*S); }
-  if(nl>.02){ ctx.globalAlpha=nl; ctx.fillStyle='rgba(244,240,216,.22)'; circle(sunX,sunY,40*S); ctx.fillStyle='#f4f0d8'; circle(sunX,sunY,26*S); ctx.fillStyle='#d8d2b4'; circle(sunX-8*S,sunY-6*S,6*S); circle(sunX+9*S,sunY+7*S,4*S); }
-  ctx.globalAlpha=1;
-  /* Von fremden Welten aus sieht man die Erde am Himmel. */
-  if(realm){ const ex=W*.3, ey=H*.32-cam.y*S*.02, er=34*S; ctx.fillStyle='rgba(120,190,255,.25)'; circle(ex,ey,er*1.25); ctx.fillStyle='#3aa0e8'; circle(ex,ey,er); ctx.fillStyle='#58b548'; circle(ex-er*.35,ey-er*.2,er*.35); circle(ex+er*.3,ey+er*.3,er*.28); ctx.fillStyle='rgba(255,255,255,.8)'; circle(ex+er*.1,ey-er*.6,er*.18); }
-  hills(.22,-30,45,md.h1,.004);
-  if(skyRb>time&&nl<.5){ ctx.globalAlpha=Math.min(.75,(skyRb-time)*.4)*(1-nl); ctx.lineWidth=7*S; for(let k=0;k<6;k++){ ctx.strokeStyle=RBC[k]; ctx.beginPath(); ctx.arc(W*.5,H*.66,W*.46-k*7*S,Math.PI,0); ctx.stroke(); } ctx.globalAlpha=1; }
-  hills(.48,-2,30,md.h2,.007);
-
-  const shx=(shake>0&&!reduced)?(Math.random()-.5)*shake*16:0, shy=(shake>0&&!reduced)?(Math.random()-.5)*shake*16:0;
-  ctx.setTransform(DPR*S,0,0,DPR*S,(W/2-cam.x*S+shx)*DPR,(H/2-cam.y*S+shy)*DPR);
-  const x0=cam.x-vw/2-20, x1=cam.x+vw/2+20, y0=cam.y-vh/2-20, y1=cam.y+vh/2+20;
-
-  drawFinds(false,x0,x1,y0,y1);
-  for(const c of clouds) if(c.x>x0-70&&c.x<x1+70&&c.y>y0-50&&c.y<y1+50) drawCloud(c);
-  if(y0<-2500) drawSpace();
-  for(const tr of trees) if(tr.x>x0-40&&tr.x<x1+40) drawTree(tr);
-  drawCells(x0,x1,y0,y1);
-  drawFinds(true,x0,x1,y0,y1);
-  for(const o of ST.props) if(o.x>x0-60&&o.x<x1+60) drawProp(o);
-  drawWinter(x0,x1);
-  drawWorldBack(x0,x1,y0,y1);
-  drawDeep(x0,x1,y0,y1);
-
-  for(const T of ST.tracks){
-    if(T.maxX<x0||T.minX>x1) continue;
-    if(T.rb){ ctx.lineWidth=3.2; ctx.lineCap='round'; ctx.lineJoin='round'; for(let k=0;k<6;k++){ ctx.strokeStyle=RBC[k]; ctx.beginPath(); ctx.moveTo(T.pts[0][0],T.pts[0][1]+k*3-8); for(let i=2;i<T.pts.length;i+=2) ctx.lineTo(T.pts[i][0],T.pts[i][1]+k*3-8); ctx.stroke(); } continue; }
-    ctx.strokeStyle='#7d8a99'; ctx.lineWidth=3; ctx.lineCap='butt'; ctx.beginPath();
-    for(let i=0;i<T.pts.length;i+=9){
-      const p=T.pts[i], cx=Math.floor(p[0]/CELL), r0=Math.floor((p[1]-TOP)/CELL);
-      if(r0<0||grid[r0*GX+cx]>=4) continue;
-      const r=Math.min(colTop(cx,r0),r0+70);
-      if(r-r0>2){ ctx.moveTo(p[0],p[1]); ctx.lineTo(p[0],TOP+r*CELL+2); }
-    }
-    ctx.stroke();
-    ctx.lineJoin='round'; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(T.pts[0][0],T.pts[0][1]);
-    for(let i=1;i<T.pts.length;i++) ctx.lineTo(T.pts[i][0],T.pts[i][1]);
-    ctx.strokeStyle='#a81c33'; ctx.lineWidth=7; ctx.stroke();
-    ctx.strokeStyle='#ff6f86'; ctx.lineWidth=2.6; ctx.stroke();
-    if(!(P.mode==='coaster'&&P.track===T)){ const q=trackAt(T,10); drawCart(q.x,q.y,Math.atan2(q.ty,q.tx),T.dir,false,false); }
-  }
-  drawZips(x0,x1);
-  drawLayer(ctx,'back',x0,x1);
-  drawScope(x0,x1);
-  drawLayer(ctx,'mid',x0,x1);
-  drawLayer(ctx,'mob',x0,x1);
-  if(ST.tool==='track'){
-    for(const T of ST.tracks){ const a=T.pts[0], b=T.pts[T.pts.length-1]; knob(a[0],a[1],8); knob(b[0],b[1],11); }
-  }
-  if(stroke&&stroke.length>1){
-    ctx.strokeStyle='#e0304a'; ctx.lineWidth=5; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.setLineDash([10,9]);
-    ctx.beginPath(); ctx.moveTo(stroke[0][0],stroke[0][1]);
-    for(let i=1;i<stroke.length;i++) ctx.lineTo(stroke[i][0],stroke[i][1]);
-    ctx.stroke(); ctx.setLineDash([]);
-  }
-
-  let o=parked.plane; if(o) drawPlane(o.x,o.y,0,0,o.face,true,o.ang,false);
-  o=parked.rocket; if(o) drawRocket(o.x,o.y,0,false,false);
-  o=parked.car; if(o) drawCar(o.x,o.y,o.ang,o.face,false,false);
-  o=parked.dumper; if(o) drawDumper(o.x,o.y,o.ang,o.face,o.load,0,false);
-  o=parked.loader; if(o) drawLoader(o.x,o.y,o.ang,o.face,o.lift||0,o.load,false);
-  o=parked.tbm; if(o) drawTbm(o.x,o.y,o.ang,o.face,o.da||0,false,0);
-  o=parked.bagger; if(o) drawBagger(o.x,o.y,o.ang,o.face,o.arm,o.load,false);
-  o=parked.sub; if(o) drawSub(o.x,o.y,o.ang,o.face,false);
-  o=parked.balloon; if(o) drawBalloon(o.x,o.y,o.ang,false,false);
-  o=parked.heli; if(o) drawHeli(o.x,o.y,o.ang,o.face,false,0);
-  o=parked.boat; if(o) drawBoat(o.x,o.y,o.ang,o.face,false,0);
-  o=parked.bug; if(o) drawBug(o.x,o.y,o.ang,o.face,false,0);
-  if(ghost){
-    if(ghost.kind==='rocket') drawRocket(ghost.x,ghost.y,Math.atan2(ghost.vx,-ghost.vy-200)*.5,false,false);
-    else drawPlane(ghost.x,ghost.y,ghost.vx,ghost.vy,ghost.vx>=0?1:-1,false,0,false);
-  }
-
-  if(P.mode==='walk'){
-    if(P.chute) drawChute(P.x,P.y);
-    drawKid(P.x,P.y,P.face,P.on?P.run:1.1,!!P.zip||P.chute||(!P.on&&P.vy>220));
-    drawHandTool();
-  }
-  else if(P.mode==='car') drawCar(P.x,P.y,P.ang,P.face,true,P.turbo>0);
-  else if(P.mode==='bagger') drawBagger(P.x,P.y,P.ang,P.face,P.arm,P.load,true);
-  else if(P.mode==='loader') drawLoader(P.x,P.y,P.ang,P.face,P.lift,P.load,true);
-  else if(P.mode==='dumper') drawDumper(P.x,P.y,P.ang,P.face,P.load,Math.min(1,P.bed),true);
-  else if(P.mode==='tbm') drawTbm(P.x,P.y,P.ang,P.face,P.da,true,Math.abs(P.vx)>5?time*2.5:0);
-  else if(P.mode==='rocket') drawRocket(P.x,P.y,P.ang,true,keys.u&&!ST.paused);
-  else if(P.mode==='plane') drawPlane(P.x,P.y,P.vx,P.vy,P.face,P.on,P.ang,true);
-  else if(P.mode==='sub') drawSub(P.x,P.y,P.ang,P.face,true);
-  else if(P.mode==='balloon') drawBalloon(P.x,P.y,P.ang,true,keys.u&&!ST.paused);
-  else if(P.mode==='bug') drawBug(P.x+P.face*15*Math.min(1,Math.abs(P.ang)/1.57),P.y,P.ang,P.face,true,P.run);
-  else if(P.mode==='boat') drawBoat(P.x,P.y,P.ang,P.face,true,boatWet()?Math.min(1,Math.abs(P.vx)/200):0);
-  else if(P.mode==='heli') drawHeli(P.x,P.y,P.ang,P.face,true,reduced?.6:time*(P.on?6:22));
-  else if(P.mode==='ski'){ if(P.ball>0) drawRoll(); else drawSkier(P.x,P.y,P.ang,P.face,keys.d&&P.on,!P.on); }
-  else if(P.mode==='dragon'){ ctx.save(); ctx.translate(P.x,P.y); ctx.rotate(P.ang); drawDragon(0,0,1.9,P.face,1,reduced?0:Math.sin(time*(P.on?3:10)),true); ctx.restore(); }
-  else if(P.track.lift) drawGondola(P.x,P.y-46,true);
-  else drawCart(P.x,P.y,P.ang,P.track.dir,true,P.v>300);
-  if(hero.pet){
-    const pe=PETS[hero.pet]||'🐉', pf=hero.pet==='dragon'||hero.pet==='ghost'||hero.pet==='ufo';
-    ctx.font='20px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#000';
-    ctx.fillText(pe,pet.x,pet.y-(pf?26:-4)+(reduced?0:2.5*Math.sin(time*7)));
-  }
-  for(const bm of bombs){
-    ctx.fillStyle='#3a3438'; circle(bm.x,bm.y,7);
-    ctx.fillStyle=(bm.t*8|0)%2?'#ffd23f':'#ff5a1f'; circle(bm.x+6,bm.y-8,3);
-  }
-  drawFront();
-  drawWorldFront();
-
-  drawDark();
-  drawLayer(ctx,'glow',x0,x1);
-  if(bx1>=bx0){
-    const cx0=Math.max(bx0,Math.floor(x0/CELL),1), cx1=Math.min(bx1,Math.floor(x1/CELL),GX-2);
-    const cy0=Math.max(by0,Math.floor((y0-TOP)/CELL),1), cy1=Math.min(by1,Math.floor((y1-TOP)/CELL),GY-2);
-    let nA=0,nB=0,nC=0,nW=0,nV=0,nF=0; const ph=(time*4)|0, LA=LB-2, LW=WB-2, LF=bufF.length-2;
-    for(let y=cy0;y<=cy1;y++){
-      const row=y*GX, xb=Math.min(cx1,rx1[y]);
-      for(let x=Math.max(cx0,rx0[y]);x<=xb;x++){
-        const t=grid[row+x];
-        if(t===0||t>3) continue;
-        const up=grid[row-GX+x];
-        if(t===LAVA){
-          if(up!==LAVA&&up<4){
-            if(nC<LA){bufC[nC++]=x;bufC[nC++]=y;}
-            if(Math.random()<.003) spawn(2,x*CELL+3,TOP+y*CELL,(Math.random()-.5)*14,-28-Math.random()*30,.9,1.6);
-          }
-          else if((x*7+y*13+ph)%6===0){ if(nB<LA){bufB[nB++]=x;bufB[nB++]=y;} }
-          else if(nA<LA){bufA[nA++]=x;bufA[nA++]=y;}
-        }
-        else if(t===WATER){
-          if(up===0){ if(nV<LW){bufV[nV++]=x;bufV[nV++]=y;} }
-          else if(nW<LW){bufW[nW++]=x;bufW[nW++]=y;}
-        }
-        else if(nF<LF){bufF[nF++]=x;bufF[nF++]=y;}
-      }
-    }
-    fillCells(bufA,nA,'#ff5a1f',0); fillCells(bufB,nB,'#e2331c',0); fillCells(bufC,nC,'#ffc233',1.5);
-    fillCells(bufW,nW,MD.w1,0); fillCells(bufV,nV,MD.w2,0);
-    for(let pass=0;pass<2;pass++){
-      ctx.fillStyle=pass?'#ffe066':'#ff7a1f'; ctx.beginPath();
-      const w=pass?2.6:5, k=pass?.55:1;
-      for(let i=0;i<nF;i+=2){
-        const fx=bufF[i]*CELL+3, by=TOP+(bufF[i+1]+1)*CELL;
-        const hgt=(13+6*Math.sin(time*13+bufF[i]*1.7+bufF[i+1]))*k, sway=2.5*Math.sin(time*9+bufF[i]*2.3);
-        ctx.moveTo(fx-w,by); ctx.quadraticCurveTo(fx-w-1,by-hgt*.5,fx+sway,by-hgt);
-        ctx.quadraticCurveTo(fx+w+1,by-hgt*.5,fx+w,by); ctx.closePath();
-      }
-      ctx.fill();
-    }
-  }
-
-  for(const p of parts){
-    if(p.x<x0-60||p.x>x1+60||p.y<y0-60||p.y>y1+60) continue;
-    const a=p.life/p.max; let col, r=p.size;
-    if(p.type===9){
-      ctx.globalAlpha=Math.min(1,a*2.5); ctx.font='700 '+p.size+'px system-ui,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.lineWidth=3.5; ctx.lineJoin='round'; ctx.strokeStyle=INK; ctx.strokeText(p.c,p.x,p.y); ctx.fillStyle=p.col; ctx.fillText(p.c,p.x,p.y); continue;
-    }
-    if(p.type===8){
-      ctx.globalAlpha=Math.min(1,a*2); ctx.font=Math.round(p.size*(2-a))+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillStyle='#000'; ctx.fillText(p.c,p.x,p.y); continue;
-    }
-    if(p.type===0){ ctx.globalAlpha=a*.5; col='#5b5560'; }
-    else if(p.type===1){ ctx.globalAlpha=Math.min(1,a*1.6); col=a>.5?'#ffd23f':'#ff6a1f'; r=p.size*(.3+a*.7); }
-    else if(p.type===2){ ctx.globalAlpha=a; col='#ffb321'; }
-    else if(p.type===3){ ctx.globalAlpha=a*.7; col='#c9a57a'; }
-    else if(p.type===4){ ctx.globalAlpha=1; col='#ff5a1f'; }
-    else if(p.type===6){ ctx.globalAlpha=Math.min(1,a*2); col=p.c; }
-    else if(p.type===7){ ctx.globalAlpha=a*.6; col='#ffffff'; }
-    else if(p.type===10){ ctx.globalAlpha=Math.min(1,a*1.6); col='#ffffff'; }
-    else if(p.type===12){ ctx.globalAlpha=a*.7; col=p.c; }
-    else { ctx.globalAlpha=a; col='#ffe066'; }
-    ctx.fillStyle=col; circle(p.x,p.y,Math.max(.5,r));
-  }
-  ctx.globalAlpha=1;
-  drawSnowfall();
-  drawMood();
-
-  { const qp=questPoint(); if(qp) pointTo(qp[0],qp[1],'#58b548'); }
-  if(FX.sonar>0){ const so=sonarTarget(); if(so) pointTo(so[0],so[1],'#ffd23f'); }
-  const gp=guidePoint(); if(gp) pointTo(gp[0],gp[1],'#ff8a1f');
-  if(hero.up.compass>0&&nearF&&!nearF.got&&nearD<[0,900,2600,1e9][hero.up.compass]) pointTo(nearF.x,nearF.y,'#5fd4e6');
-}
+/* Port für render/draw.js: Bildschirm, Zeit, Stimmung, Himmel, Zeichenfunktionen der Welt, Fahrzeuge, Figur, Winter und Tiefe, Teilchen, Zeiger und die Ebenen der Systeme (drawLayer).
+   draw ist ein heißer Pfad: Konstanten stehen als Werte im Port, nur veränderliche Namen als Getter. Deshalb steht der Port hier, nach allen Konstanten. */
+const DR={
+  drawLayer,
+  get W(){ return W; },
+  get S(){ return S; },
+  get H(){ return H; },
+  get DPR(){ return DPR; },
+  get realm(){ return realm; },
+  SKY_TH:SKY_TH,
+  NIGHT_T:NIGHT_T,
+  SPACE_T:SPACE_T,
+  SKY_BH:SKY_BH,
+  NIGHT_B:NIGHT_B,
+  SPACE_B:SPACE_B,
+  starsBg:starsBg,
+  get time(){ return time; },
+  get skyRb(){ return skyRb; },
+  RBC:RBC,
+  get shake(){ return shake; },
+  get reduced(){ return reduced; },
+  clouds:clouds,
+  trees:trees,
+  get stroke(){ return stroke; },
+  get ghost(){ return ghost; },
+  PETS:PETS,
+  pet:pet,
+  bombs:bombs,
+  MD:MD,
+  parts:parts,
+  INK:INK,
+  FX:FX,
+  get nearF(){ return nearF; },
+  get nearD(){ return nearD; },
+  boatWet,
+  circle,
+  colTop,
+  drawBagger,
+  drawBalloon,
+  drawBoat,
+  drawBug,
+  drawCar,
+  drawCart,
+  drawCells,
+  drawChute,
+  drawCloud,
+  drawDark,
+  drawDeep,
+  drawDragon,
+  drawDumper,
+  drawFinds,
+  drawFront,
+  drawGondola,
+  drawHandTool,
+  drawHeli,
+  drawKid,
+  drawLoader,
+  drawMood,
+  drawNebula,
+  drawPlane,
+  drawProp,
+  drawRocket,
+  drawRoll,
+  drawScope,
+  drawSkier,
+  drawSnowfall,
+  drawSpace,
+  drawSub,
+  drawTbm,
+  drawTree,
+  drawWinter,
+  drawWorldBack,
+  drawWorldFront,
+  drawZips,
+  guidePoint,
+  hills,
+  knob,
+  lerpC,
+  mix,
+  mood,
+  pointTo,
+  questPoint,
+  sonarTarget,
+  spawn,
+  trackAt
+};
+function draw(){ return drawWith(DR,ctx); }
 
 function actIcon(){
   if(P.zip) return 'jump';
@@ -5552,15 +4837,14 @@ function frame(t){
 /* Absturzschutz für Nebensysteme: Wirft eins dreimal einen Fehler, wird es für diese Sitzung abgeschaltet und steht im Fehlerprotokoll. Der Rest läuft weiter. */
 for(const s of mobsWith(MP)) register(s.name,s.tick,s.draw);
 for(const s of sightsWith(SY)) register(s.name,s.tick,s.draw);
-register('worldTick',worldTick);
-register('deepTick',deepTick);
-register('winterTick',winterTick);
-register('findsTick',findsTick);
-register('questTick',questTick);
+for(const s of worldWith(WT)) register(s.name,s.tick,s.draw);
+for(const s of deepWith(DP)) register(s.name,s.tick,s.draw);
+for(const s of winterWith(WP)) register(s.name,s.tick,s.draw);
+for(const s of findsWith(DP)) register(s.name,s.tick,s.draw);
+for(const s of questsWith(QP)) register(s.name,s.tick,s.draw);
 register('autosave',autosave);
 register('drain',drain);
-register('fogTick',fogTick);
-register('mkTick',mkTick);
+for(const s of marksWith(DP)) register(s.name,s.tick,s.draw);
 function safe(s,dt){ safeWith(errAdd,s,dt); }
 
 /* Gold und Edelsteine gibt es nicht mehr (Vereinfachungsplan Schritt 2). Was noch da ist, wird einmal in Zahnräder getauscht:

@@ -1,4 +1,4 @@
-// Bildvergleich (Migrationsplan PR 17, Pfeile und Monster seit PR 18, Tiere seit PR 19a): Feste Szenen werden mit dem Stand von main (OLD) und dem neuen Testbuild gezeichnet.
+// Bildvergleich (Migrationsplan PR 17, Pfeile und Monster seit PR 18, Tiere seit PR 19a, Winter seit PR 20b, Werkstatt, Tiefe und Planeten seit PR 22, Lift seit PR 23): Feste Szenen werden mit dem Stand von main (OLD) und dem neuen Testbuild gezeichnet.
 // Die Bilder müssen Pixel für Pixel gleich sein. So fällt auf, wenn ein Umzug die Zeichenreihenfolge ändert.
 // Kein fester Hash im Repo: Pixel hängen von der Chromium-Version ab. Verglichen wird im selben Browser.
 // Aufruf: OLD=/pfad/zur/alten/index.html node tests/pixels.mjs   (im CI wie beim Update-Test aus origin/main)
@@ -14,10 +14,12 @@ if (!OLD || !fs.existsSync(OLD)) { console.log('skip pixels: OLD nicht gesetzt')
 const SEEDED = `(function(){ let s=12345; Math.random=function(){ s=(s*16807)%2147483647; return (s-1)/2147483646; }; })();`;
 
 // Das Spiel anhalten: Kein neues Bild, keine Ticks. Danach wird alles Bewegliche, das nicht zur Szene gehört, geleert (auch die Tiere: sie laufen zufallsabhängig).
+// Der Auftrag auch: Ob unterwegs ein Land entdeckt und ein neuer Auftrag gewählt wurde, hängt davon ab, wie viele Bilder in der Wartezeit liefen;
+// sein Zeigerpfeil am Bildrand machte die Szene sonst gelegentlich unfest (Harfe, gesehen am 9.11.).
 const FREEZE = `(function(){
   window.__raf=window.requestAnimationFrame; window.requestAnimationFrame=function(){ return 0; };
 })()`;
-const CLEAN = `parts.length=0; MONS.length=0; ARROWS.length=0; ST.CRE.length=0; shake=0; ufo=null; bolt=null; METS.length=0; MROCKS.length=0; FLIES.length=0; JAR.length=0; for(const k in FX) FX[k]=0`;
+const CLEAN = `quest=null; parts.length=0; MONS.length=0; ARROWS.length=0; ST.CRE.length=0; shake=0; ufo=null; bolt=null; METS.length=0; MROCKS.length=0; FLIES.length=0; JAR.length=0; for(const k in FX) FX[k]=0`;
 const HASH = `(function(){
   const d=ctx.getImageData(0,0,cv.width,cv.height).data; let h=2166136261;
   for(let i=0;i<d.length;i+=4){ h^=d[i]|(d[i+1]<<8)|(d[i+2]<<16); h=Math.imul(h,16777619); }
@@ -45,6 +47,20 @@ const SCENES = [
         {ok:true,e:'🐔',x:1350,y:ground(1350),sz:20,k:'walk',fl:'hen',t:2,hop:.2,dir:-1,ph:1,idle:0},
         {ok:true,e:'👻',x:1400,y:ground(1400)-90,sz:28,k:'fly',fl:'ghost',t:3,hop:0,dir:1,ph:2,shy:true});
       throws.push({e:'🍌',x:1320,y:ground(1320)-70,vx:0,vy:0})` },
+  { name: 'Schneemänner, Schneebälle und Feuerwerk', go: 'teleport(6000)',
+    set: `P.x=6000; P.y=ground(P.x)-2; time=6; nightA=.5; balls.length=0; fws.length=0;
+      ST.props=ST.props.filter(function(o){ return o.type!=='man'; });
+      ST.props.push({type:'man',x:5950,y:surfaceY(5950)},{type:'man',x:6150,y:surfaceY(6150)});
+      balls.push({x:6040,y:ground(6040)-80,vx:0,vy:0,foe:false,t:0},{x:6100,y:ground(6100)-40,vx:0,vy:0,foe:true,t:0});
+      fws.push({x:5880,y:ground(5880)-150,ty:0,c:2},{x:6200,y:ground(6200)-60,ty:0,c:4})` },
+  { name: 'Werkstatt, Aufzug und erste Maschine', go: 'teleport(WSX+40)', set: 'P.x=WSX+40; P.y=ground(P.x)-2; time=2; nightA=0; discoT=0' },
+  { name: 'Kristalle in der Tiefe', go: "teleport(ZDEC.find(function(d){ return d.k==='cry'; }).x)",
+    set: "const d=ZDEC.find(function(d){ return d.k==='cry'; }); P.x=d.x-70; P.y=d.y; time=3; nightA=0" },
+  { name: 'Planeten im Weltraum', go: 'teleport(SPACE.ice.x)', set: 'P.x=SPACE.ice.x-SPACE.ice.r-160; P.y=SPACE.ice.y; time=4; nightA=0' },
+  // Zuletzt, weil die Szene den Helden auf Ski stellt. Der Yeti hüpft zufällig (Schluckauf), darum Hüpfen, Lachen, Rollen und Pinguine fest.
+  // Goldene Ski fest: Die Kristall-Szene erreicht eine Zone, deren Geschenk je nach Zeitpunkt schon da ist oder nicht.
+  { name: 'Lift, Iglu, Yeti und Skifahrer', go: 'teleport(IGX+60)', set: `P.x=IGX+60; P.y=surfaceY(P.x)-2; P.mode='ski'; P.ang=0; P.on=true; P.ball=0; time=5; nightA=0;
+      hero.own.goldski=1; N.yeti.hop=0; N.yeti.laugh=0; N.yeti.roll=0; for(const p of N.pen){ p.s=0; p.x=p.hx; p.y=surfaceY(p.hx); p.rot=0; }` },
 ];
 
 async function shoot(browser, url) {
