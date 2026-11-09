@@ -246,6 +246,8 @@ Je PR: `tick` und `draw(ctx, layer)` ins System, Zeichenaufruf in `draw()` an de
 
 **Umgesetzt PR 19c:** `worldTick` und `ufoTick` ziehen nach `systems/worldtick.js` mit Port `WT`. `worldWith(WT)` trägt `worldTick` an der alten Stelle in `SIDE` ein. Die Zustände (`nightA`, `discoT`, `beatT`, `idleT`, `zT`, `skyBonk`, `skySay`, `bolt`, `slipWas`, `ufo`, `ufoNext`) bleiben in `legacy.js`, weil Zeichnen, Antippen und `disco()` sie auch schreiben; `worldTick` schreibt sie über Setter im Port. Das U-Boot (`updSub`, `drawSub`, `sonar`) gehört zu den Fahrzeugen und zieht mit ihnen um, nicht hier. Bildvergleich: `quest=null` beim Aufräumen, weil der Zeigerpfeil eines unterwegs neu gewählten Auftrags die Harfen-Szene gelegentlich unfest machte (auch auf main).
 
+**Umgesetzt PR 20 (nur Aufträge):** `skyMark`, `skyDone`, `gearStep`, `chainQuest`, `qEvent`, `newQuest`, `prepFind`, `showQuest`, `renderQuest`, `questTick` und `questPoint` ziehen nach `systems/quests.js` mit Port `QP`. `questsWith(QP)` trägt `questTick` an der alten Stelle in `SIDE` ein. Die Auftragsdaten (`QSCRIPT`, `QDEF`, `QDEEP`, `QSKY`) und `qEmo` bleiben vorerst in `legacy.js`, weil `QDEF` Texte mit Bildchen der Oberfläche (`QI`, `IC`) baut; sie ziehen mit der Oberfläche (PR 24–27) um. `quest`, `qShown` und `qDoneT` bleiben in `legacy.js`, weil Zeichnen, Speichern und Tests sie lesen. Einzeiler für `qEvent`, `skyMark`, `newQuest`, `showQuest`, `questPoint` und `questTick` (den ruft der Rauchtest). Der Winter (`S29`, Ski, Lift, Schneebälle, Figuren) folgt als eigener PR. Missionen und Geschichte sind gestrichen.
+
 ### PR 22–23: Rendering
 
 - **22:** Paletten, Hintergrund, Stimmung, Flora, Deko (`S35`, `S36`, `S44`) → `render/`.
