@@ -10688,23 +10688,14 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         clearTimeout(PB.holdT);
       });
     });
-    const gear = PB.$("btn-menu");
-    gear.addEventListener(
-      "pointerdown",
-      /** @param {any} e */
-      function(e) {
-        try {
-          gear.setPointerCapture(e.pointerId);
-        } catch (_) {
-        }
+    PB.$("btn-menu").addEventListener("pointerdown", function() {
+      clearTimeout(PB.holdT);
+      PB.holdT = setTimeout(PB.pgOpen, 3e3);
+    });
+    ["pointerup", "pointercancel"].forEach(function(n) {
+      window.addEventListener(n, function() {
         clearTimeout(PB.holdT);
-        PB.holdT = setTimeout(PB.pgOpen, 3e3);
-      }
-    );
-    ["pointerup", "pointercancel", "lostpointercapture"].forEach(function(n) {
-      gear.addEventListener(n, function() {
-        clearTimeout(PB.holdT);
-      });
+      }, true);
     });
     PB.$("pg-keys").innerHTML = [1, 2, 3, 4, 5, 6, 7, 8, 9, "⌫", 0, "OK"].map(function(k) {
       return '<button class="pzb sm" data-k="' + k + '">' + k + "</button>";
