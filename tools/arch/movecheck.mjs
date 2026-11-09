@@ -17,6 +17,8 @@
 //   iife     [neuerName, ...]                 der alte Name war const X=(function(){…})(); die Funktion zieht als function neuerName(…){…} um
 //                                             (Körper gleich, mit params/world wie oben; PR 13, LOG → logWith(LP))
 //   changed  [...]                            Name bleibt, Inhalt ändert sich bewusst (z. B. Einzeiler, der an core/ weitergibt)
+//   rewritten [neuerName, ...]                Inhalt bewusst umgebaut, ohne Move-Nachweis (PR 23c, draw nach Ebenen zerlegt; Absicherung
+//                                             nur über Bildvergleich). Gilt für einen umbenannten Namen wie für einen gleichnamigen.
 //   added, removed [...]                      neue bzw. gelöschte Namen
 //   stmtsChanged N                            so viele Anweisungen ohne Namen ändern sich bewusst (nur verhaltensändernde PRs)
 //   stmtsAdded N                              so viele Anweisungen ohne Namen kommen bewusst dazu (ebenso)
@@ -195,7 +197,8 @@ export function compare(base, head, moves) {
   const err = [], rep = { same: 0, moved: [], changed: [], added: [], removed: [] };
   const renames = moves.renames || {}, srcOf = new Set(Object.values(renames));
   const listed = k => new Set(moves[k] || []);
-  const changed = listed('changed'), added = listed('added'), removed = listed('removed');
+  const changed = listed('changed'), added = listed('added'), removed = listed('removed'), rewritten = listed('rewritten');
+  for (const n of rewritten) changed.add(n);
   for (const [n, o] of Object.entries(renames)) {
     if (!B.decl.has(o)) { err.push(`rename ${n}=${o}: ${o} gibt es im Basisstand nicht`); continue; }
     if (!H.decl.has(n)) { err.push(`rename ${n}=${o}: ${n} gibt es im neuen Stand nicht`); continue; }
@@ -205,6 +208,7 @@ export function compare(base, head, moves) {
       if (!c || c.type !== 'FunctionExpression' || c.id) { err.push(`iife ${n}=${o}: ${o} ist kein const ${o}=(function(){…})()`); continue; }
       bn = { ...c, type: 'FunctionDeclaration', id: id(n) };
     }
+    if (rewritten.has(n)) { rep.changed.push(`${o} → ${n} (${H.decl.get(n).file}), umgebaut`); continue; }
     if (norm(transform(bn, moves, n, H.decl.get(n).file)) !== norm(H.decl.get(n).node)) err.push(`${o} → ${n} (${H.decl.get(n).file}): AST weicht über die erlaubten Umschreibungen hinaus ab`);
     else rep.moved.push(`${o} → ${H.decl.get(n).file}:${n}`);
   }
@@ -304,6 +308,11 @@ function selftest() {
     ['Handler weg', { 'legacy.js': L('let a=1;\nf(a);') }, { 'legacy.js': L('let a=1;') }, { stmtsRemoved: 1 }, 0],
     ['Handler weg ohne Nachweis', { 'legacy.js': L('let a=1;\nf(a);') }, { 'legacy.js': L('let a=1;') }, {}, 1],
     ['Handler geändert, nicht angegeben', { 'legacy.js': L('let a=1;\nf(a);') }, { 'legacy.js': L('let a=1;\nf(a+1);') }, {}, 1],
+    ['umgebaut nach Umzug', { 'legacy.js': L('function d(){a();b()}') }, { 'legacy.js': L('function d(){dW(P)}'), 'r/d.js': 'export function dW(P){x(P)}\nfunction x(P){P.a();P.b()}' },
+      { renames: { dW: 'd' }, params: { dW: ['P'] }, changed: ['d'], rewritten: ['dW'], added: ['x'] }, 0],
+    ['umgebaut, ohne Angabe', { 'legacy.js': L('function d(){a();b()}') }, { 'legacy.js': L('function d(){dW(P)}'), 'r/d.js': 'export function dW(P){x(P)}\nfunction x(P){P.a();P.b()}' },
+      { renames: { dW: 'd' }, params: { dW: ['P'] }, changed: ['d'], added: ['x'] }, 1],
+    ['umgebaut, gleichnamig', { 'r/d.js': 'export function dW(P){P.a();P.b()}' }, { 'r/d.js': 'export function dW(P){x(P)}\nfunction x(P){P.a();P.b()}' }, { rewritten: ['dW'], added: ['x'] }, 0],
     ['changed, aber gleich', { 'legacy.js': L('function a(){}') }, { 'legacy.js': L('function a(){}') }, { changed: ['a'] }, 1],
   ];
   const st = { stack: [{ pr: 11, renames: { a: 'b' }, added: ['x'], changed: ['c'] }, { pr: 12, renames: { d: 'e' }, changed: ['x', 'f'] }] };

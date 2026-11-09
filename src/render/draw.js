@@ -1,6 +1,7 @@
 /* ---------- Zeichnen: Ein Bild der Welt, von hinten nach vorn: Himmel, Hügel, Welt, Systeme, Fahrzeuge, Held, Flüssigkeiten, Teilchen, Stimmung, Zeiger ---------- */
 // PR 23b. draw und fillCells samt Puffern für Lava, Wasser und Feuer bewegt aus legacy.js, unverändert. Was draw vom übrigen Spiel braucht, kommt über den Port DR.
-// drawLayer kommt über den Port, weil render nicht aus systems importieren darf. Das Zerlegen nach Ebenen folgt als eigener Schritt.
+// drawLayer kommt über den Port, weil render nicht aus systems importieren darf.
+// PR 23c: draw nach Ebenen zerlegt. drawWith ruft die Ebenen in der alten Reihenfolge; Zufall (Wackeln, Lavafunken) bleibt in derselben Reihenfolge.
 // legacy.js ruft draw über einen Einzeiler.
 import { BT } from '../core/world/shape.js';
 import { bio, grid } from '../state/world.js';
@@ -21,6 +22,39 @@ const bufF=new Int16Array(2*(MAX_FIRE+800));
 /** @param {Port} DR @param {CanvasRenderingContext2D} ctx */
 export function drawWith(DR,ctx){
   const vw=DR.W/DR.S, vh=DR.H/DR.S;
+  drawSkyWith(DR,ctx);
+
+  const shx=(DR.shake>0&&!DR.reduced)?(Math.random()-.5)*DR.shake*16:0, shy=(DR.shake>0&&!DR.reduced)?(Math.random()-.5)*DR.shake*16:0;
+  ctx.setTransform(DR.DPR*DR.S,0,0,DR.DPR*DR.S,(DR.W/2-cam.x*DR.S+shx)*DR.DPR,(DR.H/2-cam.y*DR.S+shy)*DR.DPR);
+  const x0=cam.x-vw/2-20, x1=cam.x+vw/2+20, y0=cam.y-vh/2-20, y1=cam.y+vh/2+20;
+
+  drawBackWith(DR,ctx,x0,x1,y0,y1);
+  drawTracksWith(DR,ctx,x0,x1);
+  DR.drawZips(x0,x1);
+  DR.drawLayer(ctx,'back',x0,x1);
+  DR.drawScope(x0,x1);
+  DR.drawLayer(ctx,'mid',x0,x1);
+  DR.drawLayer(ctx,'mob',x0,x1);
+  drawEditWith(DR,ctx);
+
+  drawParkedWith(DR);
+  drawHeroWith(DR,ctx);
+  drawBombsWith(DR,ctx);
+  DR.drawFront();
+  DR.drawWorldFront();
+
+  DR.drawDark();
+  DR.drawLayer(ctx,'glow',x0,x1);
+  drawLiquidsWith(DR,ctx,x0,x1,y0,y1);
+
+  drawPartsWith(DR,ctx,x0,x1,y0,y1);
+  DR.drawSnowfall();
+  DR.drawMood();
+
+  drawPointersWith(DR);
+}
+/** Himmel: Verlauf, Sterne, Nebel, Sonne oder Mond, Erde, Hügel, Regenbogen. Bildschirmkoordinaten. @param {Port} DR @param {CanvasRenderingContext2D} ctx */
+function drawSkyWith(DR,ctx){
   ctx.setTransform(DR.DPR,0,0,DR.DPR,0,0);
   const md=DR.mood(), spc=DR.realm&&BT[bio[clamp(Math.floor(cam.x/CELL),0,GX-1)]].space, nl=md.nl, alt=spc?0:clamp(-cam.y/1100,0,1), sp=clamp((-cam.y-1500)/1400,0,1), sa=spc?1:Math.max(sp,nl*.9);
   const sky=ctx.createLinearGradient(0,0,0,DR.H);
@@ -46,11 +80,9 @@ export function drawWith(DR,ctx){
   DR.hills(.22,-30,45,md.h1,.004);
   if(DR.skyRb>DR.time&&nl<.5){ ctx.globalAlpha=Math.min(.75,(DR.skyRb-DR.time)*.4)*(1-nl); ctx.lineWidth=7*DR.S; for(let k=0;k<6;k++){ ctx.strokeStyle=DR.RBC[k]; ctx.beginPath(); ctx.arc(DR.W*.5,DR.H*.66,DR.W*.46-k*7*DR.S,Math.PI,0); ctx.stroke(); } ctx.globalAlpha=1; }
   DR.hills(.48,-2,30,md.h2,.007);
-
-  const shx=(DR.shake>0&&!DR.reduced)?(Math.random()-.5)*DR.shake*16:0, shy=(DR.shake>0&&!DR.reduced)?(Math.random()-.5)*DR.shake*16:0;
-  ctx.setTransform(DR.DPR*DR.S,0,0,DR.DPR*DR.S,(DR.W/2-cam.x*DR.S+shx)*DR.DPR,(DR.H/2-cam.y*DR.S+shy)*DR.DPR);
-  const x0=cam.x-vw/2-20, x1=cam.x+vw/2+20, y0=cam.y-vh/2-20, y1=cam.y+vh/2+20;
-
+}
+/** Welt hinter den Bahnen: Funde, Wolken, Weltraum, Bäume, Zellen, Dinge, Winter, große Welt, Tiefe. @param {Port} DR @param {CanvasRenderingContext2D} ctx @param {number} x0 @param {number} x1 @param {number} y0 @param {number} y1 */
+function drawBackWith(DR,ctx,x0,x1,y0,y1){
   DR.drawFinds(false,x0,x1,y0,y1);
   for(const c of DR.clouds) if(c.x>x0-70&&c.x<x1+70&&c.y>y0-50&&c.y<y1+50) DR.drawCloud(c);
   if(y0<-2500) DR.drawSpace();
@@ -61,7 +93,9 @@ export function drawWith(DR,ctx){
   DR.drawWinter(x0,x1);
   DR.drawWorldBack(x0,x1,y0,y1);
   DR.drawDeep(x0,x1,y0,y1);
-
+}
+/** Achterbahnen mit Stützen und Wagen. @param {Port} DR @param {CanvasRenderingContext2D} ctx @param {number} x0 @param {number} x1 */
+function drawTracksWith(DR,ctx,x0,x1){
   for(const T of ST.tracks){
     if(T.maxX<x0||T.minX>x1) continue;
     if(T.rb){ ctx.lineWidth=3.2; ctx.lineCap='round'; ctx.lineJoin='round'; for(let k=0;k<6;k++){ ctx.strokeStyle=DR.RBC[k]; ctx.beginPath(); ctx.moveTo(T.pts[0][0],T.pts[0][1]+k*3-8); for(let i=2;i<T.pts.length;i+=2) ctx.lineTo(T.pts[i][0],T.pts[i][1]+k*3-8); ctx.stroke(); } continue; }
@@ -79,11 +113,9 @@ export function drawWith(DR,ctx){
     ctx.strokeStyle='#ff6f86'; ctx.lineWidth=2.6; ctx.stroke();
     if(!(P.mode==='coaster'&&P.track===T)){ const q=DR.trackAt(T,10); DR.drawCart(q.x,q.y,Math.atan2(q.ty,q.tx),T.dir,false,false); }
   }
-  DR.drawZips(x0,x1);
-  DR.drawLayer(ctx,'back',x0,x1);
-  DR.drawScope(x0,x1);
-  DR.drawLayer(ctx,'mid',x0,x1);
-  DR.drawLayer(ctx,'mob',x0,x1);
+}
+/** Bauhilfen: Enden der Bahnen beim Bahnbau, gestrichelter Strich beim Zeichnen. @param {Port} DR @param {CanvasRenderingContext2D} ctx */
+function drawEditWith(DR,ctx){
   if(ST.tool==='track'){
     for(const T of ST.tracks){ const a=T.pts[0], b=T.pts[T.pts.length-1]; DR.knob(a[0],a[1],8); DR.knob(b[0],b[1],11); }
   }
@@ -93,7 +125,9 @@ export function drawWith(DR,ctx){
     for(let i=1;i<DR.stroke.length;i++) ctx.lineTo(DR.stroke[i][0],DR.stroke[i][1]);
     ctx.stroke(); ctx.setLineDash([]);
   }
-
+}
+/** Abgestellte Fahrzeuge und der Geist der letzten Fahrt. @param {Port} DR */
+function drawParkedWith(DR){
   let o=parked.plane; if(o) DR.drawPlane(o.x,o.y,0,0,o.face,true,o.ang,false);
   o=parked.rocket; if(o) DR.drawRocket(o.x,o.y,0,false,false);
   o=parked.car; if(o) DR.drawCar(o.x,o.y,o.ang,o.face,false,false);
@@ -110,7 +144,9 @@ export function drawWith(DR,ctx){
     if(DR.ghost.kind==='rocket') DR.drawRocket(DR.ghost.x,DR.ghost.y,Math.atan2(DR.ghost.vx,-DR.ghost.vy-200)*.5,false,false);
     else DR.drawPlane(DR.ghost.x,DR.ghost.y,DR.ghost.vx,DR.ghost.vy,DR.ghost.vx>=0?1:-1,false,0,false);
   }
-
+}
+/** Held: zu Fuß oder im Fahrzeug, dazu das Haustier. @param {Port} DR @param {CanvasRenderingContext2D} ctx */
+function drawHeroWith(DR,ctx){
   if(P.mode==='walk'){
     if(P.chute) DR.drawChute(P.x,P.y);
     DR.drawKid(P.x,P.y,P.face,P.on?P.run:1.1,!!P.zip||P.chute||(!P.on&&P.vy>220));
@@ -137,55 +173,57 @@ export function drawWith(DR,ctx){
     ctx.font='20px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#000';
     ctx.fillText(pe,DR.pet.x,DR.pet.y-(pf?26:-4)+(DR.reduced?0:2.5*Math.sin(DR.time*7)));
   }
+}
+/** Bomben mit blinkender Zündschnur. @param {Port} DR @param {CanvasRenderingContext2D} ctx */
+function drawBombsWith(DR,ctx){
   for(const bm of DR.bombs){
     ctx.fillStyle='#3a3438'; DR.circle(bm.x,bm.y,7);
     ctx.fillStyle=(bm.t*8|0)%2?'#ffd23f':'#ff5a1f'; DR.circle(bm.x+6,bm.y-8,3);
   }
-  DR.drawFront();
-  DR.drawWorldFront();
-
-  DR.drawDark();
-  DR.drawLayer(ctx,'glow',x0,x1);
-  if(bx1>=bx0){
-    const cx0=Math.max(bx0,Math.floor(x0/CELL),1), cx1=Math.min(bx1,Math.floor(x1/CELL),GX-2);
-    const cy0=Math.max(by0,Math.floor((y0-TOP)/CELL),1), cy1=Math.min(by1,Math.floor((y1-TOP)/CELL),GY-2);
-    let nA=0,nB=0,nC=0,nW=0,nV=0,nF=0; const ph=(DR.time*4)|0, LA=LB-2, LW=WB-2, LF=bufF.length-2;
-    for(let y=cy0;y<=cy1;y++){
-      const row=y*GX, xb=Math.min(cx1,rx1[y]);
-      for(let x=Math.max(cx0,rx0[y]);x<=xb;x++){
-        const t=grid[row+x];
-        if(t===0||t>3) continue;
-        const up=grid[row-GX+x];
-        if(t===LAVA){
-          if(up!==LAVA&&up<4){
-            if(nC<LA){bufC[nC++]=x;bufC[nC++]=y;}
-            if(Math.random()<.003) DR.spawn(2,x*CELL+3,TOP+y*CELL,(Math.random()-.5)*14,-28-Math.random()*30,.9,1.6);
-          }
-          else if((x*7+y*13+ph)%6===0){ if(nB<LA){bufB[nB++]=x;bufB[nB++]=y;} }
-          else if(nA<LA){bufA[nA++]=x;bufA[nA++]=y;}
+}
+/** Flüssigkeiten und Feuer im sichtbaren Teil der Simulation. @param {Port} DR @param {CanvasRenderingContext2D} ctx @param {number} x0 @param {number} x1 @param {number} y0 @param {number} y1 */
+function drawLiquidsWith(DR,ctx,x0,x1,y0,y1){
+  if(bx1<bx0) return;
+  const cx0=Math.max(bx0,Math.floor(x0/CELL),1), cx1=Math.min(bx1,Math.floor(x1/CELL),GX-2);
+  const cy0=Math.max(by0,Math.floor((y0-TOP)/CELL),1), cy1=Math.min(by1,Math.floor((y1-TOP)/CELL),GY-2);
+  let nA=0,nB=0,nC=0,nW=0,nV=0,nF=0; const ph=(DR.time*4)|0, LA=LB-2, LW=WB-2, LF=bufF.length-2;
+  for(let y=cy0;y<=cy1;y++){
+    const row=y*GX, xb=Math.min(cx1,rx1[y]);
+    for(let x=Math.max(cx0,rx0[y]);x<=xb;x++){
+      const t=grid[row+x];
+      if(t===0||t>3) continue;
+      const up=grid[row-GX+x];
+      if(t===LAVA){
+        if(up!==LAVA&&up<4){
+          if(nC<LA){bufC[nC++]=x;bufC[nC++]=y;}
+          if(Math.random()<.003) DR.spawn(2,x*CELL+3,TOP+y*CELL,(Math.random()-.5)*14,-28-Math.random()*30,.9,1.6);
         }
-        else if(t===WATER){
-          if(up===0){ if(nV<LW){bufV[nV++]=x;bufV[nV++]=y;} }
-          else if(nW<LW){bufW[nW++]=x;bufW[nW++]=y;}
-        }
-        else if(nF<LF){bufF[nF++]=x;bufF[nF++]=y;}
+        else if((x*7+y*13+ph)%6===0){ if(nB<LA){bufB[nB++]=x;bufB[nB++]=y;} }
+        else if(nA<LA){bufA[nA++]=x;bufA[nA++]=y;}
       }
-    }
-    fillCellsWith(DR,ctx,bufA,nA,'#ff5a1f',0); fillCellsWith(DR,ctx,bufB,nB,'#e2331c',0); fillCellsWith(DR,ctx,bufC,nC,'#ffc233',1.5);
-    fillCellsWith(DR,ctx,bufW,nW,DR.MD.w1,0); fillCellsWith(DR,ctx,bufV,nV,DR.MD.w2,0);
-    for(let pass=0;pass<2;pass++){
-      ctx.fillStyle=pass?'#ffe066':'#ff7a1f'; ctx.beginPath();
-      const w=pass?2.6:5, k=pass?.55:1;
-      for(let i=0;i<nF;i+=2){
-        const fx=bufF[i]*CELL+3, by=TOP+(bufF[i+1]+1)*CELL;
-        const hgt=(13+6*Math.sin(DR.time*13+bufF[i]*1.7+bufF[i+1]))*k, sway=2.5*Math.sin(DR.time*9+bufF[i]*2.3);
-        ctx.moveTo(fx-w,by); ctx.quadraticCurveTo(fx-w-1,by-hgt*.5,fx+sway,by-hgt);
-        ctx.quadraticCurveTo(fx+w+1,by-hgt*.5,fx+w,by); ctx.closePath();
+      else if(t===WATER){
+        if(up===0){ if(nV<LW){bufV[nV++]=x;bufV[nV++]=y;} }
+        else if(nW<LW){bufW[nW++]=x;bufW[nW++]=y;}
       }
-      ctx.fill();
+      else if(nF<LF){bufF[nF++]=x;bufF[nF++]=y;}
     }
   }
-
+  fillCellsWith(DR,ctx,bufA,nA,'#ff5a1f',0); fillCellsWith(DR,ctx,bufB,nB,'#e2331c',0); fillCellsWith(DR,ctx,bufC,nC,'#ffc233',1.5);
+  fillCellsWith(DR,ctx,bufW,nW,DR.MD.w1,0); fillCellsWith(DR,ctx,bufV,nV,DR.MD.w2,0);
+  for(let pass=0;pass<2;pass++){
+    ctx.fillStyle=pass?'#ffe066':'#ff7a1f'; ctx.beginPath();
+    const w=pass?2.6:5, k=pass?.55:1;
+    for(let i=0;i<nF;i+=2){
+      const fx=bufF[i]*CELL+3, by=TOP+(bufF[i+1]+1)*CELL;
+      const hgt=(13+6*Math.sin(DR.time*13+bufF[i]*1.7+bufF[i+1]))*k, sway=2.5*Math.sin(DR.time*9+bufF[i]*2.3);
+      ctx.moveTo(fx-w,by); ctx.quadraticCurveTo(fx-w-1,by-hgt*.5,fx+sway,by-hgt);
+      ctx.quadraticCurveTo(fx+w+1,by-hgt*.5,fx+w,by); ctx.closePath();
+    }
+    ctx.fill();
+  }
+}
+/** Teilchen: Rauch, Funken, Staub, Zahlen, Bildchen. @param {Port} DR @param {CanvasRenderingContext2D} ctx @param {number} x0 @param {number} x1 @param {number} y0 @param {number} y1 */
+function drawPartsWith(DR,ctx,x0,x1,y0,y1){
   for(const p of DR.parts){
     if(p.x<x0-60||p.x>x1+60||p.y<y0-60||p.y>y1+60) continue;
     const a=p.life/p.max; let col, r=p.size;
@@ -210,9 +248,9 @@ export function drawWith(DR,ctx){
     ctx.fillStyle=col; DR.circle(p.x,p.y,Math.max(.5,r));
   }
   ctx.globalAlpha=1;
-  DR.drawSnowfall();
-  DR.drawMood();
-
+}
+/** Zeiger am Rand: Auftrag, Sonar, Leuchtmarke, Kompass. @param {Port} DR */
+function drawPointersWith(DR){
   { const qp=DR.questPoint(); if(qp) DR.pointTo(qp[0],qp[1],'#58b548'); }
   if(DR.FX.sonar>0){ const so=DR.sonarTarget(); if(so) DR.pointTo(so[0],so[1],'#ffd23f'); }
   const gp=DR.guidePoint(); if(gp) DR.pointTo(gp[0],gp[1],'#ff8a1f');

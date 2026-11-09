@@ -8482,6 +8482,32 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
   var bufF = new Int16Array(2 * (MAX_FIRE + 800));
   function drawWith(DR, ctx) {
     const vw = DR.W / DR.S, vh = DR.H / DR.S;
+    drawSkyWith(DR, ctx);
+    const shx = DR.shake > 0 && !DR.reduced ? (Math.random() - 0.5) * DR.shake * 16 : 0, shy = DR.shake > 0 && !DR.reduced ? (Math.random() - 0.5) * DR.shake * 16 : 0;
+    ctx.setTransform(DR.DPR * DR.S, 0, 0, DR.DPR * DR.S, (DR.W / 2 - cam.x * DR.S + shx) * DR.DPR, (DR.H / 2 - cam.y * DR.S + shy) * DR.DPR);
+    const x0 = cam.x - vw / 2 - 20, x1 = cam.x + vw / 2 + 20, y0 = cam.y - vh / 2 - 20, y1 = cam.y + vh / 2 + 20;
+    drawBackWith(DR, ctx, x0, x1, y0, y1);
+    drawTracksWith(DR, ctx, x0, x1);
+    DR.drawZips(x0, x1);
+    DR.drawLayer(ctx, "back", x0, x1);
+    DR.drawScope(x0, x1);
+    DR.drawLayer(ctx, "mid", x0, x1);
+    DR.drawLayer(ctx, "mob", x0, x1);
+    drawEditWith(DR, ctx);
+    drawParkedWith(DR);
+    drawHeroWith(DR, ctx);
+    drawBombsWith(DR, ctx);
+    DR.drawFront();
+    DR.drawWorldFront();
+    DR.drawDark();
+    DR.drawLayer(ctx, "glow", x0, x1);
+    drawLiquidsWith(DR, ctx, x0, x1, y0, y1);
+    drawPartsWith(DR, ctx, x0, x1, y0, y1);
+    DR.drawSnowfall();
+    DR.drawMood();
+    drawPointersWith(DR);
+  }
+  function drawSkyWith(DR, ctx) {
     ctx.setTransform(DR.DPR, 0, 0, DR.DPR, 0, 0);
     const md = DR.mood(), spc = DR.realm && BT[bio[clamp(Math.floor(cam.x / CELL), 0, GX - 1)]].space, nl = md.nl, alt = spc ? 0 : clamp(-cam.y / 1100, 0, 1), sp = clamp((-cam.y - 1500) / 1400, 0, 1), sa = spc ? 1 : Math.max(sp, nl * 0.9);
     const sky = ctx.createLinearGradient(0, 0, 0, DR.H);
@@ -8543,19 +8569,20 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       ctx.globalAlpha = 1;
     }
     DR.hills(0.48, -2, 30, md.h2, 7e-3);
-    const shx = DR.shake > 0 && !DR.reduced ? (Math.random() - 0.5) * DR.shake * 16 : 0, shy = DR.shake > 0 && !DR.reduced ? (Math.random() - 0.5) * DR.shake * 16 : 0;
-    ctx.setTransform(DR.DPR * DR.S, 0, 0, DR.DPR * DR.S, (DR.W / 2 - cam.x * DR.S + shx) * DR.DPR, (DR.H / 2 - cam.y * DR.S + shy) * DR.DPR);
-    const x0 = cam.x - vw / 2 - 20, x1 = cam.x + vw / 2 + 20, y0 = cam.y - vh / 2 - 20, y1 = cam.y + vh / 2 + 20;
+  }
+  function drawBackWith(DR, ctx, x0, x1, y0, y1) {
     DR.drawFinds(false, x0, x1, y0, y1);
     for (const c of DR.clouds) if (c.x > x0 - 70 && c.x < x1 + 70 && c.y > y0 - 50 && c.y < y1 + 50) DR.drawCloud(c);
     if (y0 < -2500) DR.drawSpace();
     for (const tr of DR.trees) if (tr.x > x0 - 40 && tr.x < x1 + 40) DR.drawTree(tr);
     DR.drawCells(x0, x1, y0, y1);
     DR.drawFinds(true, x0, x1, y0, y1);
-    for (const o2 of ST.props) if (o2.x > x0 - 60 && o2.x < x1 + 60) DR.drawProp(o2);
+    for (const o of ST.props) if (o.x > x0 - 60 && o.x < x1 + 60) DR.drawProp(o);
     DR.drawWinter(x0, x1);
     DR.drawWorldBack(x0, x1, y0, y1);
     DR.drawDeep(x0, x1, y0, y1);
+  }
+  function drawTracksWith(DR, ctx, x0, x1) {
     for (const T of ST.tracks) {
       if (T.maxX < x0 || T.minX > x1) continue;
       if (T.rb) {
@@ -8601,11 +8628,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         DR.drawCart(q.x, q.y, Math.atan2(q.ty, q.tx), T.dir, false, false);
       }
     }
-    DR.drawZips(x0, x1);
-    DR.drawLayer(ctx, "back", x0, x1);
-    DR.drawScope(x0, x1);
-    DR.drawLayer(ctx, "mid", x0, x1);
-    DR.drawLayer(ctx, "mob", x0, x1);
+  }
+  function drawEditWith(DR, ctx) {
     if (ST.tool === "track") {
       for (const T of ST.tracks) {
         const a = T.pts[0], b = T.pts[T.pts.length - 1];
@@ -8625,6 +8649,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       ctx.stroke();
       ctx.setLineDash([]);
     }
+  }
+  function drawParkedWith(DR) {
     let o = parked.plane;
     if (o) DR.drawPlane(o.x, o.y, 0, 0, o.face, true, o.ang, false);
     o = parked.rocket;
@@ -8653,6 +8679,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (DR.ghost.kind === "rocket") DR.drawRocket(DR.ghost.x, DR.ghost.y, Math.atan2(DR.ghost.vx, -DR.ghost.vy - 200) * 0.5, false, false);
       else DR.drawPlane(DR.ghost.x, DR.ghost.y, DR.ghost.vx, DR.ghost.vy, DR.ghost.vx >= 0 ? 1 : -1, false, 0, false);
     }
+  }
+  function drawHeroWith(DR, ctx) {
     if (P.mode === "walk") {
       if (P.chute) DR.drawChute(P.x, P.y);
       DR.drawKid(P.x, P.y, P.face, P.on ? P.run : 1.1, !!P.zip || P.chute || !P.on && P.vy > 220);
@@ -8699,79 +8727,80 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       ctx.fillStyle = "#000";
       ctx.fillText(pe, DR.pet.x, DR.pet.y - (pf ? 26 : -4) + (DR.reduced ? 0 : 2.5 * Math.sin(DR.time * 7)));
     }
+  }
+  function drawBombsWith(DR, ctx) {
     for (const bm of DR.bombs) {
       ctx.fillStyle = "#3a3438";
       DR.circle(bm.x, bm.y, 7);
       ctx.fillStyle = (bm.t * 8 | 0) % 2 ? "#ffd23f" : "#ff5a1f";
       DR.circle(bm.x + 6, bm.y - 8, 3);
     }
-    DR.drawFront();
-    DR.drawWorldFront();
-    DR.drawDark();
-    DR.drawLayer(ctx, "glow", x0, x1);
-    if (bx1 >= bx0) {
-      const cx0 = Math.max(bx0, Math.floor(x0 / CELL), 1), cx1 = Math.min(bx1, Math.floor(x1 / CELL), GX - 2);
-      const cy0 = Math.max(by0, Math.floor((y0 - TOP) / CELL), 1), cy1 = Math.min(by1, Math.floor((y1 - TOP) / CELL), GY - 2);
-      let nA = 0, nB = 0, nC = 0, nW = 0, nV = 0, nF = 0;
-      const ph = DR.time * 4 | 0, LA = LB - 2, LW = WB - 2, LF = bufF.length - 2;
-      for (let y = cy0; y <= cy1; y++) {
-        const row = y * GX, xb = Math.min(cx1, rx1[y]);
-        for (let x = Math.max(cx0, rx0[y]); x <= xb; x++) {
-          const t = grid[row + x];
-          if (t === 0 || t > 3) continue;
-          const up = grid[row - GX + x];
-          if (t === LAVA) {
-            if (up !== LAVA && up < 4) {
-              if (nC < LA) {
-                bufC[nC++] = x;
-                bufC[nC++] = y;
-              }
-              if (Math.random() < 3e-3) DR.spawn(2, x * CELL + 3, TOP + y * CELL, (Math.random() - 0.5) * 14, -28 - Math.random() * 30, 0.9, 1.6);
-            } else if ((x * 7 + y * 13 + ph) % 6 === 0) {
-              if (nB < LA) {
-                bufB[nB++] = x;
-                bufB[nB++] = y;
-              }
-            } else if (nA < LA) {
-              bufA[nA++] = x;
-              bufA[nA++] = y;
+  }
+  function drawLiquidsWith(DR, ctx, x0, x1, y0, y1) {
+    if (bx1 < bx0) return;
+    const cx0 = Math.max(bx0, Math.floor(x0 / CELL), 1), cx1 = Math.min(bx1, Math.floor(x1 / CELL), GX - 2);
+    const cy0 = Math.max(by0, Math.floor((y0 - TOP) / CELL), 1), cy1 = Math.min(by1, Math.floor((y1 - TOP) / CELL), GY - 2);
+    let nA = 0, nB = 0, nC = 0, nW = 0, nV = 0, nF = 0;
+    const ph = DR.time * 4 | 0, LA = LB - 2, LW = WB - 2, LF = bufF.length - 2;
+    for (let y = cy0; y <= cy1; y++) {
+      const row = y * GX, xb = Math.min(cx1, rx1[y]);
+      for (let x = Math.max(cx0, rx0[y]); x <= xb; x++) {
+        const t = grid[row + x];
+        if (t === 0 || t > 3) continue;
+        const up = grid[row - GX + x];
+        if (t === LAVA) {
+          if (up !== LAVA && up < 4) {
+            if (nC < LA) {
+              bufC[nC++] = x;
+              bufC[nC++] = y;
             }
-          } else if (t === WATER) {
-            if (up === 0) {
-              if (nV < LW) {
-                bufV[nV++] = x;
-                bufV[nV++] = y;
-              }
-            } else if (nW < LW) {
-              bufW[nW++] = x;
-              bufW[nW++] = y;
+            if (Math.random() < 3e-3) DR.spawn(2, x * CELL + 3, TOP + y * CELL, (Math.random() - 0.5) * 14, -28 - Math.random() * 30, 0.9, 1.6);
+          } else if ((x * 7 + y * 13 + ph) % 6 === 0) {
+            if (nB < LA) {
+              bufB[nB++] = x;
+              bufB[nB++] = y;
             }
-          } else if (nF < LF) {
-            bufF[nF++] = x;
-            bufF[nF++] = y;
+          } else if (nA < LA) {
+            bufA[nA++] = x;
+            bufA[nA++] = y;
           }
+        } else if (t === WATER) {
+          if (up === 0) {
+            if (nV < LW) {
+              bufV[nV++] = x;
+              bufV[nV++] = y;
+            }
+          } else if (nW < LW) {
+            bufW[nW++] = x;
+            bufW[nW++] = y;
+          }
+        } else if (nF < LF) {
+          bufF[nF++] = x;
+          bufF[nF++] = y;
         }
-      }
-      fillCellsWith(DR, ctx, bufA, nA, "#ff5a1f", 0);
-      fillCellsWith(DR, ctx, bufB, nB, "#e2331c", 0);
-      fillCellsWith(DR, ctx, bufC, nC, "#ffc233", 1.5);
-      fillCellsWith(DR, ctx, bufW, nW, DR.MD.w1, 0);
-      fillCellsWith(DR, ctx, bufV, nV, DR.MD.w2, 0);
-      for (let pass = 0; pass < 2; pass++) {
-        ctx.fillStyle = pass ? "#ffe066" : "#ff7a1f";
-        ctx.beginPath();
-        const w = pass ? 2.6 : 5, k = pass ? 0.55 : 1;
-        for (let i = 0; i < nF; i += 2) {
-          const fx = bufF[i] * CELL + 3, by = TOP + (bufF[i + 1] + 1) * CELL;
-          const hgt = (13 + 6 * Math.sin(DR.time * 13 + bufF[i] * 1.7 + bufF[i + 1])) * k, sway = 2.5 * Math.sin(DR.time * 9 + bufF[i] * 2.3);
-          ctx.moveTo(fx - w, by);
-          ctx.quadraticCurveTo(fx - w - 1, by - hgt * 0.5, fx + sway, by - hgt);
-          ctx.quadraticCurveTo(fx + w + 1, by - hgt * 0.5, fx + w, by);
-          ctx.closePath();
-        }
-        ctx.fill();
       }
     }
+    fillCellsWith(DR, ctx, bufA, nA, "#ff5a1f", 0);
+    fillCellsWith(DR, ctx, bufB, nB, "#e2331c", 0);
+    fillCellsWith(DR, ctx, bufC, nC, "#ffc233", 1.5);
+    fillCellsWith(DR, ctx, bufW, nW, DR.MD.w1, 0);
+    fillCellsWith(DR, ctx, bufV, nV, DR.MD.w2, 0);
+    for (let pass = 0; pass < 2; pass++) {
+      ctx.fillStyle = pass ? "#ffe066" : "#ff7a1f";
+      ctx.beginPath();
+      const w = pass ? 2.6 : 5, k = pass ? 0.55 : 1;
+      for (let i = 0; i < nF; i += 2) {
+        const fx = bufF[i] * CELL + 3, by = TOP + (bufF[i + 1] + 1) * CELL;
+        const hgt = (13 + 6 * Math.sin(DR.time * 13 + bufF[i] * 1.7 + bufF[i + 1])) * k, sway = 2.5 * Math.sin(DR.time * 9 + bufF[i] * 2.3);
+        ctx.moveTo(fx - w, by);
+        ctx.quadraticCurveTo(fx - w - 1, by - hgt * 0.5, fx + sway, by - hgt);
+        ctx.quadraticCurveTo(fx + w + 1, by - hgt * 0.5, fx + w, by);
+        ctx.closePath();
+      }
+      ctx.fill();
+    }
+  }
+  function drawPartsWith(DR, ctx, x0, x1, y0, y1) {
     for (const p of DR.parts) {
       if (p.x < x0 - 60 || p.x > x1 + 60 || p.y < y0 - 60 || p.y > y1 + 60) continue;
       const a = p.life / p.max;
@@ -8834,8 +8863,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       DR.circle(p.x, p.y, Math.max(0.5, r));
     }
     ctx.globalAlpha = 1;
-    DR.drawSnowfall();
-    DR.drawMood();
+  }
+  function drawPointersWith(DR) {
     {
       const qp = DR.questPoint();
       if (qp) DR.pointTo(qp[0], qp[1], "#58b548");
