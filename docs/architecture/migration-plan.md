@@ -277,6 +277,8 @@ Je PR: `tick` und `draw(ctx, layer)` ins System, Zeichenaufruf in `draw()` an de
 
 **Absicherung:** Knopftest (`crawl.mjs`) mit langem Lauf (`CRAWL_N=4000`) im PR, statische ID-Prüfung über `src/`.
 
+**Umgesetzt PR 24:** Der Rätselrahmen (`pzLater`, `pzClear`, `pzCell`, `pzOpen`, `pzDraw`, `pzClose`, `pzHintMax`, `pzHintUi`, `pzFail`, `pzReveal`, `pzWin`), `tok`, `tkHtml` und je Rätsel Zeichnen, Antippen, Tipp und Ansage (`dr…`, `ac…`, `hi…`, `sy…`, dazu `poWaage`, `stEcho` und die Helfer `stSide`, `stLine`, `spWant`, `spGrid`, `spDone`, `rbRun`, `wgDiff`, `wgW`, `ecPlay`, `rhPaint`, `sdTok`, `sdCheck`) ziehen nach `ui/puzzles.js` mit Port `PZ`. **Abweichung:** Die Tabelle der Arten (`PZT`, `PZI`, `PZON`) bleibt in `legacy.js`, weil `PZT` Funktionen enthält und der Move-Nachweis Konstanten mit Code nicht umschreibt; sie ruft die bewegten Funktionen über Einzeiler. Die `mk…` bleiben Einzeiler auf `core/puzzles/`. Ebenso bleiben die Farben und Formen (`PCOL`, `PSHP`, `ARW`, `ECF`, `RSVG`), `pzc`, `pzTm` und die beiden Klick-Handler (`#pz`, `#quiz-pz`) in `legacy.js`; `pzc` und `pzTm` werden über Setter geschrieben. `LOG` kommt über den Port, weil `ui` nicht aus `log` importieren darf. Einzeiler für alles in `PZT` sowie `pzOpen`, `pzClose` (Tests, Welt, Akku), `pzHintMax` und `pzHintUi` (Klick-Handler). Absicherung: Knopftest mit 4000 Tipps, Golden Master, Rauchtest.
+
 ### PR 28: Spielfigur und Abläufe
 
 - **Bewegt:** `S09` Spielfigur, Fahrzeuge, `update` → `systems/player/`. `start`, `frame`, `travel`, `arrive`, `resetWorld`, `restore`, `newRealm` → `app/`. Schneeberg und Länder (`S03`, `S05` Rest) → `core/world/`.
