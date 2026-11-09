@@ -14457,6 +14457,224 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     ctx.restore();
   }
 
+  // src/systems/learn.js
+  function drainWith(LK, dt) {
+    if (P.mode !== "walk" || ST.tool && !LK.HANDT[ST.tool] && (!LK.PAINT[ST.tool] && ST.tool !== "tnt" || ST.energy <= 0)) {
+      ST.energy -= dt;
+      if (ST.energy <= 0) {
+        ST.energy = 0;
+        LK.battLow = false;
+        LK.$("batt").classList.remove("low");
+        LK.renderBatt();
+        LK.openQuiz(null);
+        return;
+      }
+      if (ST.energy < 6 && Math.ceil(ST.energy) !== LK.warnS) {
+        LK.warnS = Math.ceil(ST.energy);
+        blip(660, 660, 0.06, "square", 0.05);
+      }
+    }
+    const low = ST.energy > 0 && ST.energy < 12;
+    if (low !== LK.battLow) {
+      LK.battLow = low;
+      LK.$("batt").classList.toggle("low", low);
+    }
+    LK.renderBatt();
+  }
+  function numOptsWith(LK, ans, n, max) {
+    const o = [ans];
+    let guard = 0;
+    while (o.length < n && guard++ < 80) {
+      const v = ans + LK.ri(-3, 3);
+      if (v >= 0 && v <= max && o.indexOf(v) < 0) o.push(v);
+    }
+    return LK.shuffle(o).map(String);
+  }
+  function dayNoWith(LK, t) {
+    const d = t ? new Date(t) : /* @__PURE__ */ new Date();
+    return Math.floor((d.getTime() - d.getTimezoneOffset() * 6e4) / 864e5);
+  }
+  function loadFactsWith(LK) {
+    try {
+      LK.FS = JSON.parse(localStorage.getItem(LK.K_FACTS) || "null");
+    } catch (_) {
+      LK.FS = null;
+    }
+    if (!LK.FS || LK.FS.v !== 1 || !LK.FS.f) {
+      let sk = 0;
+      try {
+        sk = parseInt(localStorage.getItem(LK.K_SKILL) || "0", 10) || 0;
+      } catch (_) {
+      }
+      const t = sk >= 22 ? 2 : sk >= 8 ? 1 : 0;
+      LK.FS = { v: 1, u: { m: t, l: t }, f: {}, nd: 0, nn: { m: 0, l: 0 }, ft: { m: 0, l: 0 } };
+    }
+    if (!LK.FS.u || typeof LK.FS.u !== "object") LK.FS.u = { m: 0, l: 0 };
+    if (!LK.FS.nn || typeof LK.FS.nn !== "object") LK.FS.nn = { m: 0, l: 0 };
+    if (!LK.FS.ft || typeof LK.FS.ft !== "object") LK.FS.ft = { m: 0, l: 0 };
+    ["m", "l"].forEach(function(d) {
+      LK.FS.u[d] = clamp(
+        LK.FS.u[d] | 0,
+        0,
+        /** @type {any} */
+        STAGES[d].length - 1
+      );
+      LK.FS.nn[d] = LK.FS.nn[d] | 0;
+      LK.FS.ft[d] = LK.FS.ft[d] | 0;
+    });
+    if (!LK.FS.dm || typeof LK.FS.dm !== "object" || !LK.FS.dm.c || typeof LK.FS.dm.c !== "object") delete LK.FS.dm;
+    for (const k in LK.FS.f) {
+      const r = LK.FS.f[k];
+      if (!Array.isArray(r) || !(r[0] >= 0) || !isFinite(r[1])) delete LK.FS.f[k];
+      else r[0] = clamp(r[0] | 0, 0, 5);
+    }
+  }
+  function pickFactWith(LK) {
+    const k = pickFact0With(LK);
+    LK.kindHist.unshift(fKind(k));
+    LK.kindHist.length = Math.min(LK.kindHist.length, 2);
+    return k;
+  }
+  function pickFact0With(LK) {
+    const today = dayNoWith(LK);
+    if (LK.FS.nd !== today) {
+      LK.FS.nd = today;
+      LK.FS.nn = { m: 0, l: 0 };
+    }
+    for (let i = 0; i < LK.retry.length; i++) LK.retry[i].n--;
+    const ri0 = LK.retry.findIndex(
+      /** @param {any} r */
+      function(r) {
+        return r.n <= 0 && r.k !== LK.lastF;
+      }
+    );
+    if (ri0 >= 0) return LK.retry.splice(ri0, 1)[0].k;
+    const doms = Math.random() < 0.6 ? ["m", "l"] : ["l", "m"];
+    for (let p = 0; p < 2; p++) {
+      for (const d of doms) {
+        const due = (
+          /** @type {any[]} */
+          []
+        ), fresh = (
+          /** @type {any[]} */
+          []
+        );
+        for (let s = 0; s <= LK.FS.u[d]; s++) STAGES[d][s].forEach(
+          /** @param {any} k */
+          function(k) {
+            if (k === LK.lastF || LK.retry.some(
+              /** @param {any} r */
+              function(r2) {
+                return r2.k === k;
+              }
+            )) return;
+            const r = LK.FS.f[k];
+            if (!r) {
+              if (LK.schoolOk(k, s)) fresh.push([k, s]);
+            } else if (r[1] <= today) due.push(k);
+          }
+        );
+        if (due.length && (p || Math.random() < 0.75 || !fresh.length)) {
+          due.sort(function(a, b) {
+            return LK.FS.f[a][0] - LK.FS.f[b][0] || LK.FS.f[a][1] - LK.FS.f[b][1];
+          });
+          const dv = LK.mixPrefer(due.slice(0, 6));
+          return dv[LK.ri(0, Math.min(2, dv.length - 1))];
+        }
+        let open = 0;
+        for (const k in LK.FS.f) if (fDom(k) === d && LK.FS.f[k][0] === 1) open++;
+        if (fresh.length && LK.FS.nn[d] < NEWDAY && open < 4) {
+          const top = fresh.filter(function(x) {
+            return x[1] === LK.FS.u[d];
+          }), pool = top.length && Math.random() < 0.7 ? top : fresh;
+          const pv = LK.mixPrefer(pool.map(function(x) {
+            return x[0];
+          }));
+          return pv[LK.ri(0, pv.length - 1)];
+        }
+      }
+    }
+    const any = Object.keys(LK.FS.f).filter(function(k) {
+      return k !== LK.lastF && !LK.fParked(k, today);
+    });
+    if (any.length) {
+      any.sort(function(a, b) {
+        return LK.FS.f[a][1] - LK.FS.f[b][1];
+      });
+      return any[LK.ri(0, Math.min(4, any.length - 1))];
+    }
+    return STAGES.m[0][LK.ri(0, STAGES.m[0].length - 1)];
+  }
+  function factDoneWith(LK, q, how, fast) {
+    const k = q.f, d = fDom(k), today = dayNoWith(LK);
+    let r = LK.FS.f[k];
+    const isNew = !r;
+    if (isNew) {
+      r = LK.FS.f[k] = [0, today];
+      LK.FS.nn[d]++;
+    }
+    const wasDue = r[1] <= today;
+    if (how === "miss") {
+      r[0] = 1;
+      r[1] = today;
+      LK.FS.ft[d] = 0;
+      if (!LK.FS.dm || LK.FS.dm.d !== today) LK.FS.dm = { d: today, c: {} };
+      LK.FS.dm.c[k] = (LK.FS.dm.c[k] | 0) + 1;
+      if (LK.fParked(k, today)) {
+        r[1] = today + 1;
+        for (let i = LK.retry.length - 1; i >= 0; i--) if (LK.retry[i].k === k) LK.retry.splice(i, 1);
+      } else LK.retry.push({ k, n: LK.ri(2, 3) });
+    } else if (how === "ok2") {
+      r[0] = Math.max(1, r[0]);
+      r[1] = today + 1;
+      LK.FS.ft[d] = 0;
+    } else if (isNew && fast) {
+      r[0] = 3;
+      r[1] = today + BOXD[3];
+      if (fStage(k) === LK.FS.u[d]) LK.FS.ft[d]++;
+    } else if (isNew || wasDue) {
+      r[0] = Math.min(5, Math.max(1, r[0]) + 1);
+      r[1] = today + BOXD[r[0]];
+      if (isNew) LK.FS.ft[d] = 0;
+    }
+    const mg = r[0] >= LK.MBOX && !q.free && masterGiveWith(LK, k);
+    LK.fUnlock(d);
+    LK.saveFacts();
+    return mg;
+  }
+  function masterGiveWith(LK, k) {
+    if (!LK.FS.mg) LK.FS.mg = {};
+    if (LK.FS.mg[k]) return false;
+    LK.FS.mg[k] = 1;
+    hero.mat.ms = (hero.mat.ms | 0) + 1;
+    LK.dayAdd("ms");
+    hero.mk.ms = 1;
+    ST.heroDirty = true;
+    LK.saveHero();
+    LK.labBadge(true);
+    return true;
+  }
+  function genQWith(LK) {
+    if (Math.random() < 0.1 && LK.lastF.indexOf("seq:") !== 0) {
+      const q2 = LK.mkSeq();
+      LK.lastF = q2.f;
+      LK.lastDom = "m";
+      return q2;
+    }
+    const k = LK.pickFact(), q = LK.mkQ(k), r = LK.FS.f[k];
+    q.box = r ? r[0] : 0;
+    LK.lastF = k;
+    LK.lastDom = fDom(k);
+    return q;
+  }
+  function saveSchoolWith(LK) {
+    LK.SCH.at = Date.now();
+    try {
+      localStorage.setItem(LK.K_SCHOOL, JSON.stringify(LK.SCH));
+    } catch (_) {
+    }
+  }
+
   // src/legacy.js
   (function() {
     "use strict";
@@ -18657,27 +18875,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       return closeQuizWith(QZ);
     }
     function drain(dt) {
-      if (P.mode !== "walk" || ST.tool && !HANDT[ST.tool] && (!PAINT[ST.tool] && ST.tool !== "tnt" || ST.energy <= 0)) {
-        ST.energy -= dt;
-        if (ST.energy <= 0) {
-          ST.energy = 0;
-          battLow = false;
-          $("batt").classList.remove("low");
-          renderBatt();
-          openQuiz(null);
-          return;
-        }
-        if (ST.energy < 6 && Math.ceil(ST.energy) !== warnS) {
-          warnS = Math.ceil(ST.energy);
-          blip(660, 660, 0.06, "square", 0.05);
-        }
-      }
-      const low = ST.energy > 0 && ST.energy < 12;
-      if (low !== battLow) {
-        battLow = low;
-        $("batt").classList.toggle("low", low);
-      }
-      renderBatt();
+      return drainWith(LK, dt);
     }
     function ri(a, b) {
       return riWith(Math.random, a, b);
@@ -18686,48 +18884,93 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       return shuffleWith(Math.random, a);
     }
     function numOpts(ans, n, max) {
-      const o = [ans];
-      let guard = 0;
-      while (o.length < n && guard++ < 80) {
-        const v = ans + ri(-3, 3);
-        if (v >= 0 && v <= max && o.indexOf(v) < 0) o.push(v);
-      }
-      return shuffle(o).map(String);
+      return numOptsWith(LK, ans, n, max);
     }
     function dayNo(t) {
-      const d = t ? new Date(t) : /* @__PURE__ */ new Date();
-      return Math.floor((d.getTime() - d.getTimezoneOffset() * 6e4) / 864e5);
+      return dayNoWith(LK, t);
     }
     let FS = null;
+    const LK = {
+      get HANDT() {
+        return HANDT;
+      },
+      get PAINT() {
+        return PAINT;
+      },
+      get battLow() {
+        return battLow;
+      },
+      set battLow(v) {
+        battLow = v;
+      },
+      get $() {
+        return $;
+      },
+      get warnS() {
+        return warnS;
+      },
+      set warnS(v) {
+        warnS = v;
+      },
+      get FS() {
+        return FS;
+      },
+      set FS(v) {
+        FS = v;
+      },
+      get K_FACTS() {
+        return K_FACTS;
+      },
+      get K_SKILL() {
+        return K_SKILL;
+      },
+      get kindHist() {
+        return kindHist;
+      },
+      get retry() {
+        return retry;
+      },
+      get lastF() {
+        return lastF;
+      },
+      set lastF(v) {
+        lastF = v;
+      },
+      get MBOX() {
+        return MBOX;
+      },
+      get lastDom() {
+        return lastDom;
+      },
+      set lastDom(v) {
+        lastDom = v;
+      },
+      get SCH() {
+        return SCH;
+      },
+      get K_SCHOOL() {
+        return K_SCHOOL;
+      },
+      dayAdd,
+      fParked,
+      fUnlock,
+      labBadge,
+      mixPrefer,
+      mkQ,
+      mkSeq,
+      openQuiz,
+      get pickFact() {
+        return pickFact;
+      },
+      renderBatt,
+      ri,
+      saveFacts,
+      saveHero,
+      schoolOk,
+      shuffle
+    };
     function loadFacts() {
-      try {
-        FS = JSON.parse(localStorage.getItem(K_FACTS) || "null");
-      } catch (_) {
-        FS = null;
-      }
-      if (!FS || FS.v !== 1 || !FS.f) {
-        let sk = 0;
-        try {
-          sk = parseInt(localStorage.getItem(K_SKILL) || "0", 10) || 0;
-        } catch (_) {
-        }
-        const t = sk >= 22 ? 2 : sk >= 8 ? 1 : 0;
-        FS = { v: 1, u: { m: t, l: t }, f: {}, nd: 0, nn: { m: 0, l: 0 }, ft: { m: 0, l: 0 } };
-      }
-      if (!FS.u || typeof FS.u !== "object") FS.u = { m: 0, l: 0 };
-      if (!FS.nn || typeof FS.nn !== "object") FS.nn = { m: 0, l: 0 };
-      if (!FS.ft || typeof FS.ft !== "object") FS.ft = { m: 0, l: 0 };
-      ["m", "l"].forEach(function(d) {
-        FS.u[d] = clamp(FS.u[d] | 0, 0, STAGES[d].length - 1);
-        FS.nn[d] = FS.nn[d] | 0;
-        FS.ft[d] = FS.ft[d] | 0;
-      });
-      if (!FS.dm || typeof FS.dm !== "object" || !FS.dm.c || typeof FS.dm.c !== "object") delete FS.dm;
-      for (const k in FS.f) {
-        const r = FS.f[k];
-        if (!Array.isArray(r) || !(r[0] >= 0) || !isFinite(r[1])) delete FS.f[k];
-        else r[0] = clamp(r[0] | 0, 0, 5);
-      }
+      return loadFactsWith(LK);
     }
     function saveFacts() {
       return saveFactsWith(SV);
@@ -18761,11 +19004,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     } catch (_) {
     }
     function saveSchool() {
-      SCH.at = Date.now();
-      try {
-        localStorage.setItem(K_SCHOOL, JSON.stringify(SCH));
-      } catch (_) {
-      }
+      return saveSchoolWith(LK);
     }
     function schoolOk(k, s) {
       return schoolOkWith(SCH, k, s);
@@ -18780,118 +19019,20 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       return mixPreferWith(Math.random, kindHist, a);
     }
     function pickFact() {
-      const k = pickFact0();
-      kindHist.unshift(fKind(k));
-      kindHist.length = Math.min(kindHist.length, 2);
-      return k;
+      return pickFactWith(LK);
     }
     function pickFact0() {
-      const today = dayNo();
-      if (FS.nd !== today) {
-        FS.nd = today;
-        FS.nn = { m: 0, l: 0 };
-      }
-      for (let i = 0; i < retry.length; i++) retry[i].n--;
-      const ri0 = retry.findIndex(function(r) {
-        return r.n <= 0 && r.k !== lastF;
-      });
-      if (ri0 >= 0) return retry.splice(ri0, 1)[0].k;
-      const doms = Math.random() < 0.6 ? ["m", "l"] : ["l", "m"];
-      for (let p = 0; p < 2; p++) {
-        for (const d of doms) {
-          const due = [], fresh = [];
-          for (let s = 0; s <= FS.u[d]; s++) STAGES[d][s].forEach(function(k) {
-            if (k === lastF || retry.some(function(r2) {
-              return r2.k === k;
-            })) return;
-            const r = FS.f[k];
-            if (!r) {
-              if (schoolOk(k, s)) fresh.push([k, s]);
-            } else if (r[1] <= today) due.push(k);
-          });
-          if (due.length && (p || Math.random() < 0.75 || !fresh.length)) {
-            due.sort(function(a, b) {
-              return FS.f[a][0] - FS.f[b][0] || FS.f[a][1] - FS.f[b][1];
-            });
-            const dv = mixPrefer(due.slice(0, 6));
-            return dv[ri(0, Math.min(2, dv.length - 1))];
-          }
-          let open = 0;
-          for (const k in FS.f) if (fDom(k) === d && FS.f[k][0] === 1) open++;
-          if (fresh.length && FS.nn[d] < NEWDAY && open < 4) {
-            const top = fresh.filter(function(x) {
-              return x[1] === FS.u[d];
-            }), pool = top.length && Math.random() < 0.7 ? top : fresh;
-            const pv = mixPrefer(pool.map(function(x) {
-              return x[0];
-            }));
-            return pv[ri(0, pv.length - 1)];
-          }
-        }
-      }
-      const any = Object.keys(FS.f).filter(function(k) {
-        return k !== lastF && !fParked(k, today);
-      });
-      if (any.length) {
-        any.sort(function(a, b) {
-          return FS.f[a][1] - FS.f[b][1];
-        });
-        return any[ri(0, Math.min(4, any.length - 1))];
-      }
-      return STAGES.m[0][ri(0, STAGES.m[0].length - 1)];
+      return pickFact0With(LK);
     }
     function fParked(k, today) {
       return fParkedWith(FS, k, today);
     }
     function factDone(q, how, fast) {
-      const k = q.f, d = fDom(k), today = dayNo();
-      let r = FS.f[k];
-      const isNew = !r;
-      if (isNew) {
-        r = FS.f[k] = [0, today];
-        FS.nn[d]++;
-      }
-      const wasDue = r[1] <= today;
-      if (how === "miss") {
-        r[0] = 1;
-        r[1] = today;
-        FS.ft[d] = 0;
-        if (!FS.dm || FS.dm.d !== today) FS.dm = { d: today, c: {} };
-        FS.dm.c[k] = (FS.dm.c[k] | 0) + 1;
-        if (fParked(k, today)) {
-          r[1] = today + 1;
-          for (let i = retry.length - 1; i >= 0; i--) if (retry[i].k === k) retry.splice(i, 1);
-        } else retry.push({ k, n: ri(2, 3) });
-      } else if (how === "ok2") {
-        r[0] = Math.max(1, r[0]);
-        r[1] = today + 1;
-        FS.ft[d] = 0;
-      } else if (isNew && fast) {
-        r[0] = 3;
-        r[1] = today + BOXD[3];
-        if (fStage(k) === FS.u[d]) FS.ft[d]++;
-      } else if (isNew || wasDue) {
-        r[0] = Math.min(5, Math.max(1, r[0]) + 1);
-        r[1] = today + BOXD[r[0]];
-        if (isNew) FS.ft[d] = 0;
-      }
-      const mg = r[0] >= MBOX && !q.free && masterGive(k);
-      fUnlock(d);
-      saveFacts();
-      return mg;
+      return factDoneWith(LK, q, how, fast);
     }
     const MBOX = 4;
     function masterGive(k) {
-      if (!FS.mg) FS.mg = {};
-      if (FS.mg[k]) return false;
-      FS.mg[k] = 1;
-      hero.mat.ms = (hero.mat.ms | 0) + 1;
-      dayAdd("ms");
-      hero.mk.ms = 1;
-      ST.heroDirty = true;
-      saveHero();
-      labBadge(true);
-      return true;
+      return masterGiveWith(LK, k);
     }
     function mkQ(k) {
       return mkQWith(Math.random, IC, QI, k);
@@ -18900,17 +19041,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       return mkSeqWith(Math.random, FS);
     }
     function genQ() {
-      if (Math.random() < 0.1 && lastF.indexOf("seq:") !== 0) {
-        const q2 = mkSeq();
-        lastF = q2.f;
-        lastDom = "m";
-        return q2;
-      }
-      const k = pickFact(), q = mkQ(k), r = FS.f[k];
-      q.box = r ? r[0] : 0;
-      lastF = k;
-      lastDom = fDom(k);
-      return q;
+      return genQWith(LK);
     }
     const PADK = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "del", "0", "ok"];
     const QZ = {

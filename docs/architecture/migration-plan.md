@@ -321,6 +321,8 @@ Danach folgt der Schluss als 29g. Ports zwischen Modulen aufzulösen ist dort Um
 
 **Umgesetzt PR 29b2:** Die Paletten (`c32`, `pal`, `pal4`, `P_*`, `PGR` …, Farben der Tiefe, `EPAL`, `setPal`, `PSH`), die Hilfsleinwand (`IMG`, `oc`, `octx`, `img`, `px`) und `drawCells` ziehen nach `render/cells.js`. Die Deklarationen und die Schleife über die Länder ziehen wörtlich mit; die von `setPal` geschriebenen Paletten sind Modul-`let`, darum liest `drawCells` im heißen Pfad ohne Port und ohne Getter. Über den Port `CL` kommt nur `time` (ein Lesezugriff je Aufruf). `legacy.js` importiert `pal` und `setPal` (Port `RM`), Einzeiler nur für `drawCells` (Port `DR`). `RBC` bleibt (Leser `DR`, `SC`). Absicherung: Golden Master, Bildvergleich, `perf.mjs` (`draw`).
 
+**Umgesetzt PR 29c:** `drain`, `numOpts`, `dayNo`, `loadFacts`, `pickFact`, `pickFact0`, `factDone`, `masterGive`, `genQ` und `saveSchool` ziehen nach `systems/learn.js` (Port `LK`). Der Zustand (`FS`, `SCH`, `kindHist`, `retry`, `lastF`, `lastDom`, `battLow`, `warnS`) bleibt in `legacy.js` und kommt über Getter und Setter, die Speicherschlüssel `K_FACTS`, `K_SKILL`, `K_SCHOOL` über den Port (Schichtregel). `genQ` ruft `pickFact` über einen Getter im Port auf den Einzeiler, weil der Rauchtest `pickFact` in `legacy.js` ersetzt. Der Port steht vor `loadFacts();` (Aufruf beim Start). Die Anweisungen auf oberster Ebene (Meisterstein-Nachtrag, Schulstand laden) bleiben bei den Handlern. Einzeiler für alle zehn. Absicherung: Golden Master (Lernkern-Szenen), Rauchtest, `save.mjs`, Upgrade-Test.
+
 ### PR 29g: Schluss
 
 - `legacy.js` ist leer und gelöscht. `G` ist leer und gelöscht. Testzugang ist die benannte API `window.__lv` im Testbuild, kein `eval`.
