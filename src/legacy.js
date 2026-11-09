@@ -48,6 +48,7 @@ import { takeWith, baggerActWith, loaderActWith, dumperActWith, boreWith, updCar
 import { gravWith, parkWith, setModeWith, rotWith, bucketWith, scoopWith, drillHeadWith, doActionWith, burnWith, moverWith, updateWith, nearLiftWith, rideLiftWith, liftRideWith, zipOkWith, zipAddWith, zipNearWith, handDigWith } from './systems/player/player.js';
 import { restoreWith, newRealmWith, travelWith, resetWorldWith, frameWith, startWith } from './app/app.js';
 import { migrateSnowWith, planetGenWith, growWith, loadCellsWith } from './core/world/grow.js';
+import { rlmWith, setRealmWith, wcWith, realm, RW, RX0, RC0, RC1 } from './state/realm.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -296,22 +297,20 @@ RLM.jun={e:'🫧',n:'den Blubberplaneten',w:36000,salt:303,lands:[17,18],exit:-2
   zc:[null,null,null,['🐌','walk',1,'SCHLEIM!','slow',22],['🐛','sit',1,'GLÜH!','sparkle',18],['👾','sit',1,'BLUBB?','sparkle',22],['🐲','sit',1,'FAUCH!','',26]],
   lk:[0,0,0,WATER,WATER,WATER,LAVA],
   hello:'Du bist auf dem Blubberplaneten gelandet! Hier wachsen lila Wälder und Riesenpilze, und im Sumpf blubbert grüner Glibber. Blubb wohnt hier. Wenn du heim willst, flieg mit der Rakete ganz hoch hinauf.'};
-let realm='', RW=WORLD_W, RX0=0, RC0=0, RC1=GX;
-function rlm(){ return realm?RLM[realm]:null; }
-function setRealm(id){
-  realm=id&&RLM[id]?id:'';
-  const R=rlm();
-  RW=R?R.w:WORLD_W; RX0=R?PX0:0; RC0=Math.floor(RX0/CELL); RC1=Math.min(GX-PMC-1,RC0+Math.round(RW/CELL));
-  if(typeof setPal==='function') setPal(R);
-}
-/* Spalte, deren Boden eine Randspalte zeigt: links das Ende der Welt, rechts der Anfang. */
-function wc(cx){ return !realm?cx:cx<RC0?cx+(RC1-RC0):cx>=RC1?cx-(RC1-RC0):cx; }
+function rlm(){ return rlmWith(RM); }
+function setRealm(id){ return setRealmWith(RM,id); }
+function wc(cx){ return wcWith(RM,cx); }
 
 
 
 /* Reihenfolge der Länder: Alle Arten kommen einmal dran, dann wird neu gemischt. Am Schluss liegt das Ende der Welt.
    Die Welt ist doppelt so breit wie früher. Die Länder der alten Hälfte bleiben genau so, wie sie waren; wo früher das Ende der Welt lag, geht es mit neuen Ländern weiter. */
 let OLD_N=0, OLD_END=0;
+/* Port für state/realm.js: die Welten (RLM) und die Farben der Welt (setPal). */
+const RM={
+  RLM:RLM,
+  setPal
+};
 function addTree(x,k,r){ return addTreeWith(WD,x,k,r); }
 function addCre(b,f,r,x,y){ return addCreWith(WD,b,f,r,x,y); }
 /* Bauwerke, goldene Eier und Besonderes für jede Land-Art */
