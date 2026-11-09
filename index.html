@@ -16498,6 +16498,28 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     document.addEventListener("gesturestart", function(e) {
       e.preventDefault();
     });
+    const backArm = function(force) {
+      try {
+        if (force || !(history.state && history.state.lavaland)) history.pushState({ lavaland: 1 }, "");
+      } catch (_) {
+      }
+    };
+    backArm(false);
+    document.addEventListener("pointerdown", function arm() {
+      document.removeEventListener("pointerdown", arm, true);
+      backArm(true);
+    }, true);
+    window.addEventListener("popstate", function() {
+      backArm(true);
+      if (!KB.$("quiz").hidden) {
+        KB.closeQuiz();
+        return;
+      }
+      document.querySelectorAll(".ov").forEach(function(o) {
+        o.hidden = true;
+      });
+      KB.pzClose();
+    });
   }
 
   // src/systems/tracks.js
