@@ -57,6 +57,7 @@ import { ORBS, ground, inMoon, solidW, burns, colTop, floorAt, surfaceY, putUp, 
 import { pmaxWith, spawnWith, smokeWith, dustWith, confettiWith, explodeWith } from './systems/particles.js';
 import { boxCountWith, teleportWith, placeFindWith, hideFindsWith, renderAlbumWith, orbsOfWith, portalTickWith, dropBombWith, blastWith, sonarTargetWith, discoverWith, discoWith, pupsWith, keyTapWith, rainCloudWith, shakeTreeWith, tapWorldWith, nearScopeWith, scopeOpenWith, scopeRenderWith, scopePickWith, sonarWith } from './systems/play.js';
 import { fRowWith, fogKeyWith, fogArrWith, fogSetWith, fogHasWith, fogSeedWith, fogSaveWith, gearLvWith, gearSetWith, stationYWith, zoneAtWith, shellOkWith, doorColsWith, doorShutWith, nearDoorWith, doorPzWith, doorAskWith, doorOpenWith, deepHomeWith, deepRestoreWith, canBuildWith, labBadgeWith, nextMachWith, nearMachWith, nearCabWith, atLabWith, deepIconWith, deepActWith, deepTapWith, matWhereWith, guidePointWith, mkKeyWith, mkSaveWith, darkAtWith } from './systems/zones.js';
+import { setToolWith, syncUIWith, pulseWith, flashWith, bannerWith, postMaxWith, uiOpenWith, syncSoundWith, puffWith, shoutWith, flXWith, sayWith, laterWith, tellWith, rewardWith, syncOwnWith, qEmoWith, actIconWith } from './ui/hud.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -515,25 +516,45 @@ function explode(x,y){ return explodeWith(PA,x,y); }
 function grav(){ return gravWith(PL); }
 let ghost=null;
 let time=0, volT=3, stroke=null, strokeId=null, strokeExt=null;
+/* Oberfläche (ui/hud.js) */
+const HU={
+  get stroke(){ return stroke; },
+  set stroke(v){ stroke=v; },
+  get strokeId(){ return strokeId; },
+  set strokeId(v){ strokeId=v; },
+  get MODES(){ return MODES; },
+  get $(){ return $; },
+  get TOOLN(){ return TOOLN; },
+  IC,
+  QI,
+  get PAINT(){ return PAINT; },
+  get bannerT(){ return bannerT; },
+  set bannerT(v){ bannerT=v; },
+  get SCH(){ return SCH; },
+  get OVS(){ return OVS; },
+  get FLX(){ return FLX; },
+  get sayT(){ return sayT; },
+  set sayT(v){ sayT=v; },
+  get stq(){ return stq; },
+  get DIGT(){ return DIGT; },
+  get heliLoad(){ return heliLoad; },
+  boatWet,
+  confetti,
+  deepIcon,
+  nearLift,
+  nearScope,
+  spawn,
+  speak,
+  svg24,
+  zipNear
+};
 
 function park(){ return parkWith(PL); }
 function setMode(m){ return setModeWith(PL,m); }
-function setTool(t,force){ ST.tool=(ST.tool===t&&!force)?null:t; stroke=null; strokeId=null; syncUI(); }
-function syncUI(){
-  for(const m of MODES) $('mode-'+m).setAttribute('aria-pressed',String(P.mode===m));
-  for(const t of TOOLN) $('tool-'+t).setAttribute('aria-pressed',String(ST.tool===t));
-  $('btn-veh').firstChild.innerHTML=IC[P.mode];
-  $('btn-tool').firstChild.innerHTML=ST.tool?IC[ST.tool]:QI.hand;
-  $('btn-tool').setAttribute('aria-pressed',String(!!ST.tool));
-  $('tool-magic').setAttribute('aria-pressed',String(!!PAINT[ST.tool]));
-}
-function pulse(id){
-  if(id.indexOf('mode-')===0) pulse('btn-veh'); else if(id.indexOf('tool-')===0){ pulse('btn-tool'); if(PAINT[id.slice(5)]) pulse('tool-magic'); }
-  const el=$(id); if(!el||el.classList.contains('pulse')) return;
-  el.classList.add('pulse');
-  setTimeout(function(){el.classList.remove('pulse');},2700);
-}
-function flash(id,cls){ const el=$(id); el.classList.add(cls); setTimeout(function(){el.classList.remove(cls);},1300); }
+function setTool(t,force){ return setToolWith(HU,t,force); }
+function syncUI(){ return syncUIWith(HU); }
+function pulse(id){ return pulseWith(HU,id); }
+function flash(id,cls){ return flashWith(HU,id,cls); }
 function rot(lx,ly){ return rotWith(PL,lx,ly); }
 function bucket(){ return bucketWith(PL); }
 function scoop(){ return scoopWith(PL); }
@@ -1072,7 +1093,7 @@ const QDEF={
   orb:{ic:function(q){return qEmo(QSKY[q.k][1]);},say:function(q){return QSKY[q.k][2];},hint:function(){return 'mode-rocket';}},
   make:{ic:function(q){return qEmo(GEAR[q.g].e);},say:function(q){return 'Du hast alles für '+GEAR[q.g].art+'. Geh zur Werkstatt und lass Professor Zahnrad bauen.';},hint:function(){return 'btn-lab';}},
 };
-function qEmo(e){ return '<text x="12" y="19" font-size="17" text-anchor="middle">'+e+'</text>'; }
+function qEmo(e){ return qEmoWith(HU,e); }
 /* Die Kette: Zonen mit der nötigen Bohrerstufe, Ziele im Weltraum mit der nötigen Raketenstufe, ganz unten der Erdkern mit Schutz Stufe 3.
    Besuchte Weltraumziele merkt sich hero.mk.o als Bitmaske (neu, fehlt in alten Spielständen; dort zählen ST.orbGot, hero.fin und hero.rk). */
 const QDEEP=[[1,0],[2,0],[3,1],[4,1],[5,2],[6,3]];
@@ -1081,21 +1102,17 @@ const QSKY={moon:[1,'🌙','Lande mit der Rakete auf dem Mond.',0],stn:[2,'🛰�
   gate:[16,'🌀','Flieg mit der Rakete bis zum Sternentor am Ende des Weltraums.',3]};
 function skyMark(k){ return skyMarkWith(QP,k); }
 let quest=null, qShown='', qDoneT=0, bannerT=0;
-function banner(html,ms){
-  $('banner-in').innerHTML=html; $('banner').classList.add('show');
-  clearTimeout(bannerT); bannerT=setTimeout(function(){ $('banner').classList.remove('show'); },ms||1800);
-}
+function banner(html,ms){ return bannerWith(HU,html,ms); }
 function qEvent(type,n){ return qEventWith(QP,type,n); }
 function newQuest(){ return newQuestWith(QP); }
 function showQuest(talk){ return showQuestWith(QP,talk); }
 function questPoint(){ return questPointWith(QP); }
 function questTick(dt){ return questTickWith(QP,dt); }
-/* Höchste Zahl beim Sternezählen im Fernrohr: nach Schulstand bis 10 oder 20. */
-function postMax(){ return SCH.on&&SCH.zr<=1?10:20; }
+function postMax(){ return postMaxWith(HU); }
 
 const OVS=Array.prototype.slice.call(document.querySelectorAll('.ov,#quiz,#pz'));
-function uiOpen(){ for(const o of OVS) if(!o.hidden) return true; return false; }
-function syncSound(){ $('sound').innerHTML=svg24(AU.muted?QI.mute:AU.fxOff?QI.talk:QI.sound); $('sound').setAttribute('aria-pressed',String(!AU.muted)); $('sound').setAttribute('aria-label',AU.muted?'Ton ist aus':AU.fxOff?'Nur Sprache':'Ton ist an'); }
+function uiOpen(){ return uiOpenWith(HU); }
+function syncSound(){ return syncSoundWith(HU); }
 
 /* ---------- Winter: Ski, Lift, Schneebälle, Schneemänner, Pinguine, Feuerwerk, Drachenflug und die Geschichte vom Hick im Berg ---------- */
 const FLX=5892, HAREX=6885, YETX=7052, IGX=7128, LIFT0=5790, LIFT1=6935, PENX=5952, RIMY=Math.min(ground(VOLC-92),ground(VOLC+92));
@@ -1111,29 +1128,15 @@ const LIFT=(function(){
   const T=makeTrack(raw,false); T.lift=true; return T;
 })();
 
-function puff(x,y,n){ for(let i=0;i<n;i++) spawn(10,x+(Math.random()-.5)*16,y+(Math.random()-.5)*8,(Math.random()-.5)*170,-40-Math.random()*120,.45+Math.random()*.35,2.5+Math.random()*3); }
-function shout(x,y,s,col){ spawn(9,x,y,0,-48,1.3,19,s,col||'#fff8e6'); }
+function puff(x,y,n){ return puffWith(HU,x,y,n); }
+function shout(x,y,s,col){ return shoutWith(HU,x,y,s,col); }
 function emo(e,x,y,sz){ return emoWith(SC,ctx,e,x,y,sz); }
-function flX(){ return FLX; }
+function flX(){ return flXWith(HU); }
 
-/* Erzählen: Der Text wird vorgelesen und steht zum Mitlesen unten im Bild. Solange erzählt wird, schweigen die anderen Ansagen. */
-function say(who,text){
-  const ms=900+text.length*72;
-  $('say-in').innerHTML=(who?'<b>'+who+':</b> ':'')+text; $('say').classList.add('show');
-  clearTimeout(sayT); sayT=setTimeout(function(){ $('say').classList.remove('show'); },ms+500);
-  ST.talkLock=0; speak(text); ST.talkLock=performance.now()+ms;
-  return ms/1000;
-}
-function later(sec,fn){ stq.push({t:sec,fn:fn}); }
-function tell(lines,done){
-  let i=0;
-  const next=function(){ if(i>=lines.length){ if(done) done(); return; } const l=lines[i++]; later(say(l[0],l[1])+.2,next); };
-  next();
-}
-function reward(){
-  ST.lootDirty=true; confetti(P.x,P.y); jingle();
-  banner('⭐',2300);
-}
+function say(who,text){ return sayWith(HU,who,text); }
+function later(sec,fn){ return laterWith(HU,sec,fn); }
+function tell(lines,done){ return tellWith(HU,lines,done); }
+function reward(){ return rewardWith(HU); }
 
 /* ---------- Lift ---------- */
 function nearLift(){ return nearLiftWith(PL); }
@@ -1166,10 +1169,7 @@ function pinFly(p,vx){ return pinFlyWith(WP,p,vx); }
 function yetiHit(){ return yetiHitWith(WP); }
 
 function stEnter(){ return stEnterWith(WP); }
-function syncOwn(){
-  $('mode-dragon').classList.toggle('gone',!hero.own.dragon);
-  $('tool-fw').classList.toggle('gone',!hero.own.fw);
-}
+function syncOwn(){ return syncOwnWith(HU); }
 /* ---------- Winter malen ---------- */
 function drawSnowman(x,y,s,nose,wave,hat,sad){ return drawSnowmanWith(WM,ctx,x,y,s,nose,wave,hat,sad); }
 function drawDragon(x,y,s,face,warm,flap,rider){ return drawDragonWith(WM,ctx,x,y,s,face,warm,flap,rider); }
@@ -2337,23 +2337,7 @@ const DR={
 };
 function draw(){ return drawWith(DR,ctx); }
 
-function actIcon(){
-  if(P.zip) return 'jump';
-  if(P.mode==='walk'){ if(zipNear()) return 'hook'; if(nearScope()) return 'scope'; const da=deepIcon(); if(da) return da; }
-  if(P.mode==='walk') return nearLift()?'lift':ST.tool==='bow'?'bow':DIGT[ST.tool]?'dig':(P.chute?'down':(P.on||P.air<.15?'jump':'chute'));
-  if(P.mode==='ski') return nearLift()?'lift':(P.on||P.ball>0?'jump':'spin');
-  if(P.mode==='dragon') return 'flame';
-  if(P.mode==='sub') return 'sonar';
-  if(P.mode==='boat') return boatWet()?'horn':'exit';
-  if(P.mode==='heli') return P.on&&!heliLoad?'exit':'hook';
-  if(P.mode==='car') return 'turbo';
-  if(P.mode==='bagger') return (P.arm<-.15&&P.load>0)?'down':'dig';
-  if(P.mode==='loader') return (P.lift>18&&P.load>0)?'down':'dig';
-  if(P.mode==='dumper') return 'down';
-  if(P.mode==='tbm') return 'dig';
-  if(P.mode==='plane'||P.mode==='rocket'||P.mode==='balloon') return P.on?'exit':'chute';
-  return 'exit';
-}
+function actIcon(){ return actIconWith(HU); }
 
 function resetWorld(seed){ return resetWorldWith(APP,seed); }
 

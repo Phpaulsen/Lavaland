@@ -331,6 +331,8 @@ Danach folgt der Schluss als 29g. Ports zwischen Modulen aufzulösen ist dort Um
 
 **Umgesetzt PR 29e2:** Unter Tage (Erkundungsnebel `fRow` … `fogSave`, `gearLv`, `gearSet`, `stationY`, `zoneAt`, `shellOk`, Wissenstüren `doorCols` … `doorOpen`, `deepHome`, `deepRestore`, `canBuild`, `labBadge`, Maschinen und Werkstatt-Nähe `nextMach` … `deepTap`, `matWhere`, `guidePoint`, `mkKey`, `mkSave`, `darkAt`) zieht nach `systems/zones.js` (Port `ZO`). `pzOpen` steht als Getter im Port, weil Rauch- und Knopftest es in `legacy.js` ersetzen; `canBuild` läuft als Rückruf über den Port. In `legacy.js` bleiben `marks` (`marksWith` ist in `systems/deep.js` schon die Systemliste) und `skyLim` (die Weltentstehung ruft es beim Start vor dem Port, das gäbe einen TDZ-Fehler); beide ziehen in 29g. `K_FOG` und `K_MARKS` über den Port (Schichtregel). Einzeiler für alle 34. Absicherung: Golden Master, Rauchtest (Türen, Nebel, Marken), Knopftest, Bildvergleich.
 
+**Umgesetzt PR 29f:** Die Oberfläche (`setTool`, `syncUI`, `pulse`, `flash`, `banner`, `postMax`, `uiOpen`, `syncSound`, `puff`, `shout`, `flX`, `say`, `later`, `tell`, `reward`, `syncOwn`, `qEmo`, `actIcon`) zieht nach `ui/hud.js` (Port `HU`). Zeitgeber (`bannerT`, `sayT`) und Strich-Zustand (`stroke`, `strokeId`) bleiben in `legacy.js` mit Settern. Der Port steht vor dem ersten Aufrufer. `keyShort` und `canScroll` bleiben bei den Handlern. Einzeiler für alle 18. Der Rest (Tageszähler und Lagerfeuer, Fehlerprotokoll, Spielstand umziehen, Schienen, `star4`, `pointTo`, `resize`, `skyLim`, `marks`, die Handler) folgt als 29f2 und im Schluss.
+
 ### PR 29g: Schluss
 
 - `legacy.js` ist leer und gelöscht. `G` ist leer und gelöscht. Testzugang ist die benannte API `window.__lv` im Testbuild, kein `eval`.
