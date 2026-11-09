@@ -19,6 +19,9 @@
 //   changed  [...]                            Name bleibt, Inhalt ändert sich bewusst (z. B. Einzeiler, der an core/ weitergibt)
 //   rewritten [neuerName, ...]                Inhalt bewusst umgebaut, ohne Move-Nachweis (PR 23c, draw nach Ebenen zerlegt; Absicherung
 //                                             nur über Bildvergleich). Gilt für einen umbenannten Namen wie für einen gleichnamigen.
+//   gathered { neuerName: [lokal, ...] }      Anweisungen auf oberster Ebene (Handler) sind unverändert in den Körper der neuen Funktion
+//                                             neuerName gezogen (mit params/world wie oben); die genannten Deklarationen sind dort lokal (PR 29g2b).
+//                                             Jede Anweisung des Körpers muss einer alten Anweisung bzw. Deklaration entsprechen.
 //   added, removed [...]                      neue bzw. gelöschte Namen
 //   stmtsChanged N                            so viele Anweisungen ohne Namen ändern sich bewusst (nur verhaltensändernde PRs)
 //   stmtsAdded N                              so viele Anweisungen ohne Namen kommen bewusst dazu (ebenso)
@@ -100,7 +103,7 @@ export function transform(node, moves, own, file) {
   // params: "rand" (kurz für ["rand=Math.random"]) oder eine Liste. "rand=Math.random": Math.random im alten Körper wird zu rand.
   // "FS": neuer Parameter gleichen Namens, der den Top-Level-Namen verdeckt; der Körper bleibt dafür unverändert.
   const plist = n => { const v = (moves.params || {})[n]; if (!v) return []; return (typeof v === 'string' ? [v + '=Math.random'] : v).map(e => { const [name, src] = e.split('='); return { name, random: src === 'Math.random' }; }); };
-  const mine = own ? plist(own) : [], rnd = (mine.find(e => e.random) || {}).name, moved = !!own && own in (moves.renames || {});
+  const mine = own ? plist(own) : [], rnd = (mine.find(e => e.random) || {}).name, moved = !!own && (own in (moves.renames || {}) || own in (moves.gathered || {}));
   // world darf eine Liste sein (mehrere Ports in einem Stapel, z. B. LP in PR 13 und SV in PR 14e); es gilt der Port, den die Funktion als Parameter bekommt.
   const wo = moved ? [].concat(moves.world || []).find(w => mine.some(e => e.name === w.param)) : null, wn = wo ? new Set(wo.names) : null, wf = wn ? new Set(wo.fromNames || []) : null;
   const mem = (o, p) => ({ type: 'MemberExpression', object: id(o), property: id(p), computed: false, optional: false });
@@ -212,16 +215,42 @@ export function compare(base, head, moves) {
     if (norm(transform(bn, moves, n, H.decl.get(n).file)) !== norm(H.decl.get(n).node)) err.push(`${o} → ${n} (${H.decl.get(n).file}): AST weicht über die erlaubten Umschreibungen hinaus ab`);
     else rep.moved.push(`${o} → ${H.decl.get(n).file}:${n}`);
   }
+  // gathered: Körper der neuen Funktion gegen alte Anweisungen und Deklarationen abgleichen.
+  const handled = new Set(), used = new Set();
+  for (const [g, locals] of Object.entries(moves.gathered || {})) {
+    const hg = H.decl.get(g);
+    if (!hg || hg.node.type !== 'FunctionDeclaration') { err.push(`gathered ${g}: keine Funktion im neuen Stand`); continue; }
+    const loc = new Set(locals);
+    // Wie topOf in legacy.js: (function(){…})(); ohne Argumente zählt mit seinem Körper als oberste Ebene.
+    const iifeBody = st => st.type === 'ExpressionStatement' && st.expression.type === 'CallExpression' && st.expression.callee.type === 'FunctionExpression' && !st.expression.arguments.length ? st.expression.callee.body.body : null;
+    const flat = list => list.flatMap(st => iifeBody(st) ? flat(iifeBody(st)) : [st]);
+    for (const st of flat(hg.node.body.body)) {
+      if (st.type === 'VariableDeclaration' && st.declarations.every(d => d.id.type === 'Identifier')) {
+        for (const d of st.declarations) {
+          const nm = d.id.name, b = B.decl.get(nm);
+          if (!loc.has(nm) || !b || H.decl.has(nm)) { err.push(`gathered ${g}: lokale Deklaration ${nm} steht nicht in der Liste oder gab es nicht auf oberster Ebene`); continue; }
+          if (norm(transform(b.node, moves, g, hg.file)) !== norm({ type: 'Var', kind: st.kind, init: d.init })) err.push(`gathered ${g}: ${nm} weicht ab`);
+          else { handled.add(nm); rep.moved.push(`${nm}: ${b.file} → ${hg.file}:${g} (lokal)`); }
+        }
+        continue;
+      }
+      const want = norm(st);
+      const i = B.stmts.findIndex((x, k) => !used.has(k) && norm(transform(x.node, moves, g, hg.file)) === want);
+      if (i < 0) err.push(`gathered ${g}: Anweisung ohne Gegenstück im Basisstand: ${want.slice(0, 160)}`); else used.add(i);
+    }
+    for (const nm of loc) if (!handled.has(nm)) err.push(`gathered ${g}: ${nm} nicht im Körper gefunden`);
+    rep.changed.push(`${used.size} Anweisung(en) auf oberster Ebene in ${g} (${hg.file}) gezogen`);
+  }
   for (const [n, b] of B.decl) {
     const h = H.decl.get(n);
-    if (!h) { if (srcOf.has(n)) continue; if (removed.has(n)) rep.removed.push(n); else err.push(`${n} (${b.file}) fehlt im neuen Stand und steht nicht unter removed`); continue; }
+    if (!h) { if (srcOf.has(n) || handled.has(n)) continue; if (removed.has(n)) rep.removed.push(n); else err.push(`${n} (${b.file}) fehlt im neuen Stand und steht nicht unter removed`); continue; }
     const same = norm(transform(b.node, moves, n, h.file)) === norm(h.node);
     if (same) { if (b.file === h.file) rep.same++; else rep.moved.push(`${n}: ${b.file} → ${h.file}`); if (changed.has(n)) err.push(`${n} steht unter changed, ist aber unverändert`); }
     else if (changed.has(n)) rep.changed.push(`${n} (${h.file})`);
     else err.push(`${n} (${b.file} → ${h.file}): AST verschieden, steht nicht unter changed`);
   }
   for (const [n, h] of H.decl) if (!B.decl.has(n) && !(n in renames)) { if (added.has(n)) rep.added.push(`${n} (${h.file})`); else err.push(`${n} (${h.file}) ist neu und steht nicht unter added`); }
-  const ms = s => s.map(x => norm(transform(x.node, moves))).sort(), hs = H.stmts.map(x => norm(x.node)).sort(), bs = ms(B.stmts);
+  const ms = s => s.map(x => norm(transform(x.node, moves))).sort(), hs = H.stmts.map(x => norm(x.node)).sort(), bs = ms(B.stmts.filter((x, k) => !used.has(k)));
   if (bs.join('\n') !== hs.join('\n')) {
     // stmtsChanged: so viele Anweisungen ohne Namen (Handler, try-Blöcke) dürfen sich ändern, nur in verhaltensändernden PRs (Streich-PRs).
     const left = [...hs], gone = bs.filter(x => { const i = left.indexOf(x); if (i < 0) return true; left.splice(i, 1); return false; });
@@ -305,6 +334,10 @@ function selftest() {
       { facade: [{ name: 'AU', names: ['m'], own: 'audio/s.js' }], added: ['AU'] }, 0],
     ['Handler bewusst geändert', { 'legacy.js': L('let a=1;\nf(a);') }, { 'legacy.js': L('let a=1;\nf(a+1);') }, { stmtsChanged: 1 }, 0],
     ['Handler neu', { 'legacy.js': L('let a=1;') }, { 'legacy.js': L('let a=1;\nf(a);') }, { stmtsAdded: 1 }, 0],
+    ['Handler in Funktion gezogen', { 'legacy.js': L('let a=1;\nconst c=a+1;\nf(a,c);\ng();') }, { 'legacy.js': L('let a=1;\nfunction b(){ return bW(P); }\nconst P={ get a(){ return a; } };\nb();\ng();'), 'ui/b.js': 'export function bW(P){\nconst c=P.a+1;\nf(P.a,c);\n}' },
+      { params: { bW: ['P'] }, world: { param: 'P', names: ['a'] }, gathered: { bW: ['c'] }, added: ['b', 'P', 'bW'], stmtsAdded: 1 }, 0],
+    ['Handler in Funktion gezogen, aber geändert', { 'legacy.js': L('let a=1;\nf(a);') }, { 'legacy.js': L('let a=1;\nfunction b(){ return bW(P); }\nconst P={ get a(){ return a; } };\nb();'), 'ui/b.js': 'export function bW(P){\nf(P.a+1);\n}' },
+      { params: { bW: ['P'] }, world: { param: 'P', names: ['a'] }, gathered: { bW: [] }, added: ['b', 'P', 'bW'], stmtsAdded: 1 }, 2],
     ['Handler weg', { 'legacy.js': L('let a=1;\nf(a);') }, { 'legacy.js': L('let a=1;') }, { stmtsRemoved: 1 }, 0],
     ['Handler weg ohne Nachweis', { 'legacy.js': L('let a=1;\nf(a);') }, { 'legacy.js': L('let a=1;') }, {}, 1],
     ['Handler geändert, nicht angegeben', { 'legacy.js': L('let a=1;\nf(a);') }, { 'legacy.js': L('let a=1;\nf(a+1);') }, {}, 1],
