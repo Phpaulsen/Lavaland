@@ -244,6 +244,8 @@ Je PR: `tick` und `draw(ctx, layer)` ins System, Zeichenaufruf in `draw()` an de
 
 **Umgesetzt PR 19b (Abweichung: noch einmal geteilt):** Fundsachen, Sprungpilze, goldene Eier und Schätze (`grab`, `pickTick`, `padsTick`, `grant`, `eggFound`, `lootFound`, `secretsTick`) ziehen nach `systems/finds.js`, Port `FP`. `pickTick`, `padsTick` und `secretsTick` bleiben als Einzeiler, weil `worldTick` sie aufruft. Die geworfenen Bananen (`throws`) importiert `finds.js` aus `creatures.js`. Diese Funktionen zeichnen nichts, darum gibt es statt einer Bildszene einen neuen Rauchtest (Chili, Sprungpilz, goldenes Ei, Banane), der auch gegen main grün ist. 19c: `worldTick`, UFO und U-Boot. Dort schreibt `worldTick` viele Zustände von `legacy.js` (`nightA`, `discoT`, `idleT`, `ufo` …); vorher wird geklärt, welche davon mit umziehen.
 
+**Umgesetzt PR 19c:** `worldTick` und `ufoTick` ziehen nach `systems/worldtick.js` mit Port `WT`. `worldWith(WT)` trägt `worldTick` an der alten Stelle in `SIDE` ein. Die Zustände (`nightA`, `discoT`, `beatT`, `idleT`, `zT`, `skyBonk`, `skySay`, `bolt`, `slipWas`, `ufo`, `ufoNext`) bleiben in `legacy.js`, weil Zeichnen, Antippen und `disco()` sie auch schreiben; `worldTick` schreibt sie über Setter im Port. Das U-Boot (`updSub`, `drawSub`, `sonar`) gehört zu den Fahrzeugen und zieht mit ihnen um, nicht hier. Bildvergleich: `quest=null` beim Aufräumen, weil der Zeigerpfeil eines unterwegs neu gewählten Auftrags die Harfen-Szene gelegentlich unfest machte (auch auf main).
+
 ### PR 22–23: Rendering
 
 - **22:** Paletten, Hintergrund, Stimmung, Flora, Deko (`S35`, `S36`, `S44`) → `render/`.

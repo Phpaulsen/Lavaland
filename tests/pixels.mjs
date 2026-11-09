@@ -14,10 +14,12 @@ if (!OLD || !fs.existsSync(OLD)) { console.log('skip pixels: OLD nicht gesetzt')
 const SEEDED = `(function(){ let s=12345; Math.random=function(){ s=(s*16807)%2147483647; return (s-1)/2147483646; }; })();`;
 
 // Das Spiel anhalten: Kein neues Bild, keine Ticks. Danach wird alles Bewegliche, das nicht zur Szene gehört, geleert (auch die Tiere: sie laufen zufallsabhängig).
+// Der Auftrag auch: Ob unterwegs ein Land entdeckt und ein neuer Auftrag gewählt wurde, hängt davon ab, wie viele Bilder in der Wartezeit liefen;
+// sein Zeigerpfeil am Bildrand machte die Szene sonst gelegentlich unfest (Harfe, gesehen am 9.11.).
 const FREEZE = `(function(){
   window.__raf=window.requestAnimationFrame; window.requestAnimationFrame=function(){ return 0; };
 })()`;
-const CLEAN = `parts.length=0; MONS.length=0; ARROWS.length=0; ST.CRE.length=0; shake=0; ufo=null; bolt=null; METS.length=0; MROCKS.length=0; FLIES.length=0; JAR.length=0; for(const k in FX) FX[k]=0`;
+const CLEAN = `quest=null; parts.length=0; MONS.length=0; ARROWS.length=0; ST.CRE.length=0; shake=0; ufo=null; bolt=null; METS.length=0; MROCKS.length=0; FLIES.length=0; JAR.length=0; for(const k in FX) FX[k]=0`;
 const HASH = `(function(){
   const d=ctx.getImageData(0,0,cv.width,cv.height).data; let h=2166136261;
   for(let i=0;i<d.length;i+=4){ h^=d[i]|(d[i+1]<<8)|(d[i+2]<<16); h=Math.imul(h,16777619); }

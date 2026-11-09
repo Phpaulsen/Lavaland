@@ -31,6 +31,7 @@ import { sightsWith, METS, MROCKS, FLIES, JAR } from './systems/sights.js';
 import { mobsWith, shootWith, monStrikeWith, ARROWS, MONS } from './systems/mobs.js';
 import { creHitWith, creTickWith, drawCresWith, throws } from './systems/creatures.js';
 import { pickTickWith, padsTickWith, secretsTickWith } from './systems/finds.js';
+import { worldWith } from './systems/worldtick.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -1264,6 +1265,58 @@ const FP={
   solidW,
   spawn,
   surfaceY
+};
+/* Port für systems/worldtick.js: Welt, Tag und Nacht, Disco, Wolken, Blitz, UFO und die Ticks der Tiere und Fundsachen. Zustände, die worldTick schreibt, haben einen Setter. */
+const WT={
+  get genF(){ return genF; },
+  get FX(){ return FX; },
+  get nightA(){ return nightA; },
+  set nightA(v){ nightA=v; },
+  get nightOn(){ return nightOn; },
+  get realm(){ return realm; },
+  get ORBS(){ return ORBS; },
+  get ORBN(){ return ORBN; },
+  get clouds(){ return clouds; },
+  get bolt(){ return bolt; },
+  set bolt(v){ bolt=v; },
+  get time(){ return time; },
+  get skyBonk(){ return skyBonk; },
+  set skyBonk(v){ skyBonk=v; },
+  get skySay(){ return skySay; },
+  set skySay(v){ skySay=v; },
+  get idleT(){ return idleT; },
+  set idleT(v){ idleT=v; },
+  get zT(){ return zT; },
+  set zT(v){ zT=v; },
+  get discoT(){ return discoT; },
+  set discoT(v){ discoT=v; },
+  get beatT(){ return beatT; },
+  set beatT(v){ beatT=v; },
+  get CONF(){ return CONF; },
+  get slipWas(){ return slipWas; },
+  set slipWas(v){ slipWas=v; },
+  get ufo(){ return ufo; },
+  set ufo(v){ ufo=v; },
+  get ufoNext(){ return ufoNext; },
+  set ufoNext(v){ ufoNext=v; },
+  banner,
+  confetti,
+  creTick,
+  disco,
+  discover,
+  dust,
+  grow,
+  padsTick,
+  pickTick,
+  portalTick,
+  pulse,
+  saveHero,
+  say,
+  secretsTick,
+  shout,
+  skyLim,
+  smoke,
+  spawn
 };
 /* Drei Stufen: alles an, nur Sprache (ohne Piepen und Klänge), alles aus. Sprache braucht das Kind, Effekte nerven manchmal die Großen. */
 try{ const mv=localStorage.getItem(K_MUTE); AU.muted=mv==='1'; AU.fxOff=mv==='s'; }catch(_){}
@@ -2626,71 +2679,6 @@ function drawBug(x,y,ang,face,occ,run){
   ctx.restore();
 }
 
-/* ---------- Was jede Sekunde in der großen Welt passiert ---------- */
-function worldTick(dt){
-  const far=Math.max(P.x,cam.x);
-  if(far+2600>genF*CELL) grow(Math.min(far+3200,(genF+12)*CELL));
-  for(const k in FX) if(FX[k]>0) FX[k]-=dt;
-  nightA+=((nightOn?1:0)-nightA)*Math.min(1,dt*1.5);
-  const bi=bix[clamp(Math.floor(P.x/CELL),0,GX-1)];
-  if(bi&&!ST.seen[bi-1]&&P.x>ST.BIO[bi-1].x0+90) discover(ST.BIO[bi-1]);
-  portalTick(dt);
-  if(!hero.ext&&!realm&&P.x>7340){ hero.ext=true; saveHero(); say('','Hinter dem Schneeberg geht die Welt weiter. Niemand weiß, wie weit!'); }
-  creTick(dt); pickTick(dt); padsTick(); secretsTick();
-  /* Landung auf einem fremden Planeten */
-  if(P.on&&P.y<-3000) for(const o of ORBS){
-    if(!o.i||ST.orbGot[o.i]||Math.hypot(P.x-o.x,P.y-o.y)>o.r+30) continue;
-    ST.orbGot[o.i]=1; ST.lootDirty=true; confetti(P.x,P.y); jingle(); banner('⭐',2400); say('',ORBN[o.k]);
-    if(o.k===2) disco(14);
-  }
-  /* Wolken regnen, wenn man sie antippt. */
-  for(const c of clouds){
-    if(!(c.rain>0)) continue;
-    c.rain-=dt;
-    const cy=Math.floor((c.y+16*c.s-TOP)/CELL);
-    for(let k=0;k<2;k++){ const x=c.x+(Math.random()-.5)*60*c.s; if(cy>1) put(Math.floor(x/CELL),cy,WATER); else spawn(6,x,c.y+16*c.s,0,200,.7,2.5,'#6ab8f0'); }
-  }
-  if(bolt){ bolt.t-=dt; if(bolt.t<=0) bolt=null; }
-  ufoTick(dt);
-  if(P.y<=skyLim()+2&&time>skyBonk){ skyBonk=time+9; shout(P.x,P.y+40,'STOPP!'); sfx('splat'); if(time>skySay){ skySay=time+90; say('',hero.rk<3?'Höher schafft es die Rakete noch nicht. Professor Zahnrad kann sie in der Werkstatt stärker bauen.':'Hier ist der Weltraum wirklich zu Ende.'); if(hero.rk<3) pulse('btn-lab'); } }
-  /* Wer lange stillsteht, schläft ein. */
-  if(P.mode==='walk'&&P.on&&!keys.l&&!keys.r&&!keys.u&&!keys.a&&Math.abs(P.vx)<4){
-    idleT+=dt;
-    if(idleT>25){ zT-=dt; if(zT<=0){ zT=2.2; shout(P.x+8,P.y-48,idleT<28?'GÄHN!':'Zzz'); } }
-  }else idleT=0;
-  if(discoT>0){
-    discoT-=dt; beatT-=dt;
-    if(beatT<=0){ beatT=.24; const n=[262,330,392,523,392,330][Math.floor(discoT/.24)%6]; blip(n,n,.12,'square',.05); }
-  }
-  /* Spuren der Fundsachen */
-  const x=P.x, y=P.y;
-  if(FX.hot>0&&Math.random()<dt*30) spawn(1,x-P.face*8,y-10,-P.face*60,-20,.35,5);
-  if((FX.sugar>0||FX.rainbow>0||(hero.trail&&Math.abs(P.vx)>120))&&Math.random()<dt*40) spawn(12,x-P.face*6,y-8-Math.random()*20,-P.vx*.1,-10,.7,3,CONF[Math.floor(time*12)%6]);
-  if(FX.star>0&&Math.random()<dt*30) spawn(5,x+(Math.random()-.5)*24,y-Math.random()*40,0,-30,.5,2);
-  if(FX.stink>0&&Math.random()<dt*14) spawn(12,x+(Math.random()-.5)*20,y-20,(Math.random()-.5)*30,-30,1,6,'#9bd84a');
-  if(slipWas&&FX.slip<=0){ shout(x,y-52,'PLUMPS!'); dust(x,y); }
-  slipWas=FX.slip>0;
-}
-
-/* Nachts kommt manchmal ein UFO. Wer unter dem Lichtstrahl stehen bleibt, wird auf einen fremden Planeten gebracht. */
-function ufoTick(dt){
-  if(realm){ ufo=null; return; }
-  if(!ufo){
-    if(nightA>.8&&P.mode==='walk'&&P.on&&P.y>-800&&P.y<300&&time>ufoNext) ufo={x:P.x-520,y:P.y-420,t:0,hold:0};
-    return;
-  }
-  ufo.t+=dt;
-  if(ufo.t>10||nightA<.5){ ufo.y-=260*dt; ufo.x+=200*dt; if(ufo.t>12||nightA<.5){ ufo=null; ufoNext=time+40+Math.random()*30; } return; }
-  ufo.x+=(P.x-ufo.x)*Math.min(1,dt*1.6); ufo.y+=(P.y-200-ufo.y)*Math.min(1,dt*1.6);
-  ufo.beam=Math.abs(P.x-ufo.x)<34;
-  ufo.hold=ufo.beam&&P.mode==='walk'&&Math.abs(P.vx)<30?ufo.hold+dt:0;
-  if(ufo.hold>1.6){
-    const o=ORBS[ORBS.length>1?1:0];
-    ufo=null; ufoNext=time+70; grow(o.x+3200);
-    P.x=o.x; P.y=o.y-o.r-6; P.vx=0; P.vy=0; P.on=false; cam.x=P.x; cam.y=P.y-80; sfx('whoosh'); smoke(P.x,P.y-20,8);
-    say('','Hui! Ein UFO hat dich mitgenommen und auf einem fremden Planeten abgesetzt.');
-  }
-}
 /* ---------- Stimmung: Jedes Land färbt Himmel, Hügel und Wasser. Nachts wird es dunkel. ---------- */
 function mood(){
   const ia=bix[clamp(Math.floor((cam.x-260)/CELL),0,GX-1)], ib=bix[clamp(Math.floor((cam.x+260)/CELL),0,GX-1)];
@@ -5552,7 +5540,7 @@ function frame(t){
 /* Absturzschutz für Nebensysteme: Wirft eins dreimal einen Fehler, wird es für diese Sitzung abgeschaltet und steht im Fehlerprotokoll. Der Rest läuft weiter. */
 for(const s of mobsWith(MP)) register(s.name,s.tick,s.draw);
 for(const s of sightsWith(SY)) register(s.name,s.tick,s.draw);
-register('worldTick',worldTick);
+for(const s of worldWith(WT)) register(s.name,s.tick,s.draw);
 register('deepTick',deepTick);
 register('winterTick',winterTick);
 register('findsTick',findsTick);
