@@ -1,5 +1,7 @@
 # Ist-Architektur von Lavaland
 
+> **Historisch.** Stand vor bzw. während der Migration (5.–9.11.2026). Die Architektur, wie sie heute ist, beschreibt [`architecture.md`](architecture.md).
+
 Stand: `main` @ 76ae808 (5.11.2026, nach #91). Die Tabellen zwischen den `arch:`-Marken erzeugt `tools/arch/analyze.mjs`, der Text drumherum ist von Hand. Neu erzeugen:
 
 ```

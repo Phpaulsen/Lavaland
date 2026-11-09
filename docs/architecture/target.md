@@ -1,5 +1,7 @@
 # Zielarchitektur
 
+> **Historisch.** Stand vor bzw. während der Migration (5.–9.11.2026). Die Architektur, wie sie heute ist, beschreibt [`architecture.md`](architecture.md).
+
 Gilt für die Migration nach `adr/0001-modularisierung.md`. Ist-Zustand und Zahlen: `current.md`. Reihenfolge: `migration-plan.md`.
 
 ## 1. Was sich ändert, was nicht

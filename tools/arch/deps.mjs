@@ -8,8 +8,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const LAYERS = ['core', 'state', 'persistence', 'log', 'audio', 'systems', 'render', 'ui', 'app', 'testing'];
-const ALLOW = {
+export const LAYERS = ['core', 'state', 'persistence', 'log', 'audio', 'systems', 'render', 'ui', 'app', 'testing'];
+export const ALLOW = {
   core: ['core'],
   state: ['core', 'state'],
   persistence: ['core', 'state', 'persistence'],

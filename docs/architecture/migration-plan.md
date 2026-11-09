@@ -351,6 +351,8 @@ Danach folgt der Schluss als 29g. Ports zwischen Modulen aufzulösen ist dort Um
 
 **Umgesetzt PR 29g3a:** `legacy.js` ist gelöscht, `main.js` ruft `wire()`. Der Testbuild hat kein `eval` mehr im Spiel: An der Testmarke steht `window.__lv`, ein Objekt mit Gettern für jeden Namen, der dort sichtbar ist (alle Module der esbuild-Hülle und der Körper von `wire()`), und Settern für `let`, `var` und `function`. `tools/build.mjs` erzeugt es aus dem AST des fertigen Testbundles (nach esbuild, damit keine Namen umbenannt werden). Die Tests behalten ihre Ausdrücke: `window.__ev(s)` steht in einem eigenen Skript ohne `"use strict"` und wertet `s` über `with(window.__lv)` aus. Alte Stände (Upgrade-Test, Bildvergleich) bekommen `__ev` wie bisher vom Testserver. `deps.mjs` ohne Ausnahmen (keine Schicht `legacy` mehr; `main.js` importiert niemand). Offen bleibt `@ts-nocheck` in `app/wire.js` bis zum Aufräumen B.
 
+**Umgesetzt PR 29g3b:** `docs/architecture/architecture.md` beschreibt den Endstand; Dateibaum, Importtabelle und Module erzeugt `tools/arch/doc.mjs`, die CI prüft „Architekturdoku aktuell“. `CLAUDE.md` neu, `README.md` „Entwicklung“ verweist auf `architecture.md`. ADR 0002: (a) bleibt. `current.md` und `target.md` sind als historisch markiert. Damit ist die Migration abgeschlossen; offen bleibt nur das Aufräumen B.
+
 **Später (B, Aufräumen nach 29g3):** Der Zustand in `wire()` zieht je Bereich nach `state/` (Welt, Held, Lernkern, Rätsel, Sitzung), jeweils ein verhaltensneutraler PR mit movecheck; Ports schrumpfen entsprechend, am Ende entfällt `@ts-nocheck` in `app/wire.js`.
 
 ### PR 29g: Schluss
