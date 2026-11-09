@@ -333,6 +333,8 @@ Danach folgt der Schluss als 29g. Ports zwischen Modulen aufzulösen ist dort Um
 
 **Umgesetzt PR 29f:** Die Oberfläche (`setTool`, `syncUI`, `pulse`, `flash`, `banner`, `postMax`, `uiOpen`, `syncSound`, `puff`, `shout`, `flX`, `say`, `later`, `tell`, `reward`, `syncOwn`, `qEmo`, `actIcon`) zieht nach `ui/hud.js` (Port `HU`). Zeitgeber (`bannerT`, `sayT`) und Strich-Zustand (`stroke`, `strokeId`) bleiben in `legacy.js` mit Settern. Der Port steht vor dem ersten Aufrufer. `keyShort` und `canScroll` bleiben bei den Handlern. Einzeiler für alle 18. Der Rest (Tageszähler und Lagerfeuer, Fehlerprotokoll, Spielstand umziehen, Schienen, `star4`, `pointTo`, `resize`, `skyLim`, `marks`, die Handler) folgt als 29f2 und im Schluss.
 
+**Umgesetzt PR 29f2:** Tagesbilanz und Lagerfeuer (`dayLoad`, `daySave`, `dayAdd`, `dayTick`, `limCheck`, `campSoon`, `plural`, `openCamp`, `campRest`) und `goldSwap` ziehen nach `systems/day.js` (Port `DY`, `K_DAY` über den Port). Unverändert und ohne Port ziehen das Fehlerprotokoll (`errLoad`, `errAdd`) und `vcMiss` nach `persistence/errlog.js` sowie `skyLim`, `nextLand`, `eggLand` nach `state/progress.js`; damit ist `skyLim` aus 29e2 erledigt. Rest für den Schluss: `optSave`, `voiceSave`, `trackAt`, `demoTrack`, `newSeed`, `fxSpeed`, `kidScale`, `star4`, `pointTo`, `marks`, `bakDone`, `bakSave`, `bakPick`, `keyShort`, `canScroll`, `resize`, `safe` und die Anweisungen auf oberster Ebene (Handler).
+
 ### PR 29g: Schluss
 
 - `legacy.js` ist leer und gelöscht. `G` ist leer und gelöscht. Testzugang ist die benannte API `window.__lv` im Testbuild, kein `eval`.
