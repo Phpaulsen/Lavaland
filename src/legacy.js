@@ -43,6 +43,7 @@ import { renderBattWith, needWith, openQuizWith, closeQuizWith, nextQWith, padKe
 import { renderMapWith, renderFogWith, mapClickWith, renderEggsWith, eggClickWith, missingWith, openLabWith, labBuildWith, openMineWith, liftGoWith } from './ui/map.js';
 import { pgOpenWith, pgDrawWith, parOpenWith, parGetWith, guessedWith, parLoadWith, parRenderWith, sheetPrintWith } from './ui/parent.js';
 import { hudLootWith, svg24With, armGhostWith, tapWith, holdWith, syncHandWith, fsSyncWith, fsToggleWith } from './ui/controls.js';
+import { toWorldWith, discWith, paintPayWith, paintStepWith, endPointerWith } from './ui/paint.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -1056,86 +1057,43 @@ function update(dt){
 
 /* ---------- Malen mit dem Finger ---------- */
 const pointers=new Map();
-function toWorld(sx,sy){ return [cam.x+(sx-W/2)/S, cam.y+(sy-H/2)/S]; }
-function disc(cx,cy,r,m){
-  const n=Math.ceil(r);
-  for(let dy=-n;dy<=n;dy++) for(let dx=-n;dx<=n;dx++){
-    if(dx*dx+dy*dy>r*r) continue;
-    const x=cx+dx, y=cy+dy;
-    if(inGrid(x,y)&&grid[y*GX+x]<4){ grid[y*GX+x]=m; lifeS(y*GX+x,0); }
-  }
-}
-function erase(wx,wy){
-  const cx=Math.floor(wx/CELL), cy=Math.floor((wy-TOP)/CELL);
-  for(let dy=-4;dy<=4;dy++) for(let dx=-4;dx<=4;dx++){
-    if(dx*dx+dy*dy>18) continue;
-    const x=cx+dx, y=cy+dy;
-    if(!inGrid(x,y)) continue;
-    const m=grid[y*GX+x];
-    if(m===LAVA||m===FIRE||m===WATER||m===ICE||m===WOOD||m===SNOW){ grid[y*GX+x]=0; lifeS(y*GX+x,0); }
-  }
-  ST.props=ST.props.filter(function(o){ return Math.abs(o.x-wx)>30||wy>o.y+10||wy<o.y-110; });
-  for(let k=ST.tracks.length-1;k>=0;k--){
-    const T=ST.tracks[k];
-    if(wx<T.minX-20||wx>T.maxX+20) continue;
-    for(let i=0;i<T.pts.length;i+=2){
-      const p=T.pts[i];
-      if(Math.abs(p[0]-wx)<18&&Math.abs(p[1]-wy)<18){
-        if(P.mode==='coaster'&&P.track===T) setMode('walk');
-        ST.tracks.splice(k,1); break;
-      }
-    }
-  }
-}
+/* Port für ui/paint.js: Malen, Radieren und Werkzeuge mit dem Finger */
+const PT={
+  get W(){ return W; },
+  get S(){ return S; },
+  get H(){ return H; },
+  get PAINTM(){ return PAINTM; },
+  get PAINTC(){ return PAINTC; },
+  get pointers(){ return pointers; },
+  get HANDT(){ return HANDT; },
+  get time(){ return time; },
+  get strokeId(){ return strokeId; },
+  set strokeId(v){ strokeId=v; },
+  get strokeExt(){ return strokeExt; },
+  set strokeExt(v){ strokeExt=v; },
+  get stroke(){ return stroke; },
+  set stroke(v){ stroke=v; },
+  addMan,
+  drain,
+  dropBomb,
+  fillBlock,
+  firework,
+  handDig,
+  makeTrack,
+  pulse,
+  putUp,
+  setMode,
+  shoot,
+  throwBall,
+  zipAdd
+};
+function toWorld(sx,sy){ return toWorldWith(PT,sx,sy); }
+function disc(cx,cy,r,m){ return discWith(PT,cx,cy,r,m); }
 /* Zauberkasten: Malen kostet Akku je Zelle, die wirklich neu den Stoff bekommt (Entscheidung 8.11.). Gezählt wird im Pinselbereich vorher und nachher;
    putUp klettert bis zu 8 Zellen nach oben, darum reicht das Fenster 11 Zellen hoch. Wählen und Stillhalten kosten nichts. */
 const PAINTM={lava:LAVA,fire:FIRE,water:WATER,ice:ICE,earth:EARTH,snow:SNOW}, PAINTC=.012;
-function paintCount(cx,cy,m){
-  let n=0;
-  for(let y=cy-11;y<=cy+3;y++) for(let x=cx-3;x<=cx+3;x++) if(inGrid(x,y)&&grid[y*GX+x]===m) n++;
-  return n;
-}
-function paintAt(wx,wy){
-  const cx=Math.floor(wx/CELL), cy=Math.floor((wy-TOP)/CELL);
-  const pm=PAINTM[ST.tool], n0=pm===undefined?0:paintCount(cx,cy,pm);
-  paintDo(wx,wy,cx,cy);
-  if(pm!==undefined){ const d=paintCount(cx,cy,pm)-n0; if(d>0) paintPay(d*PAINTC); }
-}
-function paintPay(e){
-  if(ST.energy<=0) return;
-  ST.energy=Math.max(0,ST.energy-e);
-  if(ST.energy<=0) drain(0);
-}
-function paintDo(wx,wy,cx,cy){
-  if(ST.tool==='lava'||ST.tool==='water'){
-    const t=ST.tool==='lava'?LAVA:WATER;
-    if(t===LAVA?lavaCount>=MAX_LAVA:waterCount>=MAX_WATER){ pulse('tool-erase'); return; }
-    putUp(cx,cy,t);putUp(cx+1,cy,t);putUp(cx-1,cy,t);putUp(cx,cy-1,t);putUp(cx,cy+1,t);
-    if(t===WATER){ putUp(cx+1,cy-1,t); putUp(cx-1,cy-1,t); }
-  }
-  else if(ST.tool==='fire'){ putUp(cx,cy,FIRE); putUp(cx+1,cy,FIRE); }
-  else if(ST.tool==='earth') disc(cx,cy,1.7,EARTH);
-  else if(ST.tool==='ice') disc(cx,cy,2.3,ICE);
-  else if(ST.tool==='snow') disc(cx,cy,2.3,SNOW);
-  else if(ST.tool==='blocks') fillBlock(cx>>2,cy>>2);
-  else if(ST.tool==='erase') erase(wx,wy);
-}
-function paintStep(){
-  if(!ST.tool||ST.tool==='track'||ST.tool==='rope') return;
-  if(ST.tool==='bow'){ pointers.forEach(function(p){ if(!p.has){ p.has=true; const w=toWorld(p.x,p.y); shoot(w[0],w[1]); } }); return; }
-  if(HANDT[ST.tool]){ pointers.forEach(function(p){ const w=toWorld(p.x,p.y); if(Math.hypot(w[0]-P.x,w[1]-P.y+20)<95) handDig(w[0],w[1]); }); return; }
-  pointers.forEach(function(p){
-    const w=toWorld(p.x,p.y);
-    if(ST.tool==='tnt'){ if(!p.has){ p.has=true; dropBomb(w[0],w[1]); } return; }
-    if(ST.tool==='ball'||ST.tool==='fw'){ if(!p.has||time-p.bt>(ST.tool==='ball'?.28:.4)){ p.has=true; p.bt=time; if(ST.tool==='ball') throwBall(w[0],w[1]); else firework(w[0],w[1]); } return; }
-    if(ST.tool==='man'){ if(!p.has){ p.has=true; addMan(w[0]); } return; }
-    if(p.has){
-      const dist=Math.hypot(w[0]-p.lx,w[1]-p.ly), n=Math.min(18,Math.max(1,Math.ceil(dist/CELL)));
-      for(let k=1;k<=n;k++) paintAt(p.lx+(w[0]-p.lx)*k/n,p.ly+(w[1]-p.ly)*k/n);
-    }else paintAt(w[0],w[1]);
-    p.lx=w[0]; p.ly=w[1]; p.has=true;
-  });
-}
+function paintPay(e){ return paintPayWith(PT,e); }
+function paintStep(){ return paintStepWith(PT); }
 cv.addEventListener('pointerdown',function(e){
   e.preventDefault();
   try{cv.setPointerCapture(e.pointerId);}catch(_){}
@@ -1161,31 +1119,7 @@ cv.addEventListener('pointermove',function(e){
     if(Math.hypot(w[0]-l[0],w[1]-l[1])>10) stroke.push(w);
   }
 });
-function endPointer(e){
-  const pp=pointers.get(e.pointerId);
-  if(pp&&pp.rs&&ST.tool==='rope'){ const w=toWorld(pp.x,pp.y); zipAdd(pp.rs[0],pp.rs[1],w[0],w[1]); }
-  pointers.delete(e.pointerId);
-  if(e.pointerId===strokeId){
-    const ex=strokeExt, k=ex?ST.tracks.indexOf(ex.T):-1;
-    if(ex&&k>=0){
-      if(stroke&&stroke.length>2){
-        const add=stroke.slice(1);
-        let raw=ex.end?ex.T.raw.concat(add):add.reverse().concat(ex.T.raw);
-        if(raw.length>2600) raw=ex.end?raw.slice(raw.length-2600):raw.slice(0,2600);
-        const N=makeTrack(raw,true);
-        if(N){
-          if(P.mode==='coaster'&&P.track===ex.T){ if(!ex.end) P.s+=N.len-ex.T.len; P.track=N; }
-          ST.tracks[k]=N; pulse('mode-coaster');
-        }
-      }
-    }else{
-      const T=makeTrack(stroke,true);
-      if(T){ ST.tracks.push(T); if(ST.tracks.length>12) ST.tracks.shift(); pulse('mode-coaster'); }
-      else if(stroke&&stroke.length>1) pulse('tool-track');
-    }
-    stroke=null; strokeId=null; strokeExt=null;
-  }
-}
+function endPointer(e){ return endPointerWith(PT,e); }
 cv.addEventListener('pointerup',endPointer);
 cv.addEventListener('pointercancel',endPointer);
 
