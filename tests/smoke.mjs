@@ -39,6 +39,15 @@ test('Lernaufgabe mit Ziffernblock richtig lösen', async ({ ev, page }) => {
   if (!(e > 0)) throw new Error('Akku nicht geladen: ' + e);
 });
 
+test('Zurück-Geste verlässt das Spiel nicht, sondern schließt nur das Fenster', async ({ ev, page }) => {
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false");
+  await page.mouse.click(200, 400); await page.waitForTimeout(200);
+  await ev("ST.energy=MAXE; openQuiz()"); await page.waitForTimeout(300);
+  for (let i = 0; i < 3; i++) { await page.goBack({ timeout: 2000 }).catch(() => {}); await page.waitForTimeout(400); }
+  if (!(await ev('ready'))) throw new Error('Seite verlassen');
+  if (!(await ev("$('quiz').hidden")) || await ev('ST.paused')) throw new Error('Aufgabe nach Zurück noch offen');
+});
+
 test('Escape schließt die Aufgabe und gibt das Spiel frei', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; ST.energy=MAXE; openQuiz()");
   await page.waitForTimeout(300);

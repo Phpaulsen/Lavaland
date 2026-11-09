@@ -50,4 +50,15 @@ window.addEventListener('blur',function(){ keys.l=keys.r=keys.u=keys.d=keys.a=fa
 document.addEventListener('contextmenu',function(e){ e.preventDefault(); });
 document.addEventListener('touchmove',function(e){ if(!KB.canScroll(e.target)) e.preventDefault(); },{passive:false});
 document.addEventListener('gesturestart',function(e){ e.preventDefault(); });
+/* Zurück-Geste (Wischen vom Bildschirmrand) und Zurück-Taste: Sonst verlässt die App die Seite und zeigt einen leeren, dunklen Bildschirm.
+   Ein eigener Verlaufseintrag fängt das ab; Zurück wirkt dann wie Escape (Fenster zu) und der Eintrag wird erneuert.
+   Chromium zählt Einträge ohne Nutzergeste beim Zurück nicht mit, darum wird nach der ersten Berührung noch einmal geprüft. */
+const backArm=function(/** @type {boolean} */ force){ try{ if(force||!(history.state&&history.state.lavaland)) history.pushState({lavaland:1},''); }catch(_){} };
+backArm(false);
+document.addEventListener('pointerdown',function arm(){ document.removeEventListener('pointerdown',arm,true); backArm(true); },true);
+window.addEventListener('popstate',function(){
+  backArm(true);
+  if(!KB.$('quiz').hidden){ KB.closeQuiz(); return; }
+  document.querySelectorAll('.ov').forEach(function(o){ /** @type {any} */ (o).hidden=true; }); KB.pzClose();
+});
 }
