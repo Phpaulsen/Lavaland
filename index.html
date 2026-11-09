@@ -707,7 +707,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     for (const s of SIDE) if (s.draw) s.draw(ctx, layer, x0, x1);
   }
   var SAFE = /* @__PURE__ */ new Map();
-  function safeWith(errAdd, s, dt) {
+  function safeWith(errAdd2, s, dt) {
     const n = SAFE.get(s) || 0;
     if (n >= 3) return;
     try {
@@ -718,7 +718,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         /** @type {any} */
         e
       );
-      errAdd(x && x.message || x, s.name + (n + 1 >= 3 ? " (abgeschaltet)" : ""));
+      errAdd2(x && x.message || x, s.name + (n + 1 >= 3 ? " (abgeschaltet)" : ""));
       console.error(e);
     }
   }
@@ -15700,6 +15700,173 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     return "exit";
   }
 
+  // src/systems/day.js
+  function dayLoadWith(DY) {
+    const d = (/* @__PURE__ */ new Date()).toDateString();
+    if (!DY.DAY) {
+      try {
+        DY.DAY = JSON.parse(localStorage.getItem(DY.K_DAY) || "null");
+      } catch (_) {
+        DY.DAY = null;
+      }
+    }
+    if (!DY.DAY || typeof DY.DAY !== "object" || DY.DAY.d !== d) DY.DAY = { d, q: 0, pz: 0, ms: 0, mat: 0, z: [], t: 0, fire: 0 };
+    if (!Array.isArray(DY.DAY.z)) DY.DAY.z = [];
+    ["q", "pz", "ms", "mat", "t", "fire", "lim"].forEach(function(k) {
+      DY.DAY[k] = +DY.DAY[k] || 0;
+    });
+    DY.DAY.z = DY.DAY.z.filter(
+      /** @param {any} z */
+      function(z) {
+        return typeof z === "string" && z.length < 9;
+      }
+    ).slice(0, 12);
+    return DY.DAY;
+  }
+  function daySaveWith(DY) {
+    try {
+      localStorage.setItem(DY.K_DAY, JSON.stringify(DY.DAY));
+    } catch (_) {
+    }
+  }
+  function dayAddWith(DY, k, v) {
+    dayLoadWith(DY);
+    if (k === "z") {
+      if (DY.DAY.z.length < 12) DY.DAY.z.push(v);
+    } else DY.DAY[k] = (DY.DAY[k] | 0) + 1;
+    daySaveWith(DY);
+  }
+  function dayTickWith(DY, dt) {
+    DY.dayT += dt;
+    if (DY.dayT >= 5) {
+      dayLoadWith(DY);
+      DY.DAY.t += DY.dayT;
+      DY.dayT = 0;
+      daySaveWith(DY);
+      limCheckWith(DY);
+    }
+  }
+  function limCheckWith(DY) {
+    if (!DY.LIM || DY.DAY.t < DY.LIM * 60 || DY.$("camp").hidden === false) return;
+    if (DY.DAY.lim && DY.DAY.t - DY.DAY.lim < DY.CAMPGAP) return;
+    if (DY.uiOpen() || ST.paused) return;
+    DY.DAY.lim = DY.DAY.t;
+    daySaveWith(DY);
+    openCampWith(DY, "lim");
+  }
+  function campSoonWith(DY) {
+    dayLoadWith(DY);
+    if (DY.DAY.t - DY.DAY.fire < DY.CAMPGAP || DY.campT) return;
+    DY.campT = setTimeout(function tryCamp() {
+      if (DY.uiOpen() || ST.paused || !ST.ready) {
+        DY.campT = setTimeout(tryCamp, 3e3);
+        return;
+      }
+      DY.campT = null;
+      openCampWith(DY, "");
+    }, 4500);
+  }
+  function pluralWith(DY, n, a, b) {
+    return n + " " + (n === 1 ? a : b);
+  }
+  function openCampWith(DY, why) {
+    dayLoadWith(DY);
+    DY.DAY.fire = DY.DAY.t;
+    daySaveWith(DY);
+    const st = [["✅", DY.DAY.q, "Aufgaben richtig"], ["⚙️", DY.DAY.pz, "Rätsel gelöst"], ["💠", DY.DAY.ms, "Meistersteine"], ["🎒", DY.DAY.mat, "Fundstücke"]];
+    DY.$("camp-st").innerHTML = st.filter(function(x) {
+      return x[1] > 0;
+    }).map(function(x) {
+      return '<span aria-label="' + x[1] + " " + x[2] + '"><i aria-hidden="true">' + x[0] + "</i>" + x[1] + "</span>";
+    }).join("");
+    DY.$("camp-z").textContent = DY.DAY.z.join("");
+    DY.$("camp-s").classList.remove("night");
+    DY.$("camp-s").classList.toggle("lim", why === "lim");
+    DY.$("camp").hidden = false;
+    sfx("pop");
+    const bits = [];
+    if (DY.DAY.q) bits.push(pluralWith(DY, DY.DAY.q, "Aufgabe", "Aufgaben") + " richtig gelöst");
+    if (DY.DAY.pz) bits.push(pluralWith(DY, DY.DAY.pz, "Rätsel", "Rätsel") + " geknackt");
+    if (DY.DAY.ms) bits.push(pluralWith(DY, DY.DAY.ms, "Meisterstein", "Meistersteine") + " bekommen");
+    if (DY.DAY.z.length) bits.push(pluralWith(DY, DY.DAY.z.length, "neuen Ort", "neue Orte") + " entdeckt");
+    const sum = bits.length ? "Heute hast du " + (bits.length > 1 ? bits.slice(0, -1).join(", ") + " und " + bits[bits.length - 1] : bits[0]) + ". " : "";
+    if (why === "lim") DY.speak("Für heute ist die Spielzeit um, die deine Eltern eingestellt haben. " + sum + "Tippe auf den Mond. Morgen geht es genau hier weiter.");
+    else DY.speak("Ein Lagerfeuer! Zeit für eine kleine Pause. " + sum + "Du kannst weiterspielen, oder für heute Schluss machen.");
+  }
+  function campRestWith(DY) {
+    DY.saveGame(false);
+    DY.$("camp-s").classList.add("night");
+    DY.speak("Gute Nacht! Dein Spiel ist gespeichert. Morgen geht es genau hier weiter.");
+  }
+  function goldSwapWith(DY) {
+    const g = Math.max(0, ST.gold | 0), m = Math.max(0, ST.gems | 0);
+    if (!g && !m) return;
+    const z = Math.ceil(g / DY.GOLDZ) + Math.ceil(m / DY.GEMZ);
+    hero.mat.zr = (hero.mat.zr | 0) + z;
+    hero.mk.zr = 1;
+    ST.gold = 0;
+    ST.gems = 0;
+    DY.saveHero();
+    DY.saveFinds();
+    DY.labBadge(false);
+    setTimeout(function() {
+      DY.banner("⚙️ +" + z, 2600);
+      DY.say("", "Professor Zahnrad hat deinen Schatz in " + z + (z > 1 ? " Zahnräder" : " Zahnrad") + " getauscht. Damit kannst du in der Werkstatt bauen.");
+    }, 1300);
+  }
+
+  // src/persistence/errlog.js
+  function errLoad() {
+    try {
+      const a = JSON.parse(localStorage.getItem(ERRK) || "[]");
+      return Array.isArray(a) ? a.filter(function(e) {
+        return e && typeof e.m === "string";
+      }) : [];
+    } catch (_) {
+      return [];
+    }
+  }
+  function errAdd(m, w) {
+    m = String(m || "Unbekannter Fehler").slice(0, 200);
+    w = String(w || "").slice(0, 80);
+    const a = errLoad(), o = a.find(function(e) {
+      return e.m === m && e.w === w;
+    });
+    if (o) {
+      o.n = (o.n | 0) + 1;
+      o.t = Date.now();
+    } else {
+      a.push({ t: Date.now(), m, w, n: 1 });
+      if (a.length > 20) a.shift();
+    }
+    try {
+      localStorage.setItem(ERRK, JSON.stringify(a));
+    } catch (_) {
+    }
+  }
+  function vcMiss(t) {
+    try {
+      const a = JSON.parse(localStorage.getItem(K_VMISS) || "[]");
+      if (!Array.isArray(a) || a.indexOf(t) >= 0) return;
+      a.push(String(t).slice(0, 300));
+      localStorage.setItem(K_VMISS, JSON.stringify(a.slice(-40)));
+    } catch (_) {
+    }
+  }
+
+  // src/state/progress.js
+  function skyLim() {
+    return SKYL[hero.rk | 0];
+  }
+  function nextLand() {
+    for (const b of ST.BIO) if (!ST.seen[b.i]) return b;
+    return null;
+  }
+  function eggLand() {
+    for (const b of ST.BIO) if (ST.seen[b.i] && !ST.eggGot[b.i] && b.t < 12) return b;
+    return null;
+  }
+
   // src/legacy.js
   (function() {
     "use strict";
@@ -15952,34 +16119,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       skyLim,
       wc
     };
-    function errLoad() {
-      try {
-        const a = JSON.parse(localStorage.getItem(ERRK) || "[]");
-        return Array.isArray(a) ? a.filter(function(e) {
-          return e && typeof e.m === "string";
-        }) : [];
-      } catch (_) {
-        return [];
-      }
-    }
-    function errAdd(m, w) {
-      m = String(m || "Unbekannter Fehler").slice(0, 200);
-      w = String(w || "").slice(0, 80);
-      const a = errLoad(), o = a.find(function(e) {
-        return e.m === m && e.w === w;
-      });
-      if (o) {
-        o.n = (o.n | 0) + 1;
-        o.t = Date.now();
-      } else {
-        a.push({ t: Date.now(), m, w, n: 1 });
-        if (a.length > 20) a.shift();
-      }
-      try {
-        localStorage.setItem(ERRK, JSON.stringify(a));
-      } catch (_) {
-      }
-    }
     window.addEventListener("error", function(e) {
       if (e && e.message) errAdd(e.message, (String(e.filename || "").split("/").pop() || "") + ":" + (e.lineno | 0));
     });
@@ -16755,15 +16894,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function voiceSave() {
       try {
         localStorage.setItem(K_VOICE, JSON.stringify(VOICE));
-      } catch (_) {
-      }
-    }
-    function vcMiss(t) {
-      try {
-        const a = JSON.parse(localStorage.getItem(K_VMISS) || "[]");
-        if (!Array.isArray(a) || a.indexOf(t) >= 0) return;
-        a.push(String(t).slice(0, 300));
-        localStorage.setItem(K_VMISS, JSON.stringify(a.slice(-40)));
       } catch (_) {
       }
     }
@@ -17943,14 +18073,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (FX.tiny > 0) return 1 - 0.55 * Math.min(1, (12 - FX.tiny) * 4, FX.tiny * 2);
       return 1;
     }
-    function nextLand() {
-      for (const b of ST.BIO) if (!ST.seen[b.i]) return b;
-      return null;
-    }
-    function eggLand() {
-      for (const b of ST.BIO) if (ST.seen[b.i] && !ST.eggGot[b.i] && b.t < 12) return b;
-      return null;
-    }
     function creHit(c, tap2) {
       return creHitWith(CR, c, tap2);
     }
@@ -18567,9 +18689,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     let MATS = [], MACH = [], ZDEC = [], SPACE = {}, guide = null, klT = 0, klS = 0, klN = 0, labHi = false, dkA = 0, mhT = 0, liftBusy = false;
     const dkc = document.createElement("canvas"), dkx = dkc.getContext("2d");
-    function skyLim() {
-      return SKYL[hero.rk | 0];
-    }
     function stationY(k) {
       return stationYWith(ZO, k);
     }
@@ -20420,48 +20539,64 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
     });
     let DAY = null;
+    const DY = {
+      get DAY() {
+        return DAY;
+      },
+      set DAY(v) {
+        DAY = v;
+      },
+      get K_DAY() {
+        return K_DAY;
+      },
+      get dayT() {
+        return dayT;
+      },
+      set dayT(v) {
+        dayT = v;
+      },
+      get LIM() {
+        return LIM;
+      },
+      get $() {
+        return $;
+      },
+      get CAMPGAP() {
+        return CAMPGAP;
+      },
+      get campT() {
+        return campT;
+      },
+      set campT(v) {
+        campT = v;
+      },
+      get GOLDZ() {
+        return GOLDZ;
+      },
+      get GEMZ() {
+        return GEMZ;
+      },
+      banner,
+      labBadge,
+      saveFinds,
+      saveGame,
+      saveHero,
+      say,
+      speak,
+      uiOpen
+    };
     function dayLoad() {
-      const d = (/* @__PURE__ */ new Date()).toDateString();
-      if (!DAY) {
-        try {
-          DAY = JSON.parse(localStorage.getItem(K_DAY) || "null");
-        } catch (_) {
-          DAY = null;
-        }
-      }
-      if (!DAY || typeof DAY !== "object" || DAY.d !== d) DAY = { d, q: 0, pz: 0, ms: 0, mat: 0, z: [], t: 0, fire: 0 };
-      if (!Array.isArray(DAY.z)) DAY.z = [];
-      ["q", "pz", "ms", "mat", "t", "fire", "lim"].forEach(function(k) {
-        DAY[k] = +DAY[k] || 0;
-      });
-      DAY.z = DAY.z.filter(function(z) {
-        return typeof z === "string" && z.length < 9;
-      }).slice(0, 12);
-      return DAY;
+      return dayLoadWith(DY);
     }
     function daySave() {
-      try {
-        localStorage.setItem(K_DAY, JSON.stringify(DAY));
-      } catch (_) {
-      }
+      return daySaveWith(DY);
     }
     function dayAdd(k, v) {
-      dayLoad();
-      if (k === "z") {
-        if (DAY.z.length < 12) DAY.z.push(v);
-      } else DAY[k] = (DAY[k] | 0) + 1;
-      daySave();
+      return dayAddWith(DY, k, v);
     }
     let dayT = 0;
     function dayTick(dt) {
-      dayT += dt;
-      if (dayT >= 5) {
-        dayLoad();
-        DAY.t += dayT;
-        dayT = 0;
-        daySave();
-        limCheck();
-      }
+      return dayTickWith(DY, dt);
     }
     const LIMS = [0, 20, 30, 45, 60, 90];
     let LIM = 0;
@@ -20470,58 +20605,21 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     } catch (_) {
     }
     function limCheck() {
-      if (!LIM || DAY.t < LIM * 60 || $("camp").hidden === false) return;
-      if (DAY.lim && DAY.t - DAY.lim < CAMPGAP) return;
-      if (uiOpen() || ST.paused) return;
-      DAY.lim = DAY.t;
-      daySave();
-      openCamp("lim");
+      return limCheckWith(DY);
     }
     const CAMPGAP = 600;
     let campT = null;
     function campSoon() {
-      dayLoad();
-      if (DAY.t - DAY.fire < CAMPGAP || campT) return;
-      campT = setTimeout(function tryCamp() {
-        if (uiOpen() || ST.paused || !ST.ready) {
-          campT = setTimeout(tryCamp, 3e3);
-          return;
-        }
-        campT = null;
-        openCamp("");
-      }, 4500);
+      return campSoonWith(DY);
     }
     function plural(n, a, b) {
-      return n + " " + (n === 1 ? a : b);
+      return pluralWith(DY, n, a, b);
     }
     function openCamp(why) {
-      dayLoad();
-      DAY.fire = DAY.t;
-      daySave();
-      const st = [["✅", DAY.q, "Aufgaben richtig"], ["⚙️", DAY.pz, "Rätsel gelöst"], ["💠", DAY.ms, "Meistersteine"], ["🎒", DAY.mat, "Fundstücke"]];
-      $("camp-st").innerHTML = st.filter(function(x) {
-        return x[1] > 0;
-      }).map(function(x) {
-        return '<span aria-label="' + x[1] + " " + x[2] + '"><i aria-hidden="true">' + x[0] + "</i>" + x[1] + "</span>";
-      }).join("");
-      $("camp-z").textContent = DAY.z.join("");
-      $("camp-s").classList.remove("night");
-      $("camp-s").classList.toggle("lim", why === "lim");
-      $("camp").hidden = false;
-      sfx("pop");
-      const bits = [];
-      if (DAY.q) bits.push(plural(DAY.q, "Aufgabe", "Aufgaben") + " richtig gelöst");
-      if (DAY.pz) bits.push(plural(DAY.pz, "Rätsel", "Rätsel") + " geknackt");
-      if (DAY.ms) bits.push(plural(DAY.ms, "Meisterstein", "Meistersteine") + " bekommen");
-      if (DAY.z.length) bits.push(plural(DAY.z.length, "neuen Ort", "neue Orte") + " entdeckt");
-      const sum = bits.length ? "Heute hast du " + (bits.length > 1 ? bits.slice(0, -1).join(", ") + " und " + bits[bits.length - 1] : bits[0]) + ". " : "";
-      if (why === "lim") speak("Für heute ist die Spielzeit um, die deine Eltern eingestellt haben. " + sum + "Tippe auf den Mond. Morgen geht es genau hier weiter.");
-      else speak("Ein Lagerfeuer! Zeit für eine kleine Pause. " + sum + "Du kannst weiterspielen, oder für heute Schluss machen.");
+      return openCampWith(DY, why);
     }
     function campRest() {
-      saveGame(false);
-      $("camp-s").classList.add("night");
-      speak("Gute Nacht! Dein Spiel ist gespeichert. Morgen geht es genau hier weiter.");
+      return campRestWith(DY);
     }
     $("camp-go").addEventListener("click", function() {
       $("camp").hidden = true;
@@ -21053,20 +21151,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     const GOLDZ = 50, GEMZ = 10;
     function goldSwap() {
-      const g = Math.max(0, ST.gold | 0), m = Math.max(0, ST.gems | 0);
-      if (!g && !m) return;
-      const z = Math.ceil(g / GOLDZ) + Math.ceil(m / GEMZ);
-      hero.mat.zr = (hero.mat.zr | 0) + z;
-      hero.mk.zr = 1;
-      ST.gold = 0;
-      ST.gems = 0;
-      saveHero();
-      saveFinds();
-      labBadge(false);
-      setTimeout(function() {
-        banner("⚙️ +" + z, 2600);
-        say("", "Professor Zahnrad hat deinen Schatz in " + z + (z > 1 ? " Zahnräder" : " Zahnrad") + " getauscht. Damit kannst du in der Werkstatt bauen.");
-      }, 1300);
+      return goldSwapWith(DY);
     }
     function start() {
       return startWith(APP);

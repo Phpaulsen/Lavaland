@@ -58,6 +58,9 @@ import { pmaxWith, spawnWith, smokeWith, dustWith, confettiWith, explodeWith } f
 import { boxCountWith, teleportWith, placeFindWith, hideFindsWith, renderAlbumWith, orbsOfWith, portalTickWith, dropBombWith, blastWith, sonarTargetWith, discoverWith, discoWith, pupsWith, keyTapWith, rainCloudWith, shakeTreeWith, tapWorldWith, nearScopeWith, scopeOpenWith, scopeRenderWith, scopePickWith, sonarWith } from './systems/play.js';
 import { fRowWith, fogKeyWith, fogArrWith, fogSetWith, fogHasWith, fogSeedWith, fogSaveWith, gearLvWith, gearSetWith, stationYWith, zoneAtWith, shellOkWith, doorColsWith, doorShutWith, nearDoorWith, doorPzWith, doorAskWith, doorOpenWith, deepHomeWith, deepRestoreWith, canBuildWith, labBadgeWith, nextMachWith, nearMachWith, nearCabWith, atLabWith, deepIconWith, deepActWith, deepTapWith, matWhereWith, guidePointWith, mkKeyWith, mkSaveWith, darkAtWith } from './systems/zones.js';
 import { setToolWith, syncUIWith, pulseWith, flashWith, bannerWith, postMaxWith, uiOpenWith, syncSoundWith, puffWith, shoutWith, flXWith, sayWith, laterWith, tellWith, rewardWith, syncOwnWith, qEmoWith, actIconWith } from './ui/hud.js';
+import { dayLoadWith, daySaveWith, dayAddWith, dayTickWith, limCheckWith, campSoonWith, pluralWith, openCampWith, campRestWith, goldSwapWith } from './systems/day.js';
+import { errLoad, errAdd, vcMiss } from './persistence/errlog.js';
+import { skyLim, nextLand, eggLand } from './state/progress.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -135,13 +138,6 @@ const WD={
   colTop, ext, ground, lifeS, rlm, scanMobile, setCell, skyLim, wc
 };
 /* Fehlerprotokoll: Technische Fehler bleiben nur auf diesem Gerät (höchstens 20, gleiche zusammengefasst) und stehen in der Elternansicht. So lässt sich ein Problem auf dem Handy des Kindes nachvollziehen. */
-function errLoad(){ try{ const a=JSON.parse(localStorage.getItem(ERRK)||'[]'); return Array.isArray(a)?a.filter(function(e){ return e&&typeof e.m==='string'; }):[]; }catch(_){ return []; } }
-function errAdd(m,w){
-  m=String(m||'Unbekannter Fehler').slice(0,200); w=String(w||'').slice(0,80);
-  const a=errLoad(), o=a.find(function(e){ return e.m===m&&e.w===w; });
-  if(o){ o.n=(o.n|0)+1; o.t=Date.now(); } else{ a.push({t:Date.now(),m:m,w:w,n:1}); if(a.length>20) a.shift(); }
-  try{ localStorage.setItem(ERRK,JSON.stringify(a)); }catch(_){}
-}
 window.addEventListener('error',function(e){ if(e&&e.message) errAdd(e.message,(String(e.filename||'').split('/').pop()||'')+':'+(e.lineno|0)); });
 window.addEventListener('unhandledrejection',function(e){ const r=e&&e.reason; errAdd('Promise: '+(r&&r.message||r),''); });
 const cv=$('c'); let ctx=cv.getContext('2d');
@@ -656,7 +652,6 @@ try{ const o=JSON.parse(localStorage.getItem(K_VOICE)||'null'); if(o&&typeof o==
 try{ if('speechSynthesis' in window) speechSynthesis.addEventListener('voiceschanged',function(){ if(typeof parLoad==='function'&&!$('par').hidden) parLoad(); }); }catch(_){}
 function voiceSave(){ try{ localStorage.setItem(K_VOICE,JSON.stringify(VOICE)); }catch(_){} }
 /* Sätze ohne Aufnahme merken (die letzten 40), damit sie beim nächsten Erzeugen dazukommen. Sie stehen in der Elternansicht. */
-function vcMiss(t){ try{ const a=JSON.parse(localStorage.getItem(K_VMISS)||'[]'); if(!Array.isArray(a)||a.indexOf(t)>=0) return; a.push(String(t).slice(0,300)); localStorage.setItem(K_VMISS,JSON.stringify(a.slice(-40))); }catch(_){} }
 function speak(text){ return speakWith(AP,text); }
 const AP={ get talkLock(){ return ST.talkLock; }, vcMiss };
 /* Port für systems/mobs.js: Zeit, Welt, Einstellungen, Teilchen und Zeichenhelfer für Pfeile und Höhlenmonster. */
@@ -1212,8 +1207,6 @@ function kidScale(){
   if(FX.tiny>0) return 1-.55*Math.min(1,(12-FX.tiny)*4,FX.tiny*2);
   return 1;
 }
-function nextLand(){ for(const b of ST.BIO) if(!ST.seen[b.i]) return b; return null; }
-function eggLand(){ for(const b of ST.BIO) if(ST.seen[b.i]&&!ST.eggGot[b.i]&&b.t<12) return b; return null; }
 
 /* ---------- Tiere ---------- */
 function creHit(c,tap){ return creHitWith(CR,c,tap); }
@@ -1545,7 +1538,6 @@ function gearSet(g,v){ return gearSetWith(ZO,g,v); }
 let MATS=[], MACH=[], ZDEC=[], SPACE={}, guide=null, klT=0, klS=0, klN=0, labHi=false, dkA=0, mhT=0, liftBusy=false;
 const dkc=document.createElement('canvas'), dkx=dkc.getContext('2d');
 
-function skyLim(){ return SKYL[hero.rk|0]; }
 function stationY(k){ return stationYWith(ZO,k); }
 function zoneAt(x,y){ return zoneAtWith(ZO,x,y); }
 function shellOk(i){ return shellOkWith(ZO,i); }
@@ -2472,56 +2464,44 @@ $('tafel').addEventListener('click',function(e){
 });
 /* Tagesbilanz und Lagerfeuer: Nach einem neuen Ort lädt ein Lagerfeuer zur Pause ein. Weiterspielen ist immer erlaubt. */
 let DAY=null;
-function dayLoad(){
-  const d=new Date().toDateString();
-  if(!DAY){ try{ DAY=JSON.parse(localStorage.getItem(K_DAY)||'null'); }catch(_){ DAY=null; } }
-  if(!DAY||typeof DAY!=='object'||DAY.d!==d) DAY={d:d,q:0,pz:0,ms:0,mat:0,z:[],t:0,fire:0};
-  if(!Array.isArray(DAY.z)) DAY.z=[];
-  ['q','pz','ms','mat','t','fire','lim'].forEach(function(k){ DAY[k]=+DAY[k]||0; }); DAY.z=DAY.z.filter(function(z){ return typeof z==='string'&&z.length<9; }).slice(0,12);
-  return DAY;
-}
-function daySave(){ try{ localStorage.setItem(K_DAY,JSON.stringify(DAY)); }catch(_){} }
-function dayAdd(k,v){ dayLoad(); if(k==='z'){ if(DAY.z.length<12) DAY.z.push(v); } else DAY[k]=(DAY[k]|0)+1; daySave(); }
+/* Tagesbilanz und Lagerfeuer (systems/day.js) */
+const DY={
+  get DAY(){ return DAY; },
+  set DAY(v){ DAY=v; },
+  get K_DAY(){ return K_DAY; },
+  get dayT(){ return dayT; },
+  set dayT(v){ dayT=v; },
+  get LIM(){ return LIM; },
+  get $(){ return $; },
+  get CAMPGAP(){ return CAMPGAP; },
+  get campT(){ return campT; },
+  set campT(v){ campT=v; },
+  get GOLDZ(){ return GOLDZ; },
+  get GEMZ(){ return GEMZ; },
+  banner,
+  labBadge,
+  saveFinds,
+  saveGame,
+  saveHero,
+  say,
+  speak,
+  uiOpen
+};
+function dayLoad(){ return dayLoadWith(DY); }
+function daySave(){ return daySaveWith(DY); }
+function dayAdd(k,v){ return dayAddWith(DY,k,v); }
 let dayT=0;
-function dayTick(dt){ dayT+=dt; if(dayT>=5){ dayLoad(); DAY.t+=dayT; dayT=0; daySave(); limCheck(); } }
+function dayTick(dt){ return dayTickWith(DY,dt); }
 /* Elternlimit (optional): Ist die eingestellte Zeit erreicht, kommt das Lagerfeuer mit Gute-Nacht-Ansage, danach alle zehn Minuten wieder. Gesperrt wird nichts. */
 const LIMS=[0,20,30,45,60,90];
 let LIM=0; try{ LIM=LIMS.indexOf(+localStorage.getItem(K_LIMIT))>0?+localStorage.getItem(K_LIMIT):0; }catch(_){}
-function limCheck(){
-  if(!LIM||DAY.t<LIM*60||$('camp').hidden===false) return;
-  if(DAY.lim&&DAY.t-DAY.lim<CAMPGAP) return;
-  if(uiOpen()||ST.paused) return;
-  DAY.lim=DAY.t; daySave(); openCamp('lim');
-}
+function limCheck(){ return limCheckWith(DY); }
 const CAMPGAP=600;
 let campT=null;
-/* Höchstens alle zehn Spielminuten, und nur wenn gerade nichts anderes offen ist. */
-function campSoon(){
-  dayLoad(); if(DAY.t-DAY.fire<CAMPGAP||campT) return;
-  campT=setTimeout(function tryCamp(){ if(uiOpen()||ST.paused||!ST.ready){ campT=setTimeout(tryCamp,3000); return; } campT=null; openCamp(''); },4500);
-}
-function plural(n,a,b){ return n+' '+(n===1?a:b); }
-function openCamp(why){
-  dayLoad(); DAY.fire=DAY.t; daySave();
-  const st=[['✅',DAY.q,'Aufgaben richtig'],['⚙️',DAY.pz,'Rätsel gelöst'],['💠',DAY.ms,'Meistersteine'],['🎒',DAY.mat,'Fundstücke']];
-  $('camp-st').innerHTML=st.filter(function(x){ return x[1]>0; }).map(function(x){ return '<span aria-label="'+x[1]+' '+x[2]+'"><i aria-hidden="true">'+x[0]+'</i>'+x[1]+'</span>'; }).join('');
-  $('camp-z').textContent=DAY.z.join('');
-  $('camp-s').classList.remove('night'); $('camp-s').classList.toggle('lim',why==='lim');
-  $('camp').hidden=false; sfx('pop');
-  const bits=[];
-  if(DAY.q) bits.push(plural(DAY.q,'Aufgabe','Aufgaben')+' richtig gelöst');
-  if(DAY.pz) bits.push(plural(DAY.pz,'Rätsel','Rätsel')+' geknackt');
-  if(DAY.ms) bits.push(plural(DAY.ms,'Meisterstein','Meistersteine')+' bekommen');
-  if(DAY.z.length) bits.push(plural(DAY.z.length,'neuen Ort','neue Orte')+' entdeckt');
-  const sum=bits.length?'Heute hast du '+(bits.length>1?bits.slice(0,-1).join(', ')+' und '+bits[bits.length-1]:bits[0])+'. ':'';
-  if(why==='lim') speak('Für heute ist die Spielzeit um, die deine Eltern eingestellt haben. '+sum+'Tippe auf den Mond. Morgen geht es genau hier weiter.');
-  else speak('Ein Lagerfeuer! Zeit für eine kleine Pause. '+sum+'Du kannst weiterspielen, oder für heute Schluss machen.');
-}
-function campRest(){
-  saveGame(false);
-  $('camp-s').classList.add('night');
-  speak('Gute Nacht! Dein Spiel ist gespeichert. Morgen geht es genau hier weiter.');
-}
+function campSoon(){ return campSoonWith(DY); }
+function plural(n,a,b){ return pluralWith(DY,n,a,b); }
+function openCamp(why){ return openCampWith(DY,why); }
+function campRest(){ return campRestWith(DY); }
 $('camp-go').addEventListener('click',function(){ $('camp').hidden=true; });
 $('camp-rest').addEventListener('click',function(){ if($('camp-s').classList.contains('night')){ $('camp').hidden=true; return; } campRest(); });
 $('par-body').addEventListener('click',function(e){
@@ -2804,14 +2784,7 @@ function safe(s,dt){ safeWith(errAdd,s,dt); }
 /* Gold und Edelsteine gibt es nicht mehr (Vereinfachungsplan Schritt 2). Was noch da ist, wird einmal in Zahnräder getauscht:
    je angefangene GOLDZ Gold und je angefangene GEMZ Edelsteine ein Zahnrad. Danach stehen beide auf 0, also passiert es nur einmal. */
 const GOLDZ=50, GEMZ=10;
-function goldSwap(){
-  const g=Math.max(0,ST.gold|0), m=Math.max(0,ST.gems|0);
-  if(!g&&!m) return;
-  const z=Math.ceil(g/GOLDZ)+Math.ceil(m/GEMZ);
-  hero.mat.zr=(hero.mat.zr|0)+z; hero.mk.zr=1; ST.gold=0; ST.gems=0;
-  saveHero(); saveFinds(); labBadge(false);
-  setTimeout(function(){ banner('⚙️ +'+z,2600); say('','Professor Zahnrad hat deinen Schatz in '+z+(z>1?' Zahnräder':' Zahnrad')+' getauscht. Damit kannst du in der Werkstatt bauen.'); },1300);
-}
+function goldSwap(){ return goldSwapWith(DY); }
 function start(){ return startWith(APP); }
 /*@test-hook*/
 document.addEventListener('visibilitychange',function(){ if(document.hidden) saveGame(false); });
