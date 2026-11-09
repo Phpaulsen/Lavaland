@@ -319,6 +319,8 @@ Danach folgt der Schluss als 29g. Ports zwischen Modulen aufzulösen ist dort Um
 
 **Umgesetzt PR 29b:** Die Zeichenhelfer (`rr`, `circle`, `mix`, `lerpC`, `emo`, `arrow`, `knob`) und die Kulisse (`drawTree`, `drawCloud`, `drawSpace`, `hills`, `drawDark`, `drawFar`, `drawNebula`, `drawFinds`, `drawProp`, `drawDoor`, `drawScope`) ziehen nach `render/scenery.js` (Port `SC`). `JAR` kommt über den Port, weil `render/` `systems/` nicht importieren darf; `dkA` hat einen Setter. Abweichung vom Vorschlag: Paletten (`pal`, `pal4`, `c32`, `setPal`, `P_*`) und `drawCells` bleiben noch, sie sind mit Anweisungen auf oberster Ebene verwoben und der heißeste Zeichenpfad; sie ziehen in einem eigenen Schritt (29b2) als `export let` wie in PR 28e. `resize` bleibt bei den Handlern (29f), weil es `W`, `H`, `DPR`, `S` schreibt. Einzeiler für alle 18. Absicherung: Bildvergleich, Rauchtest, Knopftest, `perf.mjs` (`draw` im Rauschen).
 
+**Umgesetzt PR 29b2:** Die Paletten (`c32`, `pal`, `pal4`, `P_*`, `PGR` …, Farben der Tiefe, `EPAL`, `setPal`, `PSH`), die Hilfsleinwand (`IMG`, `oc`, `octx`, `img`, `px`) und `drawCells` ziehen nach `render/cells.js`. Die Deklarationen und die Schleife über die Länder ziehen wörtlich mit; die von `setPal` geschriebenen Paletten sind Modul-`let`, darum liest `drawCells` im heißen Pfad ohne Port und ohne Getter. Über den Port `CL` kommt nur `time` (ein Lesezugriff je Aufruf). `legacy.js` importiert `pal` und `setPal` (Port `RM`), Einzeiler nur für `drawCells` (Port `DR`). `RBC` bleibt (Leser `DR`, `SC`). Absicherung: Golden Master, Bildvergleich, `perf.mjs` (`draw`).
+
 ### PR 29g: Schluss
 
 - `legacy.js` ist leer und gelöscht. `G` ist leer und gelöscht. Testzugang ist die benannte API `window.__lv` im Testbuild, kein `eval`.
