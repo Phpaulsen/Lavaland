@@ -327,6 +327,8 @@ Danach folgt der Schluss als 29g. Ports zwischen Modulen aufzulösen ist dort Um
 
 **Umgesetzt PR 29d2:** `pmax`, `spawn`, `smoke`, `dust`, `confetti` und `explode` ziehen nach `systems/particles.js` (Port `PA`). Die Teilchenliste `parts` und `CONF` stehen als Werte im Port, `maxDpr` und `reduced` als Getter, `shake` mit Setter; `colTop` und `putUp` importiert das Modul aus `state/queries.js`. Einzeiler für alle sechs. Absicherung: Golden Master, Rauchtest, Bildvergleich, `perf.mjs`.
 
+**Umgesetzt PR 29e:** Spielen in der Welt (`boxCount`, `teleport`, `placeFind`, `hideFinds`, `renderAlbum`, `orbsOf`, `portalTick`, `dropBomb`, `blast`, `sonarTarget`, `discover`, `disco`, `pups`, `keyTap`, `rainCloud`, `shakeTree`, `tapWorld`, `nearScope`, `scopeOpen`, `scopeRender`, `scopePick`, `sonar`) zieht nach `systems/play.js` (Port `TW`). Konstanten vor dem Port als Werte, `let` als Getter und Setter. Abweichung: Nebel, Marken, Tiefe und Türen kommen als 29e2; die Malfunktionen `star4` und `pointTo` bleiben für 29f. Einzeiler für alle 22. Absicherung: Golden Master (Funde mit `rng`), Rauchtest, Bildvergleich, Knopftest.
+
 ### PR 29g: Schluss
 
 - `legacy.js` ist leer und gelöscht. `G` ist leer und gelöscht. Testzugang ist die benannte API `window.__lv` im Testbuild, kein `eval`.
