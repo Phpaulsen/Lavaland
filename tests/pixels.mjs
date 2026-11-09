@@ -1,4 +1,4 @@
-// Bildvergleich (Migrationsplan PR 17, Pfeile und Monster seit PR 18, Tiere seit PR 19a, Winter seit PR 20b): Feste Szenen werden mit dem Stand von main (OLD) und dem neuen Testbuild gezeichnet.
+// Bildvergleich (Migrationsplan PR 17, Pfeile und Monster seit PR 18, Tiere seit PR 19a, Winter seit PR 20b, Werkstatt, Tiefe und Planeten seit PR 22): Feste Szenen werden mit dem Stand von main (OLD) und dem neuen Testbuild gezeichnet.
 // Die Bilder müssen Pixel für Pixel gleich sein. So fällt auf, wenn ein Umzug die Zeichenreihenfolge ändert.
 // Kein fester Hash im Repo: Pixel hängen von der Chromium-Version ab. Verglichen wird im selben Browser.
 // Aufruf: OLD=/pfad/zur/alten/index.html node tests/pixels.mjs   (im CI wie beim Update-Test aus origin/main)
@@ -53,6 +53,10 @@ const SCENES = [
       ST.props.push({type:'man',x:5950,y:surfaceY(5950)},{type:'man',x:6150,y:surfaceY(6150)});
       balls.push({x:6040,y:ground(6040)-80,vx:0,vy:0,foe:false,t:0},{x:6100,y:ground(6100)-40,vx:0,vy:0,foe:true,t:0});
       fws.push({x:5880,y:ground(5880)-150,ty:0,c:2},{x:6200,y:ground(6200)-60,ty:0,c:4})` },
+  { name: 'Werkstatt, Aufzug und erste Maschine', go: 'teleport(WSX+40)', set: 'P.x=WSX+40; P.y=ground(P.x)-2; time=2; nightA=0; discoT=0' },
+  { name: 'Kristalle in der Tiefe', go: "teleport(ZDEC.find(function(d){ return d.k==='cry'; }).x)",
+    set: "const d=ZDEC.find(function(d){ return d.k==='cry'; }); P.x=d.x-70; P.y=d.y; time=3; nightA=0" },
+  { name: 'Planeten im Weltraum', go: 'teleport(SPACE.ice.x)', set: 'P.x=SPACE.ice.x-SPACE.ice.r-160; P.y=SPACE.ice.y; time=4; nightA=0' },
 ];
 
 async function shoot(browser, url) {

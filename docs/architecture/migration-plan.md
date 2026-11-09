@@ -258,6 +258,8 @@ Je PR: `tick` und `draw(ctx, layer)` ins System, Zeichenaufruf in `draw()` an de
 - **23:** `draw` (`S60`, 11 650 Zeichen) nach Ebenen zerlegt, Winter malen (`S29`), Porträts. `ctx` wird Parameter statt `let`; `portrait` (`index.html:4196`) bekommt seinen Kontext übergeben statt `ctx` umzuhängen.
 - **Absicherung:** Bildvergleich, `perf.mjs`.
 
+**Umgesetzt PR 22:** Stimmung (`mood`, `drawMood`), die große Welt (`drawFlora`, `drawDeco`, `drawPad`, `drawEgg`, `drawSecrets`, `drawOrb`, `drawWorldBack`, `drawWorldFront`) und die Tiefe (`gearShape`, `drawLab`, `drawCab`, `drawMach`, `drawMat`, `drawBone`, `drawCry`, `drawMark`, `drawDeep`) ziehen nach `render/world.js` mit Port `RP`. Die Zeichenfunktionen bekommen `ctx` als Parameter; die Zeichenhelfer `circle`, `rr`, `emo` bleiben bis PR 23 in `legacy.js` und malen auf denselben Kontext. `throws` kommt über den Port, weil `render` nicht aus `systems` importieren darf. Einzeiler für `mood`, `drawMood`, `drawFlora`, `drawOrb`, `drawWorldBack`, `drawWorldFront` und `drawDeep`, die `draw`, `drawTree` und `drawSpace` aufrufen. Die Konstanten (`OHOLE`, `CRYC`, `CRYH`) bleiben und kommen über den Port. Bildvergleich um drei Szenen ergänzt (Werkstatt mit Aufzug und Maschine, Kristalle in der Tiefe, Planeten im Weltraum); die Leuchtmarke fehlt darin, weil `drawMark` mit `performance.now()` blinkt. Paletten (`EPAL`) gehören zu `draw` und ziehen mit PR 23 um. Fahrzeuge (auch U-Boot, Ski, Lift, Drache) bleiben wie geplant bei PR 28 (Spielfigur), nicht vorgezogen.
+
 ### PR 24–27: Oberfläche
 
 | PR | Bereich | Sektionen |
