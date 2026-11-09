@@ -52,6 +52,7 @@ import { rlmWith, setRealmWith, wcWith, realm, RW, RX0, RC0, RC1 } from './state
 import { pal, setPal, drawCellsWith } from './render/cells.js';
 import { headWith, drawKidWith, drawChuteWith, drawCarWith, drawBaggerWith, drawLoaderWith, drawDumperWith, drawTbmWith, drawRocketWith, drawPlaneWith, drawCartWith, drawSubWith, drawBalloonWith, drawHeliWith, drawBoatWith, drawBugWith, drawZipsWith, drawHandToolWith } from './render/vehicles.js';
 import { rrWith, circleWith, mixWith, lerpCWith, emoWith, arrowWith, knobWith, drawTreeWith, drawCloudWith, drawSpaceWith, hillsWith, drawDarkWith, drawFarWith, drawNebulaWith, drawFindsWith, drawPropWith, drawDoorWith, drawScopeWith } from './render/scenery.js';
+import { drainWith, numOptsWith, dayNoWith, loadFactsWith, pickFactWith, pickFact0With, factDoneWith, masterGiveWith, genQWith, saveSchoolWith } from './systems/learn.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -2244,45 +2245,54 @@ function renderBatt(){ return renderBattWith(QZ); }
 function need(fn){ return needWith(QZ,fn); }
 function openQuiz(then){ return openQuizWith(QZ,then); }
 function closeQuiz(){ return closeQuizWith(QZ); }
-function drain(dt){
-  if(P.mode!=='walk'||(ST.tool&&!HANDT[ST.tool]&&(!PAINT[ST.tool]&&ST.tool!=='tnt'||ST.energy<=0))){
-    ST.energy-=dt;
-    if(ST.energy<=0){ ST.energy=0; battLow=false; $('batt').classList.remove('low'); renderBatt(); openQuiz(null); return; }
-    /* Kurz vor leer blinkt der Akku und tickt, damit die Lernaufgabe nicht aus dem Nichts kommt. */
-    if(ST.energy<6&&Math.ceil(ST.energy)!==warnS){ warnS=Math.ceil(ST.energy); blip(660,660,.06,'square',.05); }
-  }
-  const low=ST.energy>0&&ST.energy<12;
-  if(low!==battLow){ battLow=low; $('batt').classList.toggle('low',low); }
-  renderBatt();
-}
+function drain(dt){ return drainWith(LK,dt); }
 function ri(a,b){ return riWith(Math.random,a,b); }
 function shuffle(a){ return shuffleWith(Math.random,a); }
-function numOpts(ans,n,max){
-  const o=[ans]; let guard=0;
-  while(o.length<n&&guard++<80){ const v=ans+ri(-3,3); if(v>=0&&v<=max&&o.indexOf(v)<0) o.push(v); }
-  return shuffle(o).map(String);
-}
+function numOpts(ans,n,max){ return numOptsWith(LK,ans,n,max); }
 /* ---------- Lernkern: Jede Aufgabe ist ein eigener Fakt (7+5, Anlaut von Maus) mit einem Fach nach Leitner.
    Fach 1 kommt in derselben Runde wieder, Fach 2 morgen, dann nach 2, 4 und 8 Tagen. Fach 5 heißt: sitzt.
    Neue Fakten kommen in Schulbuch-Reihenfolge: bis 5, bis 10, bis 20 ohne und dann mit Zehnerübergang. ---------- */
-function dayNo(t){ const d=t?new Date(t):new Date(); return Math.floor((d.getTime()-d.getTimezoneOffset()*6e4)/864e5); }
+function dayNo(t){ return dayNoWith(LK,t); }
 let FS=null;
-function loadFacts(){
-  try{ FS=JSON.parse(localStorage.getItem(K_FACTS)||'null'); }catch(_){ FS=null; }
-  if(!FS||FS.v!==1||!FS.f){
-    /* Wer schon mit dem alten Zähler weit war, startet eine Stufe höher. Den Rest erledigt der Schnellaufstieg. */
-    let sk=0; try{ sk=parseInt(localStorage.getItem(K_SKILL)||'0',10)||0; }catch(_){}
-    const t=sk>=22?2:sk>=8?1:0;
-    FS={v:1,u:{m:t,l:t},f:{},nd:0,nn:{m:0,l:0},ft:{m:0,l:0}};
-  }
-  /* Stufen und Zähler absichern: Eine Stufe über der letzten würde jede Aufgabe abstürzen lassen. */
-  if(!FS.u||typeof FS.u!=='object') FS.u={m:0,l:0};
-  if(!FS.nn||typeof FS.nn!=='object') FS.nn={m:0,l:0};
-  if(!FS.ft||typeof FS.ft!=='object') FS.ft={m:0,l:0};
-  ['m','l'].forEach(function(d){ FS.u[d]=clamp(FS.u[d]|0,0,STAGES[d].length-1); FS.nn[d]=FS.nn[d]|0; FS.ft[d]=FS.ft[d]|0; });
-  if(!FS.dm||typeof FS.dm!=='object'||!FS.dm.c||typeof FS.dm.c!=='object') delete FS.dm;
-  for(const k in FS.f){ const r=FS.f[k]; if(!Array.isArray(r)||!(r[0]>=0)||!isFinite(r[1])) delete FS.f[k]; else r[0]=clamp(r[0]|0,0,5); }
-}
+/* Lernkern-Rest (systems/learn.js) */
+const LK={
+  get HANDT(){ return HANDT; },
+  get PAINT(){ return PAINT; },
+  get battLow(){ return battLow; },
+  set battLow(v){ battLow=v; },
+  get $(){ return $; },
+  get warnS(){ return warnS; },
+  set warnS(v){ warnS=v; },
+  get FS(){ return FS; },
+  set FS(v){ FS=v; },
+  get K_FACTS(){ return K_FACTS; },
+  get K_SKILL(){ return K_SKILL; },
+  get kindHist(){ return kindHist; },
+  get retry(){ return retry; },
+  get lastF(){ return lastF; },
+  set lastF(v){ lastF=v; },
+  get MBOX(){ return MBOX; },
+  get lastDom(){ return lastDom; },
+  set lastDom(v){ lastDom=v; },
+  get SCH(){ return SCH; },
+  get K_SCHOOL(){ return K_SCHOOL; },
+  dayAdd,
+  fParked,
+  fUnlock,
+  labBadge,
+  mixPrefer,
+  mkQ,
+  mkSeq,
+  openQuiz,
+  get pickFact(){ return pickFact; },
+  renderBatt,
+  ri,
+  saveFacts,
+  saveHero,
+  schoolOk,
+  shuffle
+};
+function loadFacts(){ return loadFactsWith(LK); }
 function saveFacts(){ return saveFactsWith(SV); }
 loadFacts();
 /* Wer schon Fakten in Fach 4 oder 5 hat, bekommt die Meistersteine dafür beim ersten Start nachträglich. */
@@ -2292,7 +2302,7 @@ loadFacts();
 const ZRN=['bis 5','bis 10','bis 20 ohne Zehnerübergang','bis 20 mit Zehnerübergang'], ABC='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 let SCH={on:false,zr:3,l:'',at:0};
 try{ const o=JSON.parse(localStorage.getItem(K_SCHOOL)||'null'); if(o&&typeof o==='object'){ SCH.on=!!o.on; SCH.zr=clamp(o.zr|0,0,3); SCH.l=String(o.l||'').replace(/[^A-Z]/g,''); SCH.at=+o.at||0; } }catch(_){}
-function saveSchool(){ SCH.at=Date.now(); try{ localStorage.setItem(K_SCHOOL,JSON.stringify(SCH)); }catch(_){} }
+function saveSchool(){ return saveSchoolWith(LK); }
 function schoolOk(k,s){ return schoolOkWith(SCH,k,s); }
 function fUnlock(d){ return fUnlockWith(FS,d); }
 const retry=[];
@@ -2300,88 +2310,16 @@ let lastF='', lastDom='';
 /* Abwechslung: Aufgabenart (Plus, Minus, Zahlenhaus, Silben …). Gemischtes Üben hält wach und trainiert, die passende Strategie zu erkennen (Interleaving). Kommt dieselbe Art zweimal hintereinander, wird beim dritten Mal eine andere bevorzugt, wenn es eine gibt. */
 let kindHist=[];
 function mixPrefer(a){ return mixPreferWith(Math.random,kindHist,a); }
-function pickFact(){ const k=pickFact0(); kindHist.unshift(fKind(k)); kindHist.length=Math.min(kindHist.length,2); return k; }
-function pickFact0(){
-  const today=dayNo();
-  if(FS.nd!==today){ FS.nd=today; FS.nn={m:0,l:0}; }
-  for(let i=0;i<retry.length;i++) retry[i].n--;
-  const ri0=retry.findIndex(function(r){ return r.n<=0&&r.k!==lastF; });
-  if(ri0>=0) return retry.splice(ri0,1)[0].k;
-  const doms=Math.random()<.6?['m','l']:['l','m'];
-  for(let p=0;p<2;p++){
-    for(const d of doms){
-      const due=[], fresh=[];
-      for(let s=0;s<=FS.u[d];s++) STAGES[d][s].forEach(function(k){
-        if(k===lastF||retry.some(function(r){ return r.k===k; })) return;
-        const r=FS.f[k];
-        if(!r){ if(schoolOk(k,s)) fresh.push([k,s]); }
-        else if(r[1]<=today) due.push(k);
-      });
-      /* Fällige zuerst, die schwächsten vorn. Neue nur in Maßen, damit nicht zu viel Ungeübtes auf einmal kommt. */
-      if(due.length&&(p||Math.random()<.75||!fresh.length)){
-        due.sort(function(a,b){ return FS.f[a][0]-FS.f[b][0]||FS.f[a][1]-FS.f[b][1]; });
-        const dv=mixPrefer(due.slice(0,6));
-        return dv[ri(0,Math.min(2,dv.length-1))];
-      }
-      let open=0; for(const k in FS.f) if(fDom(k)===d&&FS.f[k][0]===1) open++;
-      if(fresh.length&&FS.nn[d]<NEWDAY&&open<4){
-        /* Meist aus der höchsten offenen Stufe, damit nach der Einstufung nicht das längst Gekonnte drankommt. */
-        const top=fresh.filter(function(x){ return x[1]===FS.u[d]; }), pool=top.length&&Math.random()<.7?top:fresh;
-        const pv=mixPrefer(pool.map(function(x){ return x[0]; }));
-        return pv[ri(0,pv.length-1)];
-      }
-    }
-  }
-  /* Nichts fällig und nichts Neues: früh wiederholen, ohne dass das Fach steigt. */
-  const any=Object.keys(FS.f).filter(function(k){ return k!==lastF&&!fParked(k,today); });
-  if(any.length){ any.sort(function(a,b){ return FS.f[a][1]-FS.f[b][1]; }); return any[ri(0,Math.min(4,any.length-1))]; }
-  return STAGES.m[0][ri(0,STAGES.m[0].length-1)];
-}
+function pickFact(){ return pickFactWith(LK); }
+function pickFact0(){ return pickFact0With(LK); }
 function fParked(k,today){ return fParkedWith(FS,k,today); }
-/* how: 'ok' beim ersten Versuch, 'ok2' beim zweiten Versuch am Ziffernblock, 'miss' falsch. */
-function factDone(q,how,fast){
-  const k=q.f, d=fDom(k), today=dayNo();
-  let r=FS.f[k];
-  const isNew=!r;
-  if(isNew){ r=FS.f[k]=[0,today]; FS.nn[d]++; }
-  const wasDue=r[1]<=today;
-  if(how==='miss'){
-    r[0]=1; r[1]=today; FS.ft[d]=0;
-    /* Dreimal am selben Tag falsch: Der Fakt ruht bis morgen. Sonst kommt er immer wieder, und aus Üben wird Frust (Reim auf Tanne: 8 Fehler an einem Nachmittag). */
-    if(!FS.dm||FS.dm.d!==today) FS.dm={d:today,c:{}};
-    FS.dm.c[k]=(FS.dm.c[k]|0)+1;
-    if(fParked(k,today)){ r[1]=today+1; for(let i=retry.length-1;i>=0;i--) if(retry[i].k===k) retry.splice(i,1); }
-    else retry.push({k:k,n:ri(2,3)});
-  }else if(how==='ok2'){
-    r[0]=Math.max(1,r[0]); r[1]=today+1; FS.ft[d]=0;
-  }else if(isNew&&fast){
-    r[0]=3; r[1]=today+BOXD[3];
-    if(fStage(k)===FS.u[d]) FS.ft[d]++;
-  }else if(isNew||wasDue){
-    r[0]=Math.min(5,Math.max(1,r[0])+1); r[1]=today+BOXD[r[0]];
-    if(isNew) FS.ft[d]=0;
-  }
-  const mg=r[0]>=MBOX&&!q.free&&masterGive(k);
-  fUnlock(d); saveFacts();
-  return mg;
-}
+function factDone(q,how,fast){ return factDoneWith(LK,q,how,fast); }
 /* Meisterschaft: Sitzt ein Fakt in Fach 4 (also an verschiedenen Tagen richtig), gibt es einmal einen Meisterstein. Fach 5 leuchtet auf der Rechentafel golden. */
 const MBOX=4;
-function masterGive(k){
-  if(!FS.mg) FS.mg={};
-  if(FS.mg[k]) return false;
-  FS.mg[k]=1; hero.mat.ms=(hero.mat.ms|0)+1; dayAdd('ms'); hero.mk.ms=1; ST.heroDirty=true; saveHero();
-  labBadge(true);
-  return true;
-}
+function masterGive(k){ return masterGiveWith(LK,k); }
 function mkQ(k){ return mkQWith(Math.random,IC,QI,k); }
 function mkSeq(){ return mkSeqWith(Math.random,FS); }
-function genQ(){
-  if(Math.random()<.1&&lastF.indexOf('seq:')!==0){ const q=mkSeq(); lastF=q.f; lastDom='m'; return q; }
-  const k=pickFact(), q=mkQ(k), r=FS.f[k];
-  q.box=r?r[0]:0; lastF=k; lastDom=fDom(k);
-  return q;
-}
+function genQ(){ return genQWith(LK); }
 const PADK=['1','2','3','4','5','6','7','8','9','del','0','ok'];
 /* Port für ui/learn.js: Akku, Lernaufgabe und Rechentafel auf dem Bildschirm */
 const QZ={
