@@ -1,4 +1,4 @@
-// Bildvergleich (Migrationsplan PR 17, Pfeile und Monster seit PR 18, Tiere seit PR 19a): Feste Szenen werden mit dem Stand von main (OLD) und dem neuen Testbuild gezeichnet.
+// Bildvergleich (Migrationsplan PR 17, Pfeile und Monster seit PR 18, Tiere seit PR 19a, Winter seit PR 20b): Feste Szenen werden mit dem Stand von main (OLD) und dem neuen Testbuild gezeichnet.
 // Die Bilder müssen Pixel für Pixel gleich sein. So fällt auf, wenn ein Umzug die Zeichenreihenfolge ändert.
 // Kein fester Hash im Repo: Pixel hängen von der Chromium-Version ab. Verglichen wird im selben Browser.
 // Aufruf: OLD=/pfad/zur/alten/index.html node tests/pixels.mjs   (im CI wie beim Update-Test aus origin/main)
@@ -47,6 +47,12 @@ const SCENES = [
         {ok:true,e:'🐔',x:1350,y:ground(1350),sz:20,k:'walk',fl:'hen',t:2,hop:.2,dir:-1,ph:1,idle:0},
         {ok:true,e:'👻',x:1400,y:ground(1400)-90,sz:28,k:'fly',fl:'ghost',t:3,hop:0,dir:1,ph:2,shy:true});
       throws.push({e:'🍌',x:1320,y:ground(1320)-70,vx:0,vy:0})` },
+  { name: 'Schneemänner, Schneebälle und Feuerwerk', go: 'teleport(6000)',
+    set: `P.x=6000; P.y=ground(P.x)-2; time=6; nightA=.5; balls.length=0; fws.length=0;
+      ST.props=ST.props.filter(function(o){ return o.type!=='man'; });
+      ST.props.push({type:'man',x:5950,y:surfaceY(5950)},{type:'man',x:6150,y:surfaceY(6150)});
+      balls.push({x:6040,y:ground(6040)-80,vx:0,vy:0,foe:false,t:0},{x:6100,y:ground(6100)-40,vx:0,vy:0,foe:true,t:0});
+      fws.push({x:5880,y:ground(5880)-150,ty:0,c:2},{x:6200,y:ground(6200)-60,ty:0,c:4})` },
 ];
 
 async function shoot(browser, url) {

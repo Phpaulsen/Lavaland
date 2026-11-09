@@ -33,6 +33,7 @@ import { creHitWith, creTickWith, drawCresWith, throws } from './systems/creatur
 import { pickTickWith, padsTickWith, secretsTickWith } from './systems/finds.js';
 import { worldWith } from './systems/worldtick.js';
 import { questsWith, questTickWith, qEventWith, skyMarkWith, newQuestWith, showQuestWith, questPointWith } from './systems/quests.js';
+import { winterWith, throwBallWith, fireworkWith, burstWith, addManWith, drawManWith, pinFlyWith, yetiHitWith, stEnterWith } from './systems/winter.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -1353,6 +1354,38 @@ const QP={
   stationY,
   surfaceY
 };
+/* Port für systems/winter.js: Winterzustand (Schneebälle, Feuerwerk, Figuren, Warteschlange), Welt, Teilchen und Zeichenhelfer für Schneebälle, Feuerwerk, Schneemänner, Pinguine und die Figuren am Schneeberg und am Vulkan. */
+const WP={
+  get balls(){ return balls; },
+  get N(){ return N; },
+  get fws(){ return fws; },
+  get CONF(){ return CONF; },
+  get reduced(){ return reduced; },
+  get time(){ return time; },
+  get pinT(){ return pinT; },
+  set pinT(v){ pinT=v; },
+  get pinN(){ return pinN; },
+  set pinN(v){ pinN=v; },
+  get PENX(){ return PENX; },
+  get YETX(){ return YETX; },
+  get RIMY(){ return RIMY; },
+  get stq(){ return stq; },
+  get realm(){ return realm; },
+  get manT(){ return manT; },
+  set manT(v){ manT=v; },
+  confetti,
+  disc,
+  drawSnowman,
+  flX,
+  floorAt,
+  puff,
+  ri,
+  shout,
+  solidW,
+  spawn,
+  steam,
+  surfaceY
+};
 /* Drei Stufen: alles an, nur Sprache (ohne Piepen und Klänge), alles aus. Sprache braucht das Kind, Effekte nerven manchmal die Großen. */
 try{ const mv=localStorage.getItem(K_MUTE); AU.muted=mv==='1'; AU.fxOff=mv==='s'; }catch(_){}
 document.addEventListener('pointerdown',function(e){
@@ -1850,148 +1883,23 @@ function breathe(){
 }
 
 /* ---------- Schneebälle ---------- */
-function throwBall(tx,ty,from){
-  if(balls.length>14) balls.shift();
-  const sx=from?from[0]:P.x+P.face*6, sy=from?from[1]:P.y-30, dx=tx-sx, dy=ty-sy, T=clamp(Math.hypot(dx,dy)/520,.3,.95);
-  balls.push({x:sx,y:sy,vx:dx/T,vy:dy/T-300*T,foe:!!from,t:0});
-  if(!from){ if(dx&&P.mode==='walk') P.face=dx>0?1:-1; sfx('throw'); }
-}
-function npcHit(b){
-  const y=N.yeti, fx=flX(), h=N.hare;
-  if(Math.abs(b.x-y.x)<27&&b.y>y.y-70&&b.y<y.y){ yetiHit(); return true; }
-  for(const p of N.pen) if(p.s===0&&Math.abs(b.x-p.x)<10&&Math.abs(b.y-(p.y-10))<14){ pinFly(p,b.vx*.5); return true; }
-  if(Math.abs(b.x-fx)<13&&b.y>surfaceY(fx)-58&&b.y<surfaceY(fx)){ shout(fx,surfaceY(fx)-72,'HEY!'); return true; }
-  if(Math.abs(b.x-h.x)<12&&Math.abs(b.y-(h.y-10))<14){ shout(h.x,h.y-36,'MIEP!'); sfx('quack'); return true; }
-  return false;
-}
-function ballsTick(dt){
-  for(let i=balls.length-1;i>=0;i--){
-    const b=balls[i], ox=b.x, oy=b.y;
-    b.t+=dt; b.vy+=600*dt; b.x+=b.vx*dt; b.y+=b.vy*dt;
-    let hit=b.t>4||b.x<10||b.x>WORLD_W-10;
-    if(!hit){
-      if(b.foe){ if(P.mode!=='coaster'&&Math.hypot(b.x-P.x,b.y-(P.y-20))<20){ hit=true; P.frost=2.5; shout(P.x,P.y-56,'PLATSCH!'); } }
-      else if(b.x>5600) hit=npcHit(b);
-    }
-    if(!hit){
-      const m=cellAt(b.x,b.y);
-      if(m===LAVA||m===FIRE){ hit=true; steam(Math.floor(b.x/CELL),Math.floor((b.y-TOP)/CELL)); }
-      else if(m===WATER) hit=true;
-      else if(m>=4){ hit=true; if(!b.foe) disc(Math.floor(ox/CELL),Math.floor((oy-TOP)/CELL),1.3,SNOW); }
-    }
-    if(hit){ balls.splice(i,1); puff(b.x,b.y,6); sfx('splat'); }
-  }
-}
+function throwBall(tx,ty,from){ return throwBallWith(WP,tx,ty,from); }
 
 /* ---------- Feuerwerk ---------- */
-function firework(x,y){
-  if(fws.length>8) return;
-  x=clamp(x,20,WORLD_W-20);
-  fws.push({x:x,y:Math.max(y+70,Math.min(surfaceY(x),y+420)),ty:y,c:ri(0,5)}); sfx('fw');
-}
-function burst(x,y,c){
-  const n=40, c2=CONF[(c+2+ri(0,2))%6];
-  for(let i=0;i<n;i++){ const a=i/n*TAU, v=150+Math.random()*130; spawn(6,x,y,Math.cos(a)*v,Math.sin(a)*v-60,1.1+Math.random()*.6,3,i%3?CONF[c]:c2); }
-  for(let i=0;i<8;i++) spawn(5,x,y,(Math.random()-.5)*200,(Math.random()-.5)*200,.6,2);
-  sfx('bang');
-}
-function fwsTick(dt){
-  for(let i=fws.length-1;i>=0;i--){
-    const f=fws[i]; f.y-=620*dt;
-    if(Math.random()<dt*40) spawn(5,f.x,f.y+8,(Math.random()-.5)*30,90,.3,2);
-    if(f.y<=f.ty){ fws.splice(i,1); burst(f.x,f.ty,f.c); }
-  }
-}
+function firework(x,y){ return fireworkWith(WP,x,y); }
+function burst(x,y,c){ return burstWith(WP,x,y,c); }
 
 /* ---------- Schneemänner zum Hinstellen. Sie winken, wenn der Held kommt, und schmelzen neben Feuer und Lava. ---------- */
-function addMan(x){
-  x=clamp(x,60,WORLD_W-60);
-  let n=0; for(const o of ST.props) if(o.type==='man') n++;
-  if(n>=24) ST.props.splice(ST.props.findIndex(function(o){return o.type==='man';}),1);
-  const y=surfaceY(x);
-  ST.props.push({type:'man',x:x,y:y}); puff(x,y-24,12); sfx('pop'); shout(x,y-72,'HALLO!');
-}
-function drawMan(o){
-  const near=!reduced&&Math.abs(P.x-o.x)<80&&Math.abs(P.y-o.y)<90;
-  drawSnowman(o.x,o.y,.92,true,near?Math.sin(time*11):0,CONF[Math.floor(o.x)%6],false);
-}
-function menTick(){
-  for(let i=ST.props.length-1;i>=0;i--){
-    const o=ST.props[i]; if(o.type!=='man') continue;
-    o.y=floorAt(o.x,o.y,12);
-    if(hotAt(o.x,o.y-6)||hotAt(o.x-9,o.y-3)||hotAt(o.x+9,o.y-3)||hotAt(o.x,o.y+4)){
-      ST.props.splice(i,1);
-      for(let k=0;k<8;k++) steam(Math.floor(o.x/CELL)+k%3-1,Math.floor((o.y-TOP)/CELL)-(k>>1));
-      shout(o.x,o.y-62,'OH NEIN!'); spawn(8,o.x,o.y-30,0,-30,1.6,20,'🥕'); sfx('splat');
-    }
-  }
-}
+function addMan(x){ return addManWith(WP,x); }
+function drawMan(o){ return drawManWith(WP,o); }
 
 /* ---------- Pinguine: Sie stehen unten an der Piste wie Kegel. Wer hineinsaust, lässt sie fliegen. ---------- */
-function pinFly(p,vx){
-  p.s=1; p.vx=vx+(Math.random()-.5)*120; p.vy=-240-Math.random()*240; p.vr=(Math.random()<.5?-1:1)*(7+Math.random()*9); sfx('quack');
-  if(time-pinT>2.5){ pinT=time; pinN=0; }
-  if(++pinN===6){ shout(PENX+38,p.y-74,'STRIKE!','#ffd23f'); confetti(PENX+38,p.y-20); ST.lootDirty=true; jingle(); }
-}
-function pensTick(dt){
-  for(const p of N.pen){
-    if(p.s===0){
-      p.x=p.hx; p.y=surfaceY(p.hx); p.rot=0;
-      if(P.mode!=='coaster'&&Math.abs(P.x-p.x)<13&&P.y>p.y-26&&P.y<p.y+34&&Math.abs(P.vx)>110) pinFly(p,P.vx*.7);
-    }else if(p.s===1){
-      p.vy+=G*.8*dt; p.x=clamp(p.x+p.vx*dt,30,WORLD_W-30); p.y+=p.vy*dt; p.rot+=p.vr*dt;
-      if((p.vy>0&&solidW(p.x,p.y+2))||p.y>TOP+GY*CELL){ p.y=surfaceY(p.x); p.s=2; p.t=1.6+Math.random()*1.5; p.rot=1.57; puff(p.x,p.y-4,4); }
-    }else if(p.s===2){ p.t-=dt; if(p.t<=0) p.s=3; }
-    else{
-      const dd=p.hx-p.x; p.x+=Math.sign(dd)*Math.min(Math.abs(dd),70*dt); p.y=surfaceY(p.x); p.rot=.25*Math.sin(time*14);
-      if(Math.abs(dd)<1) p.s=0;
-    }
-  }
-}
+function pinFly(p,vx){ return pinFlyWith(WP,p,vx); }
 
 /* ---------- Die Figuren am Schneeberg und am Vulkan. Die Geschichte gibt es nicht mehr (Vereinfachungsplan Schritt 3), sie stehen so da wie nach ihrem Ende. ---------- */
-function hareTick(){
-  const h=N.hare; h.x=flX()+28; h.y=surfaceY(h.x);
-}
-function yetiPups(){
-  const y=N.yeti; y.roll=1.8;
-  for(let i=0;i<26;i++) spawn(7,y.x+24+Math.random()*10,y.y-14,60+Math.random()*130,-20-Math.random()*50,1.4,7+Math.random()*6);
-  shout(y.x+44,y.y-34,'PUPS!'); sfx('pups');
-}
-function yetiHit(){
-  const y=N.yeti; y.laugh=.7; y.hits++; shout(y.x,y.y-88,['HIHI!','HOHO!','HAHA!'][y.hits%3]); sfx('laugh');
-  if(y.hits%5===0) yetiPups();
-}
-function yetiTick(dt){
-  const y=N.yeti; y.y=surfaceY(YETX);
-  if(y.laugh>0) y.laugh-=dt; if(y.roll>0) y.roll-=dt; if(y.hop>0) y.hop-=dt;
-  y.hick-=dt;
-  if(y.hick<=0){ y.hick=6+Math.random()*6; if(Math.abs(cam.x-y.x)<500){ shout(y.x,y.y-92,'HICK!'); y.hop=.35; sfx('hick'); } }
-}
-function fauTick(dt){
-  const f=N.fau, tx=VOLC+88, ty=surfaceY(VOLC+88);
-  f.x+=(tx-f.x)*Math.min(1,dt*3); f.y+=(ty-f.y)*Math.min(1,dt*3); f.face=-1;
-}
-function mamaTick(dt){
-  const m=N.mama, tgt=P.mode!=='dragon'?1:0;
-  m.up+=(tgt-m.up)*Math.min(1,dt*1.3);
-  if(m.up>.9&&Math.abs(cam.x-VOLC)<700&&Math.random()<dt*.8) spawn(0,VOLC+(P.x<VOLC?-78:66),RIMY-28,(Math.random()-.5)*10,-30,1.4,5);
-}
+function yetiHit(){ return yetiHitWith(WP); }
 
-function stEnter(){
-  stq.length=0; N.fau.x=VOLC+88; N.fau.y=surfaceY(VOLC+88);
-}
-function winterTick(dt){
-  const due=[];
-  for(let i=stq.length-1;i>=0;i--){ const q=stq[i]; q.t-=dt; if(q.t<=0){ due.push(q); stq.splice(i,1); } }
-  for(const q of due) q.fn();
-  if(balls.length) ballsTick(dt);
-  if(fws.length) fwsTick(dt);
-  if(realm) return;
-  if(cam.x>5100&&cam.x<9600){ hareTick(); yetiTick(dt); pensTick(dt); }
-  fauTick(dt); mamaTick(dt);
-  manT-=dt; if(manT<=0){ manT=.4; menTick(); }
-}
+function stEnter(){ return stEnterWith(WP); }
 function syncOwn(){
   $('mode-dragon').classList.toggle('gone',!hero.own.dragon);
   $('tool-fw').classList.toggle('gone',!hero.own.fw);
@@ -5462,7 +5370,7 @@ for(const s of mobsWith(MP)) register(s.name,s.tick,s.draw);
 for(const s of sightsWith(SY)) register(s.name,s.tick,s.draw);
 for(const s of worldWith(WT)) register(s.name,s.tick,s.draw);
 register('deepTick',deepTick);
-register('winterTick',winterTick);
+for(const s of winterWith(WP)) register(s.name,s.tick,s.draw);
 register('findsTick',findsTick);
 for(const s of questsWith(QP)) register(s.name,s.tick,s.draw);
 register('autosave',autosave);
