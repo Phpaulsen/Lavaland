@@ -1,4 +1,4 @@
-// Bildvergleich (Migrationsplan PR 17, Pfeile und Monster seit PR 18, Tiere seit PR 19a, Winter seit PR 20b, Werkstatt, Tiefe und Planeten seit PR 22): Feste Szenen werden mit dem Stand von main (OLD) und dem neuen Testbuild gezeichnet.
+// Bildvergleich (Migrationsplan PR 17, Pfeile und Monster seit PR 18, Tiere seit PR 19a, Winter seit PR 20b, Werkstatt, Tiefe und Planeten seit PR 22, Lift seit PR 23): Feste Szenen werden mit dem Stand von main (OLD) und dem neuen Testbuild gezeichnet.
 // Die Bilder müssen Pixel für Pixel gleich sein. So fällt auf, wenn ein Umzug die Zeichenreihenfolge ändert.
 // Kein fester Hash im Repo: Pixel hängen von der Chromium-Version ab. Verglichen wird im selben Browser.
 // Aufruf: OLD=/pfad/zur/alten/index.html node tests/pixels.mjs   (im CI wie beim Update-Test aus origin/main)
@@ -57,6 +57,8 @@ const SCENES = [
   { name: 'Kristalle in der Tiefe', go: "teleport(ZDEC.find(function(d){ return d.k==='cry'; }).x)",
     set: "const d=ZDEC.find(function(d){ return d.k==='cry'; }); P.x=d.x-70; P.y=d.y; time=3; nightA=0" },
   { name: 'Planeten im Weltraum', go: 'teleport(SPACE.ice.x)', set: 'P.x=SPACE.ice.x-SPACE.ice.r-160; P.y=SPACE.ice.y; time=4; nightA=0' },
+  // Zuletzt, weil die Szene den Helden auf Ski stellt.
+  { name: 'Lift, Iglu, Yeti und Skifahrer', go: 'teleport(IGX+60)', set: "P.x=IGX+60; P.y=surfaceY(P.x)-2; P.mode='ski'; P.ang=0; P.on=true; P.ball=0; time=5; nightA=0" },
 ];
 
 async function shoot(browser, url) {

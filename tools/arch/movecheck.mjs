@@ -105,7 +105,7 @@ export function transform(node, moves, own, file) {
   // Bezüge auf umbenannte Namen werden nur innerhalb bewegter Funktionen umgeschrieben; legacy.js ruft weiter den alten Namen (Einzeiler).
   const n0 = clone(node);
   // Fassade nur für Bezüge, die nicht auf eine gleichnamige lokale Deklaration zeigen (wie codemod.mjs). sh = verdeckte Namen.
-  const shadow = (x, sh) => { if (!fac && !wn) return sh; const d = localDecl(x).filter(n => (fac && fac.has(n)) || (wn && (wn.has(n) || n === wo.from))); return d.length ? new Set([...sh, ...d]) : sh; };
+  const shadow = (x, sh) => { if (!fac && !wn && !moved) return sh; const d = localDecl(x).filter(n => (fac && fac.has(n)) || (wn && (wn.has(n) || n === wo.from)) || (moved && ren[n])); return d.length ? new Set([...sh, ...d]) : sh; };
   const walk = (x, parent, key, sh = new Set()) => {
     if (!x || typeof x !== 'object') return x;
     if (Array.isArray(x)) { for (let i = 0; i < x.length; i++) x[i] = walk(x[i], parent, key, sh); return x; }
@@ -116,7 +116,7 @@ export function transform(node, moves, own, file) {
     if (moved && x.type === 'CallExpression' && x.callee.type === 'Identifier' && !(wn && wn.has(x.callee.name) && !sh.has(x.callee.name))) {
       const c = x.callee.name;
       // Aufruf einer mit Parametern bewegten Funktion: neuer Name, ihre Parameter vorn (gleich benannt wie hier)
-      if (ren[c] && plist(ren[c]).length) { x.callee = id(ren[c]); x.arguments = [...plist(ren[c]).map(e => id(e.name)), ...x.arguments.map(a => walk(a, x, 'arguments', sh))]; return x; }
+      if (ren[c] && !sh.has(c) && plist(ren[c]).length) { x.callee = id(ren[c]); x.arguments = [...plist(ren[c]).map(e => id(e.name)), ...x.arguments.map(a => walk(a, x, 'arguments', sh))]; return x; }
       // Aufruf eines Einzeilers aus legacy.js (z. B. ri → riWith): die core-Fassung mit dem Zufallsparameter vorn
       if (wrap[c] && rnd) { x.callee = id(wrap[c]); x.arguments = [id(rnd), ...x.arguments.map(a => walk(a, x, 'arguments', sh))]; return x; }
     }
@@ -129,7 +129,7 @@ export function transform(node, moves, own, file) {
     if (x.type === 'Identifier') {
       if (wn && wn.has(x.name) && !sh.has(x.name)) return mem(wo.param, x.name);
       if (fac && fac.has(x.name) && !sh.has(x.name)) return { type: 'MemberExpression', object: id(fac.get(x.name)), property: id(x.name), computed: false, optional: false };
-      if (moved && ren[x.name]) return id(ren[x.name]);
+      if (moved && ren[x.name] && !sh.has(x.name)) return id(ren[x.name]); // eine lokale Variable gleichen Namens (const mood in drawWinter) bleibt
       return x;
     }
     for (const k of Object.keys(x)) if (!SKIP.has(k) && k !== 'type') x[k] = walk(x[k], x, k, sh);
@@ -257,6 +257,12 @@ function selftest() {
     ['Zustand als Parameter, Körper geändert', { 'legacy.js': L('let FS={u:1};\nfunction mk(lv){return FS.u+lv}') },
       { 'legacy.js': L('let FS={u:1};\nfunction mk(lv){return mkW(FS,lv)}'), 'core/m.js': 'export function mkW(FS,lv){return FS.u-lv}' },
       { renames: { mkW: 'mk' }, params: { mkW: ['FS'] }, changed: ['mk'] }, 1],
+    ['Umbenannte Funktion, lokale Variable gleichen Namens bleibt', { 'legacy.js': L('function m(){return 1}\nfunction d(){const m=2;return m}') },
+      { 'legacy.js': L('function m(){return mW(P)}\nfunction d(){return dW(P)}\nconst P={}'), 'render/d.js': 'export function mW(P){return 1}\nexport function dW(P){const m=2;return m}' },
+      { renames: { mW: 'm', dW: 'd' }, params: { mW: ['P'], dW: ['P'] }, changed: ['m', 'd'], added: ['P'] }, 0],
+    ['Umbenannte Funktion, lokaler Name fälschlich umbenannt', { 'legacy.js': L('function m(){return 1}\nfunction d(){const m=2;return m}') },
+      { 'legacy.js': L('function m(){return mW(P)}\nfunction d(){return dW(P)}\nconst P={}'), 'render/d.js': 'export function mW(P){return 1}\nexport function dW(P){const m=2;return mW}' },
+      { renames: { mW: 'm', dW: 'd' }, params: { mW: ['P'], dW: ['P'] }, changed: ['m', 'd'], added: ['P'] }, 1],
     ['Fassade', { 'legacy.js': L('let x=1;\nfunction f(){x++;return {x,y:x}}') }, { 'legacy.js': L('function f(){W.x++;return {x:W.x,y:W.x}}'), 'state/w.js': 'export const W={x:1}' },
       { facade: { name: 'W', names: ['x'] }, removed: ['x'], added: ['W'] }, 0],
     ['Fassade, lokaler Name verdeckt', { 'legacy.js': L('let x=1;\nfunction f(){const x=2;return x}\nfunction g(x){return x}\nfunction h(){if(1){let x=3;x++}return x}\nfunction k(){try{}catch(x){x}for(const x of[]){x}return [1].map(x=>x)}') },
