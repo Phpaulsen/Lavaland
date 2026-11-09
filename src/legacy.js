@@ -71,6 +71,8 @@ import { FX, fxSpeed, kidScale } from './state/fx.js';
 import { K, S1, IC, AI, S2, QI } from './ui/icons.js';
 import { HOME_T, HOME_C, trees, clouds } from './state/home.js';
 import { uiBindWith } from './ui/bind.js';
+import { keysBindWith } from './ui/keys.js';
+import { parBindWith } from './ui/parent.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -1913,22 +1915,6 @@ function nextQ(){ return nextQWith(QZ); }
 function padKey(k){ return padKeyWith(QZ,k); }
 function padSubmit(){ return padSubmitWith(QZ); }
 
-const keymap={ArrowLeft:'l',ArrowRight:'r',ArrowUp:'u',ArrowDown:'d',a:'l',d:'r',w:'u',s:'d'};
-window.addEventListener('keydown',function(e){
-  if(qcur&&qcur.pad&&!$('quiz').hidden){
-    if(/^[0-9]$/.test(e.key)){ padKey(e.key); e.preventDefault(); return; }
-    if(e.key==='Backspace'){ padKey('del'); e.preventDefault(); return; }
-    if(e.key==='Enter'){ padKey('ok'); e.preventDefault(); return; }
-  }
-  /* Escape schließt die Aufgabe wie das X, sonst bliebe das Spiel pausiert. */
-  if(e.key==='Escape'&&!$('quiz').hidden){ closeQuiz(); return; }
-  if(e.key==='Escape'){ document.querySelectorAll('.ov').forEach(function(o){ o.hidden=true; }); pzClose(); return; }
-  if(ST.paused||uiOpen()||(e.target&&e.target.tagName==='BUTTON'&&e.key==='Enter')) return;
-  const k=keymap[e.key];
-  if(k){ if(!e.repeat) keyTap(k); keys[k]=true; e.preventDefault(); }
-  else if(e.key===' '){ if(!e.repeat){ keys.a=true; doAction(); } e.preventDefault(); }
-  else if(!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey) keyShort(e.key.toLowerCase());
-});
 /* Tastenkürzel für Tablet-Tastatur und Laptop: dieselben Knöpfe wie oben in der Leiste. Fragezeichen zeigt die Liste. */
 const SHORT={f:'btn-veh',t:'btn-tool',k:'btn-map',e:'batt',m:'btn-menu'};
 function keyShort(k){ return keyShortWith(KY,k); }
@@ -1940,12 +1926,22 @@ const KY={
   setMode,
   setTool
 };
-window.addEventListener('keyup',function(e){ const k=keymap[e.key]; if(k) keys[k]=false; if(e.key===' ') keys.a=false; });
-window.addEventListener('blur',function(){ keys.l=keys.r=keys.u=keys.d=keys.a=false; });
-document.addEventListener('contextmenu',function(e){ e.preventDefault(); });
 function canScroll(n){ return canScrollWith(KY,n); }
-document.addEventListener('touchmove',function(e){ if(!canScroll(e.target)) e.preventDefault(); },{passive:false});
-document.addEventListener('gesturestart',function(e){ e.preventDefault(); });
+function keysBind(){ return keysBindWith(KB); }
+/* Tastatur und Wischen verdrahten (ui/keys.js) */
+const KB={
+  get qcur(){ return qcur; },
+  get $(){ return $; },
+  canScroll,
+  closeQuiz,
+  doAction,
+  keyShort,
+  keyTap,
+  padKey,
+  pzClose,
+  uiOpen
+};
+keysBind();
 
 /* ---------- Zeichnen ---------- */
 let W=0,H=0,DPR=1,S=1, maxDpr=2, perfT=0, perfN=0;
@@ -2198,28 +2194,8 @@ const SNAME={quiz:'Rechnen/Buchstaben',pz:'Rätsel',play:'Sandbox',empty:'Sandbo
 const SCOL={quiz:'#2f6fd6',pz:'#7b4fd6',play:'#58b548',empty:'#ff5a1f',ui:'#c4bca6'};
 const PMIN=20;
 let pgA=0, pgB=0, pgIn='', pgMiss=0, parRange=7, parDel=false, holdT=0;
-$('menu').querySelector('.sheet').addEventListener('pointerdown',function(e){
-  if(e.target.closest('button')) return;
-  clearTimeout(holdT); holdT=setTimeout(pgOpen,3000);
-});
-['pointerup','pointercancel','pointerleave'].forEach(function(n){ $('menu').querySelector('.sheet').addEventListener(n,function(){ clearTimeout(holdT); }); });
 function pgOpen(){ return pgOpenWith(PV); }
 function pgDraw(){ return pgDrawWith(PV); }
-$('pg-keys').innerHTML=[1,2,3,4,5,6,7,8,9,'⌫',0,'OK'].map(function(k){ return '<button class="pzb sm" data-k="'+k+'">'+k+'</button>'; }).join('');
-$('pg-keys').addEventListener('click',function(e){
-  const b=e.target.closest('[data-k]'); if(!b) return;
-  const k=b.dataset.k;
-  if(k==='⌫') pgIn=pgIn.slice(0,-1);
-  else if(k==='OK'){
-    if(+pgIn===pgA*pgB){ $('pgate').hidden=true; parOpen(); return; }
-    pgIn=''; if(++pgMiss>=2){ $('pgate').hidden=true; return; }
-    pgA=ri(3,9); pgB=ri(3,9);
-  }
-  else if(pgIn.length<3) pgIn+=k;
-  pgDraw();
-});
-$('pgate').querySelector('.xb').addEventListener('click',function(){ $('pgate').hidden=true; });
-$('par').querySelector('.xb').addEventListener('click',function(){ $('par').hidden=true; });
 function parOpen(){ return parOpenWith(PV); }
 function parGet(){ return parGetWith(PV); }
 function guessed(e){ return guessedWith(PV,e); }
@@ -2245,11 +2221,6 @@ let tafTab='p';
 function tafCell(k,t){ return tafCellWith(QZ,k,t); }
 function renderTafel(){ return renderTafelWith(QZ); }
 function openTafel(){ return openTafelWith(QZ); }
-$('lab-taf').addEventListener('click',function(){ $('lab').hidden=true; openTafel(); });
-$('tafel').addEventListener('click',function(e){
-  if(e.target===$('tafel')||e.target.closest('.xb')){ $('tafel').hidden=true; return; }
-  const b=e.target.closest('[data-tt]'); if(b){ tafTab=b.dataset.tt; renderTafel(); }
-});
 /* Tagesbilanz und Lagerfeuer: Nach einem neuen Ort lädt ein Lagerfeuer zur Pause ein. Weiterspielen ist immer erlaubt. */
 let DAY=null;
 /* Tagesbilanz und Lagerfeuer (systems/day.js) */
@@ -2290,57 +2261,60 @@ function campSoon(){ return campSoonWith(DY); }
 function plural(n,a,b){ return pluralWith(DY,n,a,b); }
 function openCamp(why){ return openCampWith(DY,why); }
 function campRest(){ return campRestWith(DY); }
-$('camp-go').addEventListener('click',function(){ $('camp').hidden=true; });
-$('camp-rest').addEventListener('click',function(){ if($('camp-s').classList.contains('night')){ $('camp').hidden=true; return; } campRest(); });
-$('par-body').addEventListener('click',function(e){
-  const r=e.target.closest('[data-r]');
-  if(r){ parRange=+r.dataset.r; parLoad(); return; }
-  const z=e.target.closest('[data-zr]'), lt=e.target.closest('[data-lt]');
-  if(z||lt){
-    if(!SCH.on){ SCH.on=true; SCH.l=''; }
-    if(z) SCH.zr=+z.dataset.zr;
-    else{ const c=lt.dataset.lt; SCH.l=SCH.l.indexOf(c)>=0?SCH.l.replace(c,''):SCH.l+c; }
-    saveSchool(); parLoad(); return;
-  }
-  if(e.target.closest('#par-errc')){
-    const t=errLoad().map(function(x){ return new Date(x.t).toISOString()+' '+x.m+(x.w?' ('+x.w+')':'')+(x.n>1?' x'+x.n:''); }).join('\n')+'\n'+navigator.userAgent;
-    if(navigator.clipboard) navigator.clipboard.writeText(t).then(function(){ flash('par-errc','ok'); },function(){});
-    return;
-  }
-  if(e.target.closest('#par-errx')){ try{ localStorage.removeItem(ERRK); }catch(_){} parLoad(); return; }
-  const vr=e.target.closest('[data-vr]'), vv=e.target.closest('[data-vv]');
-  if(vr||vv){ if(vr) VOICE.r=+vr.dataset.vr; else VOICE.v=vv.dataset.vv; voiceSave(); if(vv){ speakStop(); synth('Hallo! So klinge ich.'); } else speak('Hallo! So klinge ich.'); parLoad(); return; }
-  if(e.target.closest('#par-vt')){ speak('Hallo! Wie viel ist 3 plus 4?'); return; }
-  if(e.target.closest('#par-vs')){ speakStop(); synth('Hallo! Wie viel ist 3 plus 4?'); return; }
-  if(e.target.closest('#par-vmc')){
-    let t=''; try{ t=JSON.parse(localStorage.getItem(K_VMISS)||'[]').join('\n'); }catch(_){}
-    if(navigator.clipboard) navigator.clipboard.writeText(t).then(function(){ flash('par-vmc','ok'); },function(){});
-    return;
-  }
-  if(e.target.closest('#par-sheet')){ sheetPrint(parStum); return; }
-  if(e.target.closest('#par-bak')){ bakSave(); setTimeout(parLoad,1500); return; }
-  if(e.target.closest('#par-sall')){ SCH.on=false; saveSchool(); parLoad(); return; }
-  const op=e.target.closest('[data-opt]');
-  if(op){ const k=op.dataset.opt; if(k==='mon1'||k==='mon0') OPT.mon=k==='mon1'; else { OPT.calm=k==='calm1'; reduced=reducedSys||OPT.calm; document.body.classList.toggle('calm',OPT.calm); } optSave(); parLoad(); return; }
-  const lm=e.target.closest('[data-lim]');
-  if(lm){ LIM=+lm.dataset.lim; try{ localStorage.setItem(K_LIMIT,String(LIM)); }catch(_){} dayLoad(); DAY.lim=0; daySave(); parLoad(); return; }
-  if(e.target.closest('#par-exp')){
-    parGet().then(function(o){
-      const b=new Blob([JSON.stringify({app:'lavaland-log',at:new Date().toISOString(),ev:o.ev,day:o.day,err:errLoad(),dev:{ua:navigator.userAgent,mem:navigator.deviceMemory||null,w:innerWidth,h:innerHeight,dpr:devicePixelRatio}})],{type:'application/json'});
-      const a=document.createElement('a'), u=URL.createObjectURL(b);
-      a.href=u; a.download='lavaland-protokoll-'+LOG.day()+'.json'; document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(function(){ URL.revokeObjectURL(u); },4000);
-    }).catch(function(){});
-    return;
-  }
-  if(e.target.closest('#par-del')){
-    if(!parDel){ parDel=true; e.target.closest('#par-del').textContent='Wirklich löschen?'; return; }
-    LOG.trx(['ev','day'],'readwrite').then(function(tx){
-      tx.objectStore('ev').clear(); tx.objectStore('day').clear();
-      tx.oncomplete=function(){ parDel=false; parLoad(); };
-    }).catch(function(){});
-  }
-});
+function parBind(){ return parBindWith(PB); }
+/* Elternansicht, Rechentafel und Lagerfeuer verdrahten (ui/parent.js) */
+const PB={
+  get $(){ return $; },
+  get holdT(){ return holdT; },
+  set holdT(v){ holdT=v; },
+  get pgIn(){ return pgIn; },
+  set pgIn(v){ pgIn=v; },
+  get pgA(){ return pgA; },
+  set pgA(v){ pgA=v; },
+  get pgB(){ return pgB; },
+  set pgB(v){ pgB=v; },
+  get pgMiss(){ return pgMiss; },
+  set pgMiss(v){ pgMiss=v; },
+  get tafTab(){ return tafTab; },
+  set tafTab(v){ tafTab=v; },
+  get parRange(){ return parRange; },
+  set parRange(v){ parRange=v; },
+  get SCH(){ return SCH; },
+  get errLoad(){ return errLoad; },
+  get ERRK(){ return ERRK; },
+  get K_VMISS(){ return K_VMISS; },
+  get parStum(){ return parStum; },
+  get OPT(){ return OPT; },
+  get reduced(){ return reduced; },
+  set reduced(v){ reduced=v; },
+  get reducedSys(){ return reducedSys; },
+  get LIM(){ return LIM; },
+  set LIM(v){ LIM=v; },
+  get K_LIMIT(){ return K_LIMIT; },
+  get DAY(){ return DAY; },
+  get LOG(){ return LOG; },
+  get parDel(){ return parDel; },
+  set parDel(v){ parDel=v; },
+  bakSave,
+  campRest,
+  dayLoad,
+  daySave,
+  flash,
+  openTafel,
+  optSave,
+  parGet,
+  parLoad,
+  parOpen,
+  pgDraw,
+  pgOpen,
+  renderTafel,
+  ri,
+  saveSchool,
+  sheetPrint,
+  speak,
+  voiceSave
+};
+parBind();
 
 let last=0, accum=0, lastIcon='', drawN=0;
 /* Port für app/app.js: Start, Bildschleife, Reisen zwischen den Welten, neue Welt und Laden. Steht vor frame, nach allen Konstanten: Konstanten als Werte, veränderliche Namen (let) als Getter, die die Abläufe schreiben, mit Setter. */
