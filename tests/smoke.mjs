@@ -126,14 +126,18 @@ test('Schiffswrack: Truhe gibt einmal einen Schatz', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); teleport(WRECKS[0].x+400)");
   await page.waitForTimeout(800);
   await ev("$('banner-in').innerHTML=''");
+  // Jedes Banner seit hier mitschreiben: In Firefox im CI überschrieb ein späteres Banner (anderer Fund) das der Truhe, bevor der Test las (9.11., #149).
+  await page.evaluate(() => { const el = document.getElementById('banner-in'); window.__wreck = false; window.__wreckObs = new MutationObserver(() => { if (el.innerHTML.includes('🏴')) window.__wreck = true; }); window.__wreckObs.observe(el, { childList: true, subtree: true, characterData: true }); });
   await ev('OVS.forEach(o=>o.hidden=true); ST.paused=false; P.x=WRECKS[0].x; P.y=ground(P.x)-10; P.vy=0');
-  // Warten, bis ein Tick die Truhe gesehen hat und das Banner steht: In Firefox im CI lief in 150 ms manchmal keiner (9.11., #135).
-  await page.waitForFunction(() => window.__ev("orbGot[WRECKS[0].k]&&$('banner-in').innerHTML.includes('🏴')"), null, { timeout: 3000 }).catch(() => {});
+  // Warten, bis ein Tick die Truhe gesehen hat und das Banner kam: In Firefox im CI lief in 150 ms manchmal keiner (9.11., #135).
+  await page.waitForFunction(() => window.__wreck && window.__ev('orbGot[WRECKS[0].k]'), null, { timeout: 3000 }).catch(() => {});
   const got = await ev("({orb:!!orbGot[WRECKS[0].k], banner:$('banner-in').innerHTML, x:P.x|0, wx:WRECKS[0].x|0, n:WRECKS.length})");
-  if (!got.banner.includes('🏴') || !got.orb) throw new Error('kein Schatz ' + JSON.stringify(got));
+  got.seen = await page.evaluate(() => { window.__wreckObs.disconnect(); return window.__wreck; });
+  if (!got.seen || !got.orb) throw new Error('kein Schatz ' + JSON.stringify(got));
   await ev("$('banner-in').innerHTML=''");
+  await page.evaluate(() => { window.__wreck = false; window.__wreckObs.observe(document.getElementById('banner-in'), { childList: true, subtree: true, characterData: true }); });
   await ev('P.x=WRECKS[0].x+2; P.y=ground(P.x)-10'); await page.waitForTimeout(400);
-  if (await ev("$('banner-in').innerHTML")) throw new Error('Schatz doppelt');
+  if (await page.evaluate(() => { window.__wreckObs.disconnect(); return window.__wreck; })) throw new Error('Schatz doppelt');
   await ev('teleport(1500)'); await page.waitForTimeout(500);
 });
 
