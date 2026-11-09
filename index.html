@@ -11060,6 +11060,717 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
   }
 
+  // src/systems/player/vehicles.js
+  function takeWith(VH, i) {
+    const m = grid[i];
+    if (m < 4 || m === BED || m === CORE) return 0;
+    if (m === SHELL && !VH.shellOk(i)) return 0;
+    grid[i] = 0;
+    if (VH.quest && VH.quest.type === "dig" && !VH.quest.done) VH.quest.p++;
+    if (m === GOLD || m === GEM) {
+      if (m === GOLD) VH.qEvent("gold", 1);
+      else VH.qEvent("gems", 1);
+      ST.lootDirty = true;
+      sfx("coin");
+      if (Math.random() < 0.5) {
+        const y = i / GX | 0;
+        VH.spawn(5, (i - y * GX) * CELL + 3, TOP + y * CELL + 3, (Math.random() - 0.5) * 120, -80 - Math.random() * 120, 0.7, 2);
+      }
+    }
+    return 1;
+  }
+  function pileWith(VH, cx, cy, k, sp) {
+    let n = 0;
+    sp = sp || 4;
+    while (k-- > 0) {
+      let c = cx - sp + (Math.random() * (2 * sp + 1) | 0);
+      const c2 = cx - sp + (Math.random() * (2 * sp + 1) | 0);
+      if (VH.colTop(c2, cy) > VH.colTop(c, cy)) c = c2;
+      const r = VH.colTop(c, cy) - 1;
+      if (inGrid(c, r) && grid[r * GX + c] < 4) {
+        grid[r * GX + c] = EARTH;
+        n++;
+      }
+    }
+    return n;
+  }
+  function dumpAtWith(VH, b, k) {
+    const tk = parked.dumper;
+    if (tk && Math.abs(tk.x - b[0]) < 42 && b[1] < tk.y - 8 && b[1] > tk.y - 160) {
+      const n = Math.min(k, 400 - tk.load);
+      tk.load += n;
+      if (n) VH.dust(tk.x, tk.y - 34);
+      return n;
+    }
+    return pileWith(VH, Math.floor(b[0] / CELL), Math.floor((b[1] - TOP) / CELL), k);
+  }
+  function digWith(VH) {
+    const b = VH.bucket(), cx = Math.floor(b[0] / CELL), cy = Math.floor((b[1] - TOP) / CELL);
+    let n = 0;
+    const ea = 3.6 + 0.5 * hero.up.dig, eb = 5.4 + 0.6 * hero.up.dig;
+    for (let dy = -8; dy <= 8; dy++) for (let dx = -5; dx <= 5; dx++) {
+      if (Math.pow(Math.abs(dx) / ea, 4) + Math.pow(Math.abs(dy) / eb, 4) > 1) continue;
+      if (inGrid(cx + dx, cy + dy)) n += takeWith(VH, (cy + dy) * GX + cx + dx);
+    }
+    if (n) {
+      sfx("dig");
+      P.load = Math.min(400, P.load + n);
+      for (let i = 0; i < 6; i++) VH.spawn(3, b[0] + (Math.random() - 0.5) * 24, b[1] + (Math.random() - 0.5) * 30, (Math.random() - 0.5) * 160, -60 - Math.random() * 120, 0.6, 3 + Math.random() * 3);
+      VH.shake = Math.max(VH.shake, 0.08);
+    }
+    return n;
+  }
+  function baggerActWith(VH) {
+    if (digWith(VH)) return;
+    if (P.arm < -0.15 && P.load > 0) {
+      P.load -= dumpAtWith(VH, VH.bucket(), Math.min(16, P.load));
+      return;
+    }
+    if (P.arm < 1.25) P.arm = Math.min(1.25, P.arm + 0.22);
+    else if (P.on) P.vx = P.face * 90;
+  }
+  function loaderActWith(VH) {
+    const b = VH.scoop(), cx = Math.floor(b[0] / CELL), cy = Math.floor((b[1] - TOP) / CELL);
+    let n = 0;
+    if (P.load < 200) {
+      for (let dy = -3; dy <= 0; dy++) for (let dx = -3; dx <= 3; dx++) if (inGrid(cx + dx, cy + dy)) n += takeWith(VH, (cy + dy) * GX + cx + dx);
+    }
+    if (n) {
+      P.load += n;
+      VH.dust(b[0], b[1]);
+      sfx("dig");
+      return;
+    }
+    if (P.lift > 18 && P.load > 0) {
+      P.load -= dumpAtWith(VH, [b[0] + P.face * 24, b[1]], Math.min(24, P.load));
+      return;
+    }
+    if (P.on && P.lift <= 18) P.vx = P.face * 120;
+  }
+  function dumperActWith(VH) {
+    P.bed = 1;
+    if (P.load <= 0) return;
+    const b = VH.rot(-P.face * 78, -66);
+    P.load -= pileWith(VH, Math.floor(b[0] / CELL), Math.floor((b[1] - TOP) / CELL), Math.min(18, P.load), 7);
+  }
+  function boreWith(VH, x, y, r) {
+    const c0 = Math.floor((x - r) / CELL), c1 = Math.floor((x + r) / CELL), r0 = Math.floor((y - r - TOP) / CELL), r1 = Math.floor((y + r - TOP) / CELL);
+    let n = 0;
+    for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) {
+      if (!inGrid(cx, cy)) continue;
+      const dx = (cx + 0.5) * CELL - x, dy = TOP + (cy + 0.5) * CELL - y;
+      if (dx * dx + dy * dy <= r * r) n += takeWith(VH, cy * GX + cx);
+    }
+    return n;
+  }
+  function bulldozeWith(VH, dir) {
+    const xa = P.x + dir * 12, xb = P.x + dir * 38, c0 = Math.floor(Math.min(xa, xb) / CELL), c1 = Math.floor(Math.max(xa, xb) / CELL);
+    const r0 = Math.floor((P.y - 50 - TOP) / CELL), r1 = Math.floor((P.y - 2 - TOP) / CELL);
+    let n = 0;
+    for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) if (inGrid(cx, cy)) n += takeWith(VH, cy * GX + cx);
+    if (n) VH.dust(P.x + dir * 24, P.y - 10);
+    return n;
+  }
+  function updCarWith(VH, dt, ix, u, d) {
+    if (ix) P.face = ix;
+    const maxv = (P.turbo > 0 ? 520 : 300) * (1 + 0.15 * hero.up.motor), icy = P.on && cellAt(P.x, P.y + 2) === ICE, wet = cellAt(P.x, P.y - 10) === WATER;
+    if (P.climb > 0) {
+      P.climb -= dt;
+      P.vx = P.face * 70;
+      P.vy = 0;
+    } else {
+      if (P.on) {
+        const tgt = d ? 0 : ix * maxv;
+        P.vx += (tgt - P.vx) * Math.min(1, dt * (icy ? 0.4 : ix || d ? 2.5 : 1));
+        if (P.turbo > 0 && Math.abs(P.vx) < maxv) P.vx += P.face * 600 * dt;
+        if (u) {
+          P.vy = -380;
+          P.on = false;
+          sfx("jump");
+        }
+      } else P.vx += ix * 80 * dt;
+      P.vy = Math.min(P.vy + VH.grav() * dt, 800);
+    }
+    if (wet) {
+      P.vx -= P.vx * Math.min(1, dt * 2);
+      P.soot = 0;
+    }
+    if (P.turbo > 0 && Math.random() < dt * 50) VH.spawn(1, P.x - P.face * 30, P.y - 13, -P.face * 120, (Math.random() - 0.5) * 40, 0.3, 6);
+    const pv = P.vy;
+    if (VH.mover(dt, 24, 32, 26, 17)) {
+      const top = P.y - 54;
+      if (!ix) P.vx *= -0.2;
+      else if (!VH.solidW(P.x, top) && !VH.solidW(P.x - 15, top) && !VH.solidW(P.x + 15, top)) {
+        P.y -= 150 * dt;
+        P.on = false;
+        P.climb = 0.25;
+      } else bulldozeWith(VH, ix);
+    }
+    if (P.on) {
+      if (P.landed && pv > 300) VH.dust(P.x, P.y);
+      P.vy = P.gs * P.vx;
+      P.climb = 0;
+    }
+    const ta = P.climb > 0 ? -P.face * 0.6 : P.on ? Math.atan(P.gs) : Math.atan2(P.vy, Math.abs(P.vx) + 200) * P.face * 0.5;
+    P.ang += (ta - P.ang) * Math.min(1, dt * 10);
+  }
+  function driveWith(VH, dt, ix, sp, hw, h, half, vmax) {
+    if (ix) P.face = ix;
+    if (P.climb > 0) {
+      P.climb -= dt;
+      P.vx = P.face * 70;
+      P.vy = 0;
+    } else {
+      if (P.on) P.vx += (ix * sp * (1 + 0.2 * hero.up.motor) - P.vx) * Math.min(1, dt * 5);
+      else P.vx += (ix * 70 - P.vx) * Math.min(1, dt * 2);
+      P.vy = Math.min(P.vy + VH.grav() * dt, vmax || 800);
+    }
+    if (cellAt(P.x, P.y - 10) === WATER) {
+      P.vx -= P.vx * Math.min(1, dt * 2);
+      P.soot = 0;
+    }
+    const pv = P.vy;
+    if (VH.mover(dt, hw, h, 32, half)) {
+      if (ix) {
+        const top = P.y - h - 20;
+        if (!VH.solidW(P.x, top) && !VH.solidW(P.x - 15, top) && !VH.solidW(P.x + 15, top)) {
+          P.y -= 150 * dt;
+          P.on = false;
+          P.climb = 0.25;
+        } else bulldozeWith(VH, ix);
+      } else P.vx = 0;
+    }
+    if (P.on) {
+      if (P.landed && pv > 300) VH.dust(P.x, P.y);
+      P.vy = P.gs * P.vx;
+      P.climb = 0;
+    }
+    P.ang += ((P.climb > 0 ? -P.face * 0.6 : P.on ? Math.atan(P.gs) : 0) - P.ang) * Math.min(1, dt * 10);
+  }
+  function updBaggerWith(VH, dt, ix, u, d) {
+    P.arm = clamp(P.arm + (d - u) * 1.7 * dt, -0.95, 1.25);
+    driveWith(VH, dt, ix, 110, 22, 28, 15);
+    if (keys.a) {
+      P.digT -= dt;
+      if (P.digT <= 0) {
+        baggerActWith(VH);
+        P.digT = 0.17 / (1 + 0.35 * hero.up.dig);
+      }
+    }
+  }
+  function updLoaderWith(VH, dt, ix, u, d) {
+    P.lift = clamp(P.lift + (u - d) * 90 * dt, 0, 64);
+    driveWith(VH, dt, ix, 170, 26, 30, 17);
+    if (keys.a) {
+      P.digT -= dt;
+      if (P.digT <= 0) {
+        loaderActWith(VH);
+        P.digT = 0.17 / (1 + 0.35 * hero.up.dig);
+      }
+    }
+  }
+  function updDumperWith(VH, dt, ix, u, d) {
+    driveWith(VH, dt, ix, 230, 30, 32, 20);
+    P.bed = Math.max(0, P.bed - dt * 1.6);
+    if (keys.a) {
+      P.digT -= dt;
+      if (P.digT <= 0) {
+        dumperActWith(VH);
+        P.digT = 0.14;
+      }
+    }
+  }
+  function updTbmWith(VH, dt, ix, u, d) {
+    P.da = clamp(P.da + (d - u) * 1.3 * dt, -1.5, 1.5);
+    let go = ix || (keys.a ? P.face : 0), cutN = 0;
+    if (!go && (u && P.da <= -1.45 || d && P.da >= 1.45)) go = P.face;
+    const up = P.da < -0.6, shaft = VH.solidW(P.x - 30, P.y - 20) || VH.solidW(P.x + 30, P.y - 20);
+    if (go) {
+      P.face = go;
+      const hd = VH.drillHead();
+      cutN = boreWith(VH, hd[0], hd[1], 27);
+      if (up) cutN += boreWith(VH, P.x, P.y - 27, 27);
+      else if (P.da > 0.2) cutN += boreWith(VH, P.x + go * 14, P.y - 27, 27);
+      if (cutN) {
+        VH.shake = Math.max(VH.shake, 0.04);
+        sfx("dig");
+        if (Math.random() < dt * 16) VH.spawn(3, hd[0] + (Math.random() - 0.5) * 30, hd[1] + (Math.random() - 0.5) * 40, -go * (40 + Math.random() * 120), -40 - Math.random() * 90, 0.6, 3 + Math.random() * 3);
+      }
+    }
+    if (up && go && (cutN || shaft)) {
+      const sp = 80 * (1 + 0.15 * hero.up.dig);
+      P.vx = go * sp * Math.cos(P.da);
+      P.vy = sp * Math.sin(P.da);
+      P.on = false;
+      P.climb = 0;
+      VH.mover(dt, 24, 46, 32, 14);
+      P.ang -= P.ang * Math.min(1, dt * 10);
+    } else if (up && !go && shaft && !P.on) {
+      P.vx = 0;
+      P.vy = 0;
+    } else driveWith(VH, dt, go, P.da > 0 ? 85 * Math.max(0.3, Math.cos(P.da)) : 95, 24, 46, 14, 170 + 60 * hero.up.dig);
+  }
+  function updRocketWith(VH, dt, ix, u, d) {
+    if (u) {
+      if (P.on) {
+        P.on = false;
+        P.y -= 3;
+        VH.shake = Math.max(VH.shake, 0.3);
+        VH.smoke(P.x, P.y, 8);
+      }
+      P.vy += (-800 * (1 + 0.2 * hero.up.jet) - P.vy) * Math.min(1, dt * 1.5);
+      if (Math.random() < dt * 50) VH.spawn(1, P.x + (Math.random() - 0.5) * 8, P.y + 6, (Math.random() - 0.5) * 50, 160 + Math.random() * 120, 0.35, 7);
+    } else P.vy = Math.min(P.vy + VH.grav() * 0.8 * dt, d ? 720 : 400);
+    if (P.on) P.vx -= P.vx * Math.min(1, dt * 8);
+    else {
+      P.vx += (ix * 230 - P.vx) * Math.min(1, dt * 2.5);
+      if (ix) P.face = ix;
+    }
+    const pv = P.vy;
+    if (VH.mover(dt, 13, 56, 26, 9)) P.vx *= -0.3;
+    if (P.on) {
+      if (P.landed && pv > 200) VH.dust(P.x, P.y);
+      P.vy = 0;
+    }
+    P.ang += ((P.on ? 0 : clamp(P.vx / 230, -1, 1) * 0.35) - P.ang) * Math.min(1, dt * 6);
+  }
+  function updPlaneWith(VH, dt, ix, u, d) {
+    if (ix) P.face = ix;
+    if (P.on) {
+      P.vx += (ix * 260 - P.vx) * Math.min(1, dt * (ix ? 1.3 : P.y < -3e3 ? 4 : 0.9));
+      if (u && Math.abs(P.vx) < 130) P.vx += P.face * 320 * dt;
+      P.upT = u ? (
+        /** @type {any} */
+        (P.upT || 0) + dt
+      ) : 0;
+      P.vy = Math.min(P.vy + VH.grav() * dt, 800);
+      if (VH.mover(dt, 30, 28, 26, 18)) P.vx = 0;
+      if (P.on) {
+        P.vy = P.gs * P.vx;
+        P.ang = Math.atan(P.gs);
+        if (u && Math.abs(P.vx) > 120 || Math.abs(P.vx) > 235 || /** @type {any} */
+        P.upT > 0.45) {
+          P.on = false;
+          P.vy = u ? -130 : -60;
+          P.y -= 3;
+          P.upT = 0;
+        }
+      }
+    } else {
+      P.vx += (P.face * 250 * (1 + 0.15 * hero.up.jet) - P.vx) * Math.min(1, dt * 2);
+      P.vy += ((d - u) * (P.y < -1200 ? 430 : 190) * (1 + 0.2 * hero.up.jet) - P.vy) * Math.min(1, dt * 3);
+      if (P.y < -1200 && Math.random() < dt * 40) VH.spawn(1, P.x - P.face * 36, P.y - 16, -P.face * 90, (Math.random() - 0.5) * 30, 0.3, 6);
+      if (VH.mover(dt, 30, 28, 26, 18)) {
+        P.face = -P.face;
+        P.vx = P.face * 80;
+      }
+      if (P.on) {
+        P.vy = 0;
+        VH.dust(P.x, P.y);
+      }
+    }
+  }
+  function updCoasterWith(VH, dt, ix) {
+    const T = (
+      /** @type {any} */
+      P.track
+    );
+    if (T.lift) {
+      VH.liftRide(dt);
+      return;
+    }
+    let q = VH.trackAt(T, P.s);
+    P.v += G * 0.9 * q.ty * dt + ix * T.dir * 220 * dt;
+    P.v -= P.v * 0.08 * dt;
+    if (P.v < 90) P.v += (90 - P.v) * Math.min(1, dt * 4);
+    if (P.v > 1e3) P.v = 1e3;
+    P.s += P.v * dt;
+    q = VH.trackAt(T, P.s);
+    P.x = q.x;
+    P.y = q.y;
+    P.vx = q.tx * P.v;
+    P.vy = q.ty * P.v;
+    P.ang = Math.atan2(q.ty, q.tx);
+    P.face = T.dir;
+    if (P.s >= T.len) {
+      VH.qEvent("ride", 1);
+      P.vy -= 90;
+      P.mode = "walk";
+      P.on = false;
+      P.air = 0.2;
+      P.chute = false;
+      VH.syncUI();
+    }
+  }
+  function onSnowWith(VH) {
+    const a = cellAt(P.x, P.y + 3), b = cellAt(P.x, P.y + 9);
+    return a === SNOW || a === ICE || b === SNOW || b === ICE;
+  }
+  function updSkiWith(VH, dt, ix, u, d) {
+    if (P.ball > 0) {
+      updRollWith(VH, dt);
+      return;
+    }
+    const snow = onSnowWith(VH), gk = hero.own.goldski ? 1 : 0;
+    if (ix) P.face = ix;
+    if (u) {
+      P.vy += (-230 * (1 + 0.25 * hero.up.jet) - P.vy) * Math.min(1, dt * 6);
+      P.on = false;
+      P.jet = true;
+      if (Math.random() < dt * 40) VH.spawn(1, P.x - P.face * 8, P.y - 14, (Math.random() - 0.5) * 30, 130, 0.25, 4);
+    }
+    if (P.on) {
+      const gs = P.gs, v = Math.abs(P.vx);
+      P.vx += G * gs / (1 + gs * gs) * dt * (snow ? 1 : 0.3);
+      P.vx -= P.vx * Math.min(1, dt * ((d ? snow ? 2.6 : 5 : snow ? 0.15 - 0.05 * gk : 2.8) + (P.vx < 0 && P.x < 6060 && P.x > 5700 ? 1.9 : 0)));
+      if (ix && P.vx * ix < 190 + 25 * hero.up.motor + 50 * gk) P.vx += ix * (snow ? 320 : 200) * dt;
+      P.vx = clamp(P.vx, -820, 820);
+      if (snow) {
+        if (v > 90 && Math.random() < dt * (d ? 40 : v * 0.03)) VH.spawn(10, P.x - P.face * 12, P.y - 2, -P.vx * 0.2 + (Math.random() - 0.5) * 40, -30 - Math.random() * (d ? 130 : 60), 0.4, 2 + Math.random() * 2.5);
+        if (v > 220) {
+          VH.swishT -= dt;
+          if (VH.swishT <= 0) {
+            VH.swishT = 0.3;
+            sfx("swish");
+          }
+        }
+        if (gk && v > 200 && Math.random() < dt * 14) VH.spawn(5, P.x - P.face * 14, P.y - 3, 0, -30, 0.5, 2);
+      }
+    } else {
+      if (!u) P.vy = Math.min(P.vy + VH.grav() * dt, 780);
+      P.vx += ix * 60 * dt;
+      if (P.spin) {
+        const st = Math.sign(P.spin) * Math.min(Math.abs(P.spin), 10.5 * dt);
+        P.ang += st;
+        P.spin -= st;
+        P.rot += Math.abs(st);
+      }
+    }
+    const pv = P.vy, wasAir = P.air;
+    if (VH.mover(dt, 6, 30, 18, 10)) {
+      if (Math.abs(P.vx) > 150) VH.puff(P.x + P.face * 8, P.y - 12, 6);
+      P.vx *= -0.25;
+    }
+    if (P.on) {
+      if (P.landed) {
+        if (Math.abs(P.spin) > 0.9) {
+          P.ball = 1.7;
+          VH.shout(P.x, P.y - 52, "PLUMPS!");
+          sfx("splat");
+          VH.puff(P.x, P.y - 8, 12);
+        } else {
+          const n = Math.round(P.rot / TAU);
+          if (n > 0) {
+            VH.shout(P.x, P.y - 54, n > 1 ? n + " × SALTO!" : "SALTO!", "#ffd23f");
+            ST.lootDirty = true;
+            sfx("pop");
+            VH.qEvent("salto", n);
+          } else if (wasAir > 1 && !P.jet) VH.shout(P.x, P.y - 54, "JUHU!");
+          if (pv > 260) VH.puff(P.x, P.y - 2, 7);
+          P.ang = Math.atan(P.gs);
+        }
+        P.spin = 0;
+        P.rot = 0;
+        P.jet = false;
+      }
+      P.air = 0;
+      P.vy = P.gs * P.vx;
+      if (P.ball <= 0) P.ang += (Math.atan(P.gs) - P.ang) * Math.min(1, dt * 14);
+      if (Math.abs(P.vx) > 120) {
+        for (const tr of VH.trees) if (tr.fir && tr.state === 0 && Math.abs(tr.x - P.x) < 9 && Math.abs(tr.gy - P.y) < 40 && !(tr.sh > VH.time)) {
+          tr.sh = VH.time + 1.5;
+          VH.puff(tr.x, tr.gy - tr.h * 0.7, 12);
+        }
+      }
+    } else P.air += dt;
+  }
+  function updRollWith(VH, dt) {
+    P.ball -= dt;
+    if (P.on) {
+      const gs = P.gs;
+      P.vx += G * gs / (1 + gs * gs) * dt;
+      P.vx -= P.vx * Math.min(1, dt * (onSnowWith(VH) ? 0.5 : 3));
+    } else P.vy = Math.min(P.vy + VH.grav() * dt, 780);
+    if (VH.mover(dt, 9, 26, 18, 8)) P.vx *= -0.4;
+    if (P.on) P.vy = P.gs * P.vx;
+    P.ang += P.vx / 16 * dt;
+    if (Math.random() < dt * 14) VH.puff(P.x, P.y - 4, 1);
+    if (P.ball <= 0) {
+      P.ball = 0;
+      P.ang = 0;
+      P.spin = 0;
+      P.rot = 0;
+      VH.puff(P.x, P.y - 14, 16);
+      VH.shout(P.x, P.y - 50, "PLOPP!");
+      sfx("pop");
+      P.vy = -190;
+      P.on = false;
+    }
+  }
+  function skiActWith(VH) {
+    if (P.ball > 0) return;
+    if (VH.nearLift()) {
+      VH.rideLift();
+      return;
+    }
+    if (P.on) {
+      P.vy -= 350;
+      P.y -= 3;
+      P.on = false;
+      P.air = 0;
+      P.jet = false;
+      sfx("jump");
+    } else if (Math.abs(P.spin) < TAU * 1.5) {
+      P.spin += (P.vx >= 0 ? -1 : 1) * TAU;
+      sfx("whoosh");
+    }
+  }
+  function updDragonWith(VH, dt, ix, u, d) {
+    if (ix) P.face = ix;
+    P.vx += (ix * 310 * (1 + 0.15 * hero.up.jet) - P.vx) * Math.min(1, dt * 3);
+    if (P.on && !u) P.vy = Math.min(P.vy + VH.grav() * dt, 300);
+    else P.vy += ((d - u) * 270 + (u || d || VH.reduced ? 0 : 16 * Math.sin(VH.time * 3)) - P.vy) * Math.min(1, dt * 4);
+    if (u && P.on) {
+      P.on = false;
+      P.y -= 3;
+    }
+    if (VH.mover(dt, 24, 58, 22, 16)) P.vx *= -0.2;
+    if (P.on) P.vy = 0;
+    P.ang += (clamp(P.vy / 500, -0.35, 0.35) * P.face - P.ang) * Math.min(1, dt * 6);
+    if (keys.a) {
+      P.digT -= dt;
+      if (P.digT <= 0) {
+        P.digT = 0.05;
+        breatheWith(VH);
+      }
+    }
+  }
+  function meltWith(VH, cx, cy) {
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      if (dx * dx + dy * dy > 5) continue;
+      const x = cx + dx, y = cy + dy;
+      if (!inGrid(x, y)) continue;
+      const i = y * GX + x;
+      if (grid[i] === SNOW || grid[i] === ICE) {
+        grid[i] = 0;
+        VH.steam(x, y);
+      }
+    }
+  }
+  function breatheWith(VH) {
+    const mx = P.x + P.face * 62, my = P.y - 63;
+    for (let k = 0; k < 2; k++) VH.spawn(1, mx, my, P.face * (300 + Math.random() * 160) + P.vx, (Math.random() - 0.3) * 120 + P.vy * 0.5, 0.35 + Math.random() * 0.2, 7 + Math.random() * 6);
+    sfx("flame");
+    for (let r = 20; r <= 170; r += 12) {
+      const x = mx + P.face * r, y = my + r * 0.24, cx = Math.floor(x / CELL), cy = Math.floor((y - TOP) / CELL);
+      if (!inGrid(cx, cy)) break;
+      const m = grid[cy * GX + cx];
+      if (m === SNOW || m === ICE) {
+        meltWith(VH, cx, cy);
+        break;
+      }
+      if (m === WATER) {
+        VH.steam(cx, cy);
+        break;
+      }
+      if (m >= 4) {
+        if (Math.random() < 0.5) VH.putUp(cx - P.face, cy, FIRE);
+        break;
+      }
+    }
+  }
+  function updSubWith(VH, dt, ix, u, d) {
+    if (ix) P.face = ix;
+    const wet = cellAt(P.x, P.y - 14) === WATER;
+    if (wet) {
+      P.on = false;
+      P.vx += (ix * 230 * (1 + 0.15 * hero.up.motor) - P.vx) * Math.min(1, dt * 2.5);
+      P.vy += ((d - u) * 190 - P.vy) * Math.min(1, dt * 3);
+      if (Math.random() < dt * (5 + Math.abs(P.vx) * 0.05)) VH.spawn(7, P.x - P.face * 30, P.y - 16, -P.face * 20, -30, 0.8, 2);
+    } else {
+      P.vx += (ix * 40 - P.vx) * Math.min(1, dt * 3);
+      P.vy = Math.min(P.vy + VH.grav() * dt, 700);
+    }
+    if (VH.mover(dt, 26, 30, 20, 16)) P.vx *= -0.2;
+    if (P.on) P.vy = 0;
+    P.ang += ((wet ? clamp(P.vy / 400, -0.4, 0.4) * P.face : P.on ? Math.atan(P.gs) : 0) - P.ang) * Math.min(1, dt * 6);
+  }
+  function updBalloonWith(VH, dt, ix, u, d) {
+    if (ix) P.face = ix;
+    const wind = Math.sin(VH.time * 0.07 + P.x * 4e-4) * 45;
+    if (P.on) {
+      P.vx -= P.vx * Math.min(1, dt * 6);
+    } else P.vx += (ix * 95 + wind - P.vx) * Math.min(1, dt * 0.9);
+    let ty = u ? -125 : d ? 150 : 45;
+    if (P.y < VH.BALLOON_TOP && ty < 20) {
+      ty = 20;
+      if (u && P.balT <= 0) {
+        P.balT = 4;
+        VH.say("", "Höher kommt der Ballon nicht. Die Luft ist hier oben zu dünn.");
+      }
+    }
+    if (P.balT > 0) P.balT -= dt;
+    P.vy += (ty - P.vy) * Math.min(1, dt * (u ? 1.1 : 0.8));
+    if (u) {
+      if (P.on) {
+        P.on = false;
+        P.y -= 2;
+      }
+      if (Math.random() < dt * 20) VH.spawn(1, P.x + (Math.random() - 0.5) * 6, P.y - 46, (Math.random() - 0.5) * 20, -60, 0.25, 5);
+    }
+    if (VH.mover(dt, 15, 120, 14, 10)) P.vx *= -0.3;
+    if (P.on) {
+      if (P.landed && P.vy > 90) VH.dust(P.x, P.y);
+      P.vy = 0;
+    }
+    P.ang += (clamp(P.vx / 600, -0.12, 0.12) - P.ang) * Math.min(1, dt * 3);
+  }
+  function updHeliWith(VH, dt, ix, u, d) {
+    if (ix) P.face = ix;
+    if (P.on) {
+      P.vx -= P.vx * Math.min(1, dt * 6);
+      if (u) {
+        P.on = false;
+        P.y -= 2;
+      }
+    } else P.vx += (ix * 240 - P.vx) * Math.min(1, dt * 2);
+    let ty = (d - u) * 190;
+    if (P.y < VH.BALLOON_TOP && ty < 0) {
+      ty = 0;
+      if (u && P.balT <= 0) {
+        P.balT = 4;
+        VH.say("", "Höher kommt der Hubschrauber nicht. Für den Weltraum brauchst du die Rakete.");
+      }
+    }
+    if (P.balT > 0) P.balT -= dt;
+    if (!P.on) P.vy += (ty - P.vy) * Math.min(1, dt * 3);
+    else P.vy = 0;
+    if (!P.on && (ix || u) && Math.random() < dt * 6) VH.spawn(3, P.x + (Math.random() - 0.5) * 60, P.y + 4, (Math.random() - 0.5) * 80, -20, 0.4, 3);
+    if (VH.mover(dt, 30, 46, 16, 18)) P.vx *= -0.3;
+    if (P.on) {
+      if (P.landed && P.vy > 120) VH.dust(P.x, P.y);
+      P.vy = 0;
+    }
+    P.ang += ((P.on ? Math.atan(P.gs) * 0.5 : clamp(P.vx / 240, -1, 1) * 0.22 * P.face) - P.ang) * Math.min(1, dt * 5);
+    const o = VH.heliLoad && parked[VH.heliLoad];
+    if (o) {
+      o.x = P.x;
+      o.y = P.y + 70;
+      o.vy = 0;
+      o.ang = 0;
+      o.face = P.face;
+      if (P.on || VH.solidW(o.x, o.y + 2)) heliDropWith(VH);
+    } else VH.heliLoad = "";
+  }
+  function heliHookWith(VH) {
+    if (VH.heliLoad) {
+      heliDropWith(VH);
+      return;
+    }
+    let best = "", bd = 1e9;
+    for (const k in parked) {
+      const o = parked[k];
+      if (!o || k === "heli") continue;
+      const dx = Math.abs(o.x - P.x), dy = o.y - P.y;
+      if (dx < 70 && dy > -10 && dy < 170 && dx + dy < bd) {
+        bd = dx + dy;
+        best = k;
+      }
+    }
+    if (best) {
+      VH.heliLoad = best;
+      sfx("pop");
+    } else {
+      tone([330, 262], "triangle");
+      VH.pulse("act");
+    }
+  }
+  function heliDropWith(VH) {
+    if (VH.heliLoad && parked[VH.heliLoad]) parked[VH.heliLoad].vy = 0;
+    VH.heliLoad = "";
+    sfx("pop");
+  }
+  function boatWetWith(VH) {
+    return cellAt(P.x, P.y + 5) === WATER || cellAt(P.x - 14, P.y + 5) === WATER || cellAt(P.x + 14, P.y + 5) === WATER;
+  }
+  function updBoatWith(VH, dt, ix, u, d) {
+    if (ix) P.face = ix;
+    const wet = boatWetWith(VH), deep = cellAt(P.x, P.y - 5) === WATER;
+    if (wet) {
+      const wind = Math.sin(VH.time * 0.05 + P.x * 3e-4) * 50;
+      P.vx += (ix * 210 * (1 + 0.15 * hero.up.motor) + wind * (ix ? 1 : 0.5) - P.vx) * Math.min(1, dt * 1.2);
+      if (deep) P.vy += (-140 - P.vy) * Math.min(1, dt * 5);
+      else {
+        P.vy += (0 - P.vy) * Math.min(1, dt * 6);
+        if (u && P.balT <= 0) {
+          P.vy = -260;
+          P.balT = 0.6;
+          sfx("jump");
+        }
+      }
+      if (Math.abs(P.vx) > 60 && Math.random() < dt * 14) VH.spawn(7, P.x - P.face * 26, P.y, -P.face * 30, -30, 0.5, 3);
+      P.soot = 0;
+    } else {
+      P.vx += (ix * 45 - P.vx) * Math.min(1, dt * 3);
+      P.vy = Math.min(P.vy + VH.grav() * dt, 700);
+    }
+    if (P.balT > 0) P.balT -= dt;
+    if (VH.mover(dt, 26, 50, 20, 16)) P.vx *= -0.25;
+    if (P.on) {
+      if (P.landed && P.vy > 200) VH.dust(P.x, P.y);
+      P.vy = 0;
+    }
+    const ta = wet && !P.on ? VH.reduced ? 0 : Math.sin(VH.time * 2.2) * 0.06 : P.on ? Math.atan(P.gs) : 0;
+    P.ang += (ta - P.ang) * Math.min(1, dt * 4);
+  }
+  function bugWallWith(VH) {
+    const x = P.x + P.face * 17;
+    return VH.solidW(x, P.y - 6) || VH.solidW(x, P.y - 18);
+  }
+  function updBugWith(VH, dt, ix, u, d) {
+    if (ix && !P.wall) P.face = ix;
+    if (P.wall) {
+      if (ix === -P.face) {
+        P.wall = false;
+        P.face = ix;
+        P.vx = ix * 90;
+        P.vy = -60;
+      } else {
+        P.vx = 0;
+        P.vy = (d - u - (ix === P.face ? 1 : 0)) * 140;
+        if (P.vy < -140) P.vy = -140;
+        if (!bugWallWith(VH)) {
+          P.wall = false;
+          P.vx = P.face * 90;
+          P.vy = -90;
+        }
+      }
+    } else {
+      if (P.on) P.vx += (ix * 170 * (1 + 0.15 * hero.up.motor) - P.vx) * Math.min(1, dt * 8);
+      else P.vx += (ix * 120 - P.vx) * Math.min(1, dt * 2);
+      P.vy = Math.min(P.vy + VH.grav() * dt, 700);
+    }
+    if (P.wall) {
+      const ny = P.y + P.vy * dt;
+      if (P.vy < 0 && VH.solidW(P.x, ny - 26)) P.vy = 0;
+      else P.y = ny;
+      const f = VH.floorAt(P.x, P.y, 4);
+      if (P.y >= f) {
+        P.y = f;
+        if (P.vy > 0) P.vy = 0;
+      }
+      P.on = false;
+    } else if (VH.mover(dt, 14, 26, 10, 8) && ix && bugWallWith(VH)) {
+      P.wall = true;
+      P.vy = 0;
+      sfx("pop");
+    }
+    if (P.on && !P.wall) P.vy = P.gs * P.vx;
+    P.run += (Math.abs(P.vx) + Math.abs(P.wall ? P.vy : 0)) * dt * 0.12;
+    const ta = P.wall ? -P.face * Math.PI / 2 : P.on ? Math.atan(P.gs) : 0;
+    P.ang += (ta - P.ang) * Math.min(1, dt * 10);
+  }
+
   // src/legacy.js
   (function() {
     "use strict";
@@ -12043,114 +12754,19 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       return [P.x + P.face * 24 * Math.cos(P.da), P.y - 27 + 24 * Math.sin(P.da)];
     }
     function take(i) {
-      const m = grid[i];
-      if (m < 4 || m === BED || m === CORE) return 0;
-      if (m === SHELL && !shellOk(i)) return 0;
-      grid[i] = 0;
-      if (quest && quest.type === "dig" && !quest.done) quest.p++;
-      if (m === GOLD || m === GEM) {
-        if (m === GOLD) qEvent("gold", 1);
-        else qEvent("gems", 1);
-        ST.lootDirty = true;
-        sfx("coin");
-        if (Math.random() < 0.5) {
-          const y = i / GX | 0;
-          spawn(5, (i - y * GX) * CELL + 3, TOP + y * CELL + 3, (Math.random() - 0.5) * 120, -80 - Math.random() * 120, 0.7, 2);
-        }
-      }
-      return 1;
-    }
-    function pile(cx, cy, k, sp) {
-      let n = 0;
-      sp = sp || 4;
-      while (k-- > 0) {
-        let c = cx - sp + (Math.random() * (2 * sp + 1) | 0);
-        const c2 = cx - sp + (Math.random() * (2 * sp + 1) | 0);
-        if (colTop(c2, cy) > colTop(c, cy)) c = c2;
-        const r = colTop(c, cy) - 1;
-        if (inGrid(c, r) && grid[r * GX + c] < 4) {
-          grid[r * GX + c] = EARTH;
-          n++;
-        }
-      }
-      return n;
-    }
-    function dumpAt(b, k) {
-      const tk = parked.dumper;
-      if (tk && Math.abs(tk.x - b[0]) < 42 && b[1] < tk.y - 8 && b[1] > tk.y - 160) {
-        const n = Math.min(k, 400 - tk.load);
-        tk.load += n;
-        if (n) dust(tk.x, tk.y - 34);
-        return n;
-      }
-      return pile(Math.floor(b[0] / CELL), Math.floor((b[1] - TOP) / CELL), k);
-    }
-    function dig() {
-      const b = bucket(), cx = Math.floor(b[0] / CELL), cy = Math.floor((b[1] - TOP) / CELL);
-      let n = 0;
-      const ea = 3.6 + 0.5 * hero.up.dig, eb = 5.4 + 0.6 * hero.up.dig;
-      for (let dy = -8; dy <= 8; dy++) for (let dx = -5; dx <= 5; dx++) {
-        if (Math.pow(Math.abs(dx) / ea, 4) + Math.pow(Math.abs(dy) / eb, 4) > 1) continue;
-        if (inGrid(cx + dx, cy + dy)) n += take((cy + dy) * GX + cx + dx);
-      }
-      if (n) {
-        sfx("dig");
-        P.load = Math.min(400, P.load + n);
-        for (let i = 0; i < 6; i++) spawn(3, b[0] + (Math.random() - 0.5) * 24, b[1] + (Math.random() - 0.5) * 30, (Math.random() - 0.5) * 160, -60 - Math.random() * 120, 0.6, 3 + Math.random() * 3);
-        shake = Math.max(shake, 0.08);
-      }
-      return n;
+      return takeWith(VH, i);
     }
     function baggerAct() {
-      if (dig()) return;
-      if (P.arm < -0.15 && P.load > 0) {
-        P.load -= dumpAt(bucket(), Math.min(16, P.load));
-        return;
-      }
-      if (P.arm < 1.25) P.arm = Math.min(1.25, P.arm + 0.22);
-      else if (P.on) P.vx = P.face * 90;
+      return baggerActWith(VH);
     }
     function loaderAct() {
-      const b = scoop(), cx = Math.floor(b[0] / CELL), cy = Math.floor((b[1] - TOP) / CELL);
-      let n = 0;
-      if (P.load < 200) {
-        for (let dy = -3; dy <= 0; dy++) for (let dx = -3; dx <= 3; dx++) if (inGrid(cx + dx, cy + dy)) n += take((cy + dy) * GX + cx + dx);
-      }
-      if (n) {
-        P.load += n;
-        dust(b[0], b[1]);
-        sfx("dig");
-        return;
-      }
-      if (P.lift > 18 && P.load > 0) {
-        P.load -= dumpAt([b[0] + P.face * 24, b[1]], Math.min(24, P.load));
-        return;
-      }
-      if (P.on && P.lift <= 18) P.vx = P.face * 120;
+      return loaderActWith(VH);
     }
     function dumperAct() {
-      P.bed = 1;
-      if (P.load <= 0) return;
-      const b = rot(-P.face * 78, -66);
-      P.load -= pile(Math.floor(b[0] / CELL), Math.floor((b[1] - TOP) / CELL), Math.min(18, P.load), 7);
+      return dumperActWith(VH);
     }
     function bore(x, y, r) {
-      const c0 = Math.floor((x - r) / CELL), c1 = Math.floor((x + r) / CELL), r0 = Math.floor((y - r - TOP) / CELL), r1 = Math.floor((y + r - TOP) / CELL);
-      let n = 0;
-      for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) {
-        if (!inGrid(cx, cy)) continue;
-        const dx = (cx + 0.5) * CELL - x, dy = TOP + (cy + 0.5) * CELL - y;
-        if (dx * dx + dy * dy <= r * r) n += take(cy * GX + cx);
-      }
-      return n;
-    }
-    function bulldoze(dir) {
-      const xa = P.x + dir * 12, xb = P.x + dir * 38, c0 = Math.floor(Math.min(xa, xb) / CELL), c1 = Math.floor(Math.max(xa, xb) / CELL);
-      const r0 = Math.floor((P.y - 50 - TOP) / CELL), r1 = Math.floor((P.y - 2 - TOP) / CELL);
-      let n = 0;
-      for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) if (inGrid(cx, cy)) n += take(cy * GX + cx);
-      if (n) dust(P.x + dir * 24, P.y - 10);
-      return n;
+      return boreWith(VH, x, y, r);
     }
     function doAction() {
       if (P.zip) {
@@ -12340,228 +12956,28 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
     }
     function updCar(dt, ix, u, d) {
-      if (ix) P.face = ix;
-      const maxv = (P.turbo > 0 ? 520 : 300) * (1 + 0.15 * hero.up.motor), icy = P.on && cellAt(P.x, P.y + 2) === ICE, wet = cellAt(P.x, P.y - 10) === WATER;
-      if (P.climb > 0) {
-        P.climb -= dt;
-        P.vx = P.face * 70;
-        P.vy = 0;
-      } else {
-        if (P.on) {
-          const tgt = d ? 0 : ix * maxv;
-          P.vx += (tgt - P.vx) * Math.min(1, dt * (icy ? 0.4 : ix || d ? 2.5 : 1));
-          if (P.turbo > 0 && Math.abs(P.vx) < maxv) P.vx += P.face * 600 * dt;
-          if (u) {
-            P.vy = -380;
-            P.on = false;
-            sfx("jump");
-          }
-        } else P.vx += ix * 80 * dt;
-        P.vy = Math.min(P.vy + grav() * dt, 800);
-      }
-      if (wet) {
-        P.vx -= P.vx * Math.min(1, dt * 2);
-        P.soot = 0;
-      }
-      if (P.turbo > 0 && Math.random() < dt * 50) spawn(1, P.x - P.face * 30, P.y - 13, -P.face * 120, (Math.random() - 0.5) * 40, 0.3, 6);
-      const pv = P.vy;
-      if (mover(dt, 24, 32, 26, 17)) {
-        const top = P.y - 54;
-        if (!ix) P.vx *= -0.2;
-        else if (!solidW(P.x, top) && !solidW(P.x - 15, top) && !solidW(P.x + 15, top)) {
-          P.y -= 150 * dt;
-          P.on = false;
-          P.climb = 0.25;
-        } else bulldoze(ix);
-      }
-      if (P.on) {
-        if (P.landed && pv > 300) dust(P.x, P.y);
-        P.vy = P.gs * P.vx;
-        P.climb = 0;
-      }
-      const ta = P.climb > 0 ? -P.face * 0.6 : P.on ? Math.atan(P.gs) : Math.atan2(P.vy, Math.abs(P.vx) + 200) * P.face * 0.5;
-      P.ang += (ta - P.ang) * Math.min(1, dt * 10);
-    }
-    function drive(dt, ix, sp, hw, h, half, vmax) {
-      if (ix) P.face = ix;
-      if (P.climb > 0) {
-        P.climb -= dt;
-        P.vx = P.face * 70;
-        P.vy = 0;
-      } else {
-        if (P.on) P.vx += (ix * sp * (1 + 0.2 * hero.up.motor) - P.vx) * Math.min(1, dt * 5);
-        else P.vx += (ix * 70 - P.vx) * Math.min(1, dt * 2);
-        P.vy = Math.min(P.vy + grav() * dt, vmax || 800);
-      }
-      if (cellAt(P.x, P.y - 10) === WATER) {
-        P.vx -= P.vx * Math.min(1, dt * 2);
-        P.soot = 0;
-      }
-      const pv = P.vy;
-      if (mover(dt, hw, h, 32, half)) {
-        if (ix) {
-          const top = P.y - h - 20;
-          if (!solidW(P.x, top) && !solidW(P.x - 15, top) && !solidW(P.x + 15, top)) {
-            P.y -= 150 * dt;
-            P.on = false;
-            P.climb = 0.25;
-          } else bulldoze(ix);
-        } else P.vx = 0;
-      }
-      if (P.on) {
-        if (P.landed && pv > 300) dust(P.x, P.y);
-        P.vy = P.gs * P.vx;
-        P.climb = 0;
-      }
-      P.ang += ((P.climb > 0 ? -P.face * 0.6 : P.on ? Math.atan(P.gs) : 0) - P.ang) * Math.min(1, dt * 10);
+      return updCarWith(VH, dt, ix, u, d);
     }
     function updBagger(dt, ix, u, d) {
-      P.arm = clamp(P.arm + (d - u) * 1.7 * dt, -0.95, 1.25);
-      drive(dt, ix, 110, 22, 28, 15);
-      if (keys.a) {
-        P.digT -= dt;
-        if (P.digT <= 0) {
-          baggerAct();
-          P.digT = 0.17 / (1 + 0.35 * hero.up.dig);
-        }
-      }
+      return updBaggerWith(VH, dt, ix, u, d);
     }
     function updLoader(dt, ix, u, d) {
-      P.lift = clamp(P.lift + (u - d) * 90 * dt, 0, 64);
-      drive(dt, ix, 170, 26, 30, 17);
-      if (keys.a) {
-        P.digT -= dt;
-        if (P.digT <= 0) {
-          loaderAct();
-          P.digT = 0.17 / (1 + 0.35 * hero.up.dig);
-        }
-      }
+      return updLoaderWith(VH, dt, ix, u, d);
     }
     function updDumper(dt, ix, u, d) {
-      drive(dt, ix, 230, 30, 32, 20);
-      P.bed = Math.max(0, P.bed - dt * 1.6);
-      if (keys.a) {
-        P.digT -= dt;
-        if (P.digT <= 0) {
-          dumperAct();
-          P.digT = 0.14;
-        }
-      }
+      return updDumperWith(VH, dt, ix, u, d);
     }
     function updTbm(dt, ix, u, d) {
-      P.da = clamp(P.da + (d - u) * 1.3 * dt, -1.5, 1.5);
-      let go = ix || (keys.a ? P.face : 0), cutN = 0;
-      if (!go && (u && P.da <= -1.45 || d && P.da >= 1.45)) go = P.face;
-      const up = P.da < -0.6, shaft = solidW(P.x - 30, P.y - 20) || solidW(P.x + 30, P.y - 20);
-      if (go) {
-        P.face = go;
-        const hd = drillHead();
-        cutN = bore(hd[0], hd[1], 27);
-        if (up) cutN += bore(P.x, P.y - 27, 27);
-        else if (P.da > 0.2) cutN += bore(P.x + go * 14, P.y - 27, 27);
-        if (cutN) {
-          shake = Math.max(shake, 0.04);
-          sfx("dig");
-          if (Math.random() < dt * 16) spawn(3, hd[0] + (Math.random() - 0.5) * 30, hd[1] + (Math.random() - 0.5) * 40, -go * (40 + Math.random() * 120), -40 - Math.random() * 90, 0.6, 3 + Math.random() * 3);
-        }
-      }
-      if (up && go && (cutN || shaft)) {
-        const sp = 80 * (1 + 0.15 * hero.up.dig);
-        P.vx = go * sp * Math.cos(P.da);
-        P.vy = sp * Math.sin(P.da);
-        P.on = false;
-        P.climb = 0;
-        mover(dt, 24, 46, 32, 14);
-        P.ang -= P.ang * Math.min(1, dt * 10);
-      } else if (up && !go && shaft && !P.on) {
-        P.vx = 0;
-        P.vy = 0;
-      } else drive(dt, go, P.da > 0 ? 85 * Math.max(0.3, Math.cos(P.da)) : 95, 24, 46, 14, 170 + 60 * hero.up.dig);
+      return updTbmWith(VH, dt, ix, u, d);
     }
     function updRocket(dt, ix, u, d) {
-      if (u) {
-        if (P.on) {
-          P.on = false;
-          P.y -= 3;
-          shake = Math.max(shake, 0.3);
-          smoke(P.x, P.y, 8);
-        }
-        P.vy += (-800 * (1 + 0.2 * hero.up.jet) - P.vy) * Math.min(1, dt * 1.5);
-        if (Math.random() < dt * 50) spawn(1, P.x + (Math.random() - 0.5) * 8, P.y + 6, (Math.random() - 0.5) * 50, 160 + Math.random() * 120, 0.35, 7);
-      } else P.vy = Math.min(P.vy + grav() * 0.8 * dt, d ? 720 : 400);
-      if (P.on) P.vx -= P.vx * Math.min(1, dt * 8);
-      else {
-        P.vx += (ix * 230 - P.vx) * Math.min(1, dt * 2.5);
-        if (ix) P.face = ix;
-      }
-      const pv = P.vy;
-      if (mover(dt, 13, 56, 26, 9)) P.vx *= -0.3;
-      if (P.on) {
-        if (P.landed && pv > 200) dust(P.x, P.y);
-        P.vy = 0;
-      }
-      P.ang += ((P.on ? 0 : clamp(P.vx / 230, -1, 1) * 0.35) - P.ang) * Math.min(1, dt * 6);
+      return updRocketWith(VH, dt, ix, u, d);
     }
     function updPlane(dt, ix, u, d) {
-      if (ix) P.face = ix;
-      if (P.on) {
-        P.vx += (ix * 260 - P.vx) * Math.min(1, dt * (ix ? 1.3 : P.y < -3e3 ? 4 : 0.9));
-        if (u && Math.abs(P.vx) < 130) P.vx += P.face * 320 * dt;
-        P.upT = u ? (P.upT || 0) + dt : 0;
-        P.vy = Math.min(P.vy + grav() * dt, 800);
-        if (mover(dt, 30, 28, 26, 18)) P.vx = 0;
-        if (P.on) {
-          P.vy = P.gs * P.vx;
-          P.ang = Math.atan(P.gs);
-          if (u && Math.abs(P.vx) > 120 || Math.abs(P.vx) > 235 || P.upT > 0.45) {
-            P.on = false;
-            P.vy = u ? -130 : -60;
-            P.y -= 3;
-            P.upT = 0;
-          }
-        }
-      } else {
-        P.vx += (P.face * 250 * (1 + 0.15 * hero.up.jet) - P.vx) * Math.min(1, dt * 2);
-        P.vy += ((d - u) * (P.y < -1200 ? 430 : 190) * (1 + 0.2 * hero.up.jet) - P.vy) * Math.min(1, dt * 3);
-        if (P.y < -1200 && Math.random() < dt * 40) spawn(1, P.x - P.face * 36, P.y - 16, -P.face * 90, (Math.random() - 0.5) * 30, 0.3, 6);
-        if (mover(dt, 30, 28, 26, 18)) {
-          P.face = -P.face;
-          P.vx = P.face * 80;
-        }
-        if (P.on) {
-          P.vy = 0;
-          dust(P.x, P.y);
-        }
-      }
+      return updPlaneWith(VH, dt, ix, u, d);
     }
     function updCoaster(dt, ix) {
-      const T = P.track;
-      if (T.lift) {
-        liftRide(dt);
-        return;
-      }
-      let q = trackAt(T, P.s);
-      P.v += G * 0.9 * q.ty * dt + ix * T.dir * 220 * dt;
-      P.v -= P.v * 0.08 * dt;
-      if (P.v < 90) P.v += (90 - P.v) * Math.min(1, dt * 4);
-      if (P.v > 1e3) P.v = 1e3;
-      P.s += P.v * dt;
-      q = trackAt(T, P.s);
-      P.x = q.x;
-      P.y = q.y;
-      P.vx = q.tx * P.v;
-      P.vy = q.ty * P.v;
-      P.ang = Math.atan2(q.ty, q.tx);
-      P.face = T.dir;
-      if (P.s >= T.len) {
-        qEvent("ride", 1);
-        P.vy -= 90;
-        P.mode = "walk";
-        P.on = false;
-        P.air = 0.2;
-        P.chute = false;
-        syncUI();
-      }
+      return updCoasterWith(VH, dt, ix);
     }
     function settle(o, dt) {
       const f = floorAt(o.x, o.y, 26);
@@ -14409,181 +14825,16 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
     }
     function onSnow() {
-      const a = cellAt(P.x, P.y + 3), b = cellAt(P.x, P.y + 9);
-      return a === SNOW || a === ICE || b === SNOW || b === ICE;
+      return onSnowWith(VH);
     }
     function updSki(dt, ix, u, d) {
-      if (P.ball > 0) {
-        updRoll(dt);
-        return;
-      }
-      const snow = onSnow(), gk = hero.own.goldski ? 1 : 0;
-      if (ix) P.face = ix;
-      if (u) {
-        P.vy += (-230 * (1 + 0.25 * hero.up.jet) - P.vy) * Math.min(1, dt * 6);
-        P.on = false;
-        P.jet = true;
-        if (Math.random() < dt * 40) spawn(1, P.x - P.face * 8, P.y - 14, (Math.random() - 0.5) * 30, 130, 0.25, 4);
-      }
-      if (P.on) {
-        const gs = P.gs, v = Math.abs(P.vx);
-        P.vx += G * gs / (1 + gs * gs) * dt * (snow ? 1 : 0.3);
-        P.vx -= P.vx * Math.min(1, dt * ((d ? snow ? 2.6 : 5 : snow ? 0.15 - 0.05 * gk : 2.8) + (P.vx < 0 && P.x < 6060 && P.x > 5700 ? 1.9 : 0)));
-        if (ix && P.vx * ix < 190 + 25 * hero.up.motor + 50 * gk) P.vx += ix * (snow ? 320 : 200) * dt;
-        P.vx = clamp(P.vx, -820, 820);
-        if (snow) {
-          if (v > 90 && Math.random() < dt * (d ? 40 : v * 0.03)) spawn(10, P.x - P.face * 12, P.y - 2, -P.vx * 0.2 + (Math.random() - 0.5) * 40, -30 - Math.random() * (d ? 130 : 60), 0.4, 2 + Math.random() * 2.5);
-          if (v > 220) {
-            swishT -= dt;
-            if (swishT <= 0) {
-              swishT = 0.3;
-              sfx("swish");
-            }
-          }
-          if (gk && v > 200 && Math.random() < dt * 14) spawn(5, P.x - P.face * 14, P.y - 3, 0, -30, 0.5, 2);
-        }
-      } else {
-        if (!u) P.vy = Math.min(P.vy + grav() * dt, 780);
-        P.vx += ix * 60 * dt;
-        if (P.spin) {
-          const st = Math.sign(P.spin) * Math.min(Math.abs(P.spin), 10.5 * dt);
-          P.ang += st;
-          P.spin -= st;
-          P.rot += Math.abs(st);
-        }
-      }
-      const pv = P.vy, wasAir = P.air;
-      if (mover(dt, 6, 30, 18, 10)) {
-        if (Math.abs(P.vx) > 150) puff(P.x + P.face * 8, P.y - 12, 6);
-        P.vx *= -0.25;
-      }
-      if (P.on) {
-        if (P.landed) {
-          if (Math.abs(P.spin) > 0.9) {
-            P.ball = 1.7;
-            shout(P.x, P.y - 52, "PLUMPS!");
-            sfx("splat");
-            puff(P.x, P.y - 8, 12);
-          } else {
-            const n = Math.round(P.rot / TAU);
-            if (n > 0) {
-              shout(P.x, P.y - 54, n > 1 ? n + " × SALTO!" : "SALTO!", "#ffd23f");
-              ST.lootDirty = true;
-              sfx("pop");
-              qEvent("salto", n);
-            } else if (wasAir > 1 && !P.jet) shout(P.x, P.y - 54, "JUHU!");
-            if (pv > 260) puff(P.x, P.y - 2, 7);
-            P.ang = Math.atan(P.gs);
-          }
-          P.spin = 0;
-          P.rot = 0;
-          P.jet = false;
-        }
-        P.air = 0;
-        P.vy = P.gs * P.vx;
-        if (P.ball <= 0) P.ang += (Math.atan(P.gs) - P.ang) * Math.min(1, dt * 14);
-        if (Math.abs(P.vx) > 120) {
-          for (const tr of trees) if (tr.fir && tr.state === 0 && Math.abs(tr.x - P.x) < 9 && Math.abs(tr.gy - P.y) < 40 && !(tr.sh > time)) {
-            tr.sh = time + 1.5;
-            puff(tr.x, tr.gy - tr.h * 0.7, 12);
-          }
-        }
-      } else P.air += dt;
-    }
-    function updRoll(dt) {
-      P.ball -= dt;
-      if (P.on) {
-        const gs = P.gs;
-        P.vx += G * gs / (1 + gs * gs) * dt;
-        P.vx -= P.vx * Math.min(1, dt * (onSnow() ? 0.5 : 3));
-      } else P.vy = Math.min(P.vy + grav() * dt, 780);
-      if (mover(dt, 9, 26, 18, 8)) P.vx *= -0.4;
-      if (P.on) P.vy = P.gs * P.vx;
-      P.ang += P.vx / 16 * dt;
-      if (Math.random() < dt * 14) puff(P.x, P.y - 4, 1);
-      if (P.ball <= 0) {
-        P.ball = 0;
-        P.ang = 0;
-        P.spin = 0;
-        P.rot = 0;
-        puff(P.x, P.y - 14, 16);
-        shout(P.x, P.y - 50, "PLOPP!");
-        sfx("pop");
-        P.vy = -190;
-        P.on = false;
-      }
+      return updSkiWith(VH, dt, ix, u, d);
     }
     function skiAct() {
-      if (P.ball > 0) return;
-      if (nearLift()) {
-        rideLift();
-        return;
-      }
-      if (P.on) {
-        P.vy -= 350;
-        P.y -= 3;
-        P.on = false;
-        P.air = 0;
-        P.jet = false;
-        sfx("jump");
-      } else if (Math.abs(P.spin) < TAU * 1.5) {
-        P.spin += (P.vx >= 0 ? -1 : 1) * TAU;
-        sfx("whoosh");
-      }
+      return skiActWith(VH);
     }
     function updDragon(dt, ix, u, d) {
-      if (ix) P.face = ix;
-      P.vx += (ix * 310 * (1 + 0.15 * hero.up.jet) - P.vx) * Math.min(1, dt * 3);
-      if (P.on && !u) P.vy = Math.min(P.vy + grav() * dt, 300);
-      else P.vy += ((d - u) * 270 + (u || d || reduced ? 0 : 16 * Math.sin(time * 3)) - P.vy) * Math.min(1, dt * 4);
-      if (u && P.on) {
-        P.on = false;
-        P.y -= 3;
-      }
-      if (mover(dt, 24, 58, 22, 16)) P.vx *= -0.2;
-      if (P.on) P.vy = 0;
-      P.ang += (clamp(P.vy / 500, -0.35, 0.35) * P.face - P.ang) * Math.min(1, dt * 6);
-      if (keys.a) {
-        P.digT -= dt;
-        if (P.digT <= 0) {
-          P.digT = 0.05;
-          breathe();
-        }
-      }
-    }
-    function melt(cx, cy) {
-      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
-        if (dx * dx + dy * dy > 5) continue;
-        const x = cx + dx, y = cy + dy;
-        if (!inGrid(x, y)) continue;
-        const i = y * GX + x;
-        if (grid[i] === SNOW || grid[i] === ICE) {
-          grid[i] = 0;
-          steam(x, y);
-        }
-      }
-    }
-    function breathe() {
-      const mx = P.x + P.face * 62, my = P.y - 63;
-      for (let k = 0; k < 2; k++) spawn(1, mx, my, P.face * (300 + Math.random() * 160) + P.vx, (Math.random() - 0.3) * 120 + P.vy * 0.5, 0.35 + Math.random() * 0.2, 7 + Math.random() * 6);
-      sfx("flame");
-      for (let r = 20; r <= 170; r += 12) {
-        const x = mx + P.face * r, y = my + r * 0.24, cx = Math.floor(x / CELL), cy = Math.floor((y - TOP) / CELL);
-        if (!inGrid(cx, cy)) break;
-        const m = grid[cy * GX + cx];
-        if (m === SNOW || m === ICE) {
-          melt(cx, cy);
-          break;
-        }
-        if (m === WATER) {
-          steam(cx, cy);
-          break;
-        }
-        if (m >= 4) {
-          if (Math.random() < 0.5) putUp(cx - P.face, cy, FIRE);
-          break;
-        }
-      }
+      return updDragonWith(VH, dt, ix, u, d);
     }
     function throwBall(tx, ty, from) {
       return throwBallWith(WP, tx, ty, from);
@@ -14868,197 +15119,90 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (best) shakeTree(best);
     }
     function updSub(dt, ix, u, d) {
-      if (ix) P.face = ix;
-      const wet = cellAt(P.x, P.y - 14) === WATER;
-      if (wet) {
-        P.on = false;
-        P.vx += (ix * 230 * (1 + 0.15 * hero.up.motor) - P.vx) * Math.min(1, dt * 2.5);
-        P.vy += ((d - u) * 190 - P.vy) * Math.min(1, dt * 3);
-        if (Math.random() < dt * (5 + Math.abs(P.vx) * 0.05)) spawn(7, P.x - P.face * 30, P.y - 16, -P.face * 20, -30, 0.8, 2);
-      } else {
-        P.vx += (ix * 40 - P.vx) * Math.min(1, dt * 3);
-        P.vy = Math.min(P.vy + grav() * dt, 700);
-      }
-      if (mover(dt, 26, 30, 20, 16)) P.vx *= -0.2;
-      if (P.on) P.vy = 0;
-      P.ang += ((wet ? clamp(P.vy / 400, -0.4, 0.4) * P.face : P.on ? Math.atan(P.gs) : 0) - P.ang) * Math.min(1, dt * 6);
+      return updSubWith(VH, dt, ix, u, d);
     }
     const BALLOON_TOP = -1250;
     function updBalloon(dt, ix, u, d) {
-      if (ix) P.face = ix;
-      const wind = Math.sin(time * 0.07 + P.x * 4e-4) * 45;
-      if (P.on) {
-        P.vx -= P.vx * Math.min(1, dt * 6);
-      } else P.vx += (ix * 95 + wind - P.vx) * Math.min(1, dt * 0.9);
-      let ty = u ? -125 : d ? 150 : 45;
-      if (P.y < BALLOON_TOP && ty < 20) {
-        ty = 20;
-        if (u && P.balT <= 0) {
-          P.balT = 4;
-          say("", "Höher kommt der Ballon nicht. Die Luft ist hier oben zu dünn.");
-        }
-      }
-      if (P.balT > 0) P.balT -= dt;
-      P.vy += (ty - P.vy) * Math.min(1, dt * (u ? 1.1 : 0.8));
-      if (u) {
-        if (P.on) {
-          P.on = false;
-          P.y -= 2;
-        }
-        if (Math.random() < dt * 20) spawn(1, P.x + (Math.random() - 0.5) * 6, P.y - 46, (Math.random() - 0.5) * 20, -60, 0.25, 5);
-      }
-      if (mover(dt, 15, 120, 14, 10)) P.vx *= -0.3;
-      if (P.on) {
-        if (P.landed && P.vy > 90) dust(P.x, P.y);
-        P.vy = 0;
-      }
-      P.ang += (clamp(P.vx / 600, -0.12, 0.12) - P.ang) * Math.min(1, dt * 3);
+      return updBalloonWith(VH, dt, ix, u, d);
     }
     let heliLoad = "";
+    const VH = {
+      get quest() {
+        return quest;
+      },
+      get shake() {
+        return shake;
+      },
+      set shake(v) {
+        shake = v;
+      },
+      get swishT() {
+        return swishT;
+      },
+      set swishT(v) {
+        swishT = v;
+      },
+      get trees() {
+        return trees;
+      },
+      get time() {
+        return time;
+      },
+      get reduced() {
+        return reduced;
+      },
+      get BALLOON_TOP() {
+        return BALLOON_TOP;
+      },
+      get heliLoad() {
+        return heliLoad;
+      },
+      set heliLoad(v) {
+        heliLoad = v;
+      },
+      bucket,
+      colTop,
+      drillHead,
+      dust,
+      floorAt,
+      grav,
+      liftRide,
+      mover,
+      nearLift,
+      puff,
+      pulse,
+      putUp,
+      qEvent,
+      rideLift,
+      rot,
+      say,
+      scoop,
+      shellOk,
+      shout,
+      smoke,
+      solidW,
+      spawn,
+      steam,
+      syncUI,
+      trackAt
+    };
     function updHeli(dt, ix, u, d) {
-      if (ix) P.face = ix;
-      if (P.on) {
-        P.vx -= P.vx * Math.min(1, dt * 6);
-        if (u) {
-          P.on = false;
-          P.y -= 2;
-        }
-      } else P.vx += (ix * 240 - P.vx) * Math.min(1, dt * 2);
-      let ty = (d - u) * 190;
-      if (P.y < BALLOON_TOP && ty < 0) {
-        ty = 0;
-        if (u && P.balT <= 0) {
-          P.balT = 4;
-          say("", "Höher kommt der Hubschrauber nicht. Für den Weltraum brauchst du die Rakete.");
-        }
-      }
-      if (P.balT > 0) P.balT -= dt;
-      if (!P.on) P.vy += (ty - P.vy) * Math.min(1, dt * 3);
-      else P.vy = 0;
-      if (!P.on && (ix || u) && Math.random() < dt * 6) spawn(3, P.x + (Math.random() - 0.5) * 60, P.y + 4, (Math.random() - 0.5) * 80, -20, 0.4, 3);
-      if (mover(dt, 30, 46, 16, 18)) P.vx *= -0.3;
-      if (P.on) {
-        if (P.landed && P.vy > 120) dust(P.x, P.y);
-        P.vy = 0;
-      }
-      P.ang += ((P.on ? Math.atan(P.gs) * 0.5 : clamp(P.vx / 240, -1, 1) * 0.22 * P.face) - P.ang) * Math.min(1, dt * 5);
-      const o = heliLoad && parked[heliLoad];
-      if (o) {
-        o.x = P.x;
-        o.y = P.y + 70;
-        o.vy = 0;
-        o.ang = 0;
-        o.face = P.face;
-        if (P.on || solidW(o.x, o.y + 2)) heliDrop();
-      } else heliLoad = "";
+      return updHeliWith(VH, dt, ix, u, d);
     }
     function heliHook() {
-      if (heliLoad) {
-        heliDrop();
-        return;
-      }
-      let best = "", bd = 1e9;
-      for (const k in parked) {
-        const o = parked[k];
-        if (!o || k === "heli") continue;
-        const dx = Math.abs(o.x - P.x), dy = o.y - P.y;
-        if (dx < 70 && dy > -10 && dy < 170 && dx + dy < bd) {
-          bd = dx + dy;
-          best = k;
-        }
-      }
-      if (best) {
-        heliLoad = best;
-        sfx("pop");
-      } else {
-        tone([330, 262], "triangle");
-        pulse("act");
-      }
+      return heliHookWith(VH);
     }
     function heliDrop() {
-      if (heliLoad && parked[heliLoad]) parked[heliLoad].vy = 0;
-      heliLoad = "";
-      sfx("pop");
+      return heliDropWith(VH);
     }
     function boatWet() {
-      return cellAt(P.x, P.y + 5) === WATER || cellAt(P.x - 14, P.y + 5) === WATER || cellAt(P.x + 14, P.y + 5) === WATER;
+      return boatWetWith(VH);
     }
     function updBoat(dt, ix, u, d) {
-      if (ix) P.face = ix;
-      const wet = boatWet(), deep = cellAt(P.x, P.y - 5) === WATER;
-      if (wet) {
-        const wind = Math.sin(time * 0.05 + P.x * 3e-4) * 50;
-        P.vx += (ix * 210 * (1 + 0.15 * hero.up.motor) + wind * (ix ? 1 : 0.5) - P.vx) * Math.min(1, dt * 1.2);
-        if (deep) P.vy += (-140 - P.vy) * Math.min(1, dt * 5);
-        else {
-          P.vy += (0 - P.vy) * Math.min(1, dt * 6);
-          if (u && P.balT <= 0) {
-            P.vy = -260;
-            P.balT = 0.6;
-            sfx("jump");
-          }
-        }
-        if (Math.abs(P.vx) > 60 && Math.random() < dt * 14) spawn(7, P.x - P.face * 26, P.y, -P.face * 30, -30, 0.5, 3);
-        P.soot = 0;
-      } else {
-        P.vx += (ix * 45 - P.vx) * Math.min(1, dt * 3);
-        P.vy = Math.min(P.vy + grav() * dt, 700);
-      }
-      if (P.balT > 0) P.balT -= dt;
-      if (mover(dt, 26, 50, 20, 16)) P.vx *= -0.25;
-      if (P.on) {
-        if (P.landed && P.vy > 200) dust(P.x, P.y);
-        P.vy = 0;
-      }
-      const ta = wet && !P.on ? reduced ? 0 : Math.sin(time * 2.2) * 0.06 : P.on ? Math.atan(P.gs) : 0;
-      P.ang += (ta - P.ang) * Math.min(1, dt * 4);
-    }
-    function bugWall() {
-      const x = P.x + P.face * 17;
-      return solidW(x, P.y - 6) || solidW(x, P.y - 18);
+      return updBoatWith(VH, dt, ix, u, d);
     }
     function updBug(dt, ix, u, d) {
-      if (ix && !P.wall) P.face = ix;
-      if (P.wall) {
-        if (ix === -P.face) {
-          P.wall = false;
-          P.face = ix;
-          P.vx = ix * 90;
-          P.vy = -60;
-        } else {
-          P.vx = 0;
-          P.vy = (d - u - (ix === P.face ? 1 : 0)) * 140;
-          if (P.vy < -140) P.vy = -140;
-          if (!bugWall()) {
-            P.wall = false;
-            P.vx = P.face * 90;
-            P.vy = -90;
-          }
-        }
-      } else {
-        if (P.on) P.vx += (ix * 170 * (1 + 0.15 * hero.up.motor) - P.vx) * Math.min(1, dt * 8);
-        else P.vx += (ix * 120 - P.vx) * Math.min(1, dt * 2);
-        P.vy = Math.min(P.vy + grav() * dt, 700);
-      }
-      if (P.wall) {
-        const ny = P.y + P.vy * dt;
-        if (P.vy < 0 && solidW(P.x, ny - 26)) P.vy = 0;
-        else P.y = ny;
-        const f = floorAt(P.x, P.y, 4);
-        if (P.y >= f) {
-          P.y = f;
-          if (P.vy > 0) P.vy = 0;
-        }
-        P.on = false;
-      } else if (mover(dt, 14, 26, 10, 8) && ix && bugWall()) {
-        P.wall = true;
-        P.vy = 0;
-        sfx("pop");
-      }
-      if (P.on && !P.wall) P.vy = P.gs * P.vx;
-      P.run += (Math.abs(P.vx) + Math.abs(P.wall ? P.vy : 0)) * dt * 0.12;
-      const ta = P.wall ? -P.face * Math.PI / 2 : P.on ? Math.atan(P.gs) : 0;
-      P.ang += (ta - P.ang) * Math.min(1, dt * 10);
+      return updBugWith(VH, dt, ix, u, d);
     }
     const ZIPMAX = 8;
     function zipOk(z) {
