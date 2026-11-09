@@ -1,4 +1,4 @@
-// Bildvergleich (Migrationsplan PR 17, Pfeile und Monster seit PR 18, Tiere seit PR 19a, Winter seit PR 20b, Werkstatt, Tiefe und Planeten seit PR 22, Lift seit PR 23): Feste Szenen werden mit dem Stand von main (OLD) und dem neuen Testbuild gezeichnet.
+// Bildvergleich (Migrationsplan PR 17, Pfeile und Monster seit PR 18, Tiere seit PR 19a, Winter seit PR 20b, Werkstatt, Tiefe und Planeten seit PR 22, Lift seit PR 23, Malen seit PR 27b): Feste Szenen werden mit dem Stand von main (OLD) und dem neuen Testbuild gezeichnet.
 // Die Bilder müssen Pixel für Pixel gleich sein. So fällt auf, wenn ein Umzug die Zeichenreihenfolge ändert.
 // Kein fester Hash im Repo: Pixel hängen von der Chromium-Version ab. Verglichen wird im selben Browser.
 // Aufruf: OLD=/pfad/zur/alten/index.html node tests/pixels.mjs   (im CI wie beim Update-Test aus origin/main)
@@ -57,6 +57,14 @@ const SCENES = [
   { name: 'Kristalle in der Tiefe', go: "teleport(ZDEC.find(function(d){ return d.k==='cry'; }).x)",
     set: "const d=ZDEC.find(function(d){ return d.k==='cry'; }); P.x=d.x-70; P.y=d.y; time=3; nightA=0" },
   { name: 'Planeten im Weltraum', go: 'teleport(SPACE.ice.x)', set: 'P.x=SPACE.ice.x-SPACE.ice.r-160; P.y=SPACE.ice.y; time=4; nightA=0' },
+  // Seit PR 27b: Malen mit dem Finger (Erde, Eis, Schnee, Wasser, Radierer; keine Lava: draw zieht für Lavafunken Zufall). Ein Finger zieht über den Bildschirm, paintStep malt wie im Spiel; kein Simulationsschritt.
+  { name: 'Gemalt mit dem Finger', go: 'teleport(1790)', set: `P.x=1790; P.y=ground(P.x)-2; time=6; nightA=0; ST.energy=MAXE; cam.x=P.x; cam.y=P.y-80;
+      for(const [t,dx,dy] of [['earth',-150,-140],['ice',-80,-190],['snow',0,-170],['water',70,-210],['earth',140,-130],['erase',-140,-138]]){
+        ST.tool=t; const p={x:W/2+dx,y:H/2+dy,has:false,lx:0,ly:0}; pointers.set(99,p);
+        for(let k=0;k<5;k++){ paintStep(); p.x+=9; p.y+=4; }
+        pointers.delete(99);
+      }
+      ST.tool=null; ST.energy=MAXE` },
   // Zuletzt, weil die Szene den Helden auf Ski stellt. Der Yeti hüpft zufällig (Schluckauf), darum Hüpfen, Lachen, Rollen und Pinguine fest.
   // Goldene Ski fest: Die Kristall-Szene erreicht eine Zone, deren Geschenk je nach Zeitpunkt schon da ist oder nicht.
   { name: 'Lift, Iglu, Yeti und Skifahrer', go: 'teleport(IGX+60)', set: `P.x=IGX+60; P.y=surfaceY(P.x)-2; P.mode='ski'; P.ang=0; P.on=true; P.ball=0; time=5; nightA=0;
