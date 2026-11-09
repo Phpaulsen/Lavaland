@@ -22,3 +22,5 @@ export function setRealmWith(RM,id){
 /* Spalte, deren Boden eine Randspalte zeigt: links das Ende der Welt, rechts der Anfang. */
 /** @param {Port} RM @param {any} cx */
 export function wcWith(RM,cx){ return !realm?cx:cx<RC0?cx+(RC1-RC0):cx>=RC1?cx-(RC1-RC0):cx; }
+/* Neuer Weltsamen (PR 29g1 unverändert aus legacy.js bewegt). */
+export function newSeed(){ return 1+Math.floor(Math.random()*999983); }
