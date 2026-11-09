@@ -302,7 +302,22 @@ Je PR: `tick` und `draw(ctx, layer)` ins System, Zeichenaufruf in `draw()` an de
 
 **Umgesetzt PR 28e:** Die aktuelle Welt (`realm`, `RW`, `RX0`, `RC0`, `RC1`) zieht samt `rlm`, `setRealm` und `wc` nach `state/realm.js` (Port `RM` mit `RLM` und `setPal`). Die fünf Namen sind `export let` und werden nur in `setRealm` geschrieben; `legacy.js` und alle Ports lesen sie als Live-Binding, darum ändert sich an den Lesestellen nichts und es gibt keinen Getter im heißen Pfad. Das löst die Abweichung aus PR 14c auf. `RLM` bleibt in `legacy.js` (Daten mit Paletten und Texten, Leser in vielen Abschnitten), ebenso `SEED`, `genF`, `cutX`, `OLD_END`, `ground`, `solidW`, `colTop`, `floorAt`, `surfaceY` (Weltabfragen, ziehen mit dem Aufräumen in PR 29). Einzeiler für `rlm`, `setRealm`, `wc` (Ports `SP`, `WD` und viele Abschnitte). Absicherung: Golden Master (Welten), Rauchtest (Reisen), `save.mjs`, Upgrade-Test, `perf.mjs`.
 
-### PR 29: Schluss
+### PR 29a–29f: Rest von `legacy.js`
+
+Nach PR 28e stehen in `legacy.js` noch 3 559 Zeilen: 172 Funktionen, 222 Einzeiler, 37 Ports, 159 Anweisungen auf oberster Ebene (Handler) und 148 Deklarationen. Das ist für einen verhaltensneutralen PR zu viel. Darum wird der Rest vor dem Schluss in sechs Moves geteilt, jeder mit Port und Einzeilern wie ab PR 16:
+
+- **29a Fahrzeuge und Held malen** → `render/vehicles.js`: `head`, `drawKid`, `drawChute`, die Fahrzeugbilder (`drawCar` … `drawBug`), `drawZips`, `drawHandTool`.
+- **29b Zeichenhelfer und übriges Malen** → `render/`: `rr`, `circle`, `mix`, `lerpC`, Paletten, `drawCells`, `drawTree`, `drawCloud`, `arrow`, `drawSpace`, Hintergründe, `drawFinds`, `drawProp`, `drawDoor`, `drawScope`, `emo`, `resize`.
+- **29c Lernkern-Rest** → `core/learn/` bzw. `systems/`: Fakten-Auswahl und Buchführung, `genQ`, `drain`, Tageszähler, Lagerfeuer.
+- **29d Weltabfragen und Teilchen** (heißer Pfad, vorher messen): `ground`, `solidW`, `colTop`, `floorAt`, `surfaceY`, `setCell`, `spawn` und Verwandte, `explode`.
+- **29e Spielwelt-Rest**: Türen, Tiefe, Werkstatt-Nähe, Funde, Tippen in die Welt, Fernrohr, Nebel, Marken, Aufträge-Rest, Bomben.
+- **29f Handler und Oberfläche**: Tasten-, Pointer- und Klick-Handler, `setTool`, `syncUI`, Banner, Tastenbilder, Spielstand umziehen, Fehlerprotokoll.
+
+Danach folgt der Schluss als 29g. Ports zwischen Modulen aufzulösen ist dort Umbau, kein Move mehr.
+
+**Umgesetzt PR 29a:** Kopf, Kind, Fallschirm, alle Fahrzeugbilder, Seilrutschen und Handwerkzeug ziehen nach `render/vehicles.js` (Port `VR`). Die Zeichenhelfer `circle`, `rr`, `emo` und `kidScale`, `colTop`, `toWorld` kommen über den Port. Konstanten, die vor dem Port deklariert sind (`EHAT`, `FX`, `pointers`, `HANDT`), stehen als Werte darin, `INK` (später deklariert) und die `let` (`time`, `reduced`, `heliLoad`) als Getter. Einzeiler für alle 18 Funktionen, weil `DR`, `WM` und die Winter- und Ski-Bilder sie aufrufen. Absicherung: Bildvergleich, Rauchtest, Knopftest, `perf.mjs` (`draw`).
+
+### PR 29g: Schluss
 
 - `legacy.js` ist leer und gelöscht. `G` ist leer und gelöscht. Testzugang ist die benannte API `window.__lv` im Testbuild, kein `eval`.
 - `deps.mjs` ohne Ausnahmen; `tsc` über alle Module.
