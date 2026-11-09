@@ -12994,6 +12994,28 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     WG.ST.DROPS = [];
   }
 
+  // src/state/realm.js
+  var realm = "";
+  var RW = WORLD_W;
+  var RX0 = 0;
+  var RC0 = 0;
+  var RC1 = GX;
+  function rlmWith(RM) {
+    return realm ? RM.RLM[realm] : null;
+  }
+  function setRealmWith(RM, id) {
+    realm = id && RM.RLM[id] ? id : "";
+    const R = rlmWith(RM);
+    RW = R ? R.w : WORLD_W;
+    RX0 = R ? PX0 : 0;
+    RC0 = Math.floor(RX0 / CELL);
+    RC1 = Math.min(GX - PMC - 1, RC0 + Math.round(RW / CELL));
+    if (typeof RM.setPal === "function") RM.setPal(R);
+  }
+  function wcWith(RM, cx) {
+    return !realm ? cx : cx < RC0 ? cx + (RC1 - RC0) : cx >= RC1 ? cx - (RC1 - RC0) : cx;
+  }
+
   // src/legacy.js
   (function() {
     "use strict";
@@ -13488,23 +13510,20 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       lk: [0, 0, 0, WATER, WATER, WATER, LAVA],
       hello: "Du bist auf dem Blubberplaneten gelandet! Hier wachsen lila Wälder und Riesenpilze, und im Sumpf blubbert grüner Glibber. Blubb wohnt hier. Wenn du heim willst, flieg mit der Rakete ganz hoch hinauf."
     };
-    let realm = "", RW = WORLD_W, RX0 = 0, RC0 = 0, RC1 = GX;
     function rlm() {
-      return realm ? RLM[realm] : null;
+      return rlmWith(RM);
     }
     function setRealm(id) {
-      realm = id && RLM[id] ? id : "";
-      const R = rlm();
-      RW = R ? R.w : WORLD_W;
-      RX0 = R ? PX0 : 0;
-      RC0 = Math.floor(RX0 / CELL);
-      RC1 = Math.min(GX - PMC - 1, RC0 + Math.round(RW / CELL));
-      if (typeof setPal === "function") setPal(R);
+      return setRealmWith(RM, id);
     }
     function wc(cx) {
-      return !realm ? cx : cx < RC0 ? cx + (RC1 - RC0) : cx >= RC1 ? cx - (RC1 - RC0) : cx;
+      return wcWith(RM, cx);
     }
     let OLD_N = 0, OLD_END = 0;
+    const RM = {
+      RLM,
+      setPal
+    };
     function addTree(x, k, r) {
       return addTreeWith(WD, x, k, r);
     }
