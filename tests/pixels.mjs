@@ -57,8 +57,10 @@ const SCENES = [
   { name: 'Kristalle in der Tiefe', go: "teleport(ZDEC.find(function(d){ return d.k==='cry'; }).x)",
     set: "const d=ZDEC.find(function(d){ return d.k==='cry'; }); P.x=d.x-70; P.y=d.y; time=3; nightA=0" },
   { name: 'Planeten im Weltraum', go: 'teleport(SPACE.ice.x)', set: 'P.x=SPACE.ice.x-SPACE.ice.r-160; P.y=SPACE.ice.y; time=4; nightA=0' },
-  // Zuletzt, weil die Szene den Helden auf Ski stellt.
-  { name: 'Lift, Iglu, Yeti und Skifahrer', go: 'teleport(IGX+60)', set: "P.x=IGX+60; P.y=surfaceY(P.x)-2; P.mode='ski'; P.ang=0; P.on=true; P.ball=0; time=5; nightA=0" },
+  // Zuletzt, weil die Szene den Helden auf Ski stellt. Der Yeti hüpft zufällig (Schluckauf), darum Hüpfen, Lachen, Rollen und Pinguine fest.
+  // Goldene Ski fest: Die Kristall-Szene erreicht eine Zone, deren Geschenk je nach Zeitpunkt schon da ist oder nicht.
+  { name: 'Lift, Iglu, Yeti und Skifahrer', go: 'teleport(IGX+60)', set: `P.x=IGX+60; P.y=surfaceY(P.x)-2; P.mode='ski'; P.ang=0; P.on=true; P.ball=0; time=5; nightA=0;
+      hero.own.goldski=1; N.yeti.hop=0; N.yeti.laugh=0; N.yeti.roll=0; for(const p of N.pen){ p.s=0; p.x=p.hx; p.y=surfaceY(p.hx); p.rot=0; }` },
 ];
 
 async function shoot(browser, url) {
