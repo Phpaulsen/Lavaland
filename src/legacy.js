@@ -73,6 +73,9 @@ import { HOME_T, HOME_C, trees, clouds } from './state/home.js';
 import { uiBindWith } from './ui/bind.js';
 import { keysBindWith } from './ui/keys.js';
 import { parBindWith } from './ui/parent.js';
+import { pzBindWith } from './ui/puzzles.js';
+import { labBindWith } from './ui/map.js';
+import { ptrBindWith } from './ui/paint.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -492,34 +495,24 @@ function disc(cx,cy,r,m){ return discWith(PT,cx,cy,r,m); }
 const PAINTM={lava:LAVA,fire:FIRE,water:WATER,ice:ICE,earth:EARTH,snow:SNOW}, PAINTC=.012;
 function paintPay(e){ return paintPayWith(PT,e); }
 function paintStep(){ return paintStepWith(PT); }
-cv.addEventListener('pointerdown',function(e){
-  e.preventDefault();
-  try{cv.setPointerCapture(e.pointerId);}catch(_){}
-  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,has:false,lx:0,ly:0});
-  armGhost(cv);
-  if(!ST.tool) tapWorld(e.clientX,e.clientY);
-  if(ST.tool==='rope') pointers.get(e.pointerId).rs=toWorld(e.clientX,e.clientY);
-  if(ST.tool==='track'&&strokeId===null){
-    const w=toWorld(e.clientX,e.clientY);
-    strokeId=e.pointerId; strokeExt=null; stroke=[w];
-    for(const T of ST.tracks){
-      const a=T.pts[0], b=T.pts[T.pts.length-1];
-      if(Math.hypot(w[0]-b[0],w[1]-b[1])<46){ strokeExt={T:T,end:true}; stroke=[[b[0],b[1]]]; break; }
-      if(Math.hypot(w[0]-a[0],w[1]-a[1])<46){ strokeExt={T:T,end:false}; stroke=[[a[0],a[1]]]; break; }
-    }
-  }
-});
-cv.addEventListener('pointermove',function(e){
-  const p=pointers.get(e.pointerId); if(!p) return;
-  p.x=e.clientX; p.y=e.clientY;
-  if(e.pointerId===strokeId&&stroke&&stroke.length<900){
-    const w=toWorld(p.x,p.y), l=stroke[stroke.length-1];
-    if(Math.hypot(w[0]-l[0],w[1]-l[1])>10) stroke.push(w);
-  }
-});
 function endPointer(e){ return endPointerWith(PT,e); }
-cv.addEventListener('pointerup',endPointer);
-cv.addEventListener('pointercancel',endPointer);
+function ptrBind(){ return ptrBindWith(PN); }
+/* Zeiger auf der Leinwand verdrahten (ui/paint.js) */
+const PN={
+  get cv(){ return cv; },
+  get pointers(){ return pointers; },
+  get strokeId(){ return strokeId; },
+  set strokeId(v){ strokeId=v; },
+  get strokeExt(){ return strokeExt; },
+  set strokeExt(v){ strokeExt=v; },
+  get stroke(){ return stroke; },
+  set stroke(v){ stroke=v; },
+  armGhost,
+  endPointer,
+  tapWorld,
+  toWorld
+};
+ptrBind();
 
 /* ---------- Ton und Sprache (Klänge und Vorlesen in src/audio/sound.js; hier, was Speicher und Spielzustand braucht) ---------- */
 try{ const o=JSON.parse(localStorage.getItem(K_VOICE)||'null'); if(o&&typeof o==='object'){ if(typeof o.v==='string') VOICE.v=o.v.slice(0,120); if(VRATES.indexOf(o.r)>=0) VOICE.r=o.r; } }catch(_){}
@@ -1507,27 +1500,10 @@ const LM={
 function missing(g){ return missingWith(LM,g); }
 function openLab(){ return openLabWith(LM); }
 function labBuild(g){ return labBuildWith(LM,g); }
-$('lab').addEventListener('click',function(e){
-  let b=e.target.closest('[data-mat]');
-  if(b&&b.dataset.mat==='ms'){ speak(MAT.ms[1]+'. Du hast '+(hero.mat.ms|0)+'. '+MAT.ms[3]); return; }
-  if(b){ const k=b.dataset.mat; guide={k:k,t:time+300}; speak(MAT[k][1]+'. Du hast '+(hero.mat[k]|0)+'. '+MAT[k][3]+' Der orange Pfeil zeigt dir den Weg.'); return; }
-  b=e.target.closest('[data-tl]');
-  if(b){ const g=b.dataset.tl, G=GEAR[g], t=gearLv(g); speak(t>=3?G.n+' ist ganz fertig.':G.n+', Stufe '+(t+1)+'. '+G.what[t]+(canBuild(g)?' Du hast alles dafür. Tippe auf den Hammer.':' Dafür fehlen noch '+missing(g)+'.')); return; }
-  b=e.target.closest('[data-mk]');
-  if(b){ labBuild(b.dataset.mk); return; }
-  b=e.target.closest('[data-pzt]');
-  if(b){ const p=PZI[b.dataset.pzt]; speak(p.n+': Stufe '+((hero.pz[p.id]|0)+1)+' von 10. Je mehr Rätsel du ohne Fehler löst, desto kniffliger werden sie.'); }
-});
 
 /* ---------- Aufzug: fährt zu jeder Zone, die man selbst schon erreicht hat. Bodenfahrzeuge fahren mit. ---------- */
 function openMine(){ return openMineWith(LM); }
 function liftGo(k){ return liftGoWith(LM,k); }
-$('mine-cards').addEventListener('click',function(e){
-  const b=e.target.closest('[data-st]'); if(!b) return;
-  const k=+b.dataset.st;
-  if(k>hero.zn){ tone([170],'sawtooth'); speak('Dahin fährt der Aufzug erst, wenn du selbst einmal dort warst. '+ZN[k].need); return; }
-  $('mine').hidden=true; liftGo(k);
-});
 
 /* ---------- Zeichnen ---------- */
 const CRYC=['#7fe3f0','#c77dff','#ff9fd0'], CRYH=[30,46,38,24];
@@ -1538,11 +1514,30 @@ function marks(){ return marksLoadWith(PF); }
 function mkSave(){ return mkSaveWith(ZO); }
 let mkShown=null;
 function mkTap(){ return mkTapWith(DP); }
-$('mark').addEventListener('click',function(e){ e.preventDefault(); mkTap(); });
 function drawDeep(x0,x1,y0,y1){ return drawDeepWith(RP,ctx,x0,x1,y0,y1); }
 function darkAt(y){ return darkAtWith(ZO,y); }
 function drawDark(){ return drawDarkWith(SC,ctx); }
 function drawFar(){ return drawFarWith(SC,ctx); }
+function labBind(){ return labBindWith(LH); }
+/* Klicks in Werkstatt, Aufzug und Leuchtmarke verdrahten (ui/map.js) */
+const LH={
+  get $(){ return $; },
+  get MAT(){ return MAT; },
+  get guide(){ return guide; },
+  set guide(v){ guide=v; },
+  get time(){ return time; },
+  get GEAR(){ return GEAR; },
+  get PZI(){ return PZI; },
+  get ZN(){ return ZN; },
+  canBuild,
+  gearLv,
+  labBuild,
+  liftGo,
+  missing,
+  mkTap,
+  speak
+};
+labBind();
 function drawNebula(){ return drawNebulaWith(SC,ctx); }
 
 /* ---------- Rätselmaschinen: sieben Arten von Denkaufgaben. Jede Art hat zehn Stufen und wird schwerer, wenn ein Rätsel ohne Fehler und ohne Tipp gelingt.
@@ -1605,26 +1600,21 @@ function pzOpen(m){ return pzOpenWith(PZ,m); }
 function pzClose(){ return pzCloseWith(PZ); }
 function pzHintMax(c){ return pzHintMaxWith(PZ,c); }
 function pzHintUi(){ return pzHintUiWith(PZ); }
-$('pz').addEventListener('click',function(e){
-  if(e.target===$('pz')||e.target.closest('.xb')){ pzClose(); return; }
-  if(!pzc) return;
-  if(e.target.closest('#pz-say')){ speak(pzc.T.say(pzc.st)); return; }
-  if(pzc.busy) return;
-  if(e.target.closest('#pz-hint')){
-    if(pzc.hint>=pzHintMax(pzc)){ speak('Den Tipp hast du schon bekommen. Du schaffst den Rest!'); return; }
-    if(pzc.fails<1){ speak('Probier es erst einmal selbst. Wenn es nicht klappt, gibt es einen Tipp.'); return; }
-    LOG.pHint(pzc); pzc.hint++; pzHintUi(); pzc.T.hint(pzc.st); return;
-  }
-  const b=e.target.closest('[data-a]');
-  if(b&&!b.disabled) pzc.T.act(pzc.st,b.dataset.a,b);
-});
 
-/* Am Akku: ein Rätsel statt fünf Lernaufgaben. Die Arten wechseln der Reihe nach, damit keine ausgelassen wird. */
-$('quiz-pz').addEventListener('click',function(){
-  LOG.qSwitch();
-  $('quiz').hidden=true; ST.paused=false;
-  pzOpen({id:'quiz',t:PZON[(hero.pzn|0)%PZON.length].id,zb:0,quiz:true});
-});
+function pzBind(){ return pzBindWith(PQ); }
+/* Klicks im Rätselrahmen verdrahten (ui/puzzles.js) */
+const PQ={
+  get $(){ return $; },
+  get pzc(){ return pzc; },
+  get LOG(){ return LOG; },
+  get PZON(){ return PZON; },
+  pzClose,
+  pzHintMax,
+  pzHintUi,
+  get pzOpen(){ return pzOpen; },
+  speak
+};
+pzBind();
 
 /* ---------- 1. Muster: Welches Bild fehlt in der Reihe? ---------- */
 function mkMuster(lv){ return mkMusterWith(Math.random,lv); }

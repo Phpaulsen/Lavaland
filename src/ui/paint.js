@@ -121,3 +121,34 @@ export function endPointerWith(PT,e){
     PT.stroke=null; PT.strokeId=null; PT.strokeExt=null;
   }
 }
+/* Zeiger auf der Leinwand verdrahten (Tippen, Malen, Loslassen). PR 29g2d: Die Anweisungen auf oberster Ebene aus legacy.js stehen unverändert in ptrBindWith, legacy.js ruft es an der alten Stelle; alles aus legacy.js kommt über den Port PN. */
+/** @param {Port} PN */
+export function ptrBindWith(PN){
+PN.cv.addEventListener('pointerdown',/** @param {any} e */ function(e){
+  e.preventDefault();
+  try{PN.cv.setPointerCapture(e.pointerId);}catch(_){}
+  PN.pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,has:false,lx:0,ly:0});
+  PN.armGhost(PN.cv);
+  if(!ST.tool) PN.tapWorld(e.clientX,e.clientY);
+  if(ST.tool==='rope') PN.pointers.get(e.pointerId).rs=PN.toWorld(e.clientX,e.clientY);
+  if(ST.tool==='track'&&PN.strokeId===null){
+    const w=PN.toWorld(e.clientX,e.clientY);
+    PN.strokeId=e.pointerId; PN.strokeExt=null; PN.stroke=[w];
+    for(const T of ST.tracks){
+      const a=T.pts[0], b=T.pts[T.pts.length-1];
+      if(Math.hypot(w[0]-b[0],w[1]-b[1])<46){ PN.strokeExt={T:T,end:true}; PN.stroke=[[b[0],b[1]]]; break; }
+      if(Math.hypot(w[0]-a[0],w[1]-a[1])<46){ PN.strokeExt={T:T,end:false}; PN.stroke=[[a[0],a[1]]]; break; }
+    }
+  }
+});
+PN.cv.addEventListener('pointermove',/** @param {any} e */ function(e){
+  const p=PN.pointers.get(e.pointerId); if(!p) return;
+  p.x=e.clientX; p.y=e.clientY;
+  if(e.pointerId===PN.strokeId&&PN.stroke&&PN.stroke.length<900){
+    const w=PN.toWorld(p.x,p.y), l=PN.stroke[PN.stroke.length-1];
+    if(Math.hypot(w[0]-l[0],w[1]-l[1])>10) PN.stroke.push(w);
+  }
+});
+PN.cv.addEventListener('pointerup',PN.endPointer);
+PN.cv.addEventListener('pointercancel',PN.endPointer);
+}
