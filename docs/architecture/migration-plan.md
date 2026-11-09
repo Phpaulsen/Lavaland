@@ -323,6 +323,8 @@ Danach folgt der Schluss als 29g. Ports zwischen Modulen aufzulösen ist dort Um
 
 **Umgesetzt PR 29c:** `drain`, `numOpts`, `dayNo`, `loadFacts`, `pickFact`, `pickFact0`, `factDone`, `masterGive`, `genQ` und `saveSchool` ziehen nach `systems/learn.js` (Port `LK`). Der Zustand (`FS`, `SCH`, `kindHist`, `retry`, `lastF`, `lastDom`, `battLow`, `warnS`) bleibt in `legacy.js` und kommt über Getter und Setter, die Speicherschlüssel `K_FACTS`, `K_SKILL`, `K_SCHOOL` über den Port (Schichtregel). `genQ` ruft `pickFact` über einen Getter im Port auf den Einzeiler, weil der Rauchtest `pickFact` in `legacy.js` ersetzt. Der Port steht vor `loadFacts();` (Aufruf beim Start). Die Anweisungen auf oberster Ebene (Meisterstein-Nachtrag, Schulstand laden) bleiben bei den Handlern. Einzeiler für alle zehn. Absicherung: Golden Master (Lernkern-Szenen), Rauchtest, `save.mjs`, Upgrade-Test.
 
+**Umgesetzt PR 29d:** Die Weltabfragen `ground`, `inMoon`, `solidW`, `burns`, `colTop`, `floorAt`, `surfaceY`, `putUp`, `setCell` und die Liste `ORBS` ziehen unverändert (gleiche Namen, ohne Port, ohne Einzeiler) nach `state/queries.js`. Sie lesen nur Modulbindungen (`grid`, `g0`, `cellAt`, `hero`), darum kostet der Umzug im heißen Pfad nichts; `legacy.js` und die Ports importieren sie. Abweichung vom Vorschlag: Die Teilchen (`spawn`, `smoke`, `dust`, `confetti`, `explode`, `pmax`) brauchen Zustand aus `legacy.js` (`maxDpr`, `reduced`, `shake`) und ziehen als 29d2 mit Port. Absicherung: Golden Master, Rauchtest, Bildvergleich, `perf.mjs` (`step`, `update`).
+
 ### PR 29g: Schluss
 
 - `legacy.js` ist leer und gelöscht. `G` ist leer und gelöscht. Testzugang ist die benannte API `window.__lv` im Testbuild, kein `eval`.

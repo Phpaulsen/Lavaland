@@ -14675,6 +14675,76 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
   }
 
+  // src/state/queries.js
+  var ORBS = [MOON];
+  function ground(x) {
+    const f = clamp(x / CELL, 0, GX), i = Math.floor(f);
+    return g0[i] + (g0[i + 1] - g0[i]) * (f - i);
+  }
+  function inMoon(wx, wy) {
+    for (const o of ORBS) {
+      const dx = wx - o.x, dy = wy - o.y;
+      if (dx * dx + dy * dy < o.r * o.r) return true;
+    }
+    return false;
+  }
+  function solidW(wx, wy) {
+    return wy < -3e3 ? inMoon(wx, wy) : cellAt(wx, wy) >= 4;
+  }
+  function burns(wx, wy) {
+    const m = cellAt(wx, wy);
+    return m === FIRE && hero.up.heat < 1 || m === LAVA && hero.up.heat < 2;
+  }
+  function colTop(cx, r) {
+    if (cx < 0) cx = 0;
+    else if (cx >= GX) cx = GX - 1;
+    if (r < 0) r = 0;
+    let i = r * GX + cx;
+    while (r < GY && grid[i] < 4) {
+      r++;
+      i += GX;
+    }
+    return r;
+  }
+  function floorAt(x, yRef, step) {
+    if (yRef < -3e3) {
+      const st = yRef - step;
+      let best = 1e9;
+      for (const o of ORBS) {
+        const dx = x - o.x;
+        if (Math.abs(dx) >= o.r || Math.abs(o.y - yRef) > 4e4) continue;
+        const hh = Math.sqrt(o.r * o.r - dx * dx);
+        if (st <= o.y - hh) {
+          if (o.y - hh < best) best = o.y - hh;
+        } else if (st < o.y + hh) return st;
+      }
+      if (best < 1e8) return best;
+    }
+    const r0 = Math.floor((yRef - step - TOP) / CELL), fx = x / CELL - 0.5, c = Math.floor(fx), u = fx - c;
+    const a = colTop(c, r0), b = colTop(c + 1, r0);
+    if (Math.abs(a - b) > 2) return TOP + (u < 0.5 ? a : b) * CELL;
+    return TOP + (a + (b - a) * u) * CELL;
+  }
+  function surfaceY(x) {
+    return TOP + colTop(Math.floor(x / CELL), 2) * CELL;
+  }
+  function putUp(cx, cy, t) {
+    if (cx < 1 || cx >= GX - 1) return;
+    let n = 0;
+    while (n < 8 && cy > 1 && grid[cy * GX + cx] >= 4) {
+      cy--;
+      n++;
+    }
+    put(cx, cy, t);
+  }
+  function setCell(cx, cy, m, lf) {
+    if (!inGrid(cx, cy)) return;
+    const i = cy * GX + cx;
+    grid[i] = m;
+    lifeS(i, lf || 0);
+    if (m > 0 && m < 4) ext(cx, cy);
+  }
+
   // src/legacy.js
   (function() {
     "use strict";
@@ -15070,10 +15140,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     AI.bow = '<path d="M5 3c9 1.500 14 6.500 16 16" stroke="currentColor" stroke-width="2.800" fill="none" stroke-linecap="round"/><path d="M5 3l16 16M2 12h13" stroke="currentColor" stroke-width="1.800" stroke-linecap="round"/><path d="M15 9l5 3-5 3z" fill="currentColor"/>';
     AI.sonar = '<circle cx="12" cy="12" r="2.600" fill="currentColor"/><path d="M6.500 6.500a8 8 0 0 0 0 11M17.500 6.500a8 8 0 0 1 0 11M3.500 3.500a12 12 0 0 0 0 17M20.500 3.500a12 12 0 0 1 0 17" stroke="currentColor" stroke-width="2.200" fill="none" stroke-linecap="round"/>';
     for (let i = 0; i < GX + 2; i++) g0[i] = rawH(i * CELL);
-    function ground(x) {
-      const f = clamp(x / CELL, 0, GX), i = Math.floor(f);
-      return g0[i] + (g0[i + 1] - g0[i]) * (f - i);
-    }
     for (let cx = 0; cx < GX; cx++) {
       zS1[cx] = 630 + Math.round(3 * Math.sin(cx * 0.027 + 1));
       z4[cx] = 960 + Math.round(10 * Math.sin(cx * 0.013 + 2));
@@ -15101,20 +15167,12 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       return migrateSnowWith(WG);
     }
     let SEED = 1;
-    function setCell(cx, cy, m, lf) {
-      if (!inGrid(cx, cy)) return;
-      const i = cy * GX + cx;
-      grid[i] = m;
-      lifeS(i, lf || 0);
-      if (m > 0 && m < 4) ext(cx, cy);
-    }
     function carveCircle(x, y, r) {
       return carveCircleWith(WD, x, y, r);
     }
     function fillBlock(bx, by) {
       return fillBlockWith(WD, bx, by);
     }
-    const ORBS = [MOON];
     let genF = 0;
     const RLM = {
       moon: {
@@ -15354,62 +15412,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     };
     function loadCells(sv) {
       return loadCellsWith(WG, sv);
-    }
-    function putUp(cx, cy, t) {
-      if (cx < 1 || cx >= GX - 1) return;
-      let n = 0;
-      while (n < 8 && cy > 1 && grid[cy * GX + cx] >= 4) {
-        cy--;
-        n++;
-      }
-      put(cx, cy, t);
-    }
-    function inMoon(wx, wy) {
-      for (const o of ORBS) {
-        const dx = wx - o.x, dy = wy - o.y;
-        if (dx * dx + dy * dy < o.r * o.r) return true;
-      }
-      return false;
-    }
-    function solidW(wx, wy) {
-      return wy < -3e3 ? inMoon(wx, wy) : cellAt(wx, wy) >= 4;
-    }
-    function burns(wx, wy) {
-      const m = cellAt(wx, wy);
-      return m === FIRE && hero.up.heat < 1 || m === LAVA && hero.up.heat < 2;
-    }
-    function colTop(cx, r) {
-      if (cx < 0) cx = 0;
-      else if (cx >= GX) cx = GX - 1;
-      if (r < 0) r = 0;
-      let i = r * GX + cx;
-      while (r < GY && grid[i] < 4) {
-        r++;
-        i += GX;
-      }
-      return r;
-    }
-    function floorAt(x, yRef, step2) {
-      if (yRef < -3e3) {
-        const st = yRef - step2;
-        let best = 1e9;
-        for (const o of ORBS) {
-          const dx = x - o.x;
-          if (Math.abs(dx) >= o.r || Math.abs(o.y - yRef) > 4e4) continue;
-          const hh = Math.sqrt(o.r * o.r - dx * dx);
-          if (st <= o.y - hh) {
-            if (o.y - hh < best) best = o.y - hh;
-          } else if (st < o.y + hh) return st;
-        }
-        if (best < 1e8) return best;
-      }
-      const r0 = Math.floor((yRef - step2 - TOP) / CELL), fx = x / CELL - 0.5, c = Math.floor(fx), u = fx - c;
-      const a = colTop(c, r0), b = colTop(c + 1, r0);
-      if (Math.abs(a - b) > 2) return TOP + (u < 0.5 ? a : b) * CELL;
-      return TOP + (a + (b - a) * u) * CELL;
-    }
-    function surfaceY(x) {
-      return TOP + colTop(Math.floor(x / CELL), 2) * CELL;
     }
     function steam(x, y) {
       return steamWith(SP, x, y);
