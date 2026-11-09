@@ -70,6 +70,7 @@ import { Q, trackAt } from './core/world/track.js';
 import { FX, fxSpeed, kidScale } from './state/fx.js';
 import { K, S1, IC, AI, S2, QI } from './ui/icons.js';
 import { HOME_T, HOME_C, trees, clouds } from './state/home.js';
+import { uiBindWith } from './ui/bind.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -1702,90 +1703,15 @@ const MODES=VEH.map(function(v){return v[0];}), TOOLN=TOOLS.map(function(t){retu
 /* Zauberkasten (Vereinfachungsplan 1b): Die sechs Malstoffe stecken in einer Karte der Werkzeugkiste und öffnen sich als eigenes Fenster. */
 const PAINT={lava:1,fire:1,water:1,ice:1,earth:1,snow:1};
 function svg24(inner){ return svg24With(CT,inner); }
-const LOCK='<span class="lock">'+svg24(QI.lock)+'</span>';
-$('grid').innerHTML=
-  '<button class="btn veh cool" id="btn-veh" aria-label="Fahrzeug wählen">'+svg24(IC.walk)+LOCK+'</button>'+
-  '<button class="btn cool" id="btn-tool" aria-label="Werkzeug wählen" aria-pressed="false">'+svg24(QI.hand)+LOCK+'</button>'+
-  '<button class="btn" id="btn-map" aria-label="Karte: zu einem entdeckten Land reisen">'+svg24(QI.map)+'</button>'+
-  '<button class="btn" id="btn-lab" aria-label="Werkstatt: Bohrer, Rakete, Lampe und Schutz bauen">'+svg24(QI.lab)+'<span class="badge" id="lab-n" hidden>!</span></button>'+
-  '<button class="btn" id="btn-finds" aria-label="Funde ansehen">'+svg24(QI.gem)+'<span class="badge" id="found" hidden>0</span></button>'+
-  '<button class="btn" id="btn-menu" aria-label="Menü: Speichern, Ton, neue Welt, Vollbild, Spielstand umziehen">'+svg24(QI.gear)+'</button>';
-$('save').innerHTML=svg24(QI.save); $('reset').innerHTML=svg24(IC.reset); $('exp').innerHTML=svg24(QI.exp); $('imp').innerHTML=svg24(QI.imp);
-$('imp-ask').innerHTML=svg24(QI.imp)+'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h14m-6-6l6 6-6 6" stroke="'+K+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>'+svg24(IC.blocks);
-$('ask').innerHTML=svg24(IC.blocks)+'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h14m-6-6l6 6-6 6" stroke="'+K+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>'+svg24(IC.reset);
-$('garage-cards').innerHTML=VEH.map(function(v){
-  const cool=v[0]!=='walk';
-  return '<button class="card pick'+(cool?' cool':'')+'" id="mode-'+v[0]+'" data-mode="'+v[0]+'" aria-label="'+v[1]+'" aria-pressed="false">'+svg24(IC[v[0]])+(cool?LOCK:'')+'</button>';
-}).join('');
-const toolCard=function(t){
-  const cool=!HANDT[t[0]];
-  return '<button class="card pick'+(cool?' cool':'')+'" id="tool-'+t[0]+'" data-tool="'+t[0]+'" aria-label="'+t[1]+'" aria-pressed="false">'+svg24(IC[t[0]])+(cool?LOCK:'')+(t[0]==='tnt'?'<span class="badge" id="tnt-n" hidden>0</span>':'')+'</button>';
-};
-$('tool-cards').innerHTML=TOOLS.filter(function(t){ return !PAINT[t[0]]; }).map(function(t,i){
-  return (i===1?'<button class="card pick cool" id="tool-magic" aria-label="Zauberkasten: Lava, Feuer, Wasser, Eis, Erde oder Schnee malen" aria-pressed="false"><span class="mg" aria-hidden="true">🪄</span>'+LOCK+'</button>':'')+toolCard(t);
-}).join('');
-$('magic-cards').innerHTML=TOOLS.filter(function(t){ return PAINT[t[0]]; }).map(toolCard).join('');
 
 /* Geister-Klick: Öffnet ein Tippen schon beim Aufsetzen ein Fenster, landet der Klick nach dem Loslassen im neuen Fenster, etwa auf dem Hintergrund, der es wieder schließt. Ein Klick, der nicht dort ankommt, wo der Finger aufgesetzt hat, wird verschluckt. */
 let ghostEl=null;
 function armGhost(el){ return armGhostWith(CT,el); }
-window.addEventListener('pointerdown',function(){ ghostEl=null; },true);
-window.addEventListener('keydown',function(){ ghostEl=null; },true);
-window.addEventListener('click',function(e){
-  const g=ghostEl; ghostEl=null;
-  if(g&&!g.contains(e.target)){ e.stopPropagation(); e.preventDefault(); }
-},true);
 function tap(el,fn){ return tapWith(CT,el,fn); }
 function hold(id,k){ return holdWith(CT,id,k); }
-hold('key-l','l'); hold('key-r','r'); hold('key-u','u'); hold('key-d','d');
 const actEl=$('act');
-actEl.addEventListener('pointerdown',function(e){ e.preventDefault(); try{actEl.setPointerCapture(e.pointerId);}catch(_){} actEl.classList.add('down'); keys.a=true; doAction(); });
-['pointerup','pointercancel','lostpointercapture'].forEach(function(n){ actEl.addEventListener(n,function(){ actEl.classList.remove('down'); keys.a=false; }); });
-actEl.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); doAction(); } });
-document.querySelectorAll('[data-mode]').forEach(function(b){ b.addEventListener('click',function(){
-  const m=b.dataset.mode;
-  $('garage').hidden=true;
-  if(m==='walk') setMode(m); else need(function(){ setMode(m); });
-}); });
-document.querySelectorAll('[data-tool]').forEach(function(b){ b.addEventListener('click',function(){
-  $('toolbox').hidden=true; $('magic').hidden=true;
-  if(HANDT[b.dataset.tool]){ if(P.mode!=='walk') setMode('walk'); setTool(b.dataset.tool); return; }
-  need(function(){ setTool(b.dataset.tool); });
-}); });
-tap($('btn-veh'),function(){ $('garage').hidden=false; });
-tap($('btn-tool'),function(){ $('toolbox').hidden=false; });
-$('tool-magic').addEventListener('click',function(){ $('toolbox').hidden=true; $('magic').hidden=false; });
-tap($('btn-finds'),function(){ renderAlbum(); $('finds').hidden=false; });
-tap($('save'),function(){ saveGame(true); });
-$('album').addEventListener('click',function(e){
-  const b=e.target.closest('[data-find]');
-  if(b&&ST.found[b.dataset.find]){ const f=FINDS.find(function(q){return q[0]===b.dataset.find;}); speak(f[2].replace(/^(einen|eine|ein|den|zwei) /,'')); }
-});
-document.querySelectorAll('.ov').forEach(function(o){
-  o.addEventListener('click',function(e){ if(e.target===o||e.target.closest('.xb')) o.hidden=true; });
-});
-tap($('batt'),function(){ openQuiz(null); });
-$('quiz-x').addEventListener('click',closeQuiz);
-$('quiz-go').addEventListener('click',closeQuiz);
-$('quiz-say').addEventListener('click',function(){ if(qcur) speak(qcur.say); });
-tap($('btn-menu'),function(){ $('menu').hidden=false; });
-tap($('btn-map'),function(){ mapPg=0; renderMap(); $('map').hidden=false; renderFog(); });
-tap($('btn-lab'),openLab);
-$('map-cards').addEventListener('click',mapClick);
-$('eggs').addEventListener('click',eggClick);
-tap($('quest'),function(){ if(quest&&!quest.done){ const d=QDEF[quest.type]; speak(d.say(quest)); pulse(d.hint(quest)); } });
-/* Linkshänder: Laufen rechts, Springen und Aktion links. */
-document.body.classList.toggle('calm',OPT.calm);
 let lefty=false; try{ lefty=localStorage.getItem(K_LEFTY)==='1'; }catch(_){}
 function syncHand(){ return syncHandWith(CT); }
-$('hand').addEventListener('click',function(){ lefty=!lefty; try{ localStorage.setItem(K_LEFTY,lefty?'1':'0'); }catch(_){} syncHand(); sfx('pop'); speak(lefty?'Steuerung gespiegelt: Laufen jetzt rechts.':'Steuerung wie vorher: Laufen links.'); });
-syncHand();
-$('sound').addEventListener('click',function(){
-  if(AU.muted){ AU.muted=false; AU.fxOff=false; } else if(AU.fxOff){ AU.muted=true; AU.fxOff=false; } else AU.fxOff=true;
-  try{ localStorage.setItem(K_MUTE,AU.muted?'1':AU.fxOff?'s':'0'); }catch(_){} if(AU.muted) speakStop();
-  syncSound(); sfx('pop');
-  if(AU.fxOff) speak('Nur Sprache.');
-});
 /* ---------- Spielstand umziehen: Alles aus diesem Browser (Welt, Held, Funde, Einstellungen, Protokoll) als eine Datei. Der Speicher gehört zur Adresse, darum braucht der Umzug vom Artefakt auf eine eigene Seite oder in die Homescreen-App diesen Weg. ---------- */
 let bakIn=null;
 function bakMake(){ return bakMakeWith(TP); }
@@ -1810,32 +1736,61 @@ function bakLoad(){ return bakLoadWith(TP); }
 const DE=document.documentElement;
 function fsSync(){ return fsSyncWith(CT); }
 function fsToggle(){ return fsToggleWith(CT); }
-(function(){
-  let app=false;
-  try{ app=matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches||navigator.standalone===true; }catch(_){}
-  const can=!!((document.fullscreenEnabled||document.webkitFullscreenEnabled)&&(DE.requestFullscreen||DE.webkitRequestFullscreen));
-  $('fs').hidden=app||!can; fsSync();
-  document.addEventListener('fullscreenchange',fsSync); document.addEventListener('webkitfullscreenchange',fsSync);
-  /* Installiert bittet das Spiel darum, dass der Browser den Spielstand nicht von sich aus löscht. */
-  /* Auch im Browser-Tab: Chrome entscheidet selbst, ob es zustimmt. Eine Frage an das Kind gibt es nicht. */
-  if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(function(){});
-  if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){ try{ navigator.serviceWorker.register('sw.js').catch(function(){}); }catch(_){} }
-})();
-$('fs').addEventListener('click',fsToggle);
-$('exp').addEventListener('click',bakSave);
-$('imp').addEventListener('click',function(){ $('imp-file').value=''; $('imp-file').click(); });
-$('imp-file').addEventListener('change',function(){ bakPick($('imp-file').files[0]); });
-$('imp-no').addEventListener('click',function(){ bakIn=null; $('imp-ok').hidden=true; });
-$('imp-yes').addEventListener('click',function(){ $('imp-ok').hidden=true; bakLoad(); });
-/* Neue Welt fragt erst nach, weil dabei alles Gebaute verloren geht. */
-$('reset').addEventListener('click',function(){ $('menu').hidden=true; $('confirm').hidden=false; speak('Neue Welt? Alles Gebaute geht dann verloren.'); });
-$('no').addEventListener('click',function(){ $('confirm').hidden=true; });
-$('yes').addEventListener('click',function(){
-  $('confirm').hidden=true; resetWorld(newSeed());
-  if(!hero.quest||hero.quest.done) hero.quest=newQuest();
-  showQuest(false);
-  saveGame(false); sfx('pop');
-});
+function uiBind(){ return uiBindWith(UB); }
+/* Knöpfe und Fenster der Bedienung verdrahten (ui/bind.js) */
+const UB={
+  get $(){ return $; },
+  get VEH(){ return VEH; },
+  get HANDT(){ return HANDT; },
+  get TOOLS(){ return TOOLS; },
+  get PAINT(){ return PAINT; },
+  get ghostEl(){ return ghostEl; },
+  set ghostEl(v){ ghostEl=v; },
+  get actEl(){ return actEl; },
+  get FINDS(){ return FINDS; },
+  get qcur(){ return qcur; },
+  get mapPg(){ return mapPg; },
+  set mapPg(v){ mapPg=v; },
+  get quest(){ return quest; },
+  get QDEF(){ return QDEF; },
+  get OPT(){ return OPT; },
+  get lefty(){ return lefty; },
+  set lefty(v){ lefty=v; },
+  get K_LEFTY(){ return K_LEFTY; },
+  get K_MUTE(){ return K_MUTE; },
+  get DE(){ return DE; },
+  get bakIn(){ return bakIn; },
+  set bakIn(v){ bakIn=v; },
+  bakLoad,
+  bakPick,
+  bakSave,
+  closeQuiz,
+  doAction,
+  eggClick,
+  fsSync,
+  fsToggle,
+  hold,
+  mapClick,
+  need,
+  newQuest,
+  openLab,
+  openQuiz,
+  pulse,
+  renderAlbum,
+  renderFog,
+  renderMap,
+  resetWorld,
+  saveGame,
+  setMode,
+  setTool,
+  showQuest,
+  speak,
+  svg24,
+  syncHand,
+  syncSound,
+  tap
+};
+uiBind();
 
 /* ---------- Lernen: Der Akku wird mit richtig gelösten Aufgaben geladen und läuft leer, solange ein Fahrzeug oder Werkzeug benutzt wird. ---------- */
 const SEG=75, MAXE=5*SEG;
