@@ -126,7 +126,9 @@ test('Schiffswrack: Truhe gibt einmal einen Schatz', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); teleport(WRECKS[0].x+400)");
   await page.waitForTimeout(800);
   await ev("$('banner-in').innerHTML=''");
-  await ev('OVS.forEach(o=>o.hidden=true); ST.paused=false; P.x=WRECKS[0].x; P.y=ground(P.x)-10; P.vy=0'); await page.waitForTimeout(150);
+  await ev('OVS.forEach(o=>o.hidden=true); ST.paused=false; P.x=WRECKS[0].x; P.y=ground(P.x)-10; P.vy=0');
+  // Warten, bis ein Tick die Truhe gesehen hat: In Firefox im CI lief in 150 ms manchmal keiner (9.11., #135).
+  await page.waitForFunction(() => window.__ev('orbGot[WRECKS[0].k]'), null, { timeout: 3000 }).catch(() => {});
   if (!(await ev("$('banner-in').innerHTML")).includes('🏴') || !(await ev('orbGot[WRECKS[0].k]'))) throw new Error('kein Schatz');
   await ev("$('banner-in').innerHTML=''");
   await ev('P.x=WRECKS[0].x+2; P.y=ground(P.x)-10'); await page.waitForTimeout(400);
