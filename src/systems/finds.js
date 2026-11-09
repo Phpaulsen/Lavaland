@@ -62,7 +62,7 @@ export function grantWith(FP,w){ hero.own[w[2]]=1; hero.trail=true; }
 /** @param {Port} FP @param {any} e */
 export function eggFoundWith(FP,e){
   ST.eggGot[e.b]=1; hero.eggs=(hero.eggs|0)+1; ST.lootDirty=true; FP.qEvent('egg',1);
-  FP.confetti(e.x,e.y+20); jingle(); FP.pulse('btn-finds');
+  FP.confetti(e.x,e.y+20); jingle(); FP.pulse('btn-lab');
   FP.banner(FP.EGGSVG+' '+hero.eggs,2400);
   let w=null; for(const q of FP.WEAR) if(q[0]===hero.eggs) w=q;
   if(w){ grantWith(FP,w); FP.say('','Ein goldenes Ei! Das ist Nummer '+hero.eggs+'. Dafür bekommst du '+w[3]+'.'); }
