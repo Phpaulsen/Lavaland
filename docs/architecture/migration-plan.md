@@ -219,6 +219,25 @@ Geordnete PR-Liste für Phase 2. Grundlage: `target.md`, `adr/0001-modularisieru
 - Besuchte Weltraumziele merkt `hero.mk.o` (Bitmaske, nur gesetzt, wenn es passiert). Alte Spielstände: `ST.orbGot` (nur auf der Erde), `hero.fin`, `hero.rk`. Kein neuer Speicherschlüssel.
 - Golden Master unverändert. Neuer Smoke-Test für die Kette.
 
+### Streich-PR 4a: Echo und Sudoku ganz raus (Vereinfachungsplan Schritt 7, verhaltensändernd)
+
+- Kristall-Echo und Bilder-Sudoku waren seit Streich-PR 1 nur noch eingefroren. Jetzt sind `core/puzzles/echo.js`, `core/puzzles/sudoku.js`, ihr Zeichnen, Antippen, Tipps, Ansagen, Töne (`ECF`) und CSS entfernt. `PZT` hat sechs Arten, `PZON` entfällt (war `PZT` ohne die beiden).
+- Welt unverändert: `deepWorldWith` mischt weiter über die sieben alten Namen (gleicher Zufallsstrom). `hero.pz.echo`/`hero.pz.sudoku` bleiben im Spielstand und werden ignoriert.
+- Elternansicht: `PZOLD` zeigt die beiden nur noch, wenn alte Protokolle Einträge haben.
+- Golden Master: 20 Einträge gestrichen (`pz echo 0–9`, `pz sudoku 0–9`), kein Wert geändert.
+
+### Streich-PR 4b: Verwaiste Aufnahmen raus, Budget gesenkt (Vereinfachungsplan Schritt 7)
+
+- 259 Aufnahmen (0,96 MB) und ihre Einträge in `audio/index.json` entfernt: Kein Satz im Spiel braucht sie mehr (Geschichte, Missionen, Bau-Aufgaben, Markt, Echo, Sudoku …). `tools/voice/texts.json` neu gesammelt (1 638 Sätze). 24 neue Sätze haben noch keine Aufnahme (Schutz, Werkstatt …), dafür braucht es die Stimme lokal (`tools/voice/README.md`).
+- `tests/voice.mjs` scheitert jetzt, wenn eine Aufnahme keinem Satz mehr gehört; `--prune` löscht sie.
+- Größenbudget 800/240 KB → 750/195 KB (Ratsche). Golden Master unverändert.
+
+### Streich-PR 4c: Funde in die Werkstatt (Vereinfachungsplan Schritt 6, verhaltensändernd)
+
+- HUD hat sechs Knöpfe plus Menü: Akku, Auftrag, Fahrzeug, Werkzeug, Karte, Werkstatt. Der Funde-Knopf `#btn-finds` entfällt; Funde öffnen sich über `#lab-finds` in der Werkstatt, die Fundzahl `#found` steht dort.
+- Neue Funde und goldene Eier lassen die Werkstatt pulsieren. Die Spürnase (`near`/`hot`, Fund in der Nähe) leuchtet an der Karte.
+- Golden Master und Bildvergleich unverändert (Szenen zeigen nur das Spielfeld).
+
 ### PR 16: Systemschnittstelle
 
 - **Bewegt:** `SIDE`, `SAFE`, `safe()` → `systems/index.js` mit `{ name, tick }` je Eintrag, gleiche Reihenfolge, `name` = heutiger Funktionsname. Die Tick-Funktionen selbst bleiben noch in `legacy.js` und werden nur registriert.

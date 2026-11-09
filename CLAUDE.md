@@ -37,7 +37,7 @@ BROWSER=firefox node tests/smoke.mjs  # Firefox zählt: Darin spielt das Kind
 - **Golden-Master-Fixtures (`tests/fixtures/`) werden nie aktualisiert.** Wird `golden.mjs` rot, ist die Änderung falsch. Einzige Ausnahme: ausdrücklich verhaltensändernde Streich-PRs, die jeden geänderten Hash im PR-Text nennen (ADR 0001).
 - **Fehlerschutz.** Das nächste Bild wird zuerst bestellt; Nebensysteme laufen über `safe()`, nach drei Fehlern schaltet sich nur das eine ab.
 - **CSP** in `src/index.html` bleibt: keine fremden Quellen, kein `eval` im Produktionsbuild.
-- **Größenbudget** 800 KB roh, 240 KB gzip.
+- **Größenbudget** 750 KB roh, 195 KB gzip (Ratsche: nach Streich-PRs senken, nie still anheben).
 - **`CACHE` in `sw.js`** hochzählen, wenn sich die Dateiliste ändert.
 - **Heiße Pfade** (`step`, `update`, `draw`, Zellautomat) nie über Getter, `ST` oder ein Weltobjekt, ohne vorher mit `tests/perf.mjs` zu messen.
 - Die Fassade heißt `ST`, nie `G` (`G` ist die Schwerkraft).

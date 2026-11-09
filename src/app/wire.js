@@ -12,9 +12,7 @@ import { mkSternWith } from '../core/puzzles/stern.js';
 import { mkSpiegelWith } from '../core/puzzles/spiegel.js';
 import { RBD, mkRoboWith } from '../core/puzzles/robo.js';
 import { mkWaageWith } from '../core/puzzles/waage.js';
-import { mkEchoWith } from '../core/puzzles/echo.js';
 import { rhFlow, rhDone, mkRohreWith } from '../core/puzzles/rohre.js';
-import { sdOk, mkSudokuWith } from '../core/puzzles/sudoku.js';
 import { WORDS, SYL, RHYW, CASES, STAGES, fDom, fStage, fKind, fName } from '../core/learn/facts.js';
 import { BOXD, NEWDAY, FASTMS, schoolOkWith, fUnlockWith, mixPreferWith, fParkedWith } from '../core/learn/leitner.js';
 import { mkQWith, mkSeqWith } from '../core/learn/tasks.js';
@@ -42,7 +40,7 @@ import { deepWith, findsWith, marksWith, findOpenWith, mkTapWith, zoneGiftsWith,
 import { moodWith, drawMoodWith, drawFloraWith, drawOrbWith, drawWorldBackWith, drawWorldFrontWith, drawDeepWith } from '../render/world.js';
 import { drawSnowmanWith, drawDragonWith, drawGondolaWith, drawSkierWith, drawRollWith, drawWinterWith, drawFrontWith, drawSnowfallWith } from '../render/winter.js';
 import { drawWith } from '../render/draw.js';
-import { pzOpenWith, pzCloseWith, pzHintMaxWith, pzHintUiWith, drMusterWith, acMusterWith, hiMusterWith, syMusterWith, drSternWith, acSternWith, hiSternWith, sySternWith, drSpiegelWith, acSpiegelWith, hiSpiegelWith, sySpiegelWith, drRoboWith, acRoboWith, hiRoboWith, syRoboWith, drWaageWith, poWaageWith, acWaageWith, hiWaageWith, syWaageWith, drEchoWith, stEchoWith, acEchoWith, hiEchoWith, syEchoWith, drRohreWith, acRohreWith, hiRohreWith, syRohreWith, drSudokuWith, acSudokuWith, hiSudokuWith, sySudokuWith } from '../ui/puzzles.js';
+import { pzOpenWith, pzCloseWith, pzHintMaxWith, pzHintUiWith, drMusterWith, acMusterWith, hiMusterWith, syMusterWith, drSternWith, acSternWith, hiSternWith, sySternWith, drSpiegelWith, acSpiegelWith, hiSpiegelWith, sySpiegelWith, drRoboWith, acRoboWith, hiRoboWith, syRoboWith, drWaageWith, poWaageWith, acWaageWith, hiWaageWith, syWaageWith, drRohreWith, acRohreWith, hiRohreWith, syRohreWith } from '../ui/puzzles.js';
 import { renderBattWith, needWith, openQuizWith, closeQuizWith, nextQWith, padKeyWith, padSubmitWith, tafCellWith, renderTafelWith, openTafelWith } from '../ui/learn.js';
 import { renderMapWith, renderFogWith, mapClickWith, renderEggsWith, eggClickWith, missingWith, openLabWith, labBuildWith, openMineWith, liftGoWith } from '../ui/map.js';
 import { pgOpenWith, pgDrawWith, parOpenWith, parGetWith, guessedWith, parLoadWith, parRenderWith, sheetPrintWith } from '../ui/parent.js';
@@ -1466,7 +1464,7 @@ const LM={
   get MAT(){ return MAT; },
   get MATK(){ return MATK; },
   get GEARK(){ return GEARK; },
-  get PZON(){ return PZON; },
+  get PZT(){ return PZT; },
   get guide(){ return guide; },
   set guide(v){ guide=v; },
   get time(){ return time; },
@@ -1545,8 +1543,8 @@ const LH={
 labBind();
 function drawNebula(){ return drawNebulaWith(SC,ctx); }
 
-/* ---------- Rätselmaschinen: sieben Arten von Denkaufgaben. Jede Art hat zehn Stufen und wird schwerer, wenn ein Rätsel ohne Fehler und ohne Tipp gelingt.
-   Muster fortsetzen, Spiegelbild malen, Roboter programmieren, Waage ausgleichen, Reihenfolge merken, Rohre verbinden, Bilder-Sudoku.
+/* ---------- Rätselmaschinen: sechs Arten von Denkaufgaben. Jede Art hat zehn Stufen und wird schwerer, wenn ein Rätsel ohne Fehler und ohne Tipp gelingt.
+   Muster fortsetzen, Spiegelbild malen, Roboter programmieren, Waage ausgleichen, Rohre verbinden, Sternbild zählen.
    Falsche Versuche kosten nichts. Der Roboter behält sein Programm, damit man den Fehler suchen kann. ---------- */
 const PCOL=['#e63946','#3aa0e8','#ffd23f','#58b548','#9b5de5','#ff8a1f'];
 const PSHP=['<circle cx="12" cy="12" r="8.5"','<rect x="4" y="4" width="16" height="16" rx="2.5"','<path d="M12 3.5l9 16H3z"','<path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z"','<path d="M12 2.5l8.5 9.5-8.5 9.5L3.500 12z"'];
@@ -1555,14 +1553,12 @@ const PZT=[
   {id:'spiegel',e:'🦋',n:'Spiegelbild',col:'#9bd8ff',make:mkSpiegel,draw:drSpiegel,act:acSpiegel,hint:hiSpiegel,say:sySpiegel},
   {id:'robo',e:'🤖',n:'Roboter',col:'#c9d2dc',make:mkRobo,draw:drRobo,act:acRobo,hint:hiRobo,say:syRobo},
   {id:'waage',e:'⚖️',n:'Waage',col:'#ffd38a',make:mkWaage,draw:drWaage,act:acWaage,hint:hiWaage,say:syWaage,post:poWaage},
-  {id:'echo',e:'🎵',n:'Kristall-Echo',col:'#c9a6ff',make:mkEcho,draw:drEcho,act:acEcho,hint:hiEcho,say:syEcho,start:stEcho},
   {id:'rohre',e:'💧',n:'Rohre',col:'#8fd8ff',make:mkRohre,draw:drRohre,act:acRohre,hint:hiRohre,say:syRohre},
-  {id:'sudoku',e:'🔢',n:'Bilder-Sudoku',col:'#b9e89a',make:mkSudoku,draw:drSudoku,act:acSudoku,hint:hiSudoku,say:sySudoku},
   {id:'stern',e:'✨',n:'Sternbild',col:'#a8b8ff',make:mkStern,draw:drStern,act:acStern,hint:hiStern,say:syStern}
 ];
 const PZI={}; for(const p of PZT) PZI[p.id]=p;
-/* Arten, die das Kind antrifft: Kristall-Echo und Bilder-Sudoku sind eingefroren und kommen weder in der Welt noch am Akku noch in der Werkstatt vor (Vereinfachungsplan Schritt 1). In der Elternansicht bleiben sie wegen alter Protokolle. */
-const PZON=PZT.filter(function(p){ return p.id!=='echo'&&p.id!=='sudoku'; });
+/* Kristall-Echo und Bilder-Sudoku sind gestrichen (Vereinfachungsplan Schritt 7). Die Elternansicht zeigt sie nur noch, wenn alte Protokolle sie enthalten. */
+const PZOLD=[{id:'echo',e:'🎵',n:'Echo'},{id:'sudoku',e:'🔢',n:'Sudoku'}];
 /* Port für ui/puzzles.js: Rätselrahmen und das Zeichnen, Antippen, Tipps und Ansagen je Rätsel */
 const PZ={
   get PSHP(){ return PSHP; },
@@ -1583,7 +1579,6 @@ const PZ={
   get battShown(){ return battShown; },
   set battShown(v){ battShown=v; },
   get ARW(){ return ARW; },
-  get ECF(){ return ECF; },
   get RSVG(){ return RSVG; },
   banner,
   confetti,
@@ -1612,7 +1607,7 @@ const PQ={
   get $(){ return $; },
   get pzc(){ return pzc; },
   get LOG(){ return LOG; },
-  get PZON(){ return PZON; },
+  get PZT(){ return PZT; },
   pzClose,
   pzHintMax,
   pzHintUi,
@@ -1658,16 +1653,7 @@ function acWaage(st,a,b){ return acWaageWith(PZ,st,a,b); }
 function hiWaage(st){ return hiWaageWith(PZ,st); }
 function syWaage(st){ return syWaageWith(PZ,st); }
 
-/* ---------- 5. Kristall-Echo: Reihenfolge merken und nachtippen, auf hohen Stufen auch rückwärts. ---------- */
-const ECF=[262,330,392,523,659,784];
-function mkEcho(lv){ return mkEchoWith(Math.random,lv); }
-function drEcho(st){ return drEchoWith(PZ,st); }
-function stEcho(st){ return stEchoWith(PZ,st); }
-function acEcho(st,a){ return acEchoWith(PZ,st,a); }
-function hiEcho(st){ return hiEchoWith(PZ,st); }
-function syEcho(st){ return syEchoWith(PZ,st); }
-
-/* ---------- 6. Rohre: Rohrstücke drehen, bis das Wasser von links bis zur Pflanze fließt. ---------- */
+/* ---------- 5. Rohre: Rohrstücke drehen, bis das Wasser von links bis zur Pflanze fließt. ---------- */
 const RSVG=['<path d="M0 12h24"','<path d="M12 0v5a7 7 0 0 0 7 7h5"','<path d="M0 12h24M12 0v12"'];
 function mkRohre(lv){ return mkRohreWith(Math.random,lv); }
 function drRohre(st){ return drRohreWith(PZ,st); }
@@ -1675,12 +1661,6 @@ function acRohre(st,a,b){ return acRohreWith(PZ,st,a,b); }
 function hiRohre(st){ return hiRohreWith(PZ,st); }
 function syRohre(){ return syRohreWith(PZ); }
 
-/* ---------- 7. Bilder-Sudoku: In jeder Reihe und Spalte kommt jedes Bild genau einmal vor. ---------- */
-function mkSudoku(lv){ return mkSudokuWith(Math.random,lv); }
-function drSudoku(st){ return drSudokuWith(PZ,st); }
-function acSudoku(st,a){ return acSudokuWith(PZ,st,a); }
-function hiSudoku(st){ return hiSudokuWith(PZ,st); }
-function sySudoku(st){ return sySudokuWith(PZ,st); }
 
 /* ---------- Tasten ---------- */
 /* Port für ui/controls.js: Tasten, Knöpfe, Händigkeit, Vollbild, Bombenzahl im HUD */
@@ -1881,7 +1861,7 @@ const QZ={
   get pending(){ return pending; },
   set pending(v){ pending=v; },
   get LOG(){ return LOG; },
-  get PZON(){ return PZON; },
+  get PZT(){ return PZT; },
   get doorQ(){ return doorQ; },
   set doorQ(v){ doorQ=v; },
   get HANDT(){ return HANDT; },
@@ -2153,6 +2133,7 @@ const PV={
   get PMIN(){ return PMIN; },
   get QNAME(){ return QNAME; },
   get PZT(){ return PZT; },
+  get PZOLD(){ return PZOLD; },
   get VEH(){ return VEH; },
   get TOOLS(){ return TOOLS; },
   get SCH(){ return SCH; },

@@ -106,7 +106,7 @@ export function renderLabWith(LM){
   }
   LM.$('lab-rcp').innerHTML=h;
   h='';
-  for(const p of LM.PZON){ const l=hero.pz[p.id]|0; h+='<button data-pzt="'+p.id+'" aria-label="'+p.n+': Stufe '+(l+1)+' von 10"><span aria-hidden="true">'+p.e+'</span><i><b style="width:'+((l+1)*10)+'%"></b></i></button>'; }
+  for(const p of LM.PZT){ const l=hero.pz[p.id]|0; h+='<button data-pzt="'+p.id+'" aria-label="'+p.n+': Stufe '+(l+1)+' von 10"><span aria-hidden="true">'+p.e+'</span><i><b style="width:'+((l+1)*10)+'%"></b></i></button>'; }
   LM.$('lab-brain').innerHTML=h;
   LM.$('lab-taf').innerHTML='<span aria-hidden="true">🔢</span><span aria-hidden="true">💠</span>'+(hero.mat.ms|0);
 }
