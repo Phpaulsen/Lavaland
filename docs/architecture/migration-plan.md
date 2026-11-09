@@ -325,6 +325,8 @@ Danach folgt der Schluss als 29g. Ports zwischen Modulen aufzulösen ist dort Um
 
 **Umgesetzt PR 29d:** Die Weltabfragen `ground`, `inMoon`, `solidW`, `burns`, `colTop`, `floorAt`, `surfaceY`, `putUp`, `setCell` und die Liste `ORBS` ziehen unverändert (gleiche Namen, ohne Port, ohne Einzeiler) nach `state/queries.js`. Sie lesen nur Modulbindungen (`grid`, `g0`, `cellAt`, `hero`), darum kostet der Umzug im heißen Pfad nichts; `legacy.js` und die Ports importieren sie. Abweichung vom Vorschlag: Die Teilchen (`spawn`, `smoke`, `dust`, `confetti`, `explode`, `pmax`) brauchen Zustand aus `legacy.js` (`maxDpr`, `reduced`, `shake`) und ziehen als 29d2 mit Port. Absicherung: Golden Master, Rauchtest, Bildvergleich, `perf.mjs` (`step`, `update`).
 
+**Umgesetzt PR 29d2:** `pmax`, `spawn`, `smoke`, `dust`, `confetti` und `explode` ziehen nach `systems/particles.js` (Port `PA`). Die Teilchenliste `parts` und `CONF` stehen als Werte im Port, `maxDpr` und `reduced` als Getter, `shake` mit Setter; `colTop` und `putUp` importiert das Modul aus `state/queries.js`. Einzeiler für alle sechs. Absicherung: Golden Master, Rauchtest, Bildvergleich, `perf.mjs`.
+
 ### PR 29g: Schluss
 
 - `legacy.js` ist leer und gelöscht. `G` ist leer und gelöscht. Testzugang ist die benannte API `window.__lv` im Testbuild, kein `eval`.
