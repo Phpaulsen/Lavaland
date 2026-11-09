@@ -9,7 +9,6 @@ import { tkKey } from '../core/puzzles/muster.js';
 import { idxs } from '../core/puzzles/util.js';
 import { RBD } from '../core/puzzles/robo.js';
 import { rhFlow, rhDone } from '../core/puzzles/rohre.js';
-import { sdOk } from '../core/puzzles/sudoku.js';
 
 /** @typedef {Record<string, any>} Port */
 
@@ -339,49 +338,6 @@ export function syWaageWith(PZ,st){
   return 'Lege rechts Gewichte auf, bis die Waage gerade steht.'+(st.items?' Jedes Gewicht gibt es nur einmal.':'');
 }
 /** @param {Port} PZ @param {any} st */
-export function drEchoWith(PZ,st){
-  let h='<div class="ec ec'+st.n+'">';
-  for(let i=0;i<st.n;i++) h+='<button class="padb'+(st.lit===i?' lit':'')+'" style="--c:'+PZ.PCOL[i]+'" data-a="'+i+'" aria-label="Kristall '+(i+1)+'"></button>';
-  h+='</div>';
-  let c='<div class="ecst"><span aria-hidden="true">'+(st.ph==='in'?(st.rev?'⏪':'👉'):'👀')+'</span><span class="ecd">';
-  for(let i=0;i<st.seq.length;i++) c+='<i'+(i<st.pos?' class="on"':'')+'></i>';
-  c+='</span><button class="pzb sm" data-a="rep" aria-label="Noch einmal zeigen">🔁</button></div>';
-  return [h,c];
-}
-/** @param {Port} PZ @param {any} st */
-export function ecPlayWith(PZ,st){
-  const c=PZ.pzc; let i=0;
-  c.busy=true; st.ph='show'; st.pos=0; st.lit=-1;
-  const step=function(){
-    if(i>=st.seq.length){ st.lit=-1; st.ph='in'; c.busy=false; pzDrawWith(PZ); return; }
-    st.lit=st.seq[i]; blip(PZ.ECF[st.lit],PZ.ECF[st.lit],.3,'triangle',.14); pzDrawWith(PZ);
-    pzLaterWith(PZ,st.sp*.7,function(){ st.lit=-1; pzDrawWith(PZ); pzLaterWith(PZ,st.sp*.3,function(){ i++; step(); }); });
-  };
-  pzDrawWith(PZ); pzLaterWith(PZ,450,step);
-}
-/** @param {Port} PZ @param {any} st */
-export function stEchoWith(PZ,st){ PZ.pzc.busy=true; pzLaterWith(PZ,AU.muted?700:(st.rev?5200:3600),function(){ ecPlayWith(PZ,st); }); }
-/** @param {Port} PZ @param {any} st @param {any} a */
-export function acEchoWith(PZ,st,a){
-  if(a==='rep'){ ecPlayWith(PZ,st); return; }
-  if(st.ph!=='in') return;
-  const v=+a, want=st.rev?st.seq[st.seq.length-1-st.pos]:st.seq[st.pos];
-  blip(PZ.ECF[v],PZ.ECF[v],.22,'triangle',.14);
-  st.lit=v;
-  if(v===want){
-    st.pos++; pzDrawWith(PZ);
-    if(st.pos>=st.seq.length){ PZ.pzc.busy=true; pzLaterWith(PZ,380,function(){ PZ.pzc.busy=false; pzWinWith(PZ); }); }
-    else pzLaterWith(PZ,170,function(){ st.lit=-1; pzDrawWith(PZ); });
-  }else{
-    pzDrawWith(PZ); pzFailWith(PZ); PZ.pzc.busy=true;
-    pzLaterWith(PZ,950,function(){ ecPlayWith(PZ,st); });
-  }
-}
-/** @param {Port} PZ @param {any} st */
-export function hiEchoWith(PZ,st){ st.sp=850; ecPlayWith(PZ,st); }
-/** @param {Port} PZ @param {any} st */
-export function syEchoWith(PZ,st){ return st.rev?'Achtung, jetzt rückwärts! Merk dir, in welcher Reihenfolge die Kristalle leuchten. Dann tippe sie von hinten nach vorn: den letzten zuerst.':'Merk dir, in welcher Reihenfolge die Kristalle leuchten. Dann tippe sie genauso nach.'; }
-/** @param {Port} PZ @param {any} st */
 export function drRohreWith(PZ,st){
   const cs=pzCellWith(PZ,st.w+2,st.h,false), f=rhFlow(st), done=rhDone(st,f);
   let h='<div class="pzg" style="--cs:'+cs+'px;grid-template-columns:repeat('+(st.w+2)+',var(--cs))">';
@@ -425,42 +381,6 @@ export function hiRohreWith(PZ,st){
 }
 /** @param {Port} PZ */
 export function syRohreWith(PZ){ return 'Dreh die Rohre, bis das Wasser vom Wasserhahn bis zur Pflanze fließt. Tippe auf ein Rohr, dann dreht es sich.'; }
-/** @param {Port} PZ @param {any} st @param {any} v */
-export function sdTokWith(PZ,st,v){ return tokWith(PZ,st.sy[v],st.co[v]); }
-/** @param {Port} PZ @param {any} st */
-export function drSudokuWith(PZ,st){
-  const n=st.n, cs=pzCellWith(PZ,n+.3,n+.3,false);
-  let h='<div class="pzg" style="--cs:'+cs+'px;grid-template-columns:repeat('+n+',auto)">';
-  for(let i=0;i<n*n;i++){
-    const c=i%n, r=(i-c)/n, v=st.cur[i], bx=n===4?(c===1?' bxr':'')+(r===1?' bxb':''):'';
-    if(st.giv[i]>=0) h+='<span class="pzc fix'+bx+'">'+sdTokWith(PZ,st,v)+'</span>';
-    else h+='<button class="pzc'+bx+(v>=0&&!sdOk(st.cur,n,i,v)?' bad':'')+'" data-a="'+i+'" aria-label="Feld in Reihe '+(r+1)+', Spalte '+(c+1)+'">'+(v>=0?sdTokWith(PZ,st,v):'')+'</button>';
-  }
-  return [h+'</div>',''];
-}
-/** @param {Port} PZ @param {any} st */
-export function sdCheckWith(PZ,st){
-  const n=st.n; let full=true, ok=true;
-  for(let i=0;i<n*n;i++){ const v=st.cur[i]; if(v<0) full=false; else if(!sdOk(st.cur,n,i,v)) ok=false; }
-  if(full&&ok){ pzWinWith(PZ); return; }
-  if(full&&!st.full) pzFailWith(PZ);
-  st.full=full;
-}
-/** @param {Port} PZ @param {any} st @param {any} a */
-export function acSudokuWith(PZ,st,a){
-  const i=+a; st.cur[i]=st.cur[i]>=st.n-1?-1:st.cur[i]+1;
-  sfx('tick'); pzDrawWith(PZ); sdCheckWith(PZ,st);
-}
-/** @param {Port} PZ @param {any} st */
-export function hiSudokuWith(PZ,st){
-  const open=idxs(st.n*st.n).filter(function(i){ return st.giv[i]<0&&st.cur[i]!==st.sol[i]; });
-  if(open.length){ const i=open[PZ.ri(0,open.length-1)]; st.cur[i]=st.sol[i]; st.giv[i]=st.sol[i]; }
-  pzDrawWith(PZ);
-  PZ.speak('Such eine Reihe, in der nur noch ein Bild fehlt. Welches Bild gibt es dort noch nicht?');
-  sdCheckWith(PZ,st);
-}
-/** @param {Port} PZ @param {any} st */
-export function sySudokuWith(PZ,st){ return 'In jeder Reihe und in jeder Spalte darf jedes Bild nur einmal vorkommen.'+(st.n===4?' Auch in jedem der vier Kästchen.':'')+' Tippe auf ein leeres Feld, bis das richtige Bild da ist. Rot heißt: Das Bild gibt es dort schon.'; }
 /* Klicks im Rätselrahmen und am Akku verdrahten. PR 29g2d: Die Anweisungen auf oberster Ebene aus legacy.js stehen unverändert in pzBindWith, app/wire.js ruft es an der alten Stelle; alles aus legacy.js kommt über den Port PQ. */
 /** @param {Port} PQ */
 export function pzBindWith(PQ){
@@ -481,6 +401,6 @@ PQ.$('pz').addEventListener('click',/** @param {any} e */ function(e){
 PQ.$('quiz-pz').addEventListener('click',function(){
   PQ.LOG.qSwitch();
   PQ.$('quiz').hidden=true; ST.paused=false;
-  PQ.pzOpen({id:'quiz',t:PQ.PZON[(hero.pzn|0)%PQ.PZON.length].id,zb:0,quiz:true});
+  PQ.pzOpen({id:'quiz',t:PQ.PZT[(hero.pzn|0)%PQ.PZT.length].id,zb:0,quiz:true});
 });
 }

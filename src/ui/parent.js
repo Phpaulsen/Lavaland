@@ -96,8 +96,10 @@ export function parRenderWith(PV,o){
   h+=parStumbleWith(PV,qs);
   h+='<div class="par-act"><button id="par-sheet">Übungsblatt drucken</button></div>';
   h+='<h3>Rätselmaschinen</h3><table><tr><th>Maschine</th><th>Stufe</th><th>gelöst</th><th>Fehler</th><th>Tipps</th><th>abgebr.</th></tr>';
-  PV.PZT.forEach(/** @param {any} T */ function(T){
-    const a=ps.filter(/** @param {any} e */ function(e){ return e.id===T.id; }), w=a.filter(/** @param {any} e */ function(e){ return e.end==='won'; }), n=w.length||1;
+  PV.PZT.concat(PV.PZOLD).forEach(/** @param {any} T */ function(T){
+    const a=ps.filter(/** @param {any} e */ function(e){ return e.id===T.id; });
+    if(!a.length&&!T.make) return;
+    const w=a.filter(/** @param {any} e */ function(e){ return e.end==='won'; }), n=w.length||1;
     const lv0=a.length?a[0].lv+1:null, lv1=(hero.pz[T.id]|0)+1;
     const sf=w.reduce(/** @param {any} s @param {any} e */ function(s,e){ return s+e.fails; },0)/n, sh=w.reduce(/** @param {any} s @param {any} e */ function(s,e){ return s+e.hint; },0)/n;
     h+='<tr'+(a.length<5?' class="few"':'')+'><td>'+T.e+'&nbsp;'+T.n.replace('Kristall-','').replace('Bilder-','')+'</td><td>'+(lv0&&lv0!==lv1?lv0+' → ':'')+lv1+'</td><td>'+w.length+'</td><td>'+(w.length?sf.toFixed(1):'–')+'</td><td'+(w.length>=5&&sh>=1?' class="warn"':'')+'>'+(w.length?sh.toFixed(1):'–')+'</td><td>'+(a.length-w.length)+'</td></tr>';

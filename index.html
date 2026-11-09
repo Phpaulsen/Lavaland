@@ -340,7 +340,7 @@ body.lefty #mark{left:auto;right:15px}
 .pzb.no{background:#e9e4d6;box-shadow:none;transform:translateY(4px);opacity:.55}
 .pzb.ok,.pzb.go{background:var(--good);color:#fff}
 .pzb .pzn{border:0;background:none}
-.pzb:focus-visible,.pzc:focus-visible,.padb:focus-visible,button.wt:focus-visible{outline:3px solid var(--lava);outline-offset:2px}
+.pzb:focus-visible,.pzc:focus-visible,button.wt:focus-visible{outline:3px solid var(--lava);outline-offset:2px}
 .pzg{display:grid;gap:4px}
 .pzc{width:var(--cs);height:var(--cs);padding:0;margin:0;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:9px;background:#fff;display:grid;place-items:center;font-size:calc(var(--cs)*.56);line-height:1;color:var(--ink);cursor:pointer;overflow:hidden}
 .pzc.fix{cursor:default;background:#f4efe0}
@@ -389,14 +389,6 @@ button.wt{cursor:pointer}
 .wt.box{background:none;border:0;font-size:26px;line-height:32px;padding:0}
 .wt.w10{min-width:46px;background:#f39a4b}
 .wt.fixw{background:#d9d2bf}
-.ec{display:grid;gap:12px;grid-template-columns:repeat(2,74px)}
-.ec.ec6{grid-template-columns:repeat(3,74px)}
-.padb{width:74px;height:74px;padding:0;margin:0;border-radius:50%;border:3px solid var(--ink);box-shadow:0 4px 0 var(--ink);background:var(--c);opacity:.45;cursor:pointer}
-.padb.lit{opacity:1;transform:scale(1.1);box-shadow:0 0 0 6px #fff,0 4px 0 var(--ink)}
-.ecst{display:flex;align-items:center;gap:10px;font-size:30px;line-height:1}
-.ecd{display:flex;gap:4px}
-.ecd i{width:11px;height:11px;box-sizing:border-box;border-radius:50%;border:2px solid var(--ink);background:#fff}
-.ecd i.on{background:var(--good)}
 .pzc.pp{color:#9aa7b4;background:#f4efe0}
 .pzc.pp.wet{color:#3aa0e8;background:#e3f4fd}
 .pzc.pp.lk{border-color:#d19a00;border-width:4px}
@@ -404,8 +396,6 @@ button.wt{cursor:pointer}
 .pzc.pp.rock{background:#5b5560;border-color:#3a3438;cursor:default}
 .ends{display:grid;place-items:center;width:var(--cs);height:var(--cs);font-size:calc(var(--cs)*.6);line-height:1}
 .pzc.bad{background:#ffb09a}
-.pzc.bxr{margin-right:6px}
-.pzc.bxb{margin-bottom:6px}
 @media (max-width:430px){
   .grid{gap:5px}
   .btn svg{width:26px;height:26px}
@@ -436,9 +426,6 @@ button.wt{cursor:pointer}
   .pzb{height:52px;min-width:52px}
   .pzb.sm{height:44px;min-width:44px}
   .dpad{grid-template-columns:repeat(3,44px)}
-  .ec{grid-template-columns:repeat(2,62px);gap:9px}
-  .ec.ec6{grid-template-columns:repeat(3,62px)}
-  .padb{width:62px;height:62px}
   .wg{height:128px}
   .beam{top:84px}
   .post{top:88px;border-bottom-width:30px}
@@ -1099,21 +1086,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     return st;
   }
 
-  // src/core/puzzles/echo.js
-  var ECL = [[4, 2, 0], [4, 3, 0], [4, 3, 0], [4, 4, 0], [6, 4, 0], [4, 5, 0], [6, 5, 0], [4, 3, 1], [6, 6, 0], [6, 4, 1]];
-  function mkEchoWith(rand, lv) {
-    const L = ECL[lv], st = (
-      /** @type {EchoState} */
-      { n: L[0], seq: [], rev: L[2], pos: 0, lit: -1, ph: "wait", sp: lv >= 2 ? 430 : 580 }
-    );
-    for (let i = 0; i < L[1]; i++) {
-      let v = riWith(rand, 0, L[0] - 1);
-      if (i && v === st.seq[i - 1]) v = (v + 1) % L[0];
-      st.seq.push(v);
-    }
-    return st;
-  }
-
   // src/core/puzzles/rohre.js
   var RHL = [[3, 2, 0], [3, 3, 0], [4, 3, 0], [4, 4, 0], [4, 4, 1], [5, 4, 1], [5, 5, 1], [5, 5, 2], [6, 5, 2], [6, 6, 2]];
   var RMASK = [10, 3, 11];
@@ -1222,60 +1194,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       return st;
     }
     return mkRohreWith(rand, Math.max(0, lv - 1));
-  }
-
-  // src/core/puzzles/sudoku.js
-  var SDL = [[3, 2], [3, 3], [3, 4], [3, 5], [3, 6], [4, 4], [4, 6], [4, 7], [4, 8], [4, 10]];
-  function sdOk(a, n, i, v) {
-    const c = i % n, r = (i - c) / n;
-    for (let k = 0; k < n; k++) {
-      if (k !== c && a[r * n + k] === v) return false;
-      if (k !== r && a[k * n + c] === v) return false;
-    }
-    if (n === 4) {
-      const br = r & 2, bc = c & 2;
-      for (let y = br; y < br + 2; y++) for (let x = bc; x < bc + 2; x++) if ((y !== r || x !== c) && a[y * 4 + x] === v) return false;
-    }
-    return true;
-  }
-  function sdCount(a, n) {
-    const i = a.indexOf(-1);
-    if (i < 0) return 1;
-    let s = 0;
-    for (let v = 0; v < n && s < 2; v++) if (sdOk(a, n, i, v)) {
-      a[i] = v;
-      s += sdCount(a, n);
-      a[i] = -1;
-    }
-    return s;
-  }
-  function mkSudokuWith(rand, lv) {
-    const n = SDL[lv][0], want = SDL[lv][1], g = [];
-    if (n === 3) {
-      const b = shuffleWith(rand, [0, 1, 2]), sh = riWith(rand, 1, 2);
-      for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) g.push(b[(c + r * sh) % 3]);
-    } else {
-      const base = [0, 1, 2, 3, 2, 3, 0, 1, 1, 0, 3, 2, 3, 2, 1, 0], sy = shuffleWith(rand, [0, 1, 2, 3]);
-      const mix = function() {
-        let o = [0, 1, 2, 3];
-        if (riWith(rand, 0, 1)) o = [1, 0, 2, 3];
-        if (riWith(rand, 0, 1)) o = [o[0], o[1], 3, 2];
-        if (riWith(rand, 0, 1)) o = [o[2], o[3], o[0], o[1]];
-        return o;
-      };
-      const rows = mix(), cols = mix();
-      for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) g.push(sy[base[rows[r] * 4 + cols[c]]]);
-    }
-    const giv = g.slice();
-    let bl = 0;
-    for (const i of shuffleWith(rand, idxs(n * n))) {
-      if (bl >= want) break;
-      const v = giv[i];
-      giv[i] = -1;
-      if (sdCount(giv, n) === 1) bl++;
-      else giv[i] = v;
-    }
-    return { n, sol: g, giv, cur: giv.slice(), sy: shuffleWith(rand, [0, 1, 2, 3]), co: shuffleWith(rand, [0, 1, 2, 3]), full: false };
   }
 
   // src/core/learn/facts.js
@@ -9431,89 +9349,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     ).length > 1 ? " Alle Geschenke sind gleich schwer." : "");
     return "Lege rechts Gewichte auf, bis die Waage gerade steht." + (st.items ? " Jedes Gewicht gibt es nur einmal." : "");
   }
-  function drEchoWith(PZ, st) {
-    let h = '<div class="ec ec' + st.n + '">';
-    for (let i = 0; i < st.n; i++) h += '<button class="padb' + (st.lit === i ? " lit" : "") + '" style="--c:' + PZ.PCOL[i] + '" data-a="' + i + '" aria-label="Kristall ' + (i + 1) + '"></button>';
-    h += "</div>";
-    let c = '<div class="ecst"><span aria-hidden="true">' + (st.ph === "in" ? st.rev ? "⏪" : "👉" : "👀") + '</span><span class="ecd">';
-    for (let i = 0; i < st.seq.length; i++) c += "<i" + (i < st.pos ? ' class="on"' : "") + "></i>";
-    c += '</span><button class="pzb sm" data-a="rep" aria-label="Noch einmal zeigen">🔁</button></div>';
-    return [h, c];
-  }
-  function ecPlayWith(PZ, st) {
-    const c = PZ.pzc;
-    let i = 0;
-    c.busy = true;
-    st.ph = "show";
-    st.pos = 0;
-    st.lit = -1;
-    const step = function() {
-      if (i >= st.seq.length) {
-        st.lit = -1;
-        st.ph = "in";
-        c.busy = false;
-        pzDrawWith(PZ);
-        return;
-      }
-      st.lit = st.seq[i];
-      blip(PZ.ECF[st.lit], PZ.ECF[st.lit], 0.3, "triangle", 0.14);
-      pzDrawWith(PZ);
-      pzLaterWith(PZ, st.sp * 0.7, function() {
-        st.lit = -1;
-        pzDrawWith(PZ);
-        pzLaterWith(PZ, st.sp * 0.3, function() {
-          i++;
-          step();
-        });
-      });
-    };
-    pzDrawWith(PZ);
-    pzLaterWith(PZ, 450, step);
-  }
-  function stEchoWith(PZ, st) {
-    PZ.pzc.busy = true;
-    pzLaterWith(PZ, AU.muted ? 700 : st.rev ? 5200 : 3600, function() {
-      ecPlayWith(PZ, st);
-    });
-  }
-  function acEchoWith(PZ, st, a) {
-    if (a === "rep") {
-      ecPlayWith(PZ, st);
-      return;
-    }
-    if (st.ph !== "in") return;
-    const v = +a, want = st.rev ? st.seq[st.seq.length - 1 - st.pos] : st.seq[st.pos];
-    blip(PZ.ECF[v], PZ.ECF[v], 0.22, "triangle", 0.14);
-    st.lit = v;
-    if (v === want) {
-      st.pos++;
-      pzDrawWith(PZ);
-      if (st.pos >= st.seq.length) {
-        PZ.pzc.busy = true;
-        pzLaterWith(PZ, 380, function() {
-          PZ.pzc.busy = false;
-          pzWinWith(PZ);
-        });
-      } else pzLaterWith(PZ, 170, function() {
-        st.lit = -1;
-        pzDrawWith(PZ);
-      });
-    } else {
-      pzDrawWith(PZ);
-      pzFailWith(PZ);
-      PZ.pzc.busy = true;
-      pzLaterWith(PZ, 950, function() {
-        ecPlayWith(PZ, st);
-      });
-    }
-  }
-  function hiEchoWith(PZ, st) {
-    st.sp = 850;
-    ecPlayWith(PZ, st);
-  }
-  function syEchoWith(PZ, st) {
-    return st.rev ? "Achtung, jetzt rückwärts! Merk dir, in welcher Reihenfolge die Kristalle leuchten. Dann tippe sie von hinten nach vorn: den letzten zuerst." : "Merk dir, in welcher Reihenfolge die Kristalle leuchten. Dann tippe sie genauso nach.";
-  }
   function drRohreWith(PZ, st) {
     const cs = pzCellWith(PZ, st.w + 2, st.h, false), f = rhFlow(st), done = rhDone(st, f);
     let h = '<div class="pzg" style="--cs:' + cs + "px;grid-template-columns:repeat(" + (st.w + 2) + ',var(--cs))">';
@@ -9570,57 +9405,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
   function syRohreWith(PZ) {
     return "Dreh die Rohre, bis das Wasser vom Wasserhahn bis zur Pflanze fließt. Tippe auf ein Rohr, dann dreht es sich.";
   }
-  function sdTokWith(PZ, st, v) {
-    return tokWith(PZ, st.sy[v], st.co[v]);
-  }
-  function drSudokuWith(PZ, st) {
-    const n = st.n, cs = pzCellWith(PZ, n + 0.3, n + 0.3, false);
-    let h = '<div class="pzg" style="--cs:' + cs + "px;grid-template-columns:repeat(" + n + ',auto)">';
-    for (let i = 0; i < n * n; i++) {
-      const c = i % n, r = (i - c) / n, v = st.cur[i], bx = n === 4 ? (c === 1 ? " bxr" : "") + (r === 1 ? " bxb" : "") : "";
-      if (st.giv[i] >= 0) h += '<span class="pzc fix' + bx + '">' + sdTokWith(PZ, st, v) + "</span>";
-      else h += '<button class="pzc' + bx + (v >= 0 && !sdOk(st.cur, n, i, v) ? " bad" : "") + '" data-a="' + i + '" aria-label="Feld in Reihe ' + (r + 1) + ", Spalte " + (c + 1) + '">' + (v >= 0 ? sdTokWith(PZ, st, v) : "") + "</button>";
-    }
-    return [h + "</div>", ""];
-  }
-  function sdCheckWith(PZ, st) {
-    const n = st.n;
-    let full = true, ok = true;
-    for (let i = 0; i < n * n; i++) {
-      const v = st.cur[i];
-      if (v < 0) full = false;
-      else if (!sdOk(st.cur, n, i, v)) ok = false;
-    }
-    if (full && ok) {
-      pzWinWith(PZ);
-      return;
-    }
-    if (full && !st.full) pzFailWith(PZ);
-    st.full = full;
-  }
-  function acSudokuWith(PZ, st, a) {
-    const i = +a;
-    st.cur[i] = st.cur[i] >= st.n - 1 ? -1 : st.cur[i] + 1;
-    sfx("tick");
-    pzDrawWith(PZ);
-    sdCheckWith(PZ, st);
-  }
-  function hiSudokuWith(PZ, st) {
-    const open = idxs(st.n * st.n).filter(function(i) {
-      return st.giv[i] < 0 && st.cur[i] !== st.sol[i];
-    });
-    if (open.length) {
-      const i = open[PZ.ri(0, open.length - 1)];
-      st.cur[i] = st.sol[i];
-      st.giv[i] = st.sol[i];
-    }
-    pzDrawWith(PZ);
-    PZ.speak("Such eine Reihe, in der nur noch ein Bild fehlt. Welches Bild gibt es dort noch nicht?");
-    sdCheckWith(PZ, st);
-  }
-  function sySudokuWith(PZ, st) {
-    return "In jeder Reihe und in jeder Spalte darf jedes Bild nur einmal vorkommen." + (st.n === 4 ? " Auch in jedem der vier Kästchen." : "") + " Tippe auf ein leeres Feld, bis das richtige Bild da ist. Rot heißt: Das Bild gibt es dort schon.";
-  }
   function pzBindWith(PQ) {
     PQ.$("pz").addEventListener(
       "click",
@@ -9659,7 +9443,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       PQ.LOG.qSwitch();
       PQ.$("quiz").hidden = true;
       ST.paused = false;
-      PQ.pzOpen({ id: "quiz", t: PQ.PZON[(hero.pzn | 0) % PQ.PZON.length].id, zb: 0, quiz: true });
+      PQ.pzOpen({ id: "quiz", t: PQ.PZT[(hero.pzn | 0) % PQ.PZT.length].id, zb: 0, quiz: true });
     });
   }
 
@@ -9687,7 +9471,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     QZ.$("quiz").hidden = false;
     QZ.LOG.qOpen();
     nextQWith(QZ);
-    QZ.$("quiz-pz").textContent = QZ.PZON[(hero.pzn | 0) % QZ.PZON.length].e;
+    QZ.$("quiz-pz").textContent = QZ.PZT[(hero.pzn | 0) % QZ.PZT.length].e;
     QZ.$("quiz-pz").classList.toggle("near", (hero.pzn | 0) < 3);
   }
   function closeQuizWith(QZ) {
@@ -10135,7 +9919,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     LM.$("lab-rcp").innerHTML = h;
     h = "";
-    for (const p of LM.PZON) {
+    for (const p of LM.PZT) {
       const l = hero.pz[p.id] | 0;
       h += '<button data-pzt="' + p.id + '" aria-label="' + p.n + ": Stufe " + (l + 1) + ' von 10"><span aria-hidden="true">' + p.e + '</span><i><b style="width:' + (l + 1) * 10 + '%"></b></i></button>';
     }
@@ -10490,7 +10274,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     h += parStumbleWith(PV, qs);
     h += '<div class="par-act"><button id="par-sheet">Übungsblatt drucken</button></div>';
     h += "<h3>Rätselmaschinen</h3><table><tr><th>Maschine</th><th>Stufe</th><th>gelöst</th><th>Fehler</th><th>Tipps</th><th>abgebr.</th></tr>";
-    PV.PZT.forEach(
+    PV.PZT.concat(PV.PZOLD).forEach(
       /** @param {any} T */
       function(T) {
         const a = ps.filter(
@@ -10498,7 +10282,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
           function(e) {
             return e.id === T.id;
           }
-        ), w = a.filter(
+        );
+        if (!a.length && !T.make) return;
+        const w = a.filter(
           /** @param {any} e */
           function(e) {
             return e.end === "won";
@@ -19797,8 +19583,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       get GEARK() {
         return GEARK;
       },
-      get PZON() {
-        return PZON;
+      get PZT() {
+        return PZT;
       },
       get guide() {
         return guide;
@@ -19940,16 +19726,12 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       { id: "spiegel", e: "🦋", n: "Spiegelbild", col: "#9bd8ff", make: mkSpiegel, draw: drSpiegel, act: acSpiegel, hint: hiSpiegel, say: sySpiegel },
       { id: "robo", e: "🤖", n: "Roboter", col: "#c9d2dc", make: mkRobo, draw: drRobo, act: acRobo, hint: hiRobo, say: syRobo },
       { id: "waage", e: "⚖️", n: "Waage", col: "#ffd38a", make: mkWaage, draw: drWaage, act: acWaage, hint: hiWaage, say: syWaage, post: poWaage },
-      { id: "echo", e: "🎵", n: "Kristall-Echo", col: "#c9a6ff", make: mkEcho, draw: drEcho, act: acEcho, hint: hiEcho, say: syEcho, start: stEcho },
       { id: "rohre", e: "💧", n: "Rohre", col: "#8fd8ff", make: mkRohre, draw: drRohre, act: acRohre, hint: hiRohre, say: syRohre },
-      { id: "sudoku", e: "🔢", n: "Bilder-Sudoku", col: "#b9e89a", make: mkSudoku, draw: drSudoku, act: acSudoku, hint: hiSudoku, say: sySudoku },
       { id: "stern", e: "✨", n: "Sternbild", col: "#a8b8ff", make: mkStern, draw: drStern, act: acStern, hint: hiStern, say: syStern }
     ];
     const PZI = {};
     for (const p of PZT) PZI[p.id] = p;
-    const PZON = PZT.filter(function(p) {
-      return p.id !== "echo" && p.id !== "sudoku";
-    });
+    const PZOLD = [{ id: "echo", e: "🎵", n: "Echo" }, { id: "sudoku", e: "🔢", n: "Sudoku" }];
     const PZ = {
       get PSHP() {
         return PSHP;
@@ -20005,9 +19787,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       get ARW() {
         return ARW;
       },
-      get ECF() {
-        return ECF;
-      },
       get RSVG() {
         return RSVG;
       },
@@ -20052,8 +19831,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       get LOG() {
         return LOG;
       },
-      get PZON() {
-        return PZON;
+      get PZT() {
+        return PZT;
       },
       pzClose,
       pzHintMax,
@@ -20143,25 +19922,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function syWaage(st) {
       return syWaageWith(PZ, st);
     }
-    const ECF = [262, 330, 392, 523, 659, 784];
-    function mkEcho(lv) {
-      return mkEchoWith(Math.random, lv);
-    }
-    function drEcho(st) {
-      return drEchoWith(PZ, st);
-    }
-    function stEcho(st) {
-      return stEchoWith(PZ, st);
-    }
-    function acEcho(st, a) {
-      return acEchoWith(PZ, st, a);
-    }
-    function hiEcho(st) {
-      return hiEchoWith(PZ, st);
-    }
-    function syEcho(st) {
-      return syEchoWith(PZ, st);
-    }
     const RSVG = ['<path d="M0 12h24"', '<path d="M12 0v5a7 7 0 0 0 7 7h5"', '<path d="M0 12h24M12 0v12"'];
     function mkRohre(lv) {
       return mkRohreWith(Math.random, lv);
@@ -20177,21 +19937,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     function syRohre() {
       return syRohreWith(PZ);
-    }
-    function mkSudoku(lv) {
-      return mkSudokuWith(Math.random, lv);
-    }
-    function drSudoku(st) {
-      return drSudokuWith(PZ, st);
-    }
-    function acSudoku(st, a) {
-      return acSudokuWith(PZ, st, a);
-    }
-    function hiSudoku(st) {
-      return hiSudokuWith(PZ, st);
-    }
-    function sySudoku(st) {
-      return sySudokuWith(PZ, st);
     }
     const CT = {
       get $() {
@@ -20597,8 +20342,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       get LOG() {
         return LOG;
       },
-      get PZON() {
-        return PZON;
+      get PZT() {
+        return PZT;
       },
       get doorQ() {
         return doorQ;
@@ -21067,6 +20812,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       },
       get PZT() {
         return PZT;
+      },
+      get PZOLD() {
+        return PZOLD;
       },
       get VEH() {
         return VEH;

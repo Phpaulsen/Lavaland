@@ -22,13 +22,11 @@ Wurzel: `index.html` (gebaut), `sw.js` (Offline-Cache, Version `CACHE`), `manife
 | `src/core/learn/facts.js` | Lernfakten: Wort-, Silben- und Reimlisten, die Stufen (Schulbuch-Reihenfolge) und reine Hilfen über Faktschlüssel. |
 | `src/core/learn/leitner.js` | Leitner-Regeln ohne Speicher und Uhr: Konstanten, Stufenaufstieg, Schulstand-Filter, Abwechslung, Ruhen nach Fehlern. |
 | `src/core/learn/tasks.js` | Lernaufgaben: aus einem Faktschlüssel die Aufgabe bauen (mkQWith), dazu Zahlenfolgen (mkSeqWith) und die Text- und Bildbausteine. |
-| `src/core/puzzles/echo.js` | Rätsel „Kristall-Echo“ (Streichkandidat, plan-vereinfachung.md). |
 | `src/core/puzzles/muster.js` | Rätsel „Muster“: Welches Bild fehlt in der Reihe? |
 | `src/core/puzzles/robo.js` | Rätsel „Roboter“: Weg mit den wenigsten Richtungswechseln. |
 | `src/core/puzzles/rohre.js` | Rätsel „Rohre“. |
 | `src/core/puzzles/spiegel.js` | Rätsel „Spiegelbild“. |
 | `src/core/puzzles/stern.js` | Rätsel „Sternbild“. |
-| `src/core/puzzles/sudoku.js` | Rätsel „Bilder-Sudoku“ (Streichkandidat, plan-vereinfachung.md). |
 | `src/core/puzzles/util.js` | Hilfen für die Rätselgeneratoren. |
 | `src/core/puzzles/waage.js` | Rätsel „Waage“ (Zahlen bis 20, richtet sich nach dem Schulstand). |
 | `src/core/rng.js` | Zufall und Rauschen ohne Seiteneffekte. |
@@ -144,15 +142,15 @@ Zeile importiert Spalte: Zahl = Importe heute, · = erlaubt und ungenutzt, leer 
 
 | von \ nach | core | state | persistence | log | audio | systems | render | ui | app | testing |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| **core** | 23 |  |  |  |  |  |  |  |  |  |
+| **core** | 20 |  |  |  |  |  |  |  |  |  |
 | **state** | 13 | 13 |  |  |  |  |  |  |  |  |
 | **persistence** | 1 | 4 | 4 |  |  |  |  |  |  |  |
 | **log** | 1 |  |  | · |  |  |  |  |  |  |
 | **audio** | · |  |  |  | · |  |  |  |  |  |
 | **systems** | 25 | 47 |  |  | 15 | 2 |  |  |  |  |
 | **render** | 12 | 17 |  |  |  |  | · |  |  |  |
-| **ui** | 14 | 20 |  |  | 7 |  | · | 1 |  |  |
-| **app** | 22 | 12 | 7 | 1 | 2 | 20 | 7 | 16 | 1 |  |
+| **ui** | 13 | 20 |  |  | 7 |  | · | 1 |  |  |
+| **app** | 20 | 12 | 7 | 1 | 2 | 20 | 7 | 16 | 1 |  |
 | **testing** | · | · | · | · | · | · | · | · | · | · |
 | **main** | · | · | · | · | · | · | · | · | 1 | · |
 <!-- /doc.mjs -->
@@ -177,8 +175,6 @@ Erzeugt aus den Exporten. `export let` ist Zustand, den das Modul besitzt und nu
   Funktionen: `schoolOkWith`, `fUnlockWith`, `mixPreferWith`, `fParkedWith`. Werte: `BOXD`, `NEWDAY`, `FASTMS`, `DAYMISS`.
 - `src/core/learn/tasks.js`: Lernaufgaben: aus einem Faktschlüssel die Aufgabe bauen (mkQWith), dazu Zahlenfolgen (mkSeqWith) und die Text- und Bildbausteine.
   Funktionen: `dots`, `zw`, `qpicWith`, `lettersForWith`, `solAdd`, `solSub`, `mkQWith`, `mkSeqWith`. Werte: `HOLE`.
-- `src/core/puzzles/echo.js`: Rätsel „Kristall-Echo“ (Streichkandidat, plan-vereinfachung.md).
-  Funktionen: `mkEchoWith`. Werte: `ECL`.
 - `src/core/puzzles/muster.js`: Rätsel „Muster“: Welches Bild fehlt in der Reihe?
   Funktionen: `tkKey`, `mkMusterWith`.
 - `src/core/puzzles/robo.js`: Rätsel „Roboter“: Weg mit den wenigsten Richtungswechseln.
@@ -189,8 +185,6 @@ Erzeugt aus den Exporten. `export let` ist Zustand, den das Modul besitzt und nu
   Funktionen: `mkSpiegelWith`. Werte: `SPL`.
 - `src/core/puzzles/stern.js`: Rätsel „Sternbild“.
   Funktionen: `mkSternWith`. Werte: `SHAPES`.
-- `src/core/puzzles/sudoku.js`: Rätsel „Bilder-Sudoku“ (Streichkandidat, plan-vereinfachung.md).
-  Funktionen: `sdOk`, `sdCount`, `mkSudokuWith`. Werte: `SDL`.
 - `src/core/puzzles/util.js`: Hilfen für die Rätselgeneratoren.
   Funktionen: `idxs`.
 - `src/core/puzzles/waage.js`: Rätsel „Waage“ (Zahlen bis 20, richtet sich nach dem Schulstand).
@@ -334,7 +328,7 @@ Erzeugt aus den Exporten. `export let` ist Zustand, den das Modul besitzt und nu
 - `src/ui/parent.js`: Elternansicht: Schranke, Auswertung des Spielprotokolls, Schulstand, Neuigkeiten, Speicher, Fehler, Stimme, Übungsblatt, Rechentafel-Balken.
   Funktionen: `pgOpenWith`, `pgDrawWith`, `parOpenWith`, `parGetWith`, `medWith`, `pctWith`, `minsWith`, `guessedWith`, `parLoadWith`, `parRenderWith`, `parSandWith`, `parSchoolWith`, `parNewsWith`, `parSafeWith`, `parStoreInfoWith`, `parErrWith`, `parVoiceWith`, `sheetOkWith`, `sheetPickWith`, `sheetLineWith`, `sheetPrintWith`, `escWith`, `fLabelWith`, `parStumbleWith`, `parFactsWith`, `parBarsWith`, `parBindWith`.
 - `src/ui/puzzles.js`: Rätselrahmen und Rätsel auf dem Bildschirm: Öffnen, Zeichnen, Antippen, Tipps, Ansagen, Gewinnen.
-  Funktionen: `tokWith`, `pzLaterWith`, `pzClearWith`, `pzCellWith`, `pzOpenWith`, `pzDrawWith`, `pzCloseWith`, `pzHintMaxWith`, `pzHintUiWith`, `pzFailWith`, `pzRevealWith`, `pzWinWith`, `tkHtmlWith`, `drMusterWith`, `acMusterWith`, `hiMusterWith`, `syMusterWith`, `stSideWith`, `drSternWith`, `stLineWith`, `acSternWith`, `hiSternWith`, `sySternWith`, `spWantWith`, `spGridWith`, `drSpiegelWith`, `spDoneWith`, `acSpiegelWith`, `hiSpiegelWith`, `sySpiegelWith`, `drRoboWith`, `acRoboWith`, `rbRunWith`, `hiRoboWith`, `syRoboWith`, `wgDiffWith`, `wgWWith`, `drWaageWith`, `poWaageWith`, `acWaageWith`, `hiWaageWith`, `syWaageWith`, `drEchoWith`, `ecPlayWith`, `stEchoWith`, `acEchoWith`, `hiEchoWith`, `syEchoWith`, `drRohreWith`, `rhPaintWith`, `acRohreWith`, `hiRohreWith`, `syRohreWith`, `sdTokWith`, `drSudokuWith`, `sdCheckWith`, `acSudokuWith`, `hiSudokuWith`, `sySudokuWith`, `pzBindWith`.
+  Funktionen: `tokWith`, `pzLaterWith`, `pzClearWith`, `pzCellWith`, `pzOpenWith`, `pzDrawWith`, `pzCloseWith`, `pzHintMaxWith`, `pzHintUiWith`, `pzFailWith`, `pzRevealWith`, `pzWinWith`, `tkHtmlWith`, `drMusterWith`, `acMusterWith`, `hiMusterWith`, `syMusterWith`, `stSideWith`, `drSternWith`, `stLineWith`, `acSternWith`, `hiSternWith`, `sySternWith`, `spWantWith`, `spGridWith`, `drSpiegelWith`, `spDoneWith`, `acSpiegelWith`, `hiSpiegelWith`, `sySpiegelWith`, `drRoboWith`, `acRoboWith`, `rbRunWith`, `hiRoboWith`, `syRoboWith`, `wgDiffWith`, `wgWWith`, `drWaageWith`, `poWaageWith`, `acWaageWith`, `hiWaageWith`, `syWaageWith`, `drRohreWith`, `rhPaintWith`, `acRohreWith`, `hiRohreWith`, `syRohreWith`, `pzBindWith`.
 
 #### app
 
