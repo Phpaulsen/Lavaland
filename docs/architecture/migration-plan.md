@@ -329,6 +329,8 @@ Danach folgt der Schluss als 29g. Ports zwischen Modulen aufzulösen ist dort Um
 
 **Umgesetzt PR 29e:** Spielen in der Welt (`boxCount`, `teleport`, `placeFind`, `hideFinds`, `renderAlbum`, `orbsOf`, `portalTick`, `dropBomb`, `blast`, `sonarTarget`, `discover`, `disco`, `pups`, `keyTap`, `rainCloud`, `shakeTree`, `tapWorld`, `nearScope`, `scopeOpen`, `scopeRender`, `scopePick`, `sonar`) zieht nach `systems/play.js` (Port `TW`). Konstanten vor dem Port als Werte, `let` als Getter und Setter. Abweichung: Nebel, Marken, Tiefe und Türen kommen als 29e2; die Malfunktionen `star4` und `pointTo` bleiben für 29f. Einzeiler für alle 22. Absicherung: Golden Master (Funde mit `rng`), Rauchtest, Bildvergleich, Knopftest.
 
+**Umgesetzt PR 29e2:** Unter Tage (Erkundungsnebel `fRow` … `fogSave`, `gearLv`, `gearSet`, `stationY`, `zoneAt`, `shellOk`, Wissenstüren `doorCols` … `doorOpen`, `deepHome`, `deepRestore`, `canBuild`, `labBadge`, Maschinen und Werkstatt-Nähe `nextMach` … `deepTap`, `matWhere`, `guidePoint`, `mkKey`, `mkSave`, `darkAt`) zieht nach `systems/zones.js` (Port `ZO`). `pzOpen` steht als Getter im Port, weil Rauch- und Knopftest es in `legacy.js` ersetzen; `canBuild` läuft als Rückruf über den Port. In `legacy.js` bleiben `marks` (`marksWith` ist in `systems/deep.js` schon die Systemliste) und `skyLim` (die Weltentstehung ruft es beim Start vor dem Port, das gäbe einen TDZ-Fehler); beide ziehen in 29g. `K_FOG` und `K_MARKS` über den Port (Schichtregel). Einzeiler für alle 34. Absicherung: Golden Master, Rauchtest (Türen, Nebel, Marken), Knopftest, Bildvergleich.
+
 ### PR 29g: Schluss
 
 - `legacy.js` ist leer und gelöscht. `G` ist leer und gelöscht. Testzugang ist die benannte API `window.__lv` im Testbuild, kein `eval`.
