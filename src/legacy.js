@@ -34,6 +34,7 @@ import { pickTickWith, padsTickWith, secretsTickWith } from './systems/finds.js'
 import { worldWith } from './systems/worldtick.js';
 import { questsWith, questTickWith, qEventWith, skyMarkWith, newQuestWith, showQuestWith, questPointWith } from './systems/quests.js';
 import { winterWith, throwBallWith, fireworkWith, burstWith, addManWith, drawManWith, pinFlyWith, yetiHitWith, stEnterWith } from './systems/winter.js';
+import { deepWith, findsWith, marksWith, findOpenWith, mkTapWith, zoneGiftsWith, deepIntroWith } from './systems/deep.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -1386,6 +1387,70 @@ const WP={
   steam,
   surfaceY
 };
+/* Port für systems/deep.js: Welt, Tiefe (Maschinen, Planetenkerne, Zonen), Funde, Erkundungsnebel, Leuchtmarken und Oberflächenhelfer für Tiefe, Funde, Nebel und Leuchtmarken. */
+const DP={
+  get trees(){ return trees; },
+  get nearF(){ return nearF; },
+  set nearF(v){ nearF=v; },
+  get nearD(){ return nearD; },
+  set nearD(v){ nearD=v; },
+  get nearT(){ return nearT; },
+  set nearT(v){ nearT=v; },
+  get $(){ return $; },
+  get fogT(){ return fogT; },
+  set fogT(v){ fogT=v; },
+  get FGT(){ return FGT; },
+  get mkShown(){ return mkShown; },
+  set mkShown(v){ mkShown=v; },
+  get MKMAX(){ return MKMAX; },
+  get ZGIFT(){ return ZGIFT; },
+  get quest(){ return quest; },
+  get mhT(){ return mhT; },
+  set mhT(v){ mhT=v; },
+  get genF(){ return genF; },
+  get MACH(){ return MACH; },
+  get ZN(){ return ZN; },
+  get MATS(){ return MATS; },
+  get MATON(){ return MATON; },
+  get SPACE(){ return SPACE; },
+  get realm(){ return realm; },
+  get guide(){ return guide; },
+  set guide(v){ guide=v; },
+  get time(){ return time; },
+  banner,
+  bucket,
+  campSoon,
+  confetti,
+  dayAdd,
+  drillHead,
+  fRow,
+  firework,
+  fogArr,
+  fogSet,
+  ground,
+  labBadge,
+  later,
+  marks,
+  mkSave,
+  pulse,
+  qEvent,
+  renderAlbum,
+  renderEggs,
+  rlm,
+  saveFinds,
+  saveHero,
+  say,
+  scoop,
+  showQuest,
+  skyMark,
+  solidW,
+  spawn,
+  speak,
+  surfaceY,
+  syncOwn,
+  tell,
+  zoneAt
+};
 /* Drei Stufen: alles an, nur Sprache (ohne Piepen und Klänge), alles aus. Sprache braucht das Kind, Effekte nerven manchmal die Großen. */
 try{ const mv=localStorage.getItem(K_MUTE); AU.muted=mv==='1'; AU.fxOff=mv==='s'; }catch(_){}
 document.addEventListener('pointerdown',function(e){
@@ -1480,36 +1545,7 @@ function hideFinds(){
   const first=ST.hidden.find(function(h){return h.zone==='shallow';})||ST.hidden.find(function(h){return h.zone==='deep';});
   if(first){ first.zone='shallow'; first.x=772; first.y=ground(772)+58; first.hint=true; }
 }
-function findOpen(h){
-  if(h.zone==='sky'||h.zone==='space'||h.zone==='moon'||h.zone==='edge'||h.zone==='core') return true;
-  if(h.tree>=0) return trees[h.tree].state>=1;
-  return !solidW(h.x,h.y);
-}
-function collect(h){
-  h.got=true; ST.found[h.id]=1; saveFinds(); renderAlbum();
-  confetti(h.x,h.y+20); jingle(); speak('Du hast '+h.name+' gefunden!');
-  ST.lootDirty=true; qEvent('find',1); sfx('pop');
-  spawn(8,h.x,h.y,0,-46,2.4,30,h.e); pulse('btn-finds');
-}
-function findsTick(dt){
-  const pts=[[P.x,P.y-18]];
-  if(P.mode==='bagger') pts.push(bucket()); else if(P.mode==='loader') pts.push(scoop()); else if(P.mode==='tbm') pts.push(drillHead());
-  let best=1e9, nf=null;
-  for(const h of ST.hidden){
-    if(h.got) continue;
-    let d=1e9;
-    for(const q of pts) d=Math.min(d,Math.hypot(q[0]-h.x,q[1]-h.y));
-    if(d<best){ best=d; nf=h; }
-    if(d<36&&(findOpen(h)||(h.tree>=0&&d<24))) collect(h);
-  }
-  nearF=nf; nearD=best;
-  if(cellAt(P.x,P.y+3)===CORE&&!ST.found.crystal) collect({id:'crystal',e:'🔮',name:'den Kristall vom Erdkern',zone:'core',x:P.x,y:P.y-30,tree:-1,got:false});
-  nearT-=dt;
-  if(nearT<=0){
-    nearT=.3;
-    const b=$('btn-finds'); b.classList.toggle('near',best<420&&best>=170); b.classList.toggle('hot',best<170);
-  }
-}
+function findOpen(h){ return findOpenWith(DP,h); }
 function star4(x,y,r){ ctx.beginPath(); ctx.moveTo(x,y-r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.quadraticCurveTo(x,y,x,y+r); ctx.quadraticCurveTo(x,y,x-r,y); ctx.quadraticCurveTo(x,y,x,y-r); ctx.fill(); }
 function drawFinds(front,x0,x1,y0,y1){
   ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -2753,12 +2789,6 @@ function fogSeed(a){
   if(!realm&&hero.zn>0){ const tx=Math.floor(LIFTX/CELL/FGT), r=ZN[Math.min(hero.zn,ZN.length-1)].row; for(let ty=0;ty<=Math.floor(r/FGT)+1;ty++){ fogSet(a,tx,ty); fogSet(a,tx-1,ty); } }
   fogDirty=true;
 }
-function fogTick(dt){
-  fogT-=dt; if(fogT>0) return; fogT=.4;
-  const a=fogArr(), tx=Math.floor(P.x/CELL/FGT), ty=fRow(P.y), r=1+(hero.lp|0);
-  for(let dy=-r;dy<=r;dy++) for(let dx=-r-1;dx<=r+1;dx++) if(dx*dx+dy*dy<=(r+1)*(r+1)) fogSet(a,tx+dx,ty+dy);
-  if(P.y<ground(P.x)) for(let y=0,gy=fRow(ground(P.x));y<=gy;y++) fogSet(a,tx,y);
-}
 function fogSave(){
   if(!fogDirty||ST.frozen) return; fogDirty=false;
   for(const k in FOG){ let t=''; const a=FOG[k]; for(let i=0;i<a.length;i+=4096) t+=String.fromCharCode.apply(null,a.subarray(i,i+4096)); try{ localStorage.setItem(k,btoa(t)); }catch(_){} }
@@ -2942,13 +2972,6 @@ function deepRestore(sv){
 }
 
 /* ---------- Jede Sekunde: Zonen entdecken, Planetenkerne einsammeln, Maschinen auf den Boden stellen, Ziele erreichen ---------- */
-function matFound(m){
-  const k=m.k, n=(hero.mat[k]|0)+1;
-  ST.matGot[m.id]=1; hero.mat[k]=n; ST.heroDirty=true;
-  sfx('coin'); dayAdd('mat');
-  for(let i=0;i<10;i++) spawn(5,m.x,m.y,(Math.random()-.5)*180,-60-Math.random()*160,.7,2);
-  hero.mk.pk=1; ST.lootDirty=true; confetti(m.x,m.y); jingle(); banner('🪐 '+n+' / 3',2600); say('',n>=3?'Alle drei Planetenkerne! Du hast jede große Welt bis ganz nach unten erforscht.':'Ein Planetenkern! Er leuchtet wie ein kleiner Stern. In jedem großen Planeten liegt einer.'); dayAdd('z','🪐'); campSoon(); labBadge(true);
-}
 function canBuild(g){
   const t=gearLv(g); if(t>=3) return false;
   const rc=GEAR[g].rc[t];
@@ -2961,70 +2984,11 @@ function labBadge(talk){
   if(can&&!labHi&&talk){ later(2.2,function(){ say('','Du hast genug gesammelt! In der Werkstatt kannst du jetzt etwas Neues bauen.'); pulse('btn-lab'); }); }
   labHi=can;
 }
-function finale(n){
-  hero.fin|=n;
-  if(n===1){
-    for(let i=0;i<8;i++) later(i*.35,function(){ firework(P.x-240+Math.random()*480,P.y-140-Math.random()*160); });
-    banner('🌟',3000);
-    say('','Du hast das Sternentor erreicht, ganz am Ende vom Weltraum!');
-  }else{
-    banner('🌋',3000);
-    say('','Du stehst auf dem glühenden Erdkern! Tiefer geht es nicht.');
-  }
-  ST.lootDirty=true; confetti(P.x,P.y); jingle(); saveHero(); renderEggs();
-  if(hero.fin===3) later(10,function(){ banner('🏆',3200); say('','Ganz unten und ganz oben: Du hast alles erforscht. Du bist der größte Forscher von Lavaland!'); });
-}
-function deepIntro(){
-  if(hero.deep) return;
-  hero.deep=true; saveHero();
-  if(quest&&!quest.done&&quest.type!=='find'){ hero.quest={type:'pz',goal:1,p:0}; showQuest(false); }
-  pulse('btn-lab');
-  tell([['Professor Zahnrad','Hallo! Ich bin Professor Zahnrad. Meine Werkstatt steht jetzt bei dir zu Hause.'],
-    ['Professor Zahnrad','Unter der Erde geht es jetzt viel tiefer, und der Weltraum ist riesig. Aber dafür brauchst du einen besseren Bohrer und eine stärkere Rakete.'],
-    ['Professor Zahnrad','Die baue ich dir. Bring mir Zahnräder und später Meistersteine. Zahnräder bekommst du von meinen Rätselmaschinen. Die erste steht gleich rechts neben dem Aufzug.']]);
-}
+function deepIntro(){ return deepIntroWith(DP); }
 /* Was früher die Geschichte schenkte, gibt es jetzt für Zonen (Vereinfachungsplan Schritt 3): Feuerwerk, goldene Ski, Drache.
    Wer es schon hat, behält es. Beim Start wird nachgeholt, was zur erreichten Zone gehört. */
 const ZGIFT=[[1,'fw','Das Feuerwerk','Es liegt bei den Werkzeugen.','tool-fw'],[3,'goldski','Die goldenen Ski','Nimm die Ski, dann siehst du sie.','mode-ski'],[5,'dragon','Mama Glut, der Drache','Sie wartet bei den Fahrzeugen. Jetzt kannst du auf ihr fliegen.','mode-dragon']];
-function zoneGifts(talk){
-  let got=null;
-  for(const g of ZGIFT) if(hero.zn>=g[0]&&!hero.own[g[1]]){ hero.own[g[1]]=1; got=g; }
-  if(!got) return;
-  saveHero(); syncOwn();
-  if(talk) later(3,function(){ banner('🎁',2400); say('',got[2]+' gehört jetzt dir! '+got[3]); pulse(got[4]); });
-}
-function deepTick(dt){
-  mhT-=dt;
-  if(mhT<=0){ mhT=.6; const lim=(genF-8)*CELL; for(const m of MACH) if(m.sf&&m.x<lim) m.y=surfaceY(m.x); }
-  if(P.mode!=='coaster'){
-    const z=zoneAt(P.x,P.y-12), R=rlm();
-    if(R){
-      if(z&&!ST.seen['z'+z]){ ST.seen['z'+z]=1; jingle(); confetti(P.x,P.y); banner(R.zn[z-1][0]+' ⭐',2400); say('','Du hast '+R.zn[z-1][1]+' erreicht!'); dayAdd('z',R.zn[z-1][0]); campSoon(); }
-    }else if(z>hero.zn){
-      hero.zn=z; saveHero(); jingle(); confetti(P.x,P.y); banner(ZN[z].e+' ⭐',2400);
-      say('','Du hast '+ZN[z].n+' erreicht! Der Aufzug zu Hause fährt jetzt bis hierher.'); dayAdd('z',ZN[z].e); campSoon();
-      zoneGifts(true);
-    }
-  }
-  const pts=[[P.x,P.y-16]];
-  if(P.mode==='bagger') pts.push(bucket()); else if(P.mode==='loader') pts.push(scoop()); else if(P.mode==='tbm') pts.push(drillHead());
-  for(const m of MATS){
-    if(ST.matGot[m.id]||!MATON[m.k]||Math.abs(m.x-P.x)>260||Math.abs(m.y-P.y)>260) continue;
-    for(const q of pts) if(Math.hypot(q[0]-m.x,q[1]-m.y)<30){ matFound(m); break; }
-  }
-  if(P.on&&P.y<-6000&&SPACE.gate){
-    for(const k of ['stn','ice','jun']){
-      const o=SPACE[k];
-      if(ST.orbGot[k]||Math.hypot(P.x-o.x,P.y-o.y)>o.r+40) continue;
-      ST.orbGot[k]=1; skyMark(k); ST.lootDirty=true; confetti(P.x,P.y); jingle(); banner('⭐',2400);
-      say('',k==='stn'?'Du bist auf der Raumstation gelandet! Ringsum schweben große Felsbrocken.':k==='ice'?'Du bist auf dem Eisplaneten gelandet!':'Du bist auf dem Blubberplaneten gelandet! Hier wohnt Blubb.');
-    }
-    if(!(hero.fin&1)&&Math.hypot(P.x-SPACE.gate.x,P.y-SPACE.gate.y)<SPACE.gate.r+40) finale(1);
-  }
-  if(!(hero.fin&2)&&!realm&&P.y>9000&&cellAt(P.x,P.y+3)===CORE) finale(2);
-  if(!hero.deep&&performance.now()>ST.talkLock&&Math.abs(P.x-WSX)<110&&Math.abs(P.y-ground(WSX))<90) deepIntro();
-  if(guide&&time>guide.t) guide=null;
-}
+function zoneGifts(talk){ return zoneGiftsWith(DP,talk); }
 function nextMach(){
   let b=null, bd=1e12; const lim=(genF-8)*CELL;
   for(const m of MACH){
@@ -3265,22 +3229,8 @@ function marks(){
   return MKS[k];
 }
 function mkSave(){ try{ localStorage.setItem(mkKey(),JSON.stringify(marks())); }catch(_){} }
-function mkNear(){ const a=marks(); for(let i=0;i<a.length;i++) if(Math.abs(a[i][0]-P.x)<40&&Math.abs(a[i][1]-P.y)<50) return i; return -1; }
-function mkCan(){ return P.mode==='walk'&&P.on&&P.y>ground(P.x)+60; }
 let mkShown=null;
-function mkTick(){
-  const c=mkCan(), n=c?mkNear():-1, st=c?(n>=0?'on':'off'):'';
-  if(st===mkShown) return; mkShown=st;
-  const b=$('mark'); b.hidden=!c; b.classList.toggle('on',n>=0);
-}
-function mkTap(){
-  if(!mkCan()) return;
-  const a=marks(), i=mkNear();
-  if(i>=0){ a.splice(i,1); mkSave(); sfx('tick'); speak('Leuchtmarke aufgehoben. Du hast noch '+(MKMAX-a.length)+'.'); }
-  else if(a.length>=MKMAX){ tone([170],'sawtooth'); speak('Alle acht Leuchtmarken sind schon gesetzt. Geh zu einer hin und heb sie auf, dann kannst du sie woanders hinstellen.'); }
-  else{ a.push([Math.round(P.x),Math.round(P.y)]); mkSave(); sfx('pop'); spawn(5,P.x,P.y-10,0,-80,.6,2); if(a.length===1) speak('Eine Leuchtmarke! Sie leuchtet im Dunkeln und steht auf der Karte. Du hast acht davon.'); }
-  mkShown=null;
-}
+function mkTap(){ return mkTapWith(DP); }
 $('mark').addEventListener('click',function(e){ e.preventDefault(); mkTap(); });
 function drawMark(x,y){
   const t=performance.now()/600, k=.75+.25*Math.sin(t+x);
@@ -5369,14 +5319,13 @@ function frame(t){
 for(const s of mobsWith(MP)) register(s.name,s.tick,s.draw);
 for(const s of sightsWith(SY)) register(s.name,s.tick,s.draw);
 for(const s of worldWith(WT)) register(s.name,s.tick,s.draw);
-register('deepTick',deepTick);
+for(const s of deepWith(DP)) register(s.name,s.tick,s.draw);
 for(const s of winterWith(WP)) register(s.name,s.tick,s.draw);
-register('findsTick',findsTick);
+for(const s of findsWith(DP)) register(s.name,s.tick,s.draw);
 for(const s of questsWith(QP)) register(s.name,s.tick,s.draw);
 register('autosave',autosave);
 register('drain',drain);
-register('fogTick',fogTick);
-register('mkTick',mkTick);
+for(const s of marksWith(DP)) register(s.name,s.tick,s.draw);
 function safe(s,dt){ safeWith(errAdd,s,dt); }
 
 /* Gold und Edelsteine gibt es nicht mehr (Vereinfachungsplan Schritt 2). Was noch da ist, wird einmal in Zahnräder getauscht:

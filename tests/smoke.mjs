@@ -183,6 +183,24 @@ test('Fundsachen, Sprungpilz, goldenes Ei und Banane wirken', async ({ ev }) => 
   if (!r.bonk) throw new Error('Banane trifft nicht');
 });
 
+test('Fund, Planetenkern, Leuchtmarke und Erkundungsnebel wirken', async ({ ev }) => {
+  const r = await ev(`(function(){
+    OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); P.zip=null;
+    const o={}, tick=n=>SIDE.find(s=>s.name===n).tick(0), x0=P.x, y0=P.y, pk0=hero.mat.pk|0;
+    const h={id:'testfund',e:'🦴',name:'den Testfund',zone:'sky',x:P.x,y:P.y-18,hint:false,tree:-1,got:false}; ST.hidden.push(h);
+    tick('findsTick'); o.find=h.got&&ST.found.testfund===1; ST.hidden.splice(ST.hidden.indexOf(h),1); delete ST.found.testfund;
+    const m={id:'testpk',k:'pk',x:P.x,y:P.y-16}; MATS.push(m);
+    tick('deepTick'); o.pk=ST.matGot.testpk===1&&(hero.mat.pk|0)===pk0+1; MATS.splice(MATS.indexOf(m),1); delete ST.matGot.testpk; hero.mat.pk=pk0;
+    mkShown=null; tick('mkTick'); o.mkTop=$('mark').hidden;
+    P.y=ground(P.x)+200; P.on=true; mkShown=null; tick('mkTick'); o.mkDeep=!$('mark').hidden;
+    const n0=marks().length; mkTap(); o.mkSet=marks().length===n0+1; mkTap(); o.mkGet=marks().length===n0; mkSave();
+    const a=fogArr(), tx=Math.floor(P.x/CELL/FGT), ty=fRow(P.y), i=ty*FGW+tx; a[i>>3]&=~(1<<(i&7));
+    fogT=0; tick('fogTick'); o.fog=fogHas(a,tx,ty);
+    P.x=x0; P.y=y0; P.vy=0; mkShown=null; OVS.forEach(o=>o.hidden=true);
+    return o; })()`);
+  for (const k of ['find', 'pk', 'mkTop', 'mkDeep', 'mkSet', 'mkGet', 'fog']) if (!r[k]) throw new Error('wirkt nicht: ' + k + ' ' + JSON.stringify(r));
+});
+
 test('Elternansicht: Monster aus, ruhige Darstellung an', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; parOpen()"); await page.waitForTimeout(1500);
   await ev("$('par-body').querySelector('[data-opt=mon0]').click()"); await page.waitForTimeout(800);

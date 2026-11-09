@@ -7016,6 +7016,261 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     ];
   }
 
+  // src/systems/deep.js
+  function findOpenWith(DP, h) {
+    if (h.zone === "sky" || h.zone === "space" || h.zone === "moon" || h.zone === "edge" || h.zone === "core") return true;
+    if (h.tree >= 0) return DP.trees[h.tree].state >= 1;
+    return !DP.solidW(h.x, h.y);
+  }
+  function collectWith(DP, h) {
+    h.got = true;
+    ST.found[h.id] = 1;
+    DP.saveFinds();
+    DP.renderAlbum();
+    DP.confetti(h.x, h.y + 20);
+    jingle();
+    DP.speak("Du hast " + h.name + " gefunden!");
+    ST.lootDirty = true;
+    DP.qEvent("find", 1);
+    sfx("pop");
+    DP.spawn(8, h.x, h.y, 0, -46, 2.4, 30, h.e);
+    DP.pulse("btn-finds");
+  }
+  function findsTickWith(DP, dt) {
+    const pts = [[P.x, P.y - 18]];
+    if (P.mode === "bagger") pts.push(DP.bucket());
+    else if (P.mode === "loader") pts.push(DP.scoop());
+    else if (P.mode === "tbm") pts.push(DP.drillHead());
+    let best = 1e9, nf = null;
+    for (const h of ST.hidden) {
+      if (h.got) continue;
+      let d = 1e9;
+      for (const q of pts) d = Math.min(d, Math.hypot(q[0] - h.x, q[1] - h.y));
+      if (d < best) {
+        best = d;
+        nf = h;
+      }
+      if (d < 36 && (findOpenWith(DP, h) || h.tree >= 0 && d < 24)) collectWith(DP, h);
+    }
+    DP.nearF = nf;
+    DP.nearD = best;
+    if (cellAt(P.x, P.y + 3) === CORE && !ST.found.crystal) collectWith(DP, { id: "crystal", e: "🔮", name: "den Kristall vom Erdkern", zone: "core", x: P.x, y: P.y - 30, tree: -1, got: false });
+    DP.nearT -= dt;
+    if (DP.nearT <= 0) {
+      DP.nearT = 0.3;
+      const b = DP.$("btn-finds");
+      b.classList.toggle("near", best < 420 && best >= 170);
+      b.classList.toggle("hot", best < 170);
+    }
+  }
+  function fogTickWith(DP, dt) {
+    DP.fogT -= dt;
+    if (DP.fogT > 0) return;
+    DP.fogT = 0.4;
+    const a = DP.fogArr(), tx = Math.floor(P.x / CELL / DP.FGT), ty = DP.fRow(P.y), r = 1 + (hero.lp | 0);
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r - 1; dx <= r + 1; dx++) if (dx * dx + dy * dy <= (r + 1) * (r + 1)) DP.fogSet(a, tx + dx, ty + dy);
+    if (P.y < DP.ground(P.x)) for (let y = 0, gy = DP.fRow(DP.ground(P.x)); y <= gy; y++) DP.fogSet(a, tx, y);
+  }
+  function mkCanWith(DP) {
+    return P.mode === "walk" && P.on && P.y > DP.ground(P.x) + 60;
+  }
+  function mkNearWith(DP) {
+    const a = DP.marks();
+    for (let i = 0; i < a.length; i++) if (Math.abs(a[i][0] - P.x) < 40 && Math.abs(a[i][1] - P.y) < 50) return i;
+    return -1;
+  }
+  function mkTickWith(DP) {
+    const c = mkCanWith(DP), n = c ? mkNearWith(DP) : -1, st = c ? n >= 0 ? "on" : "off" : "";
+    if (st === DP.mkShown) return;
+    DP.mkShown = st;
+    const b = DP.$("mark");
+    b.hidden = !c;
+    b.classList.toggle("on", n >= 0);
+  }
+  function mkTapWith(DP) {
+    if (!mkCanWith(DP)) return;
+    const a = DP.marks(), i = mkNearWith(DP);
+    if (i >= 0) {
+      a.splice(i, 1);
+      DP.mkSave();
+      sfx("tick");
+      DP.speak("Leuchtmarke aufgehoben. Du hast noch " + (DP.MKMAX - a.length) + ".");
+    } else if (a.length >= DP.MKMAX) {
+      tone([170], "sawtooth");
+      DP.speak("Alle acht Leuchtmarken sind schon gesetzt. Geh zu einer hin und heb sie auf, dann kannst du sie woanders hinstellen.");
+    } else {
+      a.push([Math.round(P.x), Math.round(P.y)]);
+      DP.mkSave();
+      sfx("pop");
+      DP.spawn(5, P.x, P.y - 10, 0, -80, 0.6, 2);
+      if (a.length === 1) DP.speak("Eine Leuchtmarke! Sie leuchtet im Dunkeln und steht auf der Karte. Du hast acht davon.");
+    }
+    DP.mkShown = null;
+  }
+  function matFoundWith(DP, m) {
+    const k = m.k, n = (hero.mat[k] | 0) + 1;
+    ST.matGot[m.id] = 1;
+    hero.mat[k] = n;
+    ST.heroDirty = true;
+    sfx("coin");
+    DP.dayAdd("mat");
+    for (let i = 0; i < 10; i++) DP.spawn(5, m.x, m.y, (Math.random() - 0.5) * 180, -60 - Math.random() * 160, 0.7, 2);
+    hero.mk.pk = 1;
+    ST.lootDirty = true;
+    DP.confetti(m.x, m.y);
+    jingle();
+    DP.banner("🪐 " + n + " / 3", 2600);
+    DP.say("", n >= 3 ? "Alle drei Planetenkerne! Du hast jede große Welt bis ganz nach unten erforscht." : "Ein Planetenkern! Er leuchtet wie ein kleiner Stern. In jedem großen Planeten liegt einer.");
+    DP.dayAdd("z", "🪐");
+    DP.campSoon();
+    DP.labBadge(true);
+  }
+  function zoneGiftsWith(DP, talk) {
+    let got = null;
+    for (const g of DP.ZGIFT) if (hero.zn >= g[0] && !hero.own[g[1]]) {
+      hero.own[g[1]] = 1;
+      got = g;
+    }
+    if (!got) return;
+    DP.saveHero();
+    DP.syncOwn();
+    if (talk) DP.later(3, function() {
+      DP.banner("🎁", 2400);
+      DP.say("", got[2] + " gehört jetzt dir! " + got[3]);
+      DP.pulse(got[4]);
+    });
+  }
+  function finaleWith(DP, n) {
+    hero.fin |= n;
+    if (n === 1) {
+      for (let i = 0; i < 8; i++) DP.later(i * 0.35, function() {
+        DP.firework(P.x - 240 + Math.random() * 480, P.y - 140 - Math.random() * 160);
+      });
+      DP.banner("🌟", 3e3);
+      DP.say("", "Du hast das Sternentor erreicht, ganz am Ende vom Weltraum!");
+    } else {
+      DP.banner("🌋", 3e3);
+      DP.say("", "Du stehst auf dem glühenden Erdkern! Tiefer geht es nicht.");
+    }
+    ST.lootDirty = true;
+    DP.confetti(P.x, P.y);
+    jingle();
+    DP.saveHero();
+    DP.renderEggs();
+    if (hero.fin === 3) DP.later(10, function() {
+      DP.banner("🏆", 3200);
+      DP.say("", "Ganz unten und ganz oben: Du hast alles erforscht. Du bist der größte Forscher von Lavaland!");
+    });
+  }
+  function deepIntroWith(DP) {
+    if (hero.deep) return;
+    hero.deep = true;
+    DP.saveHero();
+    if (DP.quest && !DP.quest.done && DP.quest.type !== "find") {
+      hero.quest = { type: "pz", goal: 1, p: 0 };
+      DP.showQuest(false);
+    }
+    DP.pulse("btn-lab");
+    DP.tell([
+      ["Professor Zahnrad", "Hallo! Ich bin Professor Zahnrad. Meine Werkstatt steht jetzt bei dir zu Hause."],
+      ["Professor Zahnrad", "Unter der Erde geht es jetzt viel tiefer, und der Weltraum ist riesig. Aber dafür brauchst du einen besseren Bohrer und eine stärkere Rakete."],
+      ["Professor Zahnrad", "Die baue ich dir. Bring mir Zahnräder und später Meistersteine. Zahnräder bekommst du von meinen Rätselmaschinen. Die erste steht gleich rechts neben dem Aufzug."]
+    ]);
+  }
+  function deepTickWith(DP, dt) {
+    DP.mhT -= dt;
+    if (DP.mhT <= 0) {
+      DP.mhT = 0.6;
+      const lim = (DP.genF - 8) * CELL;
+      for (const m of DP.MACH) if (m.sf && m.x < lim) m.y = DP.surfaceY(m.x);
+    }
+    if (P.mode !== "coaster") {
+      const z = DP.zoneAt(P.x, P.y - 12), R = DP.rlm();
+      if (R) {
+        if (z && !ST.seen["z" + z]) {
+          ST.seen["z" + z] = 1;
+          jingle();
+          DP.confetti(P.x, P.y);
+          DP.banner(R.zn[z - 1][0] + " ⭐", 2400);
+          DP.say("", "Du hast " + R.zn[z - 1][1] + " erreicht!");
+          DP.dayAdd("z", R.zn[z - 1][0]);
+          DP.campSoon();
+        }
+      } else if (z > hero.zn) {
+        hero.zn = z;
+        DP.saveHero();
+        jingle();
+        DP.confetti(P.x, P.y);
+        DP.banner(DP.ZN[z].e + " ⭐", 2400);
+        DP.say("", "Du hast " + DP.ZN[z].n + " erreicht! Der Aufzug zu Hause fährt jetzt bis hierher.");
+        DP.dayAdd("z", DP.ZN[z].e);
+        DP.campSoon();
+        zoneGiftsWith(DP, true);
+      }
+    }
+    const pts = [[P.x, P.y - 16]];
+    if (P.mode === "bagger") pts.push(DP.bucket());
+    else if (P.mode === "loader") pts.push(DP.scoop());
+    else if (P.mode === "tbm") pts.push(DP.drillHead());
+    for (const m of DP.MATS) {
+      if (ST.matGot[m.id] || !DP.MATON[m.k] || Math.abs(m.x - P.x) > 260 || Math.abs(m.y - P.y) > 260) continue;
+      for (const q of pts) if (Math.hypot(q[0] - m.x, q[1] - m.y) < 30) {
+        matFoundWith(DP, m);
+        break;
+      }
+    }
+    if (P.on && P.y < -6e3 && DP.SPACE.gate) {
+      for (const k of ["stn", "ice", "jun"]) {
+        const o = DP.SPACE[k];
+        if (ST.orbGot[k] || Math.hypot(P.x - o.x, P.y - o.y) > o.r + 40) continue;
+        ST.orbGot[k] = 1;
+        DP.skyMark(k);
+        ST.lootDirty = true;
+        DP.confetti(P.x, P.y);
+        jingle();
+        DP.banner("⭐", 2400);
+        DP.say("", k === "stn" ? "Du bist auf der Raumstation gelandet! Ringsum schweben große Felsbrocken." : k === "ice" ? "Du bist auf dem Eisplaneten gelandet!" : "Du bist auf dem Blubberplaneten gelandet! Hier wohnt Blubb.");
+      }
+      if (!(hero.fin & 1) && Math.hypot(P.x - DP.SPACE.gate.x, P.y - DP.SPACE.gate.y) < DP.SPACE.gate.r + 40) finaleWith(DP, 1);
+    }
+    if (!(hero.fin & 2) && !DP.realm && P.y > 9e3 && cellAt(P.x, P.y + 3) === CORE) finaleWith(DP, 2);
+    if (!hero.deep && performance.now() > ST.talkLock && Math.abs(P.x - WSX) < 110 && Math.abs(P.y - DP.ground(WSX)) < 90) deepIntroWith(DP);
+    if (DP.guide && DP.time > DP.guide.t) DP.guide = null;
+  }
+  function deepWith(DP) {
+    return [
+      { name: "deepTick", tick: (
+        /** @param {any} dt */
+        function(dt) {
+          deepTickWith(DP, dt);
+        }
+      ) }
+    ];
+  }
+  function findsWith(DP) {
+    return [
+      { name: "findsTick", tick: (
+        /** @param {any} dt */
+        function(dt) {
+          findsTickWith(DP, dt);
+        }
+      ) }
+    ];
+  }
+  function marksWith(DP) {
+    return [
+      { name: "fogTick", tick: (
+        /** @param {any} dt */
+        function(dt) {
+          fogTickWith(DP, dt);
+        }
+      ) },
+      { name: "mkTick", tick: function() {
+        mkTickWith(DP);
+      } }
+    ];
+  }
+
   // src/legacy.js
   (function() {
     "use strict";
@@ -9306,6 +9561,125 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       steam,
       surfaceY
     };
+    const DP = {
+      get trees() {
+        return trees;
+      },
+      get nearF() {
+        return nearF;
+      },
+      set nearF(v) {
+        nearF = v;
+      },
+      get nearD() {
+        return nearD;
+      },
+      set nearD(v) {
+        nearD = v;
+      },
+      get nearT() {
+        return nearT;
+      },
+      set nearT(v) {
+        nearT = v;
+      },
+      get $() {
+        return $;
+      },
+      get fogT() {
+        return fogT;
+      },
+      set fogT(v) {
+        fogT = v;
+      },
+      get FGT() {
+        return FGT;
+      },
+      get mkShown() {
+        return mkShown;
+      },
+      set mkShown(v) {
+        mkShown = v;
+      },
+      get MKMAX() {
+        return MKMAX;
+      },
+      get ZGIFT() {
+        return ZGIFT;
+      },
+      get quest() {
+        return quest;
+      },
+      get mhT() {
+        return mhT;
+      },
+      set mhT(v) {
+        mhT = v;
+      },
+      get genF() {
+        return genF;
+      },
+      get MACH() {
+        return MACH;
+      },
+      get ZN() {
+        return ZN;
+      },
+      get MATS() {
+        return MATS;
+      },
+      get MATON() {
+        return MATON;
+      },
+      get SPACE() {
+        return SPACE;
+      },
+      get realm() {
+        return realm;
+      },
+      get guide() {
+        return guide;
+      },
+      set guide(v) {
+        guide = v;
+      },
+      get time() {
+        return time;
+      },
+      banner,
+      bucket,
+      campSoon,
+      confetti,
+      dayAdd,
+      drillHead,
+      fRow,
+      firework,
+      fogArr,
+      fogSet,
+      ground,
+      labBadge,
+      later,
+      marks,
+      mkSave,
+      pulse,
+      qEvent,
+      renderAlbum,
+      renderEggs,
+      rlm,
+      saveFinds,
+      saveHero,
+      say,
+      scoop,
+      showQuest,
+      skyMark,
+      solidW,
+      spawn,
+      speak,
+      surfaceY,
+      syncOwn,
+      tell,
+      zoneAt
+    };
     try {
       const mv = localStorage.getItem(K_MUTE);
       AU.muted = mv === "1";
@@ -9501,50 +9875,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
     }
     function findOpen(h) {
-      if (h.zone === "sky" || h.zone === "space" || h.zone === "moon" || h.zone === "edge" || h.zone === "core") return true;
-      if (h.tree >= 0) return trees[h.tree].state >= 1;
-      return !solidW(h.x, h.y);
-    }
-    function collect(h) {
-      h.got = true;
-      ST.found[h.id] = 1;
-      saveFinds();
-      renderAlbum();
-      confetti(h.x, h.y + 20);
-      jingle();
-      speak("Du hast " + h.name + " gefunden!");
-      ST.lootDirty = true;
-      qEvent("find", 1);
-      sfx("pop");
-      spawn(8, h.x, h.y, 0, -46, 2.4, 30, h.e);
-      pulse("btn-finds");
-    }
-    function findsTick(dt) {
-      const pts = [[P.x, P.y - 18]];
-      if (P.mode === "bagger") pts.push(bucket());
-      else if (P.mode === "loader") pts.push(scoop());
-      else if (P.mode === "tbm") pts.push(drillHead());
-      let best = 1e9, nf = null;
-      for (const h of ST.hidden) {
-        if (h.got) continue;
-        let d = 1e9;
-        for (const q of pts) d = Math.min(d, Math.hypot(q[0] - h.x, q[1] - h.y));
-        if (d < best) {
-          best = d;
-          nf = h;
-        }
-        if (d < 36 && (findOpen(h) || h.tree >= 0 && d < 24)) collect(h);
-      }
-      nearF = nf;
-      nearD = best;
-      if (cellAt(P.x, P.y + 3) === CORE && !ST.found.crystal) collect({ id: "crystal", e: "🔮", name: "den Kristall vom Erdkern", zone: "core", x: P.x, y: P.y - 30, tree: -1, got: false });
-      nearT -= dt;
-      if (nearT <= 0) {
-        nearT = 0.3;
-        const b = $("btn-finds");
-        b.classList.toggle("near", best < 420 && best >= 170);
-        b.classList.toggle("hot", best < 170);
-      }
+      return findOpenWith(DP, h);
     }
     function star4(x, y, r) {
       ctx.beginPath();
@@ -12518,14 +12849,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
       fogDirty = true;
     }
-    function fogTick(dt) {
-      fogT -= dt;
-      if (fogT > 0) return;
-      fogT = 0.4;
-      const a = fogArr(), tx = Math.floor(P.x / CELL / FGT), ty = fRow(P.y), r = 1 + (hero.lp | 0);
-      for (let dy = -r; dy <= r; dy++) for (let dx = -r - 1; dx <= r + 1; dx++) if (dx * dx + dy * dy <= (r + 1) * (r + 1)) fogSet(a, tx + dx, ty + dy);
-      if (P.y < ground(P.x)) for (let y = 0, gy = fRow(ground(P.x)); y <= gy; y++) fogSet(a, tx, y);
-    }
     function fogSave() {
       if (!fogDirty || ST.frozen) return;
       fogDirty = false;
@@ -12843,24 +13166,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
       deepHome();
     }
-    function matFound(m) {
-      const k = m.k, n = (hero.mat[k] | 0) + 1;
-      ST.matGot[m.id] = 1;
-      hero.mat[k] = n;
-      ST.heroDirty = true;
-      sfx("coin");
-      dayAdd("mat");
-      for (let i = 0; i < 10; i++) spawn(5, m.x, m.y, (Math.random() - 0.5) * 180, -60 - Math.random() * 160, 0.7, 2);
-      hero.mk.pk = 1;
-      ST.lootDirty = true;
-      confetti(m.x, m.y);
-      jingle();
-      banner("🪐 " + n + " / 3", 2600);
-      say("", n >= 3 ? "Alle drei Planetenkerne! Du hast jede große Welt bis ganz nach unten erforscht." : "Ein Planetenkern! Er leuchtet wie ein kleiner Stern. In jedem großen Planeten liegt einer.");
-      dayAdd("z", "🪐");
-      campSoon();
-      labBadge(true);
-    }
     function canBuild(g) {
       const t = gearLv(g);
       if (t >= 3) return false;
@@ -12879,118 +13184,12 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       }
       labHi = can;
     }
-    function finale(n) {
-      hero.fin |= n;
-      if (n === 1) {
-        for (let i = 0; i < 8; i++) later(i * 0.35, function() {
-          firework(P.x - 240 + Math.random() * 480, P.y - 140 - Math.random() * 160);
-        });
-        banner("🌟", 3e3);
-        say("", "Du hast das Sternentor erreicht, ganz am Ende vom Weltraum!");
-      } else {
-        banner("🌋", 3e3);
-        say("", "Du stehst auf dem glühenden Erdkern! Tiefer geht es nicht.");
-      }
-      ST.lootDirty = true;
-      confetti(P.x, P.y);
-      jingle();
-      saveHero();
-      renderEggs();
-      if (hero.fin === 3) later(10, function() {
-        banner("🏆", 3200);
-        say("", "Ganz unten und ganz oben: Du hast alles erforscht. Du bist der größte Forscher von Lavaland!");
-      });
-    }
     function deepIntro() {
-      if (hero.deep) return;
-      hero.deep = true;
-      saveHero();
-      if (quest && !quest.done && quest.type !== "find") {
-        hero.quest = { type: "pz", goal: 1, p: 0 };
-        showQuest(false);
-      }
-      pulse("btn-lab");
-      tell([
-        ["Professor Zahnrad", "Hallo! Ich bin Professor Zahnrad. Meine Werkstatt steht jetzt bei dir zu Hause."],
-        ["Professor Zahnrad", "Unter der Erde geht es jetzt viel tiefer, und der Weltraum ist riesig. Aber dafür brauchst du einen besseren Bohrer und eine stärkere Rakete."],
-        ["Professor Zahnrad", "Die baue ich dir. Bring mir Zahnräder und später Meistersteine. Zahnräder bekommst du von meinen Rätselmaschinen. Die erste steht gleich rechts neben dem Aufzug."]
-      ]);
+      return deepIntroWith(DP);
     }
     const ZGIFT = [[1, "fw", "Das Feuerwerk", "Es liegt bei den Werkzeugen.", "tool-fw"], [3, "goldski", "Die goldenen Ski", "Nimm die Ski, dann siehst du sie.", "mode-ski"], [5, "dragon", "Mama Glut, der Drache", "Sie wartet bei den Fahrzeugen. Jetzt kannst du auf ihr fliegen.", "mode-dragon"]];
     function zoneGifts(talk) {
-      let got = null;
-      for (const g of ZGIFT) if (hero.zn >= g[0] && !hero.own[g[1]]) {
-        hero.own[g[1]] = 1;
-        got = g;
-      }
-      if (!got) return;
-      saveHero();
-      syncOwn();
-      if (talk) later(3, function() {
-        banner("🎁", 2400);
-        say("", got[2] + " gehört jetzt dir! " + got[3]);
-        pulse(got[4]);
-      });
-    }
-    function deepTick(dt) {
-      mhT -= dt;
-      if (mhT <= 0) {
-        mhT = 0.6;
-        const lim = (genF - 8) * CELL;
-        for (const m of MACH) if (m.sf && m.x < lim) m.y = surfaceY(m.x);
-      }
-      if (P.mode !== "coaster") {
-        const z = zoneAt(P.x, P.y - 12), R = rlm();
-        if (R) {
-          if (z && !ST.seen["z" + z]) {
-            ST.seen["z" + z] = 1;
-            jingle();
-            confetti(P.x, P.y);
-            banner(R.zn[z - 1][0] + " ⭐", 2400);
-            say("", "Du hast " + R.zn[z - 1][1] + " erreicht!");
-            dayAdd("z", R.zn[z - 1][0]);
-            campSoon();
-          }
-        } else if (z > hero.zn) {
-          hero.zn = z;
-          saveHero();
-          jingle();
-          confetti(P.x, P.y);
-          banner(ZN[z].e + " ⭐", 2400);
-          say("", "Du hast " + ZN[z].n + " erreicht! Der Aufzug zu Hause fährt jetzt bis hierher.");
-          dayAdd("z", ZN[z].e);
-          campSoon();
-          zoneGifts(true);
-        }
-      }
-      const pts = [[P.x, P.y - 16]];
-      if (P.mode === "bagger") pts.push(bucket());
-      else if (P.mode === "loader") pts.push(scoop());
-      else if (P.mode === "tbm") pts.push(drillHead());
-      for (const m of MATS) {
-        if (ST.matGot[m.id] || !MATON[m.k] || Math.abs(m.x - P.x) > 260 || Math.abs(m.y - P.y) > 260) continue;
-        for (const q of pts) if (Math.hypot(q[0] - m.x, q[1] - m.y) < 30) {
-          matFound(m);
-          break;
-        }
-      }
-      if (P.on && P.y < -6e3 && SPACE.gate) {
-        for (const k of ["stn", "ice", "jun"]) {
-          const o = SPACE[k];
-          if (ST.orbGot[k] || Math.hypot(P.x - o.x, P.y - o.y) > o.r + 40) continue;
-          ST.orbGot[k] = 1;
-          skyMark(k);
-          ST.lootDirty = true;
-          confetti(P.x, P.y);
-          jingle();
-          banner("⭐", 2400);
-          say("", k === "stn" ? "Du bist auf der Raumstation gelandet! Ringsum schweben große Felsbrocken." : k === "ice" ? "Du bist auf dem Eisplaneten gelandet!" : "Du bist auf dem Blubberplaneten gelandet! Hier wohnt Blubb.");
-        }
-        if (!(hero.fin & 1) && Math.hypot(P.x - SPACE.gate.x, P.y - SPACE.gate.y) < SPACE.gate.r + 40) finale(1);
-      }
-      if (!(hero.fin & 2) && !realm && P.y > 9e3 && cellAt(P.x, P.y + 3) === CORE) finale(2);
-      if (!hero.deep && performance.now() > ST.talkLock && Math.abs(P.x - WSX) < 110 && Math.abs(P.y - ground(WSX)) < 90) deepIntro();
-      if (guide && time > guide.t) guide = null;
+      return zoneGiftsWith(DP, talk);
     }
     function nextMach() {
       let b = null, bd = 1e12;
@@ -13497,42 +13696,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       } catch (_) {
       }
     }
-    function mkNear() {
-      const a = marks();
-      for (let i = 0; i < a.length; i++) if (Math.abs(a[i][0] - P.x) < 40 && Math.abs(a[i][1] - P.y) < 50) return i;
-      return -1;
-    }
-    function mkCan() {
-      return P.mode === "walk" && P.on && P.y > ground(P.x) + 60;
-    }
     let mkShown = null;
-    function mkTick() {
-      const c = mkCan(), n = c ? mkNear() : -1, st = c ? n >= 0 ? "on" : "off" : "";
-      if (st === mkShown) return;
-      mkShown = st;
-      const b = $("mark");
-      b.hidden = !c;
-      b.classList.toggle("on", n >= 0);
-    }
     function mkTap() {
-      if (!mkCan()) return;
-      const a = marks(), i = mkNear();
-      if (i >= 0) {
-        a.splice(i, 1);
-        mkSave();
-        sfx("tick");
-        speak("Leuchtmarke aufgehoben. Du hast noch " + (MKMAX - a.length) + ".");
-      } else if (a.length >= MKMAX) {
-        tone([170], "sawtooth");
-        speak("Alle acht Leuchtmarken sind schon gesetzt. Geh zu einer hin und heb sie auf, dann kannst du sie woanders hinstellen.");
-      } else {
-        a.push([Math.round(P.x), Math.round(P.y)]);
-        mkSave();
-        sfx("pop");
-        spawn(5, P.x, P.y - 10, 0, -80, 0.6, 2);
-        if (a.length === 1) speak("Eine Leuchtmarke! Sie leuchtet im Dunkeln und steht auf der Karte. Du hast acht davon.");
-      }
-      mkShown = null;
+      return mkTapWith(DP);
     }
     $("mark").addEventListener("click", function(e) {
       e.preventDefault();
@@ -17645,14 +17811,13 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     for (const s of mobsWith(MP)) register(s.name, s.tick, s.draw);
     for (const s of sightsWith(SY)) register(s.name, s.tick, s.draw);
     for (const s of worldWith(WT)) register(s.name, s.tick, s.draw);
-    register("deepTick", deepTick);
+    for (const s of deepWith(DP)) register(s.name, s.tick, s.draw);
     for (const s of winterWith(WP)) register(s.name, s.tick, s.draw);
-    register("findsTick", findsTick);
+    for (const s of findsWith(DP)) register(s.name, s.tick, s.draw);
     for (const s of questsWith(QP)) register(s.name, s.tick, s.draw);
     register("autosave", autosave);
     register("drain", drain);
-    register("fogTick", fogTick);
-    register("mkTick", mkTick);
+    for (const s of marksWith(DP)) register(s.name, s.tick, s.draw);
     function safe(s, dt) {
       safeWith(errAdd, s, dt);
     }
