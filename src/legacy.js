@@ -53,6 +53,7 @@ import { pal, setPal, drawCellsWith } from './render/cells.js';
 import { headWith, drawKidWith, drawChuteWith, drawCarWith, drawBaggerWith, drawLoaderWith, drawDumperWith, drawTbmWith, drawRocketWith, drawPlaneWith, drawCartWith, drawSubWith, drawBalloonWith, drawHeliWith, drawBoatWith, drawBugWith, drawZipsWith, drawHandToolWith } from './render/vehicles.js';
 import { rrWith, circleWith, mixWith, lerpCWith, emoWith, arrowWith, knobWith, drawTreeWith, drawCloudWith, drawSpaceWith, hillsWith, drawDarkWith, drawFarWith, drawNebulaWith, drawFindsWith, drawPropWith, drawDoorWith, drawScopeWith } from './render/scenery.js';
 import { drainWith, numOptsWith, dayNoWith, loadFactsWith, pickFactWith, pickFact0With, factDoneWith, masterGiveWith, genQWith, saveSchoolWith } from './systems/learn.js';
+import { ORBS, ground, inMoon, solidW, burns, colTop, floorAt, surfaceY, putUp, setCell } from './state/queries.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -245,7 +246,6 @@ AI.sonar='<circle cx="12" cy="12" r="2.600" fill="currentColor"/><path d="M6.500
 
 /* ---------- Welt ---------- */
 for(let i=0;i<GX+2;i++) g0[i]=rawH(i*CELL);
-function ground(x){ const f=clamp(x/CELL,0,GX), i=Math.floor(f); return g0[i]+(g0[i+1]-g0[i])*(f-i); }
 
 /* Harte Schichten und Zonen in der Tiefe: Oberkante je Spalte. zS1, zS2, zS3 sind die harten Schichten, z4 trennt Pilzgrotten und Urzeit-Höhlen. */
 for(let cx=0;cx<GX;cx++){ zS1[cx]=630+Math.round(3*Math.sin(cx*.027+1)); z4[cx]=960+Math.round(10*Math.sin(cx*.013+2)); zS2[cx]=1290+Math.round(4*Math.sin(cx*.022)); zS3[cx]=1640+Math.round(4*Math.sin(cx*.019+4)); }
@@ -268,12 +268,10 @@ function carveCave(){ return carveCaveWith(WD); }
 function migrateSnow(){ return migrateSnowWith(WG); }
 let SEED=1;
 
-function setCell(cx,cy,m,lf){ if(!inGrid(cx,cy)) return; const i=cy*GX+cx; grid[i]=m; lifeS(i,lf||0); if(m>0&&m<4) ext(cx,cy); }
 function carveCircle(x,y,r){ return carveCircleWith(WD,x,y,r); }
 function fillBlock(bx,by){ return fillBlockWith(WD,bx,by); }
 /* ---------- Große Welt: Hinter dem Schneeberg folgen Länder, die aus der Welt-Nummer berechnet werden.
    Ihre Spalten entstehen erst, wenn der Held in die Nähe kommt. Flüssigkeiten rechnen nur rund um die Kamera. ---------- */
-const ORBS=[MOON];
 let genF=0;
 /* ---------- Andere Welten: Der Mond und die Planeten sind ganze Welten mit Ländern, Höhlen und Tiefe, so rund wie die Erde.
    Wer auf einem landet, reist dorthin. Die Erde wird so lange gespeichert. Eine fremde Welt liegt im Gitter ab x=PX0 und ist RW breit;
@@ -445,39 +443,6 @@ const WG={
 };
 function loadCells(sv){ return loadCellsWith(WG,sv); }
 
-function putUp(cx,cy,t){
-  if(cx<1||cx>=GX-1) return;
-  let n=0; while(n<8&&cy>1&&grid[cy*GX+cx]>=4){cy--;n++;}
-  put(cx,cy,t);
-}
-function inMoon(wx,wy){ for(const o of ORBS){ const dx=wx-o.x, dy=wy-o.y; if(dx*dx+dy*dy<o.r*o.r) return true; } return false; }
-function solidW(wx,wy){ return wy<-3000?inMoon(wx,wy):cellAt(wx,wy)>=4; }
-function burns(wx,wy){ const m=cellAt(wx,wy); return (m===FIRE&&hero.up.heat<1)||(m===LAVA&&hero.up.heat<2); }
-function colTop(cx,r){
-  if(cx<0)cx=0; else if(cx>=GX)cx=GX-1;
-  if(r<0)r=0;
-  let i=r*GX+cx;
-  while(r<GY&&grid[i]<4){r++;i+=GX;}
-  return r;
-}
-function floorAt(x,yRef,step){
-  if(yRef<-3000){
-    const st=yRef-step; let best=1e9;
-    for(const o of ORBS){
-      const dx=x-o.x;
-      if(Math.abs(dx)>=o.r||Math.abs(o.y-yRef)>40000) continue;
-      const hh=Math.sqrt(o.r*o.r-dx*dx);
-      if(st<=o.y-hh){ if(o.y-hh<best) best=o.y-hh; }
-      else if(st<o.y+hh) return st;
-    }
-    if(best<1e8) return best;
-  }
-  const r0=Math.floor((yRef-step-TOP)/CELL), fx=x/CELL-.5, c=Math.floor(fx), u=fx-c;
-  const a=colTop(c,r0), b=colTop(c+1,r0);
-  if(Math.abs(a-b)>2) return TOP+(u<.5?a:b)*CELL;
-  return TOP+(a+(b-a)*u)*CELL;
-}
-function surfaceY(x){ return TOP+colTop(Math.floor(x/CELL),2)*CELL; }
 
 function steam(x,y){ return steamWith(SP,x,y); }
 
