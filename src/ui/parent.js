@@ -1,8 +1,8 @@
 /* ---------- Elternansicht: Schranke, Auswertung des Spielprotokolls, Schulstand, Neuigkeiten, Speicher, Fehler, Stimme, Übungsblatt, Rechentafel-Balken ---------- */
-// PR 27a. Bewegt aus legacy.js. Das Protokoll selbst liegt in log/, das Laden der Daten (errLoad, dayLoad) und die Zustände bleiben in legacy.js.
+// PR 27a. Bewegt aus legacy.js. Das Protokoll selbst liegt in log/, das Laden der Daten (errLoad, dayLoad) und die Zustände bleiben in legacy.js. Die Handler stehen seit 29g2c in parBindWith (Port PB).
 // Was die Elternansicht vom übrigen Spiel braucht, kommt über den Port PV. parLoad, parRender und guessed laufen auch hier über den Port,
 // weil sie als Rückruf weitergegeben werden (setTimeout, then, sort); der Move-Nachweis kennt nur Aufrufe.
-import { speakStop, voicesDe, VCLIP, VRATES, VOICE } from '../audio/sound.js';
+import { speakStop, voicesDe, VCLIP, VRATES, VOICE, synth } from '../audio/sound.js';
 import { hero } from '../state/game.js';
 import { STAGES, CASES, fDom } from '../core/learn/facts.js';
 
@@ -272,4 +272,84 @@ export function parBarsWith(PV,all){
   });
   g+='<text x="0" y="9">'+minsWith(PV,mx)+'</text>';
   return '<svg class="par-ch" viewBox="0 0 '+W+' '+(H+16)+'" role="img" aria-label="Spielzeit je Tag, letzte 14 Tage">'+g+'</svg>';
+}
+/* Elternansicht, Rechentafel und Lagerfeuer verdrahten. PR 29g2c: Die Anweisungen auf oberster Ebene aus legacy.js stehen unverändert in parBindWith, legacy.js ruft es an der alten Stelle; alles aus legacy.js kommt über den Port PB. */
+/** @param {Port} PB */
+export function parBindWith(PB){
+PB.$('menu').querySelector('.sheet').addEventListener('pointerdown',/** @param {any} e */ function(e){
+  if(e.target.closest('button')) return;
+  clearTimeout(PB.holdT); PB.holdT=setTimeout(PB.pgOpen,3000);
+});
+['pointerup','pointercancel','pointerleave'].forEach(function(n){ PB.$('menu').querySelector('.sheet').addEventListener(n,function(){ clearTimeout(PB.holdT); }); });
+PB.$('pg-keys').innerHTML=[1,2,3,4,5,6,7,8,9,'⌫',0,'OK'].map(function(k){ return '<button class="pzb sm" data-k="'+k+'">'+k+'</button>'; }).join('');
+PB.$('pg-keys').addEventListener('click',/** @param {any} e */ function(e){
+  const b=e.target.closest('[data-k]'); if(!b) return;
+  const k=b.dataset.k;
+  if(k==='⌫') PB.pgIn=PB.pgIn.slice(0,-1);
+  else if(k==='OK'){
+    if(+PB.pgIn===PB.pgA*PB.pgB){ PB.$('pgate').hidden=true; PB.parOpen(); return; }
+    PB.pgIn=''; if(++PB.pgMiss>=2){ PB.$('pgate').hidden=true; return; }
+    PB.pgA=PB.ri(3,9); PB.pgB=PB.ri(3,9);
+  }
+  else if(PB.pgIn.length<3) PB.pgIn+=k;
+  PB.pgDraw();
+});
+PB.$('pgate').querySelector('.xb').addEventListener('click',function(){ PB.$('pgate').hidden=true; });
+PB.$('par').querySelector('.xb').addEventListener('click',function(){ PB.$('par').hidden=true; });
+PB.$('lab-taf').addEventListener('click',function(){ PB.$('lab').hidden=true; PB.openTafel(); });
+PB.$('tafel').addEventListener('click',/** @param {any} e */ function(e){
+  if(e.target===PB.$('tafel')||e.target.closest('.xb')){ PB.$('tafel').hidden=true; return; }
+  const b=e.target.closest('[data-tt]'); if(b){ PB.tafTab=b.dataset.tt; PB.renderTafel(); }
+});
+PB.$('camp-go').addEventListener('click',function(){ PB.$('camp').hidden=true; });
+PB.$('camp-rest').addEventListener('click',function(){ if(PB.$('camp-s').classList.contains('night')){ PB.$('camp').hidden=true; return; } PB.campRest(); });
+PB.$('par-body').addEventListener('click',/** @param {any} e */ function(e){
+  const r=e.target.closest('[data-r]');
+  if(r){ PB.parRange=+r.dataset.r; PB.parLoad(); return; }
+  const z=e.target.closest('[data-zr]'), lt=e.target.closest('[data-lt]');
+  if(z||lt){
+    if(!PB.SCH.on){ PB.SCH.on=true; PB.SCH.l=''; }
+    if(z) PB.SCH.zr=+z.dataset.zr;
+    else{ const c=lt.dataset.lt; PB.SCH.l=PB.SCH.l.indexOf(c)>=0?PB.SCH.l.replace(c,''):PB.SCH.l+c; }
+    PB.saveSchool(); PB.parLoad(); return;
+  }
+  if(e.target.closest('#par-errc')){
+    const t=PB.errLoad().map(/** @param {any} x */ function(x){ return new Date(x.t).toISOString()+' '+x.m+(x.w?' ('+x.w+')':'')+(x.n>1?' x'+x.n:''); }).join('\n')+'\n'+navigator.userAgent;
+    if(navigator.clipboard) navigator.clipboard.writeText(t).then(function(){ PB.flash('par-errc','ok'); },function(){});
+    return;
+  }
+  if(e.target.closest('#par-errx')){ try{ localStorage.removeItem(PB.ERRK); }catch(_){} PB.parLoad(); return; }
+  const vr=e.target.closest('[data-vr]'), vv=e.target.closest('[data-vv]');
+  if(vr||vv){ if(vr) VOICE.r=+vr.dataset.vr; else VOICE.v=vv.dataset.vv; PB.voiceSave(); if(vv){ speakStop(); synth('Hallo! So klinge ich.'); } else PB.speak('Hallo! So klinge ich.'); PB.parLoad(); return; }
+  if(e.target.closest('#par-vt')){ PB.speak('Hallo! Wie viel ist 3 plus 4?'); return; }
+  if(e.target.closest('#par-vs')){ speakStop(); synth('Hallo! Wie viel ist 3 plus 4?'); return; }
+  if(e.target.closest('#par-vmc')){
+    let t=''; try{ t=JSON.parse(localStorage.getItem(PB.K_VMISS)||'[]').join('\n'); }catch(_){}
+    if(navigator.clipboard) navigator.clipboard.writeText(t).then(function(){ PB.flash('par-vmc','ok'); },function(){});
+    return;
+  }
+  if(e.target.closest('#par-sheet')){ PB.sheetPrint(PB.parStum); return; }
+  if(e.target.closest('#par-bak')){ PB.bakSave(); setTimeout(PB.parLoad,1500); return; }
+  if(e.target.closest('#par-sall')){ PB.SCH.on=false; PB.saveSchool(); PB.parLoad(); return; }
+  const op=e.target.closest('[data-opt]');
+  if(op){ const k=op.dataset.opt; if(k==='mon1'||k==='mon0') PB.OPT.mon=k==='mon1'; else { PB.OPT.calm=k==='calm1'; PB.reduced=PB.reducedSys||PB.OPT.calm; document.body.classList.toggle('calm',PB.OPT.calm); } PB.optSave(); PB.parLoad(); return; }
+  const lm=e.target.closest('[data-lim]');
+  if(lm){ PB.LIM=+lm.dataset.lim; try{ localStorage.setItem(PB.K_LIMIT,String(PB.LIM)); }catch(_){} PB.dayLoad(); PB.DAY.lim=0; PB.daySave(); PB.parLoad(); return; }
+  if(e.target.closest('#par-exp')){
+    PB.parGet().then(/** @param {any} o */ function(o){
+      const b=new Blob([JSON.stringify({app:'lavaland-log',at:new Date().toISOString(),ev:o.ev,day:o.day,err:PB.errLoad(),dev:{ua:navigator.userAgent,mem:/** @type {any} */ (navigator).deviceMemory||null,w:innerWidth,h:innerHeight,dpr:devicePixelRatio}})],{type:'application/json'});
+      const a=document.createElement('a'), u=URL.createObjectURL(b);
+      a.href=u; a.download='lavaland-protokoll-'+PB.LOG.day()+'.json'; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(u); },4000);
+    }).catch(function(){});
+    return;
+  }
+  if(e.target.closest('#par-del')){
+    if(!PB.parDel){ PB.parDel=true; e.target.closest('#par-del').textContent='Wirklich löschen?'; return; }
+    PB.LOG.trx(['ev','day'],'readwrite').then(/** @param {any} tx */ function(tx){
+      tx.objectStore('ev').clear(); tx.objectStore('day').clear();
+      tx.oncomplete=function(){ PB.parDel=false; PB.parLoad(); };
+    }).catch(function(){});
+  }
+});
 }
