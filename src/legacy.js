@@ -56,6 +56,7 @@ import { drainWith, numOptsWith, dayNoWith, loadFactsWith, pickFactWith, pickFac
 import { ORBS, ground, inMoon, solidW, burns, colTop, floorAt, surfaceY, putUp, setCell } from './state/queries.js';
 import { pmaxWith, spawnWith, smokeWith, dustWith, confettiWith, explodeWith } from './systems/particles.js';
 import { boxCountWith, teleportWith, placeFindWith, hideFindsWith, renderAlbumWith, orbsOfWith, portalTickWith, dropBombWith, blastWith, sonarTargetWith, discoverWith, discoWith, pupsWith, keyTapWith, rainCloudWith, shakeTreeWith, tapWorldWith, nearScopeWith, scopeOpenWith, scopeRenderWith, scopePickWith, sonarWith } from './systems/play.js';
+import { fRowWith, fogKeyWith, fogArrWith, fogSetWith, fogHasWith, fogSeedWith, fogSaveWith, gearLvWith, gearSetWith, stationYWith, zoneAtWith, shellOkWith, doorColsWith, doorShutWith, nearDoorWith, doorPzWith, doorAskWith, doorOpenWith, deepHomeWith, deepRestoreWith, canBuildWith, labBadgeWith, nextMachWith, nearMachWith, nearCabWith, atLabWith, deepIconWith, deepActWith, deepTapWith, matWhereWith, guidePointWith, mkKeyWith, mkSaveWith, darkAtWith } from './systems/zones.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -1427,34 +1428,69 @@ const VR={
 function renderMap(){ return renderMapWith(LM); }
 /* ---------- Erkundungskarte: Ein Querschnitt der Welt. Sichtbar ist nur, wo man schon war; die Lampe deckt mehr auf. ---------- */
 const FGT=40, FGW=Math.ceil(GX/FGT), FGH=Math.ceil(GY/FGT), FOG={};
-function fRow(y){ return clamp(Math.floor((y-TOP)/CELL/FGT),0,FGH-1); }
+/* Unter Tage (systems/zones.js) */
+const ZO={
+  FGT,
+  FGH,
+  get K_FOG(){ return K_FOG; },
+  FOG,
+  FGW,
+  get fogDirty(){ return fogDirty; },
+  set fogDirty(v){ fogDirty=v; },
+  get genF(){ return genF; },
+  get ZN(){ return ZN; },
+  get time(){ return time; },
+  get klT(){ return klT; },
+  set klT(v){ klT=v; },
+  get shake(){ return shake; },
+  set shake(v){ shake=v; },
+  get klS(){ return klS; },
+  set klS(v){ klS=v; },
+  get klN(){ return klN; },
+  set klN(v){ klN=v; },
+  get VAULTS(){ return VAULTS; },
+  get DOORPZ(){ return DOORPZ; },
+  get $(){ return $; },
+  get doorQ(){ return doorQ; },
+  set doorQ(v){ doorQ=v; },
+  trees,
+  get guide(){ return guide; },
+  set guide(v){ guide=v; },
+  get dkA(){ return dkA; },
+  set dkA(v){ dkA=v; },
+  get cutX(){ return cutX; },
+  get GEAR(){ return GEAR; },
+  get GEARK(){ return GEARK; },
+  get labHi(){ return labHi; },
+  set labHi(v){ labHi=v; },
+  get MACH(){ return MACH; },
+  get MATS(){ return MATS; },
+  get K_MARKS(){ return K_MARKS; },
+  banner,
+  campSoon,
+  canBuild,
+  confetti,
+  dayAdd,
+  later,
+  marks,
+  openLab,
+  openMine,
+  openQuiz,
+  pulse,
+  get pzOpen(){ return pzOpen; },
+  say,
+  scanMobile,
+  shout,
+  spawn
+};
+function fRow(y){ return fRowWith(ZO,y); }
 let fogDirty=false, fogT=0;
-function fogKey(){ return K_FOG+(realm?'-'+realm:''); }
-function fogArr(){
-  const k=fogKey(); if(FOG[k]) return FOG[k];
-  const a=new Uint8Array(Math.ceil(FGW*FGH/8)); let got=false;
-  try{ const b=localStorage.getItem(k); if(b){ const t=atob(b); if(t.length===a.length){ for(let i=0;i<t.length;i++) a[i]=t.charCodeAt(i); got=true; } } }catch(_){}
-  FOG[k]=a; if(!got) fogSeed(a);
-  return a;
-}
-function fogSet(a,tx,ty){ if(tx<0||ty<0||tx>=FGW||ty>=FGH) return; const i=ty*FGW+tx; if(!(a[i>>3]&(1<<(i&7)))){ a[i>>3]|=1<<(i&7); fogDirty=true; } }
-function fogHas(a,tx,ty){ const i=ty*FGW+tx; return !!(a[i>>3]&(1<<(i&7))); }
-/* Alte Spielstände: Oberfläche entdeckter Länder und der Aufzugschacht bis zur erreichten Zone sind schon bekannt. */
-function fogSeed(a){
-  const c0=Math.floor(RC0/FGT), c1=Math.min(FGW-1,Math.floor(Math.min(RC1,genF)/FGT));
-  for(let tx=c0;tx<=c1;tx++){
-    const x=(tx+.5)*FGT*CELL, bi=bix[clamp(Math.floor(x/CELL),0,GX-1)];
-    if(!realm&&!(x<BEND||(bi&&ST.seen[bi-1]))) continue;
-    if(realm&&Math.abs(x-LANDX)>3000) continue;
-    const gy=fRow(ground(x)); for(let ty=0;ty<=gy+1;ty++) fogSet(a,tx,ty);
-  }
-  if(!realm&&hero.zn>0){ const tx=Math.floor(LIFTX/CELL/FGT), r=ZN[Math.min(hero.zn,ZN.length-1)].row; for(let ty=0;ty<=Math.floor(r/FGT)+1;ty++){ fogSet(a,tx,ty); fogSet(a,tx-1,ty); } }
-  fogDirty=true;
-}
-function fogSave(){
-  if(!fogDirty||ST.frozen) return; fogDirty=false;
-  for(const k in FOG){ let t=''; const a=FOG[k]; for(let i=0;i<a.length;i+=4096) t+=String.fromCharCode.apply(null,a.subarray(i,i+4096)); try{ localStorage.setItem(k,btoa(t)); }catch(_){} }
-}
+function fogKey(){ return fogKeyWith(ZO); }
+function fogArr(){ return fogArrWith(ZO); }
+function fogSet(a,tx,ty){ return fogSetWith(ZO,a,tx,ty); }
+function fogHas(a,tx,ty){ return fogHasWith(ZO,a,tx,ty); }
+function fogSeed(a){ return fogSeedWith(ZO,a); }
+function fogSave(){ return fogSaveWith(ZO); }
 setInterval(fogSave,15000);
 document.addEventListener('visibilitychange',function(){ if(document.hidden) fogSave(); });
 const FCOL=['','#ff6a1f','#ffb02e','#3a8fe0','#8a5a35','#7a7a84','#bfe8ff','#8a5a2b','#2b2b36','#4d4660','#8c3a2a','#ff3d00','#f2c84b','#61d6e8','#ffffff','#e8d6b0'];
@@ -1504,160 +1540,48 @@ GEAR.hs={e:'🛡️',n:'Schutz',art:'den Schutz',rc:[{zr:2},{zr:3},{zr:4}],
   what:['Dann tut dir Feuer nichts mehr.','Dann tut dir Lava nichts mehr.','Dann tut dir der glühende Erdkern nichts mehr.'],
   done:['Der Schutz ist fertig! Feuer tut dir jetzt nichts mehr.','Der Schutz ist stärker! Lava tut dir jetzt nichts mehr.','Der Schutz ist ganz stark! Jetzt tut dir sogar der Erdkern nichts mehr.']};
 const GEARK=['dr','rk','lp','hs'];
-function gearLv(g){ return (g==='hs'?hero.up.heat:hero[g])|0; }
-function gearSet(g,v){ if(g==='hs') hero.up.heat=v; else hero[g]=v; }
+function gearLv(g){ return gearLvWith(ZO,g); }
+function gearSet(g,v){ return gearSetWith(ZO,g,v); }
 let MATS=[], MACH=[], ZDEC=[], SPACE={}, guide=null, klT=0, klS=0, klN=0, labHi=false, dkA=0, mhT=0, liftBusy=false;
 const dkc=document.createElement('canvas'), dkx=dkc.getContext('2d');
 
 function skyLim(){ return SKYL[hero.rk|0]; }
-function stationY(k){ return k?ZN[k].y:ground(LIFTX); }
-function zoneAt(x,y){
-  if(y<700) return 0;
-  const cx=clamp(Math.floor(x/CELL),0,GX-1), cy=Math.floor((y-TOP)/CELL);
-  return cy>=zS3[cx]+SH?6:cy>=zS2[cx]+SH?5:cy>=z4[cx]?4:cy>=zS1[cx]+SH?3:cy>=rH[cx]?2:cy>=rD[cx]?1:0;
-}
-/* Die harten Schichten: Ohne den passenden Bohrer prallt alles ab. */
-function shellOk(i){
-  const y=(i/GX)|0, cx=i-y*GX, need=y<z4[cx]?1:y<zS3[cx]?2:3;
-  if(hero.dr>=need) return true;
-  if(time>klT){
-    klT=time+.7;
-    const wx=cx*CELL+3, wy=TOP+y*CELL;
-    for(let k=0;k<5;k++) spawn(5,wx,wy,(Math.random()-.5)*200,-60-Math.random()*140,.5,2);
-    shout(wx,wy-22,'KLONK!','#ffd23f'); sfx('tick'); shake=Math.max(shake,.1);
-  }
-  if(time>klS||klN!==need){
-    klS=time+90; klN=need;
-    say('','Klonk! Diese Schicht ist zu hart. Dafür brauchst du den Bohrer Stufe '+need+'. Schau in der Werkstatt nach, was dafür fehlt.');
-    pulse('btn-lab');
-  }
-  return false;
-}
+function stationY(k){ return stationYWith(ZO,k); }
+function zoneAt(x,y){ return zoneAtWith(ZO,x,y); }
+function shellOk(i){ return shellOkWith(ZO,i); }
 
 /* ---------- Wissenstüren: Tief unten liegen Schatzkammern mit fester Wand. Die Tür geht auf, wenn man drei Lernaufgaben richtig löst.
    Sie haben eine eigene Zufallsreihe, damit sich an allem anderen nichts ändert. ---------- */
 let VAULTS=[], doorQ=null;
-function doorCols(v){ return [Math.floor((v.x-v.rx-20)/CELL),Math.floor((v.x-v.rx*.55)/CELL)]; }
-function doorShut(v){ const c=Math.floor((v.x-v.rx-8)/CELL); return c<genF&&grid[(vFloor(v)-3)*GX+c]===BED; }
-function nearDoor(){ for(const v of VAULTS) if(Math.abs(P.x-(v.x-v.rx-28))<46&&Math.abs(P.y-v.fy)<44&&doorShut(v)) return v; return null; }
+function doorCols(v){ return doorColsWith(ZO,v); }
+function doorShut(v){ return doorShutWith(ZO,v); }
+function nearDoor(){ return nearDoorWith(ZO); }
 /* Jede zweite Tür ist eine Rätseltür: Statt drei Aufgaben öffnet sie ein Rätsel, eine Stufe kniffliger als sonst. Das Zeichen an der Tür verrät vorher, welches. */
 const DOORPZ=['muster','spiegel','waage','robo','stern'];
-function doorPz(v){ return v.id%2?DOORPZ[(v.id>>1)%DOORPZ.length]:''; }
-function doorAsk(v){
-  if(!$('quiz').hidden||!$('pz').hidden) return;
-  const pt=doorPz(v);
-  if(pt){ pzOpen({t:pt,zb:1,quiz:true,door:v}); return; }
-  doorQ={v:v,n:0}; $('quiz-pz').hidden=true;
-  openQuiz(null);
-  banner('🚪 ○○○',1800);
-}
-function doorOpen(v){
-  const c=doorCols(v), fr=vFloor(v);
-  for(let cx=c[0];cx<=c[1];cx++) for(let cy=fr-8;cy<fr;cy++){ grid[cy*GX+cx]=0; lifeS(cy*GX+cx,0); }
-  scanMobile(); sfx('pop'); jingle(); confetti(v.x-v.rx,v.fy-30);
-  say('','Die Wissenstür ist offen! Drinnen liegt ein Schatz.'); dayAdd('z','🚪'); campSoon();
-}
+function doorPz(v){ return doorPzWith(ZO,v); }
+function doorAsk(v){ return doorAskWith(ZO,v); }
+function doorOpen(v){ return doorOpenWith(ZO,v); }
 function drawDoor(v){ return drawDoorWith(SC,ctx,v); }
-/* Rund um Werkstatt und Aufzug stehen keine Bäume. */
-function deepHome(){ for(let i=0;i<ST.NT0&&i<trees.length;i++){ const t=trees[i]; if(Math.abs(t.x-WSX)<64||Math.abs(t.x-LIFTX)<50||Math.abs(t.x-1330)<30) t.state=3; } }
-/* Nach dem Laden: Was in der alten, breiteren Welt hinter der neuen Grenze lag, kommt nach Hause. */
-function deepRestore(sv){
-  ST.matGot=sv.matGot||{}; ST.pzGot=sv.pzGot||{}; guide=null; dkA=0;
-  if(sv.v<4){
-    /* Wer auf dem alten Erdkern stand, steht jetzt knapp über der neuen harten Schicht. */
-    const deep=TOP+KEEPR*CELL-14;
-    if(P.y>deep) P.y=deep;
-    for(const n in parked){ const o=parked[n]; if(o&&o.y>deep) o.y=deep; }
-  }
-  if(sv.v===3||cutX){
-    const lim=sv.v===3?genF*CELL-300:cutX;
-    if(P.x>lim){ P.x=820; P.y=surfaceY(820)-2; }
-    let k=0;
-    for(const n in parked){ const o=parked[n]; if(o&&o.x>lim){ o.x=560+k*46; o.y=surfaceY(o.x); o.vy=0; o.ang=0; k++; } }
-    ST.props=ST.props.filter(function(o){ return o.x<lim; });
-    ST.tracks=ST.tracks.filter(function(T){ return T.maxX<lim; });
-    ST.hidden=ST.hidden.filter(function(h){ return h.x<lim; });
-  }
-  deepHome();
-}
+function deepHome(){ return deepHomeWith(ZO); }
+function deepRestore(sv){ return deepRestoreWith(ZO,sv); }
 
 /* ---------- Jede Sekunde: Zonen entdecken, Planetenkerne einsammeln, Maschinen auf den Boden stellen, Ziele erreichen ---------- */
-function canBuild(g){
-  const t=gearLv(g); if(t>=3) return false;
-  const rc=GEAR[g].rc[t];
-  for(const k in rc) if((hero.mat[k]|0)<rc[k]) return false;
-  return true;
-}
-function labBadge(talk){
-  const can=GEARK.some(canBuild), el=$('lab-n');
-  if(el) el.hidden=!can;
-  if(can&&!labHi&&talk){ later(2.2,function(){ say('','Du hast genug gesammelt! In der Werkstatt kannst du jetzt etwas Neues bauen.'); pulse('btn-lab'); }); }
-  labHi=can;
-}
+function canBuild(g){ return canBuildWith(ZO,g); }
+function labBadge(talk){ return labBadgeWith(ZO,talk); }
 function deepIntro(){ return deepIntroWith(DP); }
 /* Was früher die Geschichte schenkte, gibt es jetzt für Zonen (Vereinfachungsplan Schritt 3): Feuerwerk, goldene Ski, Drache.
    Wer es schon hat, behält es. Beim Start wird nachgeholt, was zur erreichten Zone gehört. */
 const ZGIFT=[[1,'fw','Das Feuerwerk','Es liegt bei den Werkzeugen.','tool-fw'],[3,'goldski','Die goldenen Ski','Nimm die Ski, dann siehst du sie.','mode-ski'],[5,'dragon','Mama Glut, der Drache','Sie wartet bei den Fahrzeugen. Jetzt kannst du auf ihr fliegen.','mode-dragon']];
 function zoneGifts(talk){ return zoneGiftsWith(DP,talk); }
-function nextMach(){
-  let b=null, bd=1e12; const lim=(genF-8)*CELL;
-  for(const m of MACH){
-    if(ST.pzGot[m.id]||m.y!==m.y||m.x>lim) continue;
-    const d=Math.abs(m.x-P.x)+2.5*Math.abs(m.y-P.y);
-    if(d<bd){ bd=d; b=m; }
-  }
-  return b;
-}
-function nearMach(){ for(const m of MACH) if(m.y===m.y&&Math.abs(P.x-m.x)<34&&Math.abs(P.y-m.y)<52) return m; return null; }
-function nearCab(){ if(Math.abs(P.x-LIFTX)>46) return -1; for(let k=0;k<ZN.length;k++) if(Math.abs(P.y-stationY(k))<64) return k; return -1; }
-function atLab(){ return Math.abs(P.x-WSX)<110&&Math.abs(P.y-ground(WSX))<120; }
-function deepIcon(){ if(!P.on) return ''; return nearMach()||nearDoor()?'pz':nearCab()>=0?'lift':Math.abs(P.x-WSX)<44&&Math.abs(P.y-ground(WSX))<60?'lab':''; }
-function deepAct(){
-  if(!P.on) return false;
-  const m=nearMach();
-  if(m){ pzOpen(m); return true; }
-  const v=nearDoor();
-  if(v){ doorAsk(v); return true; }
-  if(nearCab()>=0){ openMine(); return true; }
-  if(Math.abs(P.x-WSX)<44&&Math.abs(P.y-ground(WSX))<60){ openLab(); return true; }
-  return false;
-}
-function deepTap(wx,wy){
-  const gy=ground(WSX);
-  if(Math.abs(wx-WSX)<60&&wy>gy-100&&wy<gy+8&&Math.abs(cam.y-gy)<700){ openLab(); return true; }
-  if(Math.abs(wx-LIFTX)<34) for(let k=0;k<ZN.length;k++){
-    const y=stationY(k);
-    if(wy<y-(k?58:112)||wy>y+8) continue;
-    if(Math.hypot(P.x-LIFTX,P.y-y)<190) openMine(); else say('','Geh erst zum Aufzug hin.');
-    return true;
-  }
-  for(const v of VAULTS){
-    if(Math.abs(wx-(v.x-v.rx-8))>26||wy<v.fy-56||wy>v.fy+4||!doorShut(v)) continue;
-    if(Math.hypot(P.x-v.x+v.rx,P.y-v.fy)<200) doorAsk(v); else say('','Geh erst näher an die Tür heran.');
-    return true;
-  }
-  for(const m of MACH){
-    if(m.y!==m.y||Math.abs(wx-m.x)>28||wy<m.y-74||wy>m.y+8) continue;
-    if(Math.hypot(P.x-m.x,P.y-m.y)<360) pzOpen(m); else say('','Geh erst näher an die Rätselmaschine heran.');
-    return true;
-  }
-  return false;
-}
-/* Pfeil zur nächsten Rätselmaschine (Zahnrad), zur Werkstatt oder zum nächsten Planetenkern. */
-function matWhere(k){
-  if(k==='zr'){ const m=nextMach(); return m?[m.x,m.y-52]:null; }
-  if(realm){
-    /* Auf fremden Welten: zum nächsten Stück, sonst nach oben, heim zur Erde. */
-    let b=null, bd=1e12;
-    if(k!=='lab') for(const m of MATS){ if(m.k!==k||ST.matGot[m.id]) continue; const d=Math.hypot(m.x-P.x,m.y-P.y); if(d<bd){ bd=d; b=m; } }
-    return b?[b.x,b.y]:[P.x,P.y-500];
-  }
-  if(k==='lab') return [WSX,ground(WSX)-96];
-  let b=null, bd=1e12;
-  for(const m of MATS){ if(m.k!==k||ST.matGot[m.id]) continue; const d=Math.hypot(m.x-P.x,m.y-P.y); if(d<bd){ bd=d; b=m; } }
-  return b?[b.x,b.y]:null;
-}
-function guidePoint(){ return guide?matWhere(guide.k):null; }
+function nextMach(){ return nextMachWith(ZO); }
+function nearMach(){ return nearMachWith(ZO); }
+function nearCab(){ return nearCabWith(ZO); }
+function atLab(){ return atLabWith(ZO); }
+function deepIcon(){ return deepIconWith(ZO); }
+function deepAct(){ return deepActWith(ZO); }
+function deepTap(wx,wy){ return deepTapWith(ZO,wx,wy); }
+function matWhere(k){ return matWhereWith(ZO,k); }
+function guidePoint(){ return guidePointWith(ZO); }
 
 /* ---------- Werkstatt ---------- */
 /* Port für ui/map.js: Karten, Werkstatt und Aufzug */
@@ -1748,7 +1672,7 @@ $('mine-cards').addEventListener('click',function(e){
 const CRYC=['#7fe3f0','#c77dff','#ff9fd0'], CRYH=[30,46,38,24];
 /* ---------- Leuchtmarken: Unter der Erde kann man bis zu acht Lichter setzen, um sich Stellen zu merken. Sie leuchten im Dunkeln und stehen auf der Karte. ---------- */
 const MKMAX=8, MKS={};
-function mkKey(){ return K_MARKS+(realm?'-'+realm:''); }
+function mkKey(){ return mkKeyWith(ZO); }
 function marks(){
   const k=mkKey(); if(MKS[k]) return MKS[k];
   let a=[]; try{ a=JSON.parse(localStorage.getItem(k)||'[]'); }catch(_){}
@@ -1756,18 +1680,12 @@ function marks(){
   MKS[k]=a.filter(function(m){ return Array.isArray(m)&&isFinite(m[0])&&isFinite(m[1]); }).slice(0,MKMAX);
   return MKS[k];
 }
-function mkSave(){ try{ localStorage.setItem(mkKey(),JSON.stringify(marks())); }catch(_){} }
+function mkSave(){ return mkSaveWith(ZO); }
 let mkShown=null;
 function mkTap(){ return mkTapWith(DP); }
 $('mark').addEventListener('click',function(e){ e.preventDefault(); mkTap(); });
 function drawDeep(x0,x1,y0,y1){ return drawDeepWith(RP,ctx,x0,x1,y0,y1); }
-/* Unter der Erde wird es dunkel. Die Lampe und alles, was leuchtet, machen helle Flecken. Ganz schwarz wird es nie. */
-function darkAt(y){
-  if(hero.lp>=3) return 0;
-  const d=y-900;
-  if(d<=0) return 0;
-  return d<1700?.46*d/1700:.46+.3*Math.min(1,(d-1700)/1500);
-}
+function darkAt(y){ return darkAtWith(ZO,y); }
 function drawDark(){ return drawDarkWith(SC,ctx); }
 function drawFar(){ return drawFarWith(SC,ctx); }
 function drawNebula(){ return drawNebulaWith(SC,ctx); }
