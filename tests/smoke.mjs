@@ -168,6 +168,21 @@ test('Vulkanausbruch wirft Lavabrocken', async ({ ev, page }) => {
   await ev('MROCKS=[]; METS=[]; teleport(1500)'); await page.waitForTimeout(500);
 });
 
+test('Fundsachen, Sprungpilz, goldenes Ei und Banane wirken', async ({ ev }) => {
+  const r = await ev(`(function(){
+    OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); P.zip=null;
+    const o={}, eg0=hero.eggs|0;
+    FX.hot=0; const q={ty:'chili',x:P.x,y:P.y-14,t:0}; ST.PICKS.push(q); pickTick(0); o.chili=FX.hot; ST.PICKS.splice(ST.PICKS.indexOf(q),1); FX.hot=0;
+    FX.tiny=0; const pd={x:P.x,y:P.y,w:20,pow:600}; ST.PADS.push(pd); P.vy=100; padsTick(); o.pad=P.vy; ST.PADS.splice(ST.PADS.indexOf(pd),1);
+    const e={b:99999,x:P.x,y:P.y-16}; ST.EGGS.push(e); secretsTick(); o.egg=!!ST.eggGot[99999]&&hero.eggs===eg0+1; ST.EGGS.splice(ST.EGGS.indexOf(e),1); delete ST.eggGot[99999]; hero.eggs=eg0;
+    throws.push({e:'🍌',x:P.x,y:P.y-20,vx:0,vy:0}); P.vy=0; pickTick(0); o.bonk=throws.length===0&&P.vy===-200;
+    return o; })()`);
+  if (r.chili !== 6) throw new Error('Chili wirkt nicht: ' + r.chili);
+  if (r.pad !== -600) throw new Error('Sprungpilz wirkt nicht: ' + r.pad);
+  if (!r.egg) throw new Error('goldenes Ei nicht gezählt');
+  if (!r.bonk) throw new Error('Banane trifft nicht');
+});
+
 test('Elternansicht: Monster aus, ruhige Darstellung an', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; parOpen()"); await page.waitForTimeout(1500);
   await ev("$('par-body').querySelector('[data-opt=mon0]').click()"); await page.waitForTimeout(800);
