@@ -40,6 +40,7 @@ import { drawSnowmanWith, drawDragonWith, drawGondolaWith, drawSkierWith, drawRo
 import { drawWith } from './render/draw.js';
 import { pzOpenWith, pzCloseWith, pzHintMaxWith, pzHintUiWith, drMusterWith, acMusterWith, hiMusterWith, syMusterWith, drSternWith, acSternWith, hiSternWith, sySternWith, drSpiegelWith, acSpiegelWith, hiSpiegelWith, sySpiegelWith, drRoboWith, acRoboWith, hiRoboWith, syRoboWith, drWaageWith, poWaageWith, acWaageWith, hiWaageWith, syWaageWith, drEchoWith, stEchoWith, acEchoWith, hiEchoWith, syEchoWith, drRohreWith, acRohreWith, hiRohreWith, syRohreWith, drSudokuWith, acSudokuWith, hiSudokuWith, sySudokuWith } from './ui/puzzles.js';
 import { renderBattWith, needWith, openQuizWith, closeQuizWith, nextQWith, padKeyWith, padSubmitWith, tafCellWith, renderTafelWith, openTafelWith } from './ui/learn.js';
+import { renderMapWith, renderFogWith, mapClickWith, renderEggsWith, eggClickWith, missingWith, openLabWith, labBuildWith, openMineWith, liftGoWith } from './ui/map.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -2485,21 +2486,7 @@ function drawWorldBack(x0,x1,y0,y1){ return drawWorldBackWith(RP,ctx,x0,x1,y0,y1
 function drawWorldFront(){ return drawWorldFrontWith(RP,ctx); }
 
 /* ---------- Karte zum Reisen und die Belohnungen für goldene Eier ---------- */
-function renderMap(){
-  const R=rlm(), L=R?[{e:R.e,x:LANDX,n:'zum Landeplatz',k:-2}]:[{e:'🏠',x:820,n:'nach Hause',k:-2},{e:'⛷️',x:5700,n:'zum Schneeberg',k:-1}], per=11;
-  for(const b of ST.BIO) if(ST.seen[b.i]) L.push({e:BT[b.t].e,x:b.x0+240,n:BT[b.t].to,k:b.i,num:b.n+1});
-  /* Leuchtmarken sind Reiseziele: Dort war man schon, also umgeht das keinen Bohrer. */
-  marks().forEach(function(m,i){ L.push({e:'🔆',x:m[0],y:m[1],n:'zur Leuchtmarke',k:'m'+i,num:i+1}); });
-  const pages=Math.max(1,Math.ceil(L.length/per)); if(mapPg>=pages) mapPg=0;
-  const here=bix[clamp(Math.floor(P.x/CELL),0,GX-1)]-1, cur=here>=0?here:(P.x>5600&&!R?-1:-2);
-  let h='';
-  L.slice(mapPg*per,mapPg*per+per).forEach(function(q){
-    h+='<button class="card place'+(q.k===cur?' cur':'')+'" data-go="'+q.x+'"'+(q.y!=null?' data-gy="'+q.y+'"':'')+' data-say="'+q.n+'" aria-label="Reise '+q.n+'"><span aria-hidden="true">'+q.e+'</span>'+(q.num>1?'<small>'+q.num+'</small>':'')+'</button>';
-  });
-  if(pages>1) h+='<button class="card place" data-go="next" aria-label="Weitere Orte zeigen"><span aria-hidden="true">➡️</span></button>';
-  else if(nextLand()) h+='<button class="card place shut" data-go="" aria-label="Noch nicht entdeckt"><span aria-hidden="true">❓</span></button>';
-  $('map-cards').innerHTML=h;
-}
+function renderMap(){ return renderMapWith(LM); }
 /* ---------- Erkundungskarte: Ein Querschnitt der Welt. Sichtbar ist nur, wo man schon war; die Lampe deckt mehr auf. ---------- */
 const FGT=40, FGW=Math.ceil(GX/FGT), FGH=Math.ceil(GY/FGT), FOG={};
 function fRow(y){ return clamp(Math.floor((y-TOP)/CELL/FGT),0,FGH-1); }
@@ -2533,56 +2520,10 @@ function fogSave(){
 setInterval(fogSave,15000);
 document.addEventListener('visibilitychange',function(){ if(document.hidden) fogSave(); });
 const FCOL=['','#ff6a1f','#ffb02e','#3a8fe0','#8a5a35','#7a7a84','#bfe8ff','#8a5a2b','#2b2b36','#4d4660','#8c3a2a','#ff3d00','#f2c84b','#61d6e8','#ffffff','#e8d6b0'];
-function renderFog(){
-  const a=fogArr(), cv=$('map-c'), S=4, c0=Math.floor(RC0/FGT), c1=Math.min(FGW-1,Math.floor(RC1/FGT)), w=c1-c0+1, dpr=Math.min(2,window.devicePixelRatio||1);
-  /* Nur so tief zeigen, wie schon erkundet ist, plus ein Stück Dunkel darunter. */
-  let deep=0; for(let ty=FGH-1;ty>0&&!deep;ty--) for(let tx=c0;tx<=c1;tx++) if(fogHas(a,tx,ty)){ deep=ty; break; }
-  const FH=Math.min(FGH,Math.max(16,deep+5));
-  cv.width=w*S*dpr; cv.height=FH*S*dpr; cv.style.width=(w*S)+'px'; cv.style.height=(FH*S)+'px';
-  const g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.fillStyle='#151522'; g.fillRect(0,0,w*S,FH*S);
-  for(let tx=c0;tx<=c1;tx++){
-    const cx=Math.min(GX-1,tx*FGT+(FGT>>1)), gr=(ground(cx*CELL)-TOP)/CELL;
-    for(let ty=0;ty<FH;ty++){
-      if(!fogHas(a,tx,ty)) continue;
-      const cy=ty*FGT+(FGT>>1); let m=cx<genF?grid[cy*GX+cx]:0;
-      g.fillStyle=m?(FCOL[m]||'#666'):(cy<gr?'#8fcdf0':'#2c2638');
-      g.fillRect((tx-c0)*S,ty*S,S,S);
-    }
-  }
-  g.font='12px sans-serif'; g.textAlign='center'; g.textBaseline='middle';
-  const mark=function(x,y,e){ const tx=Math.floor(x/CELL/FGT), ty=fRow(y); if(tx<c0||tx>c1||!fogHas(a,tx,ty)) return; g.fillText(e,(tx-c0+.5)*S,ty*S+S/2-4); };
-  for(const m of MACH) if(!ST.pzGot[m.id]&&!m.gone&&m.y===m.y) mark(m.x,m.y-20,'⚙️');
-  for(const v of VAULTS) if(doorShut(v)) mark(v.x,v.fy-20,'🚪');
-  for(const m of marks()) mark(m[0],m[1]-14,'🔆');
-  if(!realm) mark(WSX,ground(WSX)-30,'🏠'); else mark(LANDX,ground(LANDX)-30,'🚀');
-  const px=(P.x/CELL/FGT-c0)*S, py=clamp((P.y-TOP)/CELL/FGT,0,FH)*S;
-  g.fillStyle='#ff3b3b'; g.strokeStyle='#fff'; g.lineWidth=2; g.beginPath(); g.arc(px,py,5,0,TAU); g.fill(); g.stroke();
-  const v=$('map-v'); requestAnimationFrame(function(){ v.scrollLeft=px-v.clientWidth/2; });
-}
-function mapClick(e){
-  const b=e.target.closest('[data-go]'); if(!b) return;
-  const go=b.dataset.go;
-  if(go==='next'){ mapPg++; renderMap(); return; }
-  if(go===''){ speak('Weiter rechts liegen noch mehr Länder. Die musst du erst entdecken.'); return; }
-  $('map').hidden=true;
-  if(b.dataset.gy){ if(P.mode!=='walk') setMode('walk'); grow(+go+3200); P.x=+go; P.y=+b.dataset.gy-2; P.vx=0; P.vy=0; cam.x=P.x; cam.y=P.y-80; smoke(P.x,P.y-20,6); speak('Zur Leuchtmarke!'); return; }
-  teleport(+go); speak('Auf '+b.dataset.say+'!');
-}
-function renderEggs(){
-  $('eggs').innerHTML='<span class="eggn">'+EGGSVG+'<b>'+(hero.eggs|0)+'</b></span>'+WEAR.map(function(q){
-    const own=q[0]<0?!!hero.own[q[2]]:(hero.eggs|0)>=q[0], on=hero.pet===q[2]||hero.hat===q[2]||(q[1]==='trail'&&hero.trail);
-    if(q[0]<0&&!own) return '';
-    const pic=q[1]==='pet'?PETS[q[2]]:q[1]==='hat'?EHAT[q[2]]:'🌈';
-    return '<button class="'+(own?(on?'on':''):'q')+'" data-wear="'+q[2]+'" aria-label="'+(own?q[3]:'Für '+q[0]+' goldene Eier')+'">'+(own?pic:q[0])+'</button>';
-  }).join('');
-}
-function eggClick(e){
-  const b=e.target.closest('[data-wear]'); if(!b) return;
-  const q=WEAR.find(function(w){return w[2]===b.dataset.wear;}), own=q[0]<0?!!hero.own[q[2]]:(hero.eggs|0)>=q[0];
-  if(!own){ tone([170],'sawtooth'); speak('Dafür brauchst du '+q[0]+' goldene Eier.'); return; }
-  hero.trail=!hero.trail;
-  tone([660]); saveHero(); renderEggs();
-}
+function renderFog(){ return renderFogWith(LM); }
+function mapClick(e){ return mapClickWith(LM,e); }
+function renderEggs(){ return renderEggsWith(LM); }
+function eggClick(e){ return eggClickWith(LM,e); }
 
 /* ---------- Tiefe und Höhe: Unter dem heißen Gestein liegen vier neue Zonen, getrennt durch harte Schichten. Über dem Mond geht der Weltraum weiter.
    Bohrer, Rakete, Lampe und Schutz werden in der Werkstatt stufenweise besser. Dafür braucht es Zahnräder aus den Rätselmaschinen und ab Stufe 2 Meistersteine. ---------- */
@@ -2787,51 +2728,68 @@ function matWhere(k){
 function guidePoint(){ return guide?matWhere(guide.k):null; }
 
 /* ---------- Werkstatt ---------- */
-function missing(g){
-  const t=gearLv(g), rc=GEAR[g].rc[t], out=[];
-  for(const k in rc){ const d=rc[k]-(hero.mat[k]|0); if(d>0) out.push(d+' '+MAT[k][d>1?2:1]); }
-  return out.length>1?out.slice(0,-1).join(', ')+' und '+out[out.length-1]:out[0]||'';
-}
-function renderLab(){
-  let h='';
-  for(const k of MATK){
-    const n=hero.mat[k]|0, kn=!!hero.mk[k]||n>0;
-    h+='<button class="'+(kn?'':'none')+'" data-mat="'+k+'" aria-label="'+MAT[k][1]+': '+n+'"><span aria-hidden="true">'+MAT[k][0]+'</span><b>'+n+'</b></button>';
-  }
-  $('lab-inv').innerHTML=h;
-  h='';
-  for(const g of GEARK){
-    const G=GEAR[g], t=gearLv(g), rc=t<3?G.rc[t]:null, can=canBuild(g);
-    h+='<div class="rc"><button class="tl" data-tl="'+g+'" aria-label="'+G.n+', Stufe '+t+' von 3"><span aria-hidden="true">'+G.e+'</span><i aria-hidden="true">'+'●'.repeat(t)+'○'.repeat(3-t)+'</i></button><div class="need">';
-    if(rc) for(const k in rc){
-      const n=hero.mat[k]|0;
-      h+='<button class="chipm '+(n>=rc[k]?'ok':'no')+'" data-mat="'+k+'" aria-label="'+MAT[k][1]+': '+Math.min(n,rc[k])+' von '+rc[k]+'"><span aria-hidden="true">'+MAT[k][0]+'</span>'+Math.min(n,rc[k])+'/'+rc[k]+'</button>';
-    }
-    h+='</div><button class="mk '+(t>=3?'max':can?'go':'wait')+'" data-mk="'+g+'" aria-label="'+G.n+(t>=3?' ist fertig':' bauen')+'">'+(t>=3?'✓':'🔨')+'</button></div>';
-  }
-  $('lab-rcp').innerHTML=h;
-  h='';
-  for(const p of PZON){ const l=hero.pz[p.id]|0; h+='<button data-pzt="'+p.id+'" aria-label="'+p.n+': Stufe '+(l+1)+' von 10"><span aria-hidden="true">'+p.e+'</span><i><b style="width:'+((l+1)*10)+'%"></b></i></button>'; }
-  $('lab-brain').innerHTML=h;
-  $('lab-taf').innerHTML='<span aria-hidden="true">🔢</span><span aria-hidden="true">💠</span>'+(hero.mat.ms|0);
-}
-function openLab(){
-  renderLab(); $('lab').hidden=false; ST.talkLock=0;
-  if(!hero.deep){ hero.deep=true; saveHero(); speak('Das ist die Werkstatt von Professor Zahnrad. Hier siehst du, was du für einen besseren Bohrer, eine stärkere Rakete, eine hellere Lampe und einen Schutz gegen Feuer brauchst. Tippe auf ein Bild, dann sage ich dir, wo du es findest.'); }
-}
-function labBuild(g){
-  const G=GEAR[g], t=gearLv(g);
-  if(t>=3){ speak(G.n+' ist schon ganz fertig.'); return; }
-  if(!canBuild(g)){ tone([170],'sawtooth'); speak('Für '+G.art+' fehlen noch '+missing(g)+'. Tippe auf ein Bild, dann sage ich dir, wo du es findest.'); return; }
-  if(!atLab()){ tone([170],'sawtooth'); guide={k:'lab',t:time+120}; speak('Du hast alles zusammen! Bauen kann aber nur Professor Zahnrad. Komm zur Werkstatt. Sie steht bei dir zu Hause.'); return; }
-  const rc=G.rc[t];
-  for(const k in rc) hero.mat[k]-=rc[k];
-  gearSet(g,t+1); saveHero(); guide=null;
-  $('lab').hidden=true; confetti(P.x,P.y); jingle();
-  banner(G.e+' '+'●'.repeat(t+1)+'○'.repeat(2-t),2600);
-  say('Professor Zahnrad',G.done[t]);
-  labBadge(false);
-}
+/* Port für ui/map.js: Karten, Werkstatt und Aufzug */
+const LM={
+  get mapPg(){ return mapPg; },
+  set mapPg(v){ mapPg=v; },
+  get $(){ return $; },
+  get RC0(){ return RC0; },
+  get FGT(){ return FGT; },
+  get FGW(){ return FGW; },
+  get RC1(){ return RC1; },
+  get FGH(){ return FGH; },
+  get genF(){ return genF; },
+  get FCOL(){ return FCOL; },
+  get MACH(){ return MACH; },
+  get VAULTS(){ return VAULTS; },
+  get realm(){ return realm; },
+  get EGGSVG(){ return EGGSVG; },
+  get WEAR(){ return WEAR; },
+  get PETS(){ return PETS; },
+  get EHAT(){ return EHAT; },
+  get GEAR(){ return GEAR; },
+  get MAT(){ return MAT; },
+  get MATK(){ return MATK; },
+  get GEARK(){ return GEARK; },
+  get PZON(){ return PZON; },
+  get guide(){ return guide; },
+  set guide(v){ guide=v; },
+  get time(){ return time; },
+  get ZN(){ return ZN; },
+  get liftBusy(){ return liftBusy; },
+  set liftBusy(v){ liftBusy=v; },
+  get dkA(){ return dkA; },
+  set dkA(v){ dkA=v; },
+  atLab,
+  banner,
+  canBuild,
+  confetti,
+  darkAt,
+  doorShut,
+  fRow,
+  fogArr,
+  fogHas,
+  gearLv,
+  gearSet,
+  ground,
+  grow,
+  labBadge,
+  marks,
+  nearCab,
+  nextLand,
+  rlm,
+  saveHero,
+  say,
+  scanMobile,
+  setMode,
+  smoke,
+  speak,
+  stationY,
+  teleport
+};
+function missing(g){ return missingWith(LM,g); }
+function openLab(){ return openLabWith(LM); }
+function labBuild(g){ return labBuildWith(LM,g); }
 $('lab').addEventListener('click',function(e){
   let b=e.target.closest('[data-mat]');
   if(b&&b.dataset.mat==='ms'){ speak(MAT.ms[1]+'. Du hast '+(hero.mat.ms|0)+'. '+MAT.ms[3]); return; }
@@ -2845,28 +2803,8 @@ $('lab').addEventListener('click',function(e){
 });
 
 /* ---------- Aufzug: fährt zu jeder Zone, die man selbst schon erreicht hat. Bodenfahrzeuge fahren mit. ---------- */
-function renderMine(){
-  const cur=nearCab(); let h='';
-  for(let k=0;k<ZN.length;k++){
-    const ok=k<=hero.zn;
-    h+='<button class="card place'+(k===cur?' cur':'')+(ok?'':' shut')+'" data-st="'+k+'" aria-label="'+(ok?'Fahre in '+ZN[k].n:'Noch verschlossen: '+ZN[k].n)+'"><span aria-hidden="true">'+(ok?ZN[k].e:'🔒')+'</span>'+(ok?'':'<small aria-hidden="true">'+ZN[k].e+'</small>')+'</button>';
-  }
-  $('mine-cards').innerHTML=h;
-}
-function openMine(){ if(liftBusy) return; renderMine(); $('mine').hidden=false; ST.talkLock=0; speak('Wohin soll der Aufzug fahren?'); }
-function liftGo(k){
-  if(liftBusy) return;
-  const f=$('fade'), m=P.mode;
-  if(m!=='walk'&&m!=='car'&&m!=='bagger'&&m!=='loader'&&m!=='dumper'&&m!=='tbm') setMode('walk');
-  liftBusy=true; f.hidden=false; void f.offsetWidth; f.classList.add('on'); sfx('whoosh');
-  setTimeout(function(){
-    P.x=LIFTX; P.y=stationY(k)-2; P.vx=0; P.vy=0; P.on=false; P.chute=false; P.ang=0;
-    cam.x=P.x; cam.y=P.y-80; dkA=darkAt(cam.y); scanMobile();
-    f.classList.remove('on');
-    setTimeout(function(){ f.hidden=true; liftBusy=false; },380);
-    speak(k?'Station '+ZN[k].s+'.':'Wieder zu Hause.');
-  },430);
-}
+function openMine(){ return openMineWith(LM); }
+function liftGo(k){ return liftGoWith(LM,k); }
 $('mine-cards').addEventListener('click',function(e){
   const b=e.target.closest('[data-st]'); if(!b) return;
   const k=+b.dataset.st;
