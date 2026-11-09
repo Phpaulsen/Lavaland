@@ -54,6 +54,7 @@ import { headWith, drawKidWith, drawChuteWith, drawCarWith, drawBaggerWith, draw
 import { rrWith, circleWith, mixWith, lerpCWith, emoWith, arrowWith, knobWith, drawTreeWith, drawCloudWith, drawSpaceWith, hillsWith, drawDarkWith, drawFarWith, drawNebulaWith, drawFindsWith, drawPropWith, drawDoorWith, drawScopeWith } from './render/scenery.js';
 import { drainWith, numOptsWith, dayNoWith, loadFactsWith, pickFactWith, pickFact0With, factDoneWith, masterGiveWith, genQWith, saveSchoolWith } from './systems/learn.js';
 import { ORBS, ground, inMoon, solidW, burns, colTop, floorAt, surfaceY, putUp, setCell } from './state/queries.js';
+import { pmaxWith, spawnWith, smokeWith, dustWith, confettiWith, explodeWith } from './systems/particles.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -490,24 +491,23 @@ function demoTrack(){
 
 /* ---------- Teilchen ---------- */
 const parts=[];
-/* Teilchen-Obergrenze: Ist sie erreicht, werden neue Teilchen einfach weggelassen (kostet nichts). Nur Ausrufe wie „BUMM!“ verdrängen das älteste. Auf langsamen Geräten liegt die Grenze niedriger. */
-function pmax(){ return maxDpr<=1?240:460; }
-function spawn(type,x,y,vx,vy,lf,size,c,col){
-  if(parts.length>=pmax()){ if(type!==9) return; parts.shift(); }
-  parts.push({type:type,x:x,y:y,vx:vx,vy:vy,life:lf,max:lf,size:size,c:c||0,col:col||'#fff'});
-}
-function smoke(x,y,n){ for(let i=0;i<n;i++) spawn(0,x+(Math.random()-.5)*20,y+(Math.random()-.5)*14,(Math.random()-.5)*60,-30-Math.random()*60,.8+Math.random(),6+Math.random()*7); }
-function dust(x,y){ for(let i=0;i<7;i++) spawn(3,x+(Math.random()-.5)*20,y-2,(Math.random()-.5)*140,-40-Math.random()*90,.5,3+Math.random()*3); }
+function pmax(){ return pmaxWith(PA); }
+function spawn(type,x,y,vx,vy,lf,size,c,col){ return spawnWith(PA,type,x,y,vx,vy,lf,size,c,col); }
+function smoke(x,y,n){ return smokeWith(PA,x,y,n); }
+function dust(x,y){ return dustWith(PA,x,y); }
 const CONF=['#e63946','#ffd23f','#3aa0e8','#58b548','#7b4fd6','#ff8a1f'];
-function confetti(x,y){ for(let i=0,n=reduced?18:70;i<n;i++) spawn(6,x+(Math.random()-.5)*30,y-30,(Math.random()-.5)*420,-180-Math.random()*380,1.4+Math.random(),3+Math.random()*2,CONF[i%6]); }
+function confetti(x,y){ return confettiWith(PA,x,y); }
 let shake=0, popG=0, popM=0, popT=0;
-function explode(x,y){
-  const cx=Math.floor(x/CELL), r=colTop(cx,Math.floor((y-TOP)/CELL)-4);
-  for(let dx=-5;dx<=5;dx++) for(let dy=1;dy<=3;dy++) if(Math.random()<.9-dy*.2) putUp(cx+dx,r-dy,FIRE);
-  for(let i=0;i<34;i++) spawn(1,x,y-10,(Math.random()-.5)*380,-60-Math.random()*340,.5+Math.random()*.6,8+Math.random()*9);
-  for(let i=0;i<14;i++) spawn(5,x,y-10,(Math.random()-.5)*500,-150-Math.random()*380,.9,2);
-  smoke(x,y-20,14); shake=.5; sfx('boom');
-}
+/* Teilchen erzeugen (systems/particles.js) */
+const PA={
+  get maxDpr(){ return maxDpr; },
+  parts,
+  get reduced(){ return reduced; },
+  CONF,
+  get shake(){ return shake; },
+  set shake(v){ shake=v; }
+};
+function explode(x,y){ return explodeWith(PA,x,y); }
 
 /* ---------- Spielfigur ---------- */
 function grav(){ return gravWith(PL); }

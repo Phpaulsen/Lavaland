@@ -14745,6 +14745,36 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     if (m > 0 && m < 4) ext(cx, cy);
   }
 
+  // src/systems/particles.js
+  function pmaxWith(PA) {
+    return PA.maxDpr <= 1 ? 240 : 460;
+  }
+  function spawnWith(PA, type, x, y, vx, vy, lf, size, c, col) {
+    if (PA.parts.length >= pmaxWith(PA)) {
+      if (type !== 9) return;
+      PA.parts.shift();
+    }
+    PA.parts.push({ type, x, y, vx, vy, life: lf, max: lf, size, c: c || 0, col: col || "#fff" });
+  }
+  function smokeWith(PA, x, y, n) {
+    for (let i = 0; i < n; i++) spawnWith(PA, 0, x + (Math.random() - 0.5) * 20, y + (Math.random() - 0.5) * 14, (Math.random() - 0.5) * 60, -30 - Math.random() * 60, 0.8 + Math.random(), 6 + Math.random() * 7);
+  }
+  function dustWith(PA, x, y) {
+    for (let i = 0; i < 7; i++) spawnWith(PA, 3, x + (Math.random() - 0.5) * 20, y - 2, (Math.random() - 0.5) * 140, -40 - Math.random() * 90, 0.5, 3 + Math.random() * 3);
+  }
+  function confettiWith(PA, x, y) {
+    for (let i = 0, n = PA.reduced ? 18 : 70; i < n; i++) spawnWith(PA, 6, x + (Math.random() - 0.5) * 30, y - 30, (Math.random() - 0.5) * 420, -180 - Math.random() * 380, 1.4 + Math.random(), 3 + Math.random() * 2, PA.CONF[i % 6]);
+  }
+  function explodeWith(PA, x, y) {
+    const cx = Math.floor(x / CELL), r = colTop(cx, Math.floor((y - TOP) / CELL) - 4);
+    for (let dx = -5; dx <= 5; dx++) for (let dy = 1; dy <= 3; dy++) if (Math.random() < 0.9 - dy * 0.2) putUp(cx + dx, r - dy, FIRE);
+    for (let i = 0; i < 34; i++) spawnWith(PA, 1, x, y - 10, (Math.random() - 0.5) * 380, -60 - Math.random() * 340, 0.5 + Math.random() * 0.6, 8 + Math.random() * 9);
+    for (let i = 0; i < 14; i++) spawnWith(PA, 5, x, y - 10, (Math.random() - 0.5) * 500, -150 - Math.random() * 380, 0.9, 2);
+    smokeWith(PA, x, y - 20, 14);
+    PA.shake = 0.5;
+    sfx("boom");
+  }
+
   // src/legacy.js
   (function() {
     "use strict";
@@ -15479,34 +15509,40 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     const parts = [];
     function pmax() {
-      return maxDpr <= 1 ? 240 : 460;
+      return pmaxWith(PA);
     }
     function spawn(type, x, y, vx, vy, lf, size, c, col) {
-      if (parts.length >= pmax()) {
-        if (type !== 9) return;
-        parts.shift();
-      }
-      parts.push({ type, x, y, vx, vy, life: lf, max: lf, size, c: c || 0, col: col || "#fff" });
+      return spawnWith(PA, type, x, y, vx, vy, lf, size, c, col);
     }
     function smoke(x, y, n) {
-      for (let i = 0; i < n; i++) spawn(0, x + (Math.random() - 0.5) * 20, y + (Math.random() - 0.5) * 14, (Math.random() - 0.5) * 60, -30 - Math.random() * 60, 0.8 + Math.random(), 6 + Math.random() * 7);
+      return smokeWith(PA, x, y, n);
     }
     function dust(x, y) {
-      for (let i = 0; i < 7; i++) spawn(3, x + (Math.random() - 0.5) * 20, y - 2, (Math.random() - 0.5) * 140, -40 - Math.random() * 90, 0.5, 3 + Math.random() * 3);
+      return dustWith(PA, x, y);
     }
     const CONF = ["#e63946", "#ffd23f", "#3aa0e8", "#58b548", "#7b4fd6", "#ff8a1f"];
     function confetti(x, y) {
-      for (let i = 0, n = reduced ? 18 : 70; i < n; i++) spawn(6, x + (Math.random() - 0.5) * 30, y - 30, (Math.random() - 0.5) * 420, -180 - Math.random() * 380, 1.4 + Math.random(), 3 + Math.random() * 2, CONF[i % 6]);
+      return confettiWith(PA, x, y);
     }
     let shake = 0, popG = 0, popM = 0, popT = 0;
+    const PA = {
+      get maxDpr() {
+        return maxDpr;
+      },
+      parts,
+      get reduced() {
+        return reduced;
+      },
+      CONF,
+      get shake() {
+        return shake;
+      },
+      set shake(v) {
+        shake = v;
+      }
+    };
     function explode(x, y) {
-      const cx = Math.floor(x / CELL), r = colTop(cx, Math.floor((y - TOP) / CELL) - 4);
-      for (let dx = -5; dx <= 5; dx++) for (let dy = 1; dy <= 3; dy++) if (Math.random() < 0.9 - dy * 0.2) putUp(cx + dx, r - dy, FIRE);
-      for (let i = 0; i < 34; i++) spawn(1, x, y - 10, (Math.random() - 0.5) * 380, -60 - Math.random() * 340, 0.5 + Math.random() * 0.6, 8 + Math.random() * 9);
-      for (let i = 0; i < 14; i++) spawn(5, x, y - 10, (Math.random() - 0.5) * 500, -150 - Math.random() * 380, 0.9, 2);
-      smoke(x, y - 20, 14);
-      shake = 0.5;
-      sfx("boom");
+      return explodeWith(PA, x, y);
     }
     function grav() {
       return gravWith(PL);
