@@ -1,6 +1,6 @@
 /* ---------- Tastenkürzel und Wischen: Kürzel für dieselben Knöpfe wie in der Leiste; Wischen nur, wo ein Fenster mehr Inhalt als Platz hat ---------- */
 // PR 29g1. Bewegt aus legacy.js. Knöpfe, Modus und Werkzeug kommen über den Port KY; die Handler stehen seit 29g2c in keysBindWith (Port KB).
-// legacy.js ruft beide Funktionen über Einzeiler.
+// app/wire.js ruft beide Funktionen über Einzeiler.
 import { P, keys } from '../state/game.js';
 import { ST } from '../state/facade.js';
 
@@ -25,7 +25,7 @@ export function canScrollWith(KY,n){
   }
   return false;
 }
-/* Tastatur, Fokus, Kontextmenü und Wischen verdrahten. PR 29g2c: Die Anweisungen auf oberster Ebene aus legacy.js stehen unverändert in keysBindWith, legacy.js ruft es an der alten Stelle; alles aus legacy.js kommt über den Port KB. */
+/* Tastatur, Fokus, Kontextmenü und Wischen verdrahten. PR 29g2c: Die Anweisungen auf oberster Ebene aus legacy.js stehen unverändert in keysBindWith, app/wire.js ruft es an der alten Stelle; alles aus legacy.js kommt über den Port KB. */
 /** @param {Port} KB */
 export function keysBindWith(KB){
 /** @type {Record<string, string>} */

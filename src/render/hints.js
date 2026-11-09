@@ -1,6 +1,6 @@
 /* ---------- Hinweise malen: Funkelstern und Pfeil zu einem Ziel (im Bild darüber, sonst am Bildrand) ---------- */
 // PR 29g1. Bewegt aus legacy.js. Bildgröße, Zeit und Zeichenhelfer kommen über den Port HI, ctx als Parameter.
-// legacy.js ruft beide Funktionen über Einzeiler.
+// app/wire.js ruft beide Funktionen über Einzeiler.
 import { cam } from '../state/game.js';
 import { clamp, TAU } from '../core/world/const.js';
 

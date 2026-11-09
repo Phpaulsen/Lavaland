@@ -1,6 +1,6 @@
 /* ---------- Kulisse und Zeichenhelfer: Rundrechteck, Kreis, Farbmischung, Emoji, Pfeil, Knopf, Bäume, Wolken, Weltraum, Hügel, Dunkelheit, ferner Weltraum, Nebel, Funde, Requisiten, Wissenstüren und Fernrohr ---------- */
 // PR 29b. Bewegt aus legacy.js. Was das Malen vom übrigen Spiel braucht, kommt über den Port SC; gezeichnet wird auf den übergebenen ctx.
-// legacy.js ruft alle Funktionen über Einzeiler (andere Ports reichen circle, rr, emo, mix, lerpC weiter). Paletten und drawCells bleiben für einen eigenen Schritt.
+// app/wire.js ruft alle Funktionen über Einzeiler (andere Ports reichen circle, rr, emo, mix, lerpC weiter). Paletten und drawCells bleiben für einen eigenen Schritt.
 import { TAU, MOON, clamp } from '../core/world/const.js';
 import { cam, P, hero } from '../state/game.js';
 import { ST } from '../state/facade.js';

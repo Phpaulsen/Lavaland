@@ -1,5 +1,5 @@
 /* ---------- Bedienung verdrahten: Tastenbilder in die Knöpfe, Fahrzeug- und Werkzeugkarten, Klicks auf Leiste, Menü, Fenster, Hand, Ton, Vollbild, Umzug, Neue Welt ---------- */
-// PR 29g2b. Die Anweisungen auf oberster Ebene aus legacy.js stehen unverändert in uiBindWith, legacy.js ruft es an der alten Stelle (nach den Deklarationen, die
+// PR 29g2b. Die Anweisungen auf oberster Ebene aus legacy.js stehen unverändert in uiBindWith, app/wire.js ruft es an der alten Stelle (nach den Deklarationen, die
 // auch außerhalb gelesen werden: VEH, TOOLS, MODES, PAINT, ghostEl, actEl, lefty, bakIn, DE). Alles aus legacy.js kommt über den Port UB.
 import { QI, IC, K } from '../ui/icons.js';
 import { keys, P, hero } from '../state/game.js';

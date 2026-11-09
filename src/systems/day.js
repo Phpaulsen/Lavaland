@@ -1,6 +1,6 @@
 /* ---------- Tagesbilanz und Lagerfeuer: Spielzeit des Tages, Elternlimit, Lagerfeuer zur Pause; dazu der einmalige Umtausch von altem Gold in Zahnräder ---------- */
-// PR 29f2. Bewegt aus legacy.js. Zustand (DAY, dayT, LIM, campT) bleibt vorerst in legacy.js und kommt mit Settern über den Port DY; K_DAY über den Port (Schichtregel).
-// legacy.js ruft alle Funktionen über Einzeiler.
+// PR 29f2. Bewegt aus legacy.js. Zustand (DAY, dayT, LIM, campT) bleibt vorerst in app/wire.js und kommt mit Settern über den Port DY; K_DAY über den Port (Schichtregel).
+// app/wire.js ruft alle Funktionen über Einzeiler.
 import { ST } from '../state/facade.js';
 import { sfx } from '../audio/sound.js';
 import { hero } from '../state/game.js';

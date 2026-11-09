@@ -1,5 +1,5 @@
 // Spielprotokoll für Eltern. Bewegt aus legacy.js (PR 13): const LOG=(function(){…})() wird export function logWith(LP){…},
-// legacy.js ruft const LOG=logWith(LP). Was das Protokoll vom Spiel liest, kommt über den Port LP; sonst ist der Text unverändert.
+// app/wire.js ruft const LOG=logWith(LP). Was das Protokoll vom Spiel liest, kommt über den Port LP; sonst ist der Text unverändert.
 // Eigene Datenbank lavaland-log: Ein Fehler hier trifft nie den Spielstand. log/ importiert weder state/ noch persistence/.
 import { CELL, TOP } from '../core/world/const.js';
 

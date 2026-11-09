@@ -2,7 +2,7 @@
 // PR 23b. draw und fillCells samt Puffern für Lava, Wasser und Feuer bewegt aus legacy.js, unverändert. Was draw vom übrigen Spiel braucht, kommt über den Port DR.
 // drawLayer kommt über den Port, weil render nicht aus systems importieren darf.
 // PR 23c: draw nach Ebenen zerlegt. drawWith ruft die Ebenen in der alten Reihenfolge; Zufall (Wackeln, Lavafunken) bleibt in derselben Reihenfolge.
-// legacy.js ruft draw über einen Einzeiler.
+// app/wire.js ruft draw über einen Einzeiler.
 import { BT } from '../core/world/shape.js';
 import { bio, grid } from '../state/world.js';
 import { clamp, CELL, GX, TOP, GY, LAVA, WATER, MAX_LAVA, MAX_WATER, MAX_FIRE } from '../core/world/const.js';

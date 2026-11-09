@@ -1,6 +1,6 @@
 /* ---------- Spielen in der Welt: Zellen zählen, Springen, Funde verstecken, Album, Sternentor, Bomben, Sonar, Entdecken, Disco, Tippen in die Welt (Regenwolke, Baum schütteln) und Fernrohr ---------- */
-// PR 29e. Bewegt aus legacy.js. Was die Funktionen vom übrigen Spiel brauchen, kommt über den Port TW. Zustand (Zähler, Tor, Fernrohr-Frage) bleibt vorerst in legacy.js, geschrieben über Setter.
-// legacy.js ruft alle Funktionen über Einzeiler (Abschnitte, Ports und Tests). Malen (star4, pointTo) bleibt für 29f.
+// PR 29e. Bewegt aus legacy.js. Was die Funktionen vom übrigen Spiel brauchen, kommt über den Port TW. Zustand (Zähler, Tor, Fernrohr-Frage) bleibt vorerst in app/wire.js, geschrieben über Setter.
+// app/wire.js ruft alle Funktionen über Einzeiler (Abschnitte, Ports und Tests). Malen (star4, pointTo) bleibt für 29f.
 import { clamp, CELL, GX, TOP, GY, HOME_W, VOLC, FLAT, SITE, siteY, MOON, FIRE, TAU } from '../core/world/const.js';
 import { grid, rC, grow0 } from '../state/world.js';
 import { P, cam, hero } from '../state/game.js';

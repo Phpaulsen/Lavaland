@@ -1,5 +1,5 @@
 // Rätsel „Rohre“. Bewegt aus legacy.js (PR 5). Der Generator bekommt Zufall (rand) und gelesenen Zustand als Parameter;
-// legacy.js ruft ihn über einen Einzeiler mit Math.random. Zeichnen, Tippen, Hinweis und Vorlesen bleiben in legacy.js.
+// app/wire.js ruft ihn über einen Einzeiler mit Math.random. Zeichnen, Tippen, Hinweis und Vorlesen bleiben in app/wire.js.
 import { riWith, shuffleWith } from '../rng.js';
 
 export const RHL=[[3,2,0],[3,3,0],[4,3,0],[4,4,0],[4,4,1],[5,4,1],[5,5,1],[5,5,2],[6,5,2],[6,6,2]];

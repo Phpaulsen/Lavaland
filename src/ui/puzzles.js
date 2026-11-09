@@ -1,5 +1,5 @@
 /* ---------- Rätselrahmen und Rätsel auf dem Bildschirm: Öffnen, Zeichnen, Antippen, Tipps, Ansagen, Gewinnen ---------- */
-// PR 24. Bewegt aus legacy.js. Die Aufgaben selbst (mk…) liegen in core/puzzles/, die Tabelle der Arten (PZT) bleibt vorerst in legacy.js
+// PR 24. Bewegt aus legacy.js. Die Aufgaben selbst (mk…) liegen in core/puzzles/, die Tabelle der Arten (PZT) bleibt vorerst in app/wire.js
 // und ruft die Funktionen hier über Einzeiler. Was der Rahmen vom übrigen Spiel braucht, kommt über den Port PZ.
 import { clamp } from '../core/world/const.js';
 import { hero, keys, P } from '../state/game.js';
@@ -461,7 +461,7 @@ export function hiSudokuWith(PZ,st){
 }
 /** @param {Port} PZ @param {any} st */
 export function sySudokuWith(PZ,st){ return 'In jeder Reihe und in jeder Spalte darf jedes Bild nur einmal vorkommen.'+(st.n===4?' Auch in jedem der vier Kästchen.':'')+' Tippe auf ein leeres Feld, bis das richtige Bild da ist. Rot heißt: Das Bild gibt es dort schon.'; }
-/* Klicks im Rätselrahmen und am Akku verdrahten. PR 29g2d: Die Anweisungen auf oberster Ebene aus legacy.js stehen unverändert in pzBindWith, legacy.js ruft es an der alten Stelle; alles aus legacy.js kommt über den Port PQ. */
+/* Klicks im Rätselrahmen und am Akku verdrahten. PR 29g2d: Die Anweisungen auf oberster Ebene aus legacy.js stehen unverändert in pzBindWith, app/wire.js ruft es an der alten Stelle; alles aus legacy.js kommt über den Port PQ. */
 /** @param {Port} PQ */
 export function pzBindWith(PQ){
 PQ.$('pz').addEventListener('click',/** @param {any} e */ function(e){

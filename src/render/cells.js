@@ -1,6 +1,6 @@
 /* ---------- Zellen malen: Farbpaletten der Welt und der Länder, Farben der Tiefe, Paletten fremder Welten und das Zellbild ---------- */
 // PR 29b2. Bewegt aus legacy.js. Die Paletten liegen als Modulbindungen hier, damit drawCells im heißen Pfad ohne Port liest; nur setPal schreibt sie.
-// legacy.js importiert pal und setPal (Port RM) und ruft drawCells über einen Einzeiler (Port DR). Über den Port CL kommt nur time.
+// app/wire.js importiert pal und setPal (Port RM) und ruft drawCells über einen Einzeiler (Port DR). Über den Port CL kommt nur time.
 import { clamp, CELL, GX, TOP, GY, EARTH, ROCK, ICE, WOOD, DEEP, HOT, CORE, GOLD, GEM, SNOW, SHELL } from '../core/world/const.js';
 import { BT } from '../core/world/shape.js';
 import { grid, grow0, bmx, bio2, bio, mtop, zS1, z4, zS2, zS3, rH, rD, rA, rB } from '../state/world.js';

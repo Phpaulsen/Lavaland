@@ -1,5 +1,5 @@
 /* ---------- Fahrzeuge: Graben und Schaufeln, Fahren, Fliegen, Ski, Drache, U-Boot, Ballon, Hubschrauber, Boot, Kletterkäfer ---------- */
-// PR 28a. Bewegt aus legacy.js. Laufen, mover, update, setMode und die Seilrutsche bleiben vorerst in legacy.js (PR 28b).
+// PR 28a. Bewegt aus legacy.js. Laufen, mover, update, setMode und die Seilrutsche bleiben vorerst in app/wire.js (PR 28b).
 // Was die Fahrzeuge vom übrigen Spiel brauchen, kommt über den Port VH.
 import { grid } from '../../state/world.js';
 import { BED, CORE, SHELL, GOLD, GEM, GX, CELL, TOP, EARTH, ICE, WATER, clamp, G, SNOW, TAU, FIRE } from '../../core/world/const.js';

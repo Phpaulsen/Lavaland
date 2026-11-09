@@ -1,6 +1,6 @@
 /* ---------- Schienen: die Vorführbahn neben dem Start ---------- */
 // PR 29g1. Bewegt aus legacy.js. makeTrack kommt über den Port TK.
-// legacy.js ruft demoTrack über einen Einzeiler.
+// app/wire.js ruft demoTrack über einen Einzeiler.
 import { ground } from '../state/queries.js';
 import { TAU } from '../core/world/const.js';
 

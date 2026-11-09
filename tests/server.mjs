@@ -1,5 +1,5 @@
-// Kleiner Testserver für das Repo. Die Seite kommt aus dem Testbuild dist/index.test.html (node tools/build.mjs), der den Zugang window.__ev schon enthält.
-// Alte Stände (extra, z. B. /old/index.html von main) haben ihn nicht; dort wird er wie früher an einer festen Textstelle eingesetzt.
+// Kleiner Testserver für das Repo. Die Seite kommt aus dem Testbuild dist/index.test.html (node tools/build.mjs), der die Test-API window.__lv und die Hilfe window.__ev (Ausdruck über __lv) schon enthält.
+// Alte Stände (extra, z. B. /old/index.html von main) haben ihn nicht; dort wird __ev wie früher als eval im Spiel-Scope an einer festen Textstelle eingesetzt.
 import http from 'http';
 import fs from 'fs';
 import path from 'path';

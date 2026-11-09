@@ -1,6 +1,6 @@
 /* ---------- Spielstand umziehen (Bedienung): Datei speichern oder teilen, Datei wählen und prüfen ---------- */
 // PR 29g1. Bewegt aus legacy.js. Packen und Laden bleiben in persistence/transfer.js; bakMake, bakIn und die Rückmeldungen kommen über den Port BK,
-// K_BAK_AT, BAK_MAX und bakOk über den Port (Schichtregel). legacy.js ruft alle Funktionen über Einzeiler.
+// K_BAK_AT, BAK_MAX und bakOk über den Port (Schichtregel). app/wire.js ruft alle Funktionen über Einzeiler.
 import { tone } from '../audio/sound.js';
 
 /** @typedef {Record<string, any>} Port */

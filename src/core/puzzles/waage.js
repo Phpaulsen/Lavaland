@@ -1,5 +1,5 @@
 // Rätsel „Waage“ (Zahlen bis 20, richtet sich nach dem Schulstand). Bewegt aus legacy.js (PR 5). Der Generator bekommt Zufall (rand) und gelesenen Zustand als Parameter;
-// legacy.js ruft ihn über einen Einzeiler mit Math.random. Zeichnen, Tippen, Hinweis und Vorlesen bleiben in legacy.js.
+// app/wire.js ruft ihn über einen Einzeiler mit Math.random. Zeichnen, Tippen, Hinweis und Vorlesen bleiben in app/wire.js.
 import { riWith, shuffleWith } from '../rng.js';
 
 /**

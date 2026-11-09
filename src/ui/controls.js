@@ -1,5 +1,5 @@
 /* ---------- Bedienung: Tastenbilder einsetzen, Tippen und Halten, linke oder rechte Hand, Vollbild, Bombenzahl im HUD ---------- */
-// PR 27a. Bewegt aus legacy.js. Die Tastenbilder (IC, QI, AI), die Listen der Fahrzeuge und Werkzeuge und alle Handler bleiben in legacy.js.
+// PR 27a. Bewegt aus legacy.js. Die Tastenbilder (IC, QI, AI), die Listen der Fahrzeuge und Werkzeuge und alle Handler bleiben in app/wire.js.
 // Was die Bedienung vom übrigen Spiel braucht, kommt über den Port CT.
 import { hero, keys } from '../state/game.js';
 

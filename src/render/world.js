@@ -1,7 +1,7 @@
 /* ---------- Die große Welt malen: Stimmung, Pflanzen, Deko, Sprungpilze, Geheimnisse, Planeten, Werkstatt, Aufzug, Maschinen und Leuchtmarken in der Tiefe ---------- */
 // PR 22. Bewegt aus legacy.js. Was das Malen vom übrigen Spiel braucht, kommt über den Port RP; gezeichnet wird auf den übergebenen ctx.
-// Die Zeichenhelfer circle, rr und emo bleiben vorerst in legacy.js und malen auf denselben Kontext. draw() selbst folgt in PR 23.
-// mood, drawMood, drawFlora, drawOrb, drawWorldBack, drawWorldFront und drawDeep ruft legacy.js über Einzeiler.
+// Die Zeichenhelfer circle, rr und emo bleiben vorerst in app/wire.js und malen auf denselben Kontext. draw() selbst folgt in PR 23.
+// mood, drawMood, drawFlora, drawOrb, drawWorldBack, drawWorldFront und drawDeep ruft app/wire.js über Einzeiler.
 import { bix } from '../state/world.js';
 import { clamp, CELL, GX, TAU } from '../core/world/const.js';
 import { cam, P } from '../state/game.js';

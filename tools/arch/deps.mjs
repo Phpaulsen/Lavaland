@@ -1,8 +1,8 @@
 // Prüft die Schichtregeln aus docs/architecture/target.md Abschnitt 3 auf dem esbuild-Metafile (dieselbe Sicht wie der Bundler).
 // Aufruf: node tools/arch/deps.mjs            prüft den Build aus src/
 //         node tools/arch/deps.mjs --selftest prüft die Prüfung an erfundenen Graphen
-// Regeln: Importtabelle je Schicht, keine Zyklen zwischen Dateien, legacy.js importiert nur main.js oder testing/,
-// in core/ kein document, window, localStorage, indexedDB, ctx. und Math.random. legacy.js selbst ist ausgenommen, bis es gelöscht ist.
+// Regeln: Importtabelle je Schicht, keine Zyklen zwischen Dateien, main.js importiert niemand,
+// in core/ kein document, window, localStorage, indexedDB, ctx. und Math.random. Ausnahmen gibt es keine.
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -19,16 +19,14 @@ const ALLOW = {
   render: ['core', 'state', 'render'],
   ui: ['core', 'state', 'audio', 'render', 'ui'],
   app: LAYERS.filter(l => l !== 'testing'),
-  testing: [...LAYERS, 'legacy', 'main'],
-  main: [...LAYERS, 'legacy'],
-  legacy: [...LAYERS],
+  testing: [...LAYERS],
+  main: [...LAYERS],
 };
 const CORE_BAN = [[/\bdocument\b/, 'document'], [/\bwindow\b/, 'window'], [/\blocalStorage\b/, 'localStorage'], [/\bindexedDB\b/, 'indexedDB'], [/\bctx\./, 'ctx.'], [/\bMath\.random\b/, 'Math.random']];
 
 /** Schicht einer Datei relativ zu src/ (z. B. core/rng.js → core), oder null für Dateien außerhalb der Tabelle. */
 export function layerOf(rel) {
   if (rel === 'main.js') return 'main';
-  if (rel === 'legacy.js') return 'legacy';
   const top = rel.split('/')[0];
   return LAYERS.includes(top) && rel.includes('/') ? top : null;
 }
@@ -55,11 +53,11 @@ export function check(graph, text = {}) {
   const err = [];
   for (const [f, imps] of Object.entries(graph)) {
     const lf = layerOf(f);
-    if (!lf) { err.push(`${f}: liegt in keiner Schicht (erlaubt: ${LAYERS.join(', ')}, main.js, legacy.js)`); continue; }
+    if (!lf) { err.push(`${f}: liegt in keiner Schicht (erlaubt: ${LAYERS.join(', ')}, main.js)`); continue; }
     for (const t of imps) {
       const lt = layerOf(t);
       if (!lt) { err.push(`${f} → ${t}: Ziel liegt in keiner Schicht`); continue; }
-      if (lt === 'legacy' && lf !== 'main' && lf !== 'testing') err.push(`${f} → legacy.js: nur main.js und testing/ dürfen legacy.js importieren`);
+      if (lt === 'main') err.push(`${f} → main.js: main.js ist der Einstieg, niemand importiert ihn`);
       else if (!ALLOW[lf].includes(lt)) err.push(`${f} → ${t}: ${lf} darf ${lt} nicht importieren (erlaubt: ${ALLOW[lf].join(', ')})`);
     }
     if (lf === 'core' && text[f] != null) {
@@ -84,11 +82,12 @@ export function graphOf(metafile) {
 
 function selftest() {
   const cases = [
-    [{ 'main.js': ['legacy.js', 'core/rng.js'], 'legacy.js': ['core/rng.js'], 'core/rng.js': [] }, {}, 0],
+    [{ 'main.js': ['app/wire.js', 'core/rng.js'], 'app/wire.js': ['core/rng.js'], 'core/rng.js': [] }, {}, 0],
     [{ 'core/a.js': ['state/w.js'], 'state/w.js': [] }, {}, 1],
     [{ 'ui/a.js': ['persistence/s.js'], 'persistence/s.js': [] }, {}, 1],
     [{ 'core/a.js': ['core/b.js'], 'core/b.js': ['core/a.js'] }, {}, 1],
-    [{ 'render/a.js': ['legacy.js'], 'legacy.js': [] }, {}, 1],
+    [{ 'render/a.js': ['main.js'], 'main.js': [] }, {}, 1],
+    [{ 'legacy.js': [] }, {}, 1],
     [{ 'core/a.js': [] }, { 'core/a.js': 'export const f=()=>Math.random();' }, 1],
     [{ 'core/a.js': [] }, { 'core/a.js': '// Math.random nur im Kommentar\nexport const f=r=>r();' }, 0],
     [{ 'foo.js': [] }, {}, 1],

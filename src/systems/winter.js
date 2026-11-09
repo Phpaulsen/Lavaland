@@ -1,8 +1,8 @@
 /* ---------- Winter-Leben: Schneebälle, Feuerwerk, Schneemänner, Pinguine und die Figuren am Schneeberg und am Vulkan ---------- */
 // PR 20b. Bewegt aus legacy.js. Was sie vom übrigen Spiel brauchen, kommt über den Port WP.
-// Die Zustände (balls, fws, stq, N, manT, pinT, pinN) bleiben in legacy.js, weil Zeichnen, Antippen und Weltwechsel sie nutzen; geschrieben wird über Setter.
+// Die Zustände (balls, fws, stq, N, manT, pinT, pinN) bleiben in app/wire.js, weil Zeichnen, Antippen und Weltwechsel sie nutzen; geschrieben wird über Setter.
 // Ski, Lift und Drachenflug sind Fahrzeuge und ziehen mit ihnen um. winterTick läuft als System in SIDE (winterWith);
-// throwBall, firework, burst, addMan, drawMan, pinFly, yetiHit und stEnter ruft legacy.js über Einzeiler.
+// throwBall, firework, burst, addMan, drawMan, pinFly, yetiHit und stEnter ruft app/wire.js über Einzeiler.
 import { P, cam } from '../state/game.js';
 import { clamp, WORLD_W, LAVA, FIRE, CELL, TOP, WATER, SNOW, TAU, G, GY, VOLC } from '../core/world/const.js';
 import { sfx, jingle } from '../audio/sound.js';

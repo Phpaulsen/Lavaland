@@ -1,8 +1,8 @@
 // @ts-nocheck
 /* ---------- Verdrahtung (Composition Root): Zustand, Ports und Einzeiler, die die Module verbinden, Handler beim Laden und der Start ---------- */
-// PR 29g2e. Der Körper der äußeren IIFE aus legacy.js steht unverändert in wire(); legacy.js ruft nur noch wire(). Reihenfolge und Gültigkeitsbereich
-// bleiben gleich (eine Funktion statt einer IIFE). Die Testzugangs-Marke steht hier, eval sieht also weiter den Spiel-Scope.
-// Entscheidung 9.11.: Zustand zieht später je Bereich als Aufräum-PR nach state/ (migration-plan.md). Bis dahin @ts-nocheck wie in legacy.js.
+// Der Körper der früheren IIFE aus legacy.js (PR 29g2e), main.js ruft wire(). Reihenfolge und Gültigkeitsbereich sind dieselben wie dort.
+// An der Testmarke (Kommentar test-hook) setzt der Testbuild window.__lv ein: Getter (und Setter für let/var/function) aller Namen dieses Scopes (tools/build.mjs).
+// Entscheidung 9.11.: Zustand zieht später je Bereich als Aufräum-PR nach state/ (migration-plan.md). Bis dahin @ts-nocheck.
 import { SIDE, register, safeWith, drawLayer } from '../systems/index.js';
 import { rng, hash2, riWith, shuffleWith } from '../core/rng.js';
 import { HOME_W, HOME_GX, WORLD_W0, WORLD_W, CELL, GX, GY, GY0, KEEPR, WINW, SW, ROWW, SH, TOP, VOLC, G, TAU, LAVA, FIRE, WATER, EARTH, ROCK, ICE, WOOD, BED, DEEP, HOT, CORE, GOLD, GEM, SNOW, SHELL, MAX_LAVA, MAX_WATER, MAX_FIRE, SKY_TOP, SKYL, SKY_END, MOON, STALL_X, SITE, FLAT, clamp, baseG, bump, siteY, rawH, B0, EXT_X, EXC, HOME_END, WL, WLR } from '../core/world/const.js';
@@ -658,7 +658,7 @@ const WT={
   smoke,
   spawn
 };
-/* Port für systems/quests.js: Auftragsdaten, Welt, Werkstatt, Rätselmaschinen, Oberfläche und Sprache für die Aufträge. Der Auftrag selbst (quest, qShown, qDoneT) bleibt in legacy.js, weil Zeichnen, Speichern und Tests ihn lesen; geschrieben wird er über Setter. */
+/* Port für systems/quests.js: Auftragsdaten, Welt, Werkstatt, Rätselmaschinen, Oberfläche und Sprache für die Aufträge. Der Auftrag selbst (quest, qShown, qDoneT) bleibt in app/wire.js, weil Zeichnen, Speichern und Tests ihn lesen; geschrieben wird er über Setter. */
 const QP={
   get QSKY(){ return QSKY; },
   get realm(){ return realm; },

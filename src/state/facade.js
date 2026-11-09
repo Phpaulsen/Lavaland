@@ -1,6 +1,6 @@
 // Übergangsfassade ST (ADR 0001 Punkt 9): ein Objekt mit get/set je neu zugewiesenem Namen, der aus legacy.js umgezogen ist (Welt: world.js, Spielzustand: game.js).
-// legacy.js schreibt x als ST.x (Codemod, tools/arch/codemod.mjs). Lesen gibt den aktuellen Wert des Moduls, Schreiben ruft den Setter.
-// Name ST statt G: G ist die Schwerkraft (core/world/const.js). Die Fassade wird leer und gelöscht, wenn legacy.js leer ist (PR 29).
+// app/wire.js schreibt x als ST.x (Codemod, tools/arch/codemod.mjs). Lesen gibt den aktuellen Wert des Moduls, Schreiben ruft den Setter.
+// Name ST statt G: G ist die Schwerkraft (core/world/const.js). Die Fassade bleibt, bis der Zustand aus app/wire.js nach state/ gezogen ist (Aufräumen B, migration-plan.md).
 import { BIO, STR, CRE, PICKS, PADS, DECO, EGGS, LOOT, DROPS, stI, NT0, NC0, seen, eggGot, lootGot, orbGot,
   setBIO, setSTR, setCRE, setPICKS, setPADS, setDECO, setEGGS, setLOOT, setDROPS, setStI, setNT0, setNC0, setSeen, setEggGot, setLootGot, setOrbGot } from './world.js';
 import { gold, gems, lootDirty, heroDirty, setGold, setGems, setLootDirty, setHeroDirty, ready, saving, frozen, diskLock, traveling, paused, tool, task, talkLock, setReady, setSaving, setFrozen, setDiskLock, setTraveling, setPaused, setToolV, setTask, setTalkLock, energy, found, hidden, props, tracks, zips, matGot, pzGot, setEnergy, setFound, setHidden, setProps, setTracks, setZips, setMatGot, setPzGot } from './game.js';

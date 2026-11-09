@@ -1,6 +1,6 @@
 // Sehenswürdigkeiten (PR 17): Geysire, Sternschnuppen, Schiffswracks, Glühwürmchen und Kristallharfen, je mit tick und draw.
 // Bewegt aus legacy.js. Was die Systeme vom übrigen Spiel brauchen (Zeit, Welt, Teilchen, Belohnung, Zeichenhelfer), kommt über den Port SY.
-// Ihre Listen (GEYS, METS, MROCKS, WRECKS, FLIES, JAR, HARPS) gehören hierher; legacy.js leert METS, MROCKS und FLIES beim Weltwechsel.
+// Ihre Listen (GEYS, METS, MROCKS, WRECKS, FLIES, JAR, HARPS) gehören hierher; app/wire.js leert METS, MROCKS und FLIES beim Weltwechsel.
 import { ST } from '../state/facade.js';
 import { P } from '../state/game.js';
 import { blip, jingle, sfx, tone } from '../audio/sound.js';

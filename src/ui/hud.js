@@ -1,6 +1,6 @@
 /* ---------- Oberfläche: Werkzeug wählen, Leiste abgleichen, Knopf-Puls, Blitz, Banner, Sprechblasen und Ansagen, Belohnung, Besitz, Aktionsknopf ---------- */
-// PR 29f. Bewegt aus legacy.js. Was die Oberfläche vom übrigen Spiel braucht, kommt über den Port HU; Zeitgeber (bannerT, sayT) und Strich-Zustand bleiben vorerst in legacy.js, geschrieben über Setter.
-// legacy.js ruft alle Funktionen über Einzeiler (viele Abschnitte, Ports und Tests). Tastenkürzel und Wischsperre (keyShort, canScroll) bleiben bei den Handlern.
+// PR 29f. Bewegt aus legacy.js. Was die Oberfläche vom übrigen Spiel braucht, kommt über den Port HU; Zeitgeber (bannerT, sayT) und Strich-Zustand bleiben vorerst in app/wire.js, geschrieben über Setter.
+// app/wire.js ruft alle Funktionen über Einzeiler (viele Abschnitte, Ports und Tests). Tastenkürzel und Wischsperre (keyShort, canScroll) bleiben bei den Handlern.
 import { ST } from '../state/facade.js';
 import { P, hero } from '../state/game.js';
 import { AU, jingle } from '../audio/sound.js';

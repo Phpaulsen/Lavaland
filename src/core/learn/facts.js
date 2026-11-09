@@ -1,5 +1,5 @@
 // Lernfakten: Wort-, Silben- und Reimlisten, die Stufen (Schulbuch-Reihenfolge) und reine Hilfen über Faktschlüssel. Bewegt aus legacy.js (PR 6).
-// Ein Faktschlüssel ist ein String wie '7+5', 'count:4', 'anlaut:Maus'. Fach, Fälligkeit und Auswahl stehen in leitner.js und legacy.js.
+// Ein Faktschlüssel ist ein String wie '7+5', 'count:4', 'anlaut:Maus'. Fach, Fälligkeit und Auswahl stehen in leitner.js und app/wire.js.
 /** @typedef {'m'|'l'} Domain Fachgebiet: m Mathe, l Lesen */
 /** @typedef {{w: string, ic: string, no: string}} Word w: Wort, ic: Bildschlüssel, no: Buchstaben, die als Ablenker nicht vorkommen dürfen */
 /** @type {Word[]} */
