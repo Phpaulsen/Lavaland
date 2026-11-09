@@ -9921,6 +9921,12 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     g.style.gridTemplateColumns = "repeat(" + cols + ",minmax(0,1fr))";
     g.innerHTML = h;
   }
+  function openTafelWith(QZ) {
+    QZ.tafTab = "p";
+    renderTafelWith(QZ);
+    QZ.$("tafel").hidden = false;
+    QZ.speak("Deine Rechentafel. Je mehr Farbe, desto besser sitzt die Aufgabe. Ein blauer Stein ist ein Meisterstein.");
+  }
 
   // src/legacy.js
   (function() {
@@ -18132,6 +18138,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     function renderTafel() {
       return renderTafelWith(QZ);
+    }
+    function openTafel() {
+      return openTafelWith(QZ);
     }
     $("lab-taf").addEventListener("click", function() {
       $("lab").hidden = true;

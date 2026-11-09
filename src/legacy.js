@@ -39,7 +39,7 @@ import { moodWith, drawMoodWith, drawFloraWith, drawOrbWith, drawWorldBackWith, 
 import { drawSnowmanWith, drawDragonWith, drawGondolaWith, drawSkierWith, drawRollWith, drawWinterWith, drawFrontWith, drawSnowfallWith } from './render/winter.js';
 import { drawWith } from './render/draw.js';
 import { pzOpenWith, pzCloseWith, pzHintMaxWith, pzHintUiWith, drMusterWith, acMusterWith, hiMusterWith, syMusterWith, drSternWith, acSternWith, hiSternWith, sySternWith, drSpiegelWith, acSpiegelWith, hiSpiegelWith, sySpiegelWith, drRoboWith, acRoboWith, hiRoboWith, syRoboWith, drWaageWith, poWaageWith, acWaageWith, hiWaageWith, syWaageWith, drEchoWith, stEchoWith, acEchoWith, hiEchoWith, syEchoWith, drRohreWith, acRohreWith, hiRohreWith, syRohreWith, drSudokuWith, acSudokuWith, hiSudokuWith, sySudokuWith } from './ui/puzzles.js';
-import { renderBattWith, needWith, openQuizWith, closeQuizWith, nextQWith, padKeyWith, padSubmitWith, tafCellWith, renderTafelWith } from './ui/learn.js';
+import { renderBattWith, needWith, openQuizWith, closeQuizWith, nextQWith, padKeyWith, padSubmitWith, tafCellWith, renderTafelWith, openTafelWith } from './ui/learn.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -4259,6 +4259,7 @@ function parStumble(qs){
 let tafTab='p';
 function tafCell(k,t){ return tafCellWith(QZ,k,t); }
 function renderTafel(){ return renderTafelWith(QZ); }
+function openTafel(){ return openTafelWith(QZ); }
 $('lab-taf').addEventListener('click',function(){ $('lab').hidden=true; openTafel(); });
 $('tafel').addEventListener('click',function(e){
   if(e.target===$('tafel')||e.target.closest('.xb')){ $('tafel').hidden=true; return; }
