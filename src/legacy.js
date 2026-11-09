@@ -44,6 +44,7 @@ import { renderMapWith, renderFogWith, mapClickWith, renderEggsWith, eggClickWit
 import { pgOpenWith, pgDrawWith, parOpenWith, parGetWith, guessedWith, parLoadWith, parRenderWith, sheetPrintWith } from './ui/parent.js';
 import { hudLootWith, svg24With, armGhostWith, tapWith, holdWith, syncHandWith, fsSyncWith, fsToggleWith } from './ui/controls.js';
 import { toWorldWith, discWith, paintPayWith, paintStepWith, endPointerWith } from './ui/paint.js';
+import { takeWith, baggerActWith, loaderActWith, dumperActWith, boreWith, updCarWith, updBaggerWith, updLoaderWith, updDumperWith, updTbmWith, updRocketWith, updPlaneWith, updCoasterWith, onSnowWith, updSkiWith, skiActWith, updDragonWith, updSubWith, updBalloonWith, updHeliWith, heliHookWith, heliDropWith, boatWetWith, updBoatWith, updBugWith } from './systems/player/vehicles.js';
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -620,97 +621,13 @@ function rot(lx,ly){ const c=Math.cos(P.ang), sn=Math.sin(P.ang); return [P.x+lx
 function bucket(){ return rot(P.face*(8+56*Math.cos(P.arm)),-34+56*Math.sin(P.arm)); }
 function scoop(){ return rot(P.face*38,-12-P.lift); }
 function drillHead(){ return [P.x+P.face*24*Math.cos(P.da),P.y-27+24*Math.sin(P.da)]; }
-/* Eine Zelle abbauen. Erdkern und Weltrand bleiben. */
-function take(i){
-  const m=grid[i];
-  if(m<4||m===BED||m===CORE) return 0;
-  if(m===SHELL&&!shellOk(i)) return 0;
-  grid[i]=0;
-  if(quest&&quest.type==='dig'&&!quest.done) quest.p++;
-  if(m===GOLD||m===GEM){
-    /* Gold und Edelsteine zählen nicht mehr (Vereinfachungsplan Schritt 2): Erz klingt und glitzert nur. */
-    if(m===GOLD) qEvent('gold',1); else qEvent('gems',1);
-    ST.lootDirty=true; sfx('coin');
-    if(Math.random()<.5){ const y=(i/GX)|0; spawn(5,(i-y*GX)*CELL+3,TOP+y*CELL+3,(Math.random()-.5)*120,-80-Math.random()*120,.7,2); }
-  }
-  return 1;
-}
-function pile(cx,cy,k,sp){
-  let n=0; sp=sp||4;
-  while(k-->0){
-    let c=cx-sp+(Math.random()*(2*sp+1)|0); const c2=cx-sp+(Math.random()*(2*sp+1)|0);
-    if(colTop(c2,cy)>colTop(c,cy)) c=c2;
-    const r=colTop(c,cy)-1;
-    if(inGrid(c,r)&&grid[r*GX+c]<4){ grid[r*GX+c]=EARTH; n++; }
-  }
-  return n;
-}
-/* Auskippen: steht der Kipper unter der Schaufel, landet die Erde auf seiner Ladefläche. */
-function dumpAt(b,k){
-  const tk=parked.dumper;
-  if(tk&&Math.abs(tk.x-b[0])<42&&b[1]<tk.y-8&&b[1]>tk.y-160){
-    const n=Math.min(k,400-tk.load); tk.load+=n; if(n) dust(tk.x,tk.y-34);
-    return n;
-  }
-  return pile(Math.floor(b[0]/CELL),Math.floor((b[1]-TOP)/CELL),k);
-}
-function dig(){
-  const b=bucket(), cx=Math.floor(b[0]/CELL), cy=Math.floor((b[1]-TOP)/CELL);
-  let n=0;
-  const ea=3.6+.5*hero.up.dig, eb=5.4+.6*hero.up.dig;
-  for(let dy=-8;dy<=8;dy++) for(let dx=-5;dx<=5;dx++){
-    if(Math.pow(Math.abs(dx)/ea,4)+Math.pow(Math.abs(dy)/eb,4)>1) continue;
-    if(inGrid(cx+dx,cy+dy)) n+=take((cy+dy)*GX+cx+dx);
-  }
-  if(n){
-    sfx('dig');
-    P.load=Math.min(400,P.load+n);
-    for(let i=0;i<6;i++) spawn(3,b[0]+(Math.random()-.5)*24,b[1]+(Math.random()-.5)*30,(Math.random()-.5)*160,-60-Math.random()*120,.6,3+Math.random()*3);
-    shake=Math.max(shake,.08);
-  }
-  return n;
-}
+function take(i){ return takeWith(VH,i); }
 /* Graben-Taste: gräbt, was der Löffel trifft. Trifft er nichts, senkt sich der Arm; ist er ganz unten, rollt der Bagger vor.
    Auskippen nur mit hochgehobenem Arm, damit Halten der Taste nicht abwechselnd gräbt und wieder zuschüttet. */
-function baggerAct(){
-  if(dig()) return;
-  if(P.arm<-.15&&P.load>0){ P.load-=dumpAt(bucket(),Math.min(16,P.load)); return; }
-  if(P.arm<1.25) P.arm=Math.min(1.25,P.arm+.22);
-  else if(P.on) P.vx=P.face*90;
-}
-/* Radlader: schiebt und schaufelt auf Bodenhöhe, gräbt nicht nach unten. Schaufel oben = auskippen. */
-function loaderAct(){
-  const b=scoop(), cx=Math.floor(b[0]/CELL), cy=Math.floor((b[1]-TOP)/CELL);
-  let n=0;
-  if(P.load<200) for(let dy=-3;dy<=0;dy++) for(let dx=-3;dx<=3;dx++) if(inGrid(cx+dx,cy+dy)) n+=take((cy+dy)*GX+cx+dx);
-  if(n){ P.load+=n; dust(b[0],b[1]); sfx('dig'); return; }
-  if(P.lift>18&&P.load>0){ P.load-=dumpAt([b[0]+P.face*24,b[1]],Math.min(24,P.load)); return; }
-  if(P.on&&P.lift<=18) P.vx=P.face*120;
-}
-function dumperAct(){
-  P.bed=1;
-  if(P.load<=0) return;
-  const b=rot(-P.face*78,-66);
-  P.load-=pile(Math.floor(b[0]/CELL),Math.floor((b[1]-TOP)/CELL),Math.min(18,P.load),7);
-}
-function bore(x,y,r){
-  const c0=Math.floor((x-r)/CELL), c1=Math.floor((x+r)/CELL), r0=Math.floor((y-r-TOP)/CELL), r1=Math.floor((y+r-TOP)/CELL);
-  let n=0;
-  for(let cy=r0;cy<=r1;cy++) for(let cx=c0;cx<=c1;cx++){
-    if(!inGrid(cx,cy)) continue;
-    const dx=(cx+.5)*CELL-x, dy=TOP+(cy+.5)*CELL-y;
-    if(dx*dx+dy*dy<=r*r) n+=take(cy*GX+cx);
-  }
-  return n;
-}
-function bulldoze(dir){
-  const xa=P.x+dir*12, xb=P.x+dir*38, c0=Math.floor(Math.min(xa,xb)/CELL), c1=Math.floor(Math.max(xa,xb)/CELL);
-  const r0=Math.floor((P.y-50-TOP)/CELL), r1=Math.floor((P.y-2-TOP)/CELL);
-  let n=0;
-  for(let cy=r0;cy<=r1;cy++) for(let cx=c0;cx<=c1;cx++) if(inGrid(cx,cy)) n+=take(cy*GX+cx);
-  if(n) dust(P.x+dir*24,P.y-10);
-  return n;
-}
+function baggerAct(){ return baggerActWith(VH); }
+function loaderAct(){ return loaderActWith(VH); }
+function dumperAct(){ return dumperActWith(VH); }
+function bore(x,y,r){ return boreWith(VH,x,y,r); }
 function doAction(){
   if(P.zip){ keys.u=true; zipRide(0); keys.u=false; return; }
   if(P.mode==='walk'){
@@ -798,147 +715,16 @@ function updWalk(dt,ix,u,d){
     if(!P.chute&&!u&&!wet&&P.vy>520&&floorAt(P.x,P.y,0)-P.y<300) P.chute=true;
   }
 }
-function updCar(dt,ix,u,d){
-  if(ix) P.face=ix;
-  const maxv=(P.turbo>0?520:300)*(1+.15*hero.up.motor), icy=P.on&&cellAt(P.x,P.y+2)===ICE, wet=cellAt(P.x,P.y-10)===WATER;
-  if(P.climb>0){ P.climb-=dt; P.vx=P.face*70; P.vy=0; }
-  else{
-    if(P.on){
-      const tgt=d?0:ix*maxv;
-      P.vx+=(tgt-P.vx)*Math.min(1,dt*(icy?.4:(ix||d?2.5:1)));
-      if(P.turbo>0&&Math.abs(P.vx)<maxv) P.vx+=P.face*600*dt;
-      if(u){ P.vy=-380; P.on=false; sfx('jump'); }
-    }else P.vx+=ix*80*dt;
-    P.vy=Math.min(P.vy+grav()*dt,800);
-  }
-  if(wet){ P.vx-=P.vx*Math.min(1,dt*2); P.soot=0; }
-  if(P.turbo>0&&Math.random()<dt*50) spawn(1,P.x-P.face*30,P.y-13,-P.face*120,(Math.random()-.5)*40,.3,6);
-  const pv=P.vy;
-  if(mover(dt,24,32,26,17)){
-    /* Auch das Auto bleibt in keinem Loch stecken: an einer Wand klettert es hoch, unter einem Überhang schiebt es sich frei. */
-    const top=P.y-54;
-    if(!ix) P.vx*=-.2;
-    else if(!solidW(P.x,top)&&!solidW(P.x-15,top)&&!solidW(P.x+15,top)){ P.y-=150*dt; P.on=false; P.climb=.25; }
-    else bulldoze(ix);
-  }
-  if(P.on){ if(P.landed&&pv>300) dust(P.x,P.y); P.vy=P.gs*P.vx; P.climb=0; }
-  const ta=P.climb>0?-P.face*.6:(P.on?Math.atan(P.gs):Math.atan2(P.vy,Math.abs(P.vx)+200)*P.face*.5);
-  P.ang+=(ta-P.ang)*Math.min(1,dt*10);
-}
-/* Baufahrzeuge fahren sich nie fest: an einer Wand klettern sie hoch; ist darüber kein Platz, räumen sie sich den Weg frei. */
-function drive(dt,ix,sp,hw,h,half,vmax){
-  if(ix) P.face=ix;
-  if(P.climb>0){ P.climb-=dt; P.vx=P.face*70; P.vy=0; }
-  else{
-    if(P.on) P.vx+=(ix*sp*(1+.2*hero.up.motor)-P.vx)*Math.min(1,dt*5); else P.vx+=(ix*70-P.vx)*Math.min(1,dt*2);
-    P.vy=Math.min(P.vy+grav()*dt,vmax||800);
-  }
-  if(cellAt(P.x,P.y-10)===WATER){ P.vx-=P.vx*Math.min(1,dt*2); P.soot=0; }
-  const pv=P.vy;
-  if(mover(dt,hw,h,32,half)){
-    if(ix){
-      const top=P.y-h-20;
-      if(!solidW(P.x,top)&&!solidW(P.x-15,top)&&!solidW(P.x+15,top)){ P.y-=150*dt; P.on=false; P.climb=.25; }
-      else bulldoze(ix);
-    }else P.vx=0;
-  }
-  if(P.on){ if(P.landed&&pv>300) dust(P.x,P.y); P.vy=P.gs*P.vx; P.climb=0; }
-  P.ang+=((P.climb>0?-P.face*.6:(P.on?Math.atan(P.gs):0))-P.ang)*Math.min(1,dt*10);
-}
-function updBagger(dt,ix,u,d){
-  P.arm=clamp(P.arm+(d-u)*1.7*dt,-.95,1.25);
-  drive(dt,ix,110,22,28,15);
-  if(keys.a){ P.digT-=dt; if(P.digT<=0){ baggerAct(); P.digT=.17/(1+.35*hero.up.dig); } }
-}
-function updLoader(dt,ix,u,d){
-  P.lift=clamp(P.lift+(u-d)*90*dt,0,64);
-  drive(dt,ix,170,26,30,17);
-  if(keys.a){ P.digT-=dt; if(P.digT<=0){ loaderAct(); P.digT=.17/(1+.35*hero.up.dig); } }
-}
-function updDumper(dt,ix,u,d){
-  drive(dt,ix,230,30,32,20);
-  P.bed=Math.max(0,P.bed-dt*1.6);
-  if(keys.a){ P.digT-=dt; if(P.digT<=0){ dumperAct(); P.digT=.14; } }
-}
+function updCar(dt,ix,u,d){ return updCarWith(VH,dt,ix,u,d); }
+function updBagger(dt,ix,u,d){ return updBaggerWith(VH,dt,ix,u,d); }
+function updLoader(dt,ix,u,d){ return updLoaderWith(VH,dt,ix,u,d); }
+function updDumper(dt,ix,u,d){ return updDumperWith(VH,dt,ix,u,d); }
 /* Tunnelbohrmaschine: bohrt beim Fahren ein rundes Loch in Fahrtrichtung, auch durch Fels. ▲/▼ kippt den Bohrkopf, bis senkrecht nach oben oder unten. Ganz gekippt bohrt ▲ oder ▼ allein weiter.
    Steil nach oben fährt sie dem Bohrkopf nach statt waagerecht, und im Schacht hält sie sich fest, statt zurückzurutschen. */
-function updTbm(dt,ix,u,d){
-  P.da=clamp(P.da+(d-u)*1.3*dt,-1.5,1.5);
-  let go=ix||(keys.a?P.face:0), cutN=0;
-  if(!go&&((u&&P.da<=-1.45)||(d&&P.da>=1.45))) go=P.face;
-  const up=P.da<-.6, shaft=solidW(P.x-30,P.y-20)||solidW(P.x+30,P.y-20);
-  if(go){
-    P.face=go;
-    const hd=drillHead();
-    cutN=bore(hd[0],hd[1],27);
-    if(up) cutN+=bore(P.x,P.y-27,27);
-    else if(P.da>.2) cutN+=bore(P.x+go*14,P.y-27,27);
-    if(cutN){
-      shake=Math.max(shake,.04); sfx('dig');
-      if(Math.random()<dt*16) spawn(3,hd[0]+(Math.random()-.5)*30,hd[1]+(Math.random()-.5)*40,-go*(40+Math.random()*120),-40-Math.random()*90,.6,3+Math.random()*3);
-    }
-  }
-  if(up&&go&&(cutN||shaft)){
-    const sp=80*(1+.15*hero.up.dig);
-    P.vx=go*sp*Math.cos(P.da); P.vy=sp*Math.sin(P.da); P.on=false; P.climb=0;
-    mover(dt,24,46,32,14);
-    P.ang-=P.ang*Math.min(1,dt*10);
-  }else if(up&&!go&&shaft&&!P.on){ P.vx=0; P.vy=0; }
-  else drive(dt,go,P.da>0?85*Math.max(.3,Math.cos(P.da)):95,24,46,14,170+60*hero.up.dig);
-}
-/* Rakete: ▲ zündet das Triebwerk, ◀ ▶ steuert in der Luft. Ohne Schub sinkt sie langsam. */
-function updRocket(dt,ix,u,d){
-  if(u){
-    if(P.on){ P.on=false; P.y-=3; shake=Math.max(shake,.3); smoke(P.x,P.y,8); }
-    P.vy+=(-800*(1+.2*hero.up.jet)-P.vy)*Math.min(1,dt*1.5);
-    if(Math.random()<dt*50) spawn(1,P.x+(Math.random()-.5)*8,P.y+6,(Math.random()-.5)*50,160+Math.random()*120,.35,7);
-  }
-  else P.vy=Math.min(P.vy+grav()*.8*dt,d?720:400);
-  if(P.on) P.vx-=P.vx*Math.min(1,dt*8);
-  else{ P.vx+=(ix*230-P.vx)*Math.min(1,dt*2.5); if(ix) P.face=ix; }
-  const pv=P.vy;
-  if(mover(dt,13,56,26,9)) P.vx*=-.3;
-  if(P.on){ if(P.landed&&pv>200) dust(P.x,P.y); P.vy=0; }
-  P.ang+=((P.on?0:clamp(P.vx/230,-1,1)*.35)-P.ang)*Math.min(1,dt*6);
-}
-function updPlane(dt,ix,u,d){
-  if(ix) P.face=ix;
-  if(P.on){
-    P.vx+=(ix*260-P.vx)*Math.min(1,dt*(ix?1.3:(P.y<-3000?4:.9)));
-    if(u&&Math.abs(P.vx)<130) P.vx+=P.face*320*dt;
-    P.upT=u?(P.upT||0)+dt:0;
-    P.vy=Math.min(P.vy+grav()*dt,800);
-    if(mover(dt,30,28,26,18)) P.vx=0;
-    if(P.on){
-      P.vy=P.gs*P.vx; P.ang=Math.atan(P.gs);
-      /* Abheben geht auch ohne Anlauf, damit das Flugzeug aus jedem Loch herauskommt. */
-      if((u&&Math.abs(P.vx)>120)||Math.abs(P.vx)>235||P.upT>.45){ P.on=false; P.vy=u?-130:-60; P.y-=3; P.upT=0; }
-    }
-  }else{
-    P.vx+=(P.face*250*(1+.15*hero.up.jet)-P.vx)*Math.min(1,dt*2);
-    P.vy+=((d-u)*(P.y<-1200?430:190)*(1+.2*hero.up.jet)-P.vy)*Math.min(1,dt*3);
-    if(P.y<-1200&&Math.random()<dt*40) spawn(1,P.x-P.face*36,P.y-16,-P.face*90,(Math.random()-.5)*30,.3,6);
-    if(mover(dt,30,28,26,18)){ P.face=-P.face; P.vx=P.face*80; }
-    if(P.on){ P.vy=0; dust(P.x,P.y); }
-  }
-}
-function updCoaster(dt,ix){
-  const T=P.track;
-  if(T.lift){ liftRide(dt); return; }
-  let q=trackAt(T,P.s);
-  P.v+=G*.9*q.ty*dt+ix*T.dir*220*dt;
-  P.v-=P.v*.08*dt;
-  if(P.v<90) P.v+=(90-P.v)*Math.min(1,dt*4);
-  if(P.v>1000) P.v=1000;
-  P.s+=P.v*dt;
-  q=trackAt(T,P.s);
-  P.x=q.x; P.y=q.y; P.vx=q.tx*P.v; P.vy=q.ty*P.v; P.ang=Math.atan2(q.ty,q.tx); P.face=T.dir;
-  if(P.s>=T.len){
-    qEvent('ride',1);
-    P.vy-=90; P.mode='walk'; P.on=false; P.air=.2; P.chute=false;
-    syncUI();
-  }
-}
+function updTbm(dt,ix,u,d){ return updTbmWith(VH,dt,ix,u,d); }
+function updRocket(dt,ix,u,d){ return updRocketWith(VH,dt,ix,u,d); }
+function updPlane(dt,ix,u,d){ return updPlaneWith(VH,dt,ix,u,d); }
+function updCoaster(dt,ix){ return updCoasterWith(VH,dt,ix); }
 function settle(o,dt){
   const f=floorAt(o.x,o.y,26);
   if(o.y<f-1){ o.vy+=G*dt; if(o===parked.balloon&&o.vy>70) o.vy=70; o.y=Math.min(f,o.y+o.vy*dt); }
@@ -1829,105 +1615,13 @@ function liftRide(dt){
   if(P.s>=LIFT.len){ P.mode=P.back?'ski':'walk'; P.on=false; P.air=0; P.vx=60; P.vy=0; P.chute=false; syncUI(); }
 }
 
-/* Unter den Füßen liegt Schnee oder Eis. Zwei Tiefen, weil der Boden am Hang zwischen zwei Zellen liegt. */
-function onSnow(){ const a=cellAt(P.x,P.y+3), b=cellAt(P.x,P.y+9); return a===SNOW||a===ICE||b===SNOW||b===ICE; }
+function onSnow(){ return onSnowWith(VH); }
 /* ---------- Ski: ◀ ▶ anschieben, ▼ bremsen, ▲ Düse, rote Taste springt und macht in der Luft einen Salto ---------- */
-function updSki(dt,ix,u,d){
-  if(P.ball>0){ updRoll(dt); return; }
-  const snow=onSnow(), gk=hero.own.goldski?1:0;
-  if(ix) P.face=ix;
-  if(u){
-    P.vy+=(-230*(1+.25*hero.up.jet)-P.vy)*Math.min(1,dt*6); P.on=false; P.jet=true;
-    if(Math.random()<dt*40) spawn(1,P.x-P.face*8,P.y-14,(Math.random()-.5)*30,130,.25,4);
-  }
-  if(P.on){
-    const gs=P.gs, v=Math.abs(P.vx);
-    P.vx+=G*gs/(1+gs*gs)*dt*(snow?1:.3);
-    /* Unten im Auslauf liegt tiefer Schnee: Er bremst, damit man neben dem Lift zum Stehen kommt. */
-    P.vx-=P.vx*Math.min(1,dt*((d?(snow?2.6:5):(snow?.15-.05*gk:2.8))+(P.vx<0&&P.x<6060&&P.x>5700?1.9:0)));
-    if(ix&&P.vx*ix<190+25*hero.up.motor+50*gk) P.vx+=ix*(snow?320:200)*dt;
-    P.vx=clamp(P.vx,-820,820);
-    if(snow){
-      if(v>90&&Math.random()<dt*(d?40:v*.03)) spawn(10,P.x-P.face*12,P.y-2,-P.vx*.2+(Math.random()-.5)*40,-30-Math.random()*(d?130:60),.4,2+Math.random()*2.5);
-      if(v>220){ swishT-=dt; if(swishT<=0){ swishT=.3; sfx('swish'); } }
-      if(gk&&v>200&&Math.random()<dt*14) spawn(5,P.x-P.face*14,P.y-3,0,-30,.5,2);
-    }
-  }else{
-    if(!u) P.vy=Math.min(P.vy+grav()*dt,780);
-    P.vx+=ix*60*dt;
-    if(P.spin){ const st=Math.sign(P.spin)*Math.min(Math.abs(P.spin),10.5*dt); P.ang+=st; P.spin-=st; P.rot+=Math.abs(st); }
-  }
-  const pv=P.vy, wasAir=P.air;
-  if(mover(dt,6,30,18,10)){ if(Math.abs(P.vx)>150) puff(P.x+P.face*8,P.y-12,6); P.vx*=-.25; }
-  if(P.on){
-    if(P.landed){
-      if(Math.abs(P.spin)>.9){ P.ball=1.7; shout(P.x,P.y-52,'PLUMPS!'); sfx('splat'); puff(P.x,P.y-8,12); }
-      else{
-        const n=Math.round(P.rot/TAU);
-        if(n>0){ shout(P.x,P.y-54,n>1?n+' × SALTO!':'SALTO!','#ffd23f'); ST.lootDirty=true; sfx('pop'); qEvent('salto',n); }
-        else if(wasAir>1&&!P.jet) shout(P.x,P.y-54,'JUHU!');
-        if(pv>260) puff(P.x,P.y-2,7);
-        P.ang=Math.atan(P.gs);
-      }
-      P.spin=0; P.rot=0; P.jet=false;
-    }
-    P.air=0; P.vy=P.gs*P.vx;
-    if(P.ball<=0) P.ang+=(Math.atan(P.gs)-P.ang)*Math.min(1,dt*14);
-    /* Wer an einer Tanne vorbeisaust, schüttelt den Schnee herunter. */
-    if(Math.abs(P.vx)>120) for(const tr of trees) if(tr.fir&&tr.state===0&&Math.abs(tr.x-P.x)<9&&Math.abs(tr.gy-P.y)<40&&!(tr.sh>time)){ tr.sh=time+1.5; puff(tr.x,tr.gy-tr.h*.7,12); }
-  }else P.air+=dt;
-}
-/* Mitten im Salto gelandet: Der Held kugelt als Schneeball weiter und plumpst dann wieder heraus. */
-function updRoll(dt){
-  P.ball-=dt;
-  if(P.on){ const gs=P.gs; P.vx+=G*gs/(1+gs*gs)*dt; P.vx-=P.vx*Math.min(1,dt*(onSnow()?.5:3)); }
-  else P.vy=Math.min(P.vy+grav()*dt,780);
-  if(mover(dt,9,26,18,8)) P.vx*=-.4;
-  if(P.on) P.vy=P.gs*P.vx;
-  P.ang+=P.vx/16*dt;
-  if(Math.random()<dt*14) puff(P.x,P.y-4,1);
-  if(P.ball<=0){ P.ball=0; P.ang=0; P.spin=0; P.rot=0; puff(P.x,P.y-14,16); shout(P.x,P.y-50,'PLOPP!'); sfx('pop'); P.vy=-190; P.on=false; }
-}
-function skiAct(){
-  if(P.ball>0) return;
-  if(nearLift()){ rideLift(); return; }
-  if(P.on){ P.vy-=350; P.y-=3; P.on=false; P.air=0; P.jet=false; sfx('jump'); }
-  else if(Math.abs(P.spin)<TAU*1.5){ P.spin+=(P.vx>=0?-1:1)*TAU; sfx('whoosh'); }
-}
+function updSki(dt,ix,u,d){ return updSkiWith(VH,dt,ix,u,d); }
+function skiAct(){ return skiActWith(VH); }
 
 /* ---------- Drachenflug auf Mama Glut: fliegt frei in alle Richtungen, die rote Taste spuckt Feuer und schmilzt Schnee ---------- */
-function updDragon(dt,ix,u,d){
-  if(ix) P.face=ix;
-  P.vx+=(ix*310*(1+.15*hero.up.jet)-P.vx)*Math.min(1,dt*3);
-  if(P.on&&!u) P.vy=Math.min(P.vy+grav()*dt,300);
-  else P.vy+=((d-u)*270+((u||d||reduced)?0:16*Math.sin(time*3))-P.vy)*Math.min(1,dt*4);
-  if(u&&P.on){ P.on=false; P.y-=3; }
-  if(mover(dt,24,58,22,16)) P.vx*=-.2;
-  if(P.on) P.vy=0;
-  P.ang+=(clamp(P.vy/500,-.35,.35)*P.face-P.ang)*Math.min(1,dt*6);
-  if(keys.a){ P.digT-=dt; if(P.digT<=0){ P.digT=.05; breathe(); } }
-}
-function melt(cx,cy){
-  for(let dy=-2;dy<=2;dy++) for(let dx=-2;dx<=2;dx++){
-    if(dx*dx+dy*dy>5) continue;
-    const x=cx+dx, y=cy+dy; if(!inGrid(x,y)) continue;
-    const i=y*GX+x;
-    if(grid[i]===SNOW||grid[i]===ICE){ grid[i]=0; steam(x,y); }
-  }
-}
-function breathe(){
-  const mx=P.x+P.face*62, my=P.y-63;
-  for(let k=0;k<2;k++) spawn(1,mx,my,P.face*(300+Math.random()*160)+P.vx,(Math.random()-.3)*120+P.vy*.5,.35+Math.random()*.2,7+Math.random()*6);
-  sfx('flame');
-  for(let r=20;r<=170;r+=12){
-    const x=mx+P.face*r, y=my+r*.24, cx=Math.floor(x/CELL), cy=Math.floor((y-TOP)/CELL);
-    if(!inGrid(cx,cy)) break;
-    const m=grid[cy*GX+cx];
-    if(m===SNOW||m===ICE){ melt(cx,cy); break; }
-    if(m===WATER){ steam(cx,cy); break; }
-    if(m>=4){ if(Math.random()<.5) putUp(cx-P.face,cy,FIRE); break; }
-  }
-}
+function updDragon(dt,ix,u,d){ return updDragonWith(VH,dt,ix,u,d); }
 
 /* ---------- Schneebälle ---------- */
 function throwBall(tx,ty,from){ return throwBallWith(WP,tx,ty,from); }
@@ -2085,110 +1779,57 @@ function tapWorld(sx,sy){
 }
 
 /* ---------- U-Boot: fährt frei durchs Wasser, die rote Taste ist das Sonar und zeigt zum nächsten Geheimnis. ---------- */
-function updSub(dt,ix,u,d){
-  if(ix) P.face=ix;
-  const wet=cellAt(P.x,P.y-14)===WATER;
-  if(wet){
-    P.on=false;
-    P.vx+=(ix*230*(1+.15*hero.up.motor)-P.vx)*Math.min(1,dt*2.5);
-    P.vy+=((d-u)*190-P.vy)*Math.min(1,dt*3);
-    if(Math.random()<dt*(5+Math.abs(P.vx)*.05)) spawn(7,P.x-P.face*30,P.y-16,-P.face*20,-30,.8,2);
-  }else{
-    P.vx+=(ix*40-P.vx)*Math.min(1,dt*3); P.vy=Math.min(P.vy+grav()*dt,700);
-  }
-  if(mover(dt,26,30,20,16)) P.vx*=-.2;
-  if(P.on) P.vy=0;
-  P.ang+=((wet?clamp(P.vy/400,-.4,.4)*P.face:(P.on?Math.atan(P.gs):0))-P.ang)*Math.min(1,dt*6);
-}
+function updSub(dt,ix,u,d){ return updSubWith(VH,dt,ix,u,d); }
 /* Heißluftballon: Hoch heizt, dann steigt er. Ohne Heizen sinkt er langsam, Runter lässt Luft ab. Der Wind treibt ihn sanft, mit Links und Rechts lenkt man nur ein wenig. Höher als die Wolken kommt er nicht, die Luft wird zu dünn. */
 const BALLOON_TOP=-1250;
-function updBalloon(dt,ix,u,d){
-  if(ix) P.face=ix;
-  const wind=Math.sin(time*.07+P.x*.0004)*45;
-  if(P.on){ P.vx-=P.vx*Math.min(1,dt*6); }
-  else P.vx+=(ix*95+wind-P.vx)*Math.min(1,dt*.9);
-  let ty=u?-125:d?150:45;
-  if(P.y<BALLOON_TOP&&ty<20){ ty=20; if(u&&P.balT<=0){ P.balT=4; say('','Höher kommt der Ballon nicht. Die Luft ist hier oben zu dünn.'); } }
-  if(P.balT>0) P.balT-=dt;
-  P.vy+=(ty-P.vy)*Math.min(1,dt*(u?1.1:.8));
-  if(u){ if(P.on){ P.on=false; P.y-=2; } if(Math.random()<dt*20) spawn(1,P.x+(Math.random()-.5)*6,P.y-46,(Math.random()-.5)*20,-60,.25,5); }
-  if(mover(dt,15,120,14,10)) P.vx*=-.3;
-  if(P.on){ if(P.landed&&P.vy>90) dust(P.x,P.y); P.vy=0; }
-  P.ang+=(clamp(P.vx/600,-.12,.12)-P.ang)*Math.min(1,dt*3);
-}
+function updBalloon(dt,ix,u,d){ return updBalloonWith(VH,dt,ix,u,d); }
 /* Hubschrauber: steht in der Luft still, wenn man nichts drückt. Mit der Aktionstaste hängt er ein geparktes Fahrzeug unter sich an den Haken und lässt es wieder los. So kommt das U-Boot zum Meer und der Bagger auf den Berg. */
 let heliLoad='';
-function updHeli(dt,ix,u,d){
-  if(ix) P.face=ix;
-  if(P.on){ P.vx-=P.vx*Math.min(1,dt*6); if(u){ P.on=false; P.y-=2; } }
-  else P.vx+=(ix*240-P.vx)*Math.min(1,dt*2);
-  let ty=(d-u)*190;
-  if(P.y<BALLOON_TOP&&ty<0){ ty=0; if(u&&P.balT<=0){ P.balT=4; say('','Höher kommt der Hubschrauber nicht. Für den Weltraum brauchst du die Rakete.'); } }
-  if(P.balT>0) P.balT-=dt;
-  if(!P.on) P.vy+=(ty-P.vy)*Math.min(1,dt*3); else P.vy=0;
-  if(!P.on&&(ix||u)&&Math.random()<dt*6) spawn(3,P.x+(Math.random()-.5)*60,P.y+4,(Math.random()-.5)*80,-20,.4,3);
-  if(mover(dt,30,46,16,18)) P.vx*=-.3;
-  if(P.on){ if(P.landed&&P.vy>120) dust(P.x,P.y); P.vy=0; }
-  P.ang+=((P.on?Math.atan(P.gs)*.5:clamp(P.vx/240,-1,1)*.22*P.face)-P.ang)*Math.min(1,dt*5);
-  const o=heliLoad&&parked[heliLoad];
-  if(o){ o.x=P.x; o.y=P.y+70; o.vy=0; o.ang=0; o.face=P.face; if(P.on||solidW(o.x,o.y+2)) heliDrop(); }
-  else heliLoad='';
-}
-function heliHook(){
-  if(heliLoad){ heliDrop(); return; }
-  let best='', bd=1e9;
-  for(const k in parked){ const o=parked[k]; if(!o||k==='heli') continue; const dx=Math.abs(o.x-P.x), dy=o.y-P.y; if(dx<70&&dy>-10&&dy<170&&dx+dy<bd){ bd=dx+dy; best=k; } }
-  if(best){ heliLoad=best; sfx('pop'); }
-  else{ tone([330,262],'triangle'); pulse('act'); }
-}
-function heliDrop(){ if(heliLoad&&parked[heliLoad]) parked[heliLoad].vy=0; heliLoad=''; sfx('pop'); }
-/* Segelboot: schwimmt auf jedem Wasser, auch auf selbst gemaltem. Der Wind hilft beim Segeln, an Land rutscht es nur mühsam. Hoch lässt es über Wellen hüpfen, die Aktionstaste tutet. */
-function boatWet(){ return cellAt(P.x,P.y+5)===WATER||cellAt(P.x-14,P.y+5)===WATER||cellAt(P.x+14,P.y+5)===WATER; }
-function updBoat(dt,ix,u,d){
-  if(ix) P.face=ix;
-  const wet=boatWet(), deep=cellAt(P.x,P.y-5)===WATER;
-  if(wet){
-    const wind=Math.sin(time*.05+P.x*.0003)*50;
-    P.vx+=(ix*210*(1+.15*hero.up.motor)+wind*(ix?1:.5)-P.vx)*Math.min(1,dt*1.2);
-    if(deep) P.vy+=(-140-P.vy)*Math.min(1,dt*5);
-    else{ P.vy+=(0-P.vy)*Math.min(1,dt*6); if(u&&P.balT<=0){ P.vy=-260; P.balT=.6; sfx('jump'); } }
-    if(Math.abs(P.vx)>60&&Math.random()<dt*14) spawn(7,P.x-P.face*26,P.y,-P.face*30,-30,.5,3);
-    P.soot=0;
-  }else{
-    P.vx+=(ix*45-P.vx)*Math.min(1,dt*3);
-    P.vy=Math.min(P.vy+grav()*dt,700);
-  }
-  if(P.balT>0) P.balT-=dt;
-  if(mover(dt,26,50,20,16)) P.vx*=-.25;
-  if(P.on){ if(P.landed&&P.vy>200) dust(P.x,P.y); P.vy=0; }
-  const ta=wet&&!P.on?(reduced?0:Math.sin(time*2.2)*.06):(P.on?Math.atan(P.gs):0);
-  P.ang+=(ta-P.ang)*Math.min(1,dt*4);
-}
-/* Kletterkäfer: läuft gegen eine Wand und krabbelt an ihr hoch. An der Wand hält er sich fest, Hoch und Runter klettern. Oben angekommen zieht er sich über die Kante. Für steile Schluchten und hohe Höhlen. */
-function bugWall(){ const x=P.x+P.face*17; return solidW(x,P.y-6)||solidW(x,P.y-18); }
-function updBug(dt,ix,u,d){
-  if(ix&&!P.wall) P.face=ix;
-  if(P.wall){
-    if(ix===-P.face){ P.wall=false; P.face=ix; P.vx=ix*90; P.vy=-60; }
-    else{
-      P.vx=0; P.vy=(d-u-(ix===P.face?1:0))*140; if(P.vy<-140) P.vy=-140;
-      if(!bugWall()){ P.wall=false; P.vx=P.face*90; P.vy=-90; }
-    }
-  }else{
-    if(P.on) P.vx+=(ix*170*(1+.15*hero.up.motor)-P.vx)*Math.min(1,dt*8); else P.vx+=(ix*120-P.vx)*Math.min(1,dt*2);
-    P.vy=Math.min(P.vy+grav()*dt,700);
-  }
-  if(P.wall){
-    const ny=P.y+P.vy*dt;
-    if(P.vy<0&&solidW(P.x,ny-26)) P.vy=0; else P.y=ny;
-    const f=floorAt(P.x,P.y,4); if(P.y>=f){ P.y=f; if(P.vy>0) P.vy=0; }
-    P.on=false;
-  }else if(mover(dt,14,26,10,8)&&ix&&bugWall()){ P.wall=true; P.vy=0; sfx('pop'); }
-  if(P.on&&!P.wall) P.vy=P.gs*P.vx;
-  P.run+=(Math.abs(P.vx)+Math.abs(P.wall?P.vy:0))*dt*.12;
-  const ta=P.wall?-P.face*Math.PI/2:(P.on?Math.atan(P.gs):0);
-  P.ang+=(ta-P.ang)*Math.min(1,dt*10);
-}
+/* Port für systems/player/vehicles.js: Fahrzeuge (Bagger, Radlader, Kipper, Bohrer, Auto, Flugzeug, Rakete, Achterbahn, Ski, Drache, U-Boot, Ballon, Hubschrauber, Boot, Kletterkäfer). heliLoad bleibt hier, weil update, setMode, Laden und Zeichnen ihn lesen; geschrieben wird er über den Setter. */
+const VH={
+  get quest(){ return quest; },
+  get shake(){ return shake; },
+  set shake(v){ shake=v; },
+  get swishT(){ return swishT; },
+  set swishT(v){ swishT=v; },
+  get trees(){ return trees; },
+  get time(){ return time; },
+  get reduced(){ return reduced; },
+  get BALLOON_TOP(){ return BALLOON_TOP; },
+  get heliLoad(){ return heliLoad; },
+  set heliLoad(v){ heliLoad=v; },
+  bucket,
+  colTop,
+  drillHead,
+  dust,
+  floorAt,
+  grav,
+  liftRide,
+  mover,
+  nearLift,
+  puff,
+  pulse,
+  putUp,
+  qEvent,
+  rideLift,
+  rot,
+  say,
+  scoop,
+  shellOk,
+  shout,
+  smoke,
+  solidW,
+  spawn,
+  steam,
+  syncUI,
+  trackAt
+};
+function updHeli(dt,ix,u,d){ return updHeliWith(VH,dt,ix,u,d); }
+function heliHook(){ return heliHookWith(VH); }
+function heliDrop(){ return heliDropWith(VH); }
+function boatWet(){ return boatWetWith(VH); }
+function updBoat(dt,ix,u,d){ return updBoatWith(VH,dt,ix,u,d); }
+function updBug(dt,ix,u,d){ return updBugWith(VH,dt,ix,u,d); }
 /* Seilrutsche: Mit dem Werkzeug zieht man ein Seil von einem Punkt zum anderen. Am oberen Ende hängt man sich mit der Aktionstaste dran und saust hinunter. Rutschen kostet keinen Akku, nur das Spannen. */
 const ZIPMAX=8;
 function zipOk(z){ return z&&Array.isArray(z.a)&&Array.isArray(z.b)&&isFinite(z.a[0]+z.a[1]+z.b[0]+z.b[1]); }
