@@ -126,8 +126,9 @@ test('Schiffswrack: Truhe gibt einmal einen Schatz', async ({ ev, page }) => {
   await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); teleport(WRECKS[0].x+400)");
   await page.waitForTimeout(800);
   await ev("$('banner-in').innerHTML=''");
-  // Jedes Banner seit hier mitschreiben: In Firefox im CI überschrieb ein späteres Banner (anderer Fund) das der Truhe, bevor der Test las (9.11., #149).
-  await page.evaluate(() => { const el = document.getElementById('banner-in'); window.__wreck = false; window.__wreckObs = new MutationObserver(() => { if (el.innerHTML.includes('🏴')) window.__wreck = true; }); window.__wreckObs.observe(el, { childList: true, subtree: true, characterData: true }); });
+  // Jedes Banner seit hier mitschreiben: In Firefox im CI überschrieb ein goldenes Ei im selben Bild das Banner der Truhe (9.11., #149, #147).
+  // Darum die eingefügten Knoten jeder Änderung prüfen, nicht den Inhalt zur Zeit des Rückrufs.
+  await page.evaluate(() => { const el = document.getElementById('banner-in'); window.__wreck = false; window.__wreckObs = new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if ((n.textContent || '').includes('🏴')) window.__wreck = true; }); window.__wreckObs.observe(el, { childList: true, subtree: true, characterData: true }); });
   await ev('OVS.forEach(o=>o.hidden=true); ST.paused=false; P.x=WRECKS[0].x; P.y=ground(P.x)-10; P.vy=0');
   // Warten, bis ein Tick die Truhe gesehen hat und das Banner kam: In Firefox im CI lief in 150 ms manchmal keiner (9.11., #135).
   await page.waitForFunction(() => window.__wreck && window.__ev('orbGot[WRECKS[0].k]'), null, { timeout: 3000 }).catch(() => {});
