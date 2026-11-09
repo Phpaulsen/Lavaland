@@ -2,7 +2,7 @@
 // Aufruf: node tools/build.mjs            baut beide
 //         node tools/build.mjs --check    baut im Speicher und scheitert, wenn index.html nicht dazu passt (CI: „Bundle aktuell“)
 //         node tools/build.mjs --watch    baut bei jeder Änderung in src/ neu
-// Der Testbuild unterscheidet sich nur an der Stelle /*@test-hook*/ in src/legacy.js: Dort steht im Test der Zugang window.__ev (eval im Spiel-Scope).
+// Der Testbuild unterscheidet sich nur an der Stelle /*@test-hook*/ in src/app/wire.js: Dort steht im Test der Zugang window.__ev (eval im Spiel-Scope).
 // Im Produktionsbuild bleibt nur der Kommentar, und esbuild lässt Kommentare weg.
 import fs from 'fs';
 import path from 'path';
@@ -20,9 +20,9 @@ function hookPlugin(test) {
   return {
     name: 'test-hook',
     setup(b) {
-      b.onLoad({ filter: /[\\/]src[\\/]legacy\.js$/ }, async a => {
+      b.onLoad({ filter: /[\\/]src[\\/]app[\\/]wire\.js$/ }, async a => {
         const t = await fs.promises.readFile(a.path, 'utf8');
-        if (!t.includes(HOOK)) throw new Error('Marke ' + HOOK + ' fehlt in src/legacy.js');
+        if (t.split(HOOK).length !== 2) throw new Error('Marke ' + HOOK + ' muss genau einmal in src/app/wire.js stehen');
         return { contents: test ? t.replace(HOOK, HOOK_CODE) : t, loader: 'js' };
       });
     },

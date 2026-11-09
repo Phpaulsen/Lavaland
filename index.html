@@ -16977,8 +16977,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     });
   }
 
-  // src/legacy.js
-  (function() {
+  // src/app/wire.js
+  function wire() {
     "use strict";
     const $ = (id) => document.getElementById(id);
     const SP = {
@@ -21767,7 +21767,10 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
     if (hot && hot.ready) hot.ready(start);
     else start();
-  })();
+  }
+
+  // src/legacy.js
+  wire();
 })();
 </script>
 

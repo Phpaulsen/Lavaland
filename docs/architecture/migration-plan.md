@@ -347,6 +347,10 @@ Danach folgt der Schluss als 29g. Ports zwischen Modulen aufzulösen ist dort Um
 
 **Umgesetzt PR 29g2d:** Wie in 29g2b: die Klicks im Rätselrahmen und am Akku in `pzBindWith` (`ui/puzzles.js`, Port `PQ`; `pzOpen` als Getter, weil Rauch- und Knopftest es in `legacy.js` ersetzen), Werkstatt, Aufzug und Leuchtmarke in `labBindWith` (`ui/map.js`, Port `LH`), die Zeiger auf der Leinwand in `ptrBindWith` (`ui/paint.js`, Port `PN`). Absicherung: movecheck, Rauchtest, Knopftest, Golden Master, Bildvergleich.
 
+**Umgesetzt PR 29g2e (Entscheidung 9.11.: Endzustand A jetzt, B später):** Der Körper der äußeren IIFE aus `legacy.js` steht unverändert als `export function wire(){…}` in `app/wire.js` (Composition Root: Zustand, Ports, Einzeiler, Handler beim Laden, Start). `legacy.js` ruft nur noch `wire()`. Die Testmarke und der Hook in `tools/build.mjs` zeigen auf `app/wire.js`; der Build prüft jetzt, dass die Marke genau einmal vorkommt. movecheck zählt den Körper von `wire()` wie den IIFE-Körper als oberste Ebene. `app/wire.js` hat vorerst `@ts-nocheck` wie zuvor `legacy.js`. Absicherung: movecheck (1 neue Anweisung: `wire();`), Rauchtest, Knopftest, Golden Master, Bildvergleich, Zufallstest, Messung.
+
+**Später (B, Aufräumen nach 29g3):** Der Zustand in `wire()` zieht je Bereich nach `state/` (Welt, Held, Lernkern, Rätsel, Sitzung), jeweils ein verhaltensneutraler PR mit movecheck; Ports schrumpfen entsprechend, am Ende entfällt `@ts-nocheck` in `app/wire.js`.
+
 ### PR 29g: Schluss
 
 - `legacy.js` ist leer und gelöscht. `G` ist leer und gelöscht. Testzugang ist die benannte API `window.__lv` im Testbuild, kein `eval`.
