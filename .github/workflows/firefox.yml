@@ -13,7 +13,8 @@ permissions:
 jobs:
   firefox:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Langlauf (nachts, von Hand): 10 min Zufallstest plus 4000 Tipps passen nicht in 20 min, der Knopftest wurde jede Nacht abgebrochen.
+    timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 60 || 20 }}
     env:
       BROWSER: firefox
       LONG: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
