@@ -283,6 +283,10 @@ PB.$('menu').querySelector('.sheet').addEventListener('pointerdown',/** @param {
   clearTimeout(PB.holdT); PB.holdT=setTimeout(PB.pgOpen,3000);
 });
 ['pointerup','pointercancel','pointerleave'].forEach(function(n){ PB.$('menu').querySelector('.sheet').addEventListener(n,function(){ clearTimeout(PB.holdT); }); });
+/* Zahnrad oben 3 s halten öffnet die Rechensperre ebenso: Im Menü ist neben den Karten kaum freie Fläche. Kurzes Tippen öffnet weiter das Menü (ui/bind.js).
+   Das Menü öffnet sich unter dem Finger, darum endet das Halten beim Loslassen irgendwo im Fenster. Keine Zeigererfassung: Firefox schickt den Klick danach an den Hintergrund des Menüs, und der schließt es. */
+PB.$('btn-menu').addEventListener('pointerdown',function(){ clearTimeout(PB.holdT); PB.holdT=setTimeout(PB.pgOpen,3000); });
+['pointerup','pointercancel'].forEach(function(n){ window.addEventListener(n,function(){ clearTimeout(PB.holdT); },true); });
 PB.$('pg-keys').innerHTML=[1,2,3,4,5,6,7,8,9,'⌫',0,'OK'].map(function(k){ return '<button class="pzb sm" data-k="'+k+'">'+k+'</button>'; }).join('');
 PB.$('pg-keys').addEventListener('click',/** @param {any} e */ function(e){
   const b=e.target.closest('[data-k]'); if(!b) return;
