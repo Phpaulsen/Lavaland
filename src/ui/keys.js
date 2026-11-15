@@ -51,13 +51,18 @@ document.addEventListener('contextmenu',function(e){ e.preventDefault(); });
 document.addEventListener('touchmove',function(e){ if(!KB.canScroll(e.target)) e.preventDefault(); },{passive:false});
 document.addEventListener('gesturestart',function(e){ e.preventDefault(); });
 /* Zurück-Geste (Wischen vom Bildschirmrand) und Zurück-Taste: Sonst verlässt die App die Seite und zeigt einen leeren, dunklen Bildschirm.
-   Ein eigener Verlaufseintrag fängt das ab; Zurück wirkt dann wie Escape (Fenster zu) und der Eintrag wird erneuert.
-   Chromium zählt Einträge ohne Nutzergeste beim Zurück nicht mit, darum wird nach der ersten Berührung noch einmal geprüft. */
-const backArm=function(/** @type {boolean} */ force){ try{ if(force||!(history.state&&history.state.lavaland)) history.pushState({lavaland:1},''); }catch(_){} };
-backArm(false);
-document.addEventListener('pointerdown',function arm(){ document.removeEventListener('pointerdown',arm,true); backArm(true); },true);
+   Ein eigener Verlaufseintrag fängt das ab; Zurück wirkt dann wie Escape (Fenster zu) und ein neuer Eintrag kommt dazu.
+   Browser überspringen beim Zurück Einträge, auf denen der Nutzer nichts getan hat (Firefox) oder die ohne Nutzergeste entstanden sind (Chromium).
+   Darum kommt nach jeder echten Berührung (pointerup bzw. Taste, die zählen als Nutzergeste; pointerdown bei Touch nicht) ein frischer Eintrag dazu,
+   solange seit dem letzten Zurück noch keiner nachgelegt wurde. So hat das Ziel jedes Zurück eine Berührung erlebt. */
+let backArmed=false;
+const backPush=function(){ try{ history.pushState({lavaland:1},''); }catch(_){} };
+const backArm=function(){ if(backArmed) return; backArmed=true; backPush(); };
+if(!(history.state&&history.state.lavaland)) backPush();
+document.addEventListener('pointerup',backArm,true);
+document.addEventListener('keydown',backArm,true);
 window.addEventListener('popstate',function(){
-  backArm(true);
+  backPush(); backArmed=false;
   if(!KB.$('quiz').hidden){ KB.closeQuiz(); return; }
   document.querySelectorAll('.ov').forEach(function(o){ /** @type {any} */ (o).hidden=true; }); KB.pzClose();
 });
