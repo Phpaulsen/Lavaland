@@ -487,7 +487,8 @@ const ctx = await browser.newContext({ ...phone(), serviceWorkers: 'block', bypa
 const page = await ctx.newPage();
 const errs = [];
 page.on('pageerror', e => errs.push(e.message));
-page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|fonts\.g/.test(m.text())) { const l = m.location(); errs.push(m.text() + (l && l.url ? ' @ ' + l.url.replace(/^.*\//, '') + ':' + l.lineNumber + ':' + l.columnNumber : ' @ ?')); } });
+// Firefox ab 157 meldet beim Neuladen aus dem Browser selbst (ohne Fundstelle im Spiel) "Navigated away from page"; das ist kein Spielfehler.
+page.on('console', m => { const l = m.location(); if (m.type() === 'error' && !/Failed to load resource|fonts\.g/.test(m.text()) && !(!(l && l.url) && /InvalidStateError: Navigated away from page/.test(m.text()))) { errs.push(m.text() + (l && l.url ? ' @ ' + l.url.replace(/^.*\//, '') + ':' + l.lineNumber + ':' + l.columnNumber : ' @ ?')); } });
 const ev = s => page.evaluate(s => window.__ev(s), s);
 await page.goto(url);
 await page.waitForFunction(() => window.__ev && window.__ev('ST.ready'), null, { timeout: 20000 });
