@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   firefox:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # Playwright 1.56 kennt ubuntu-26.04 nicht; erst mit Playwright-Update lösen
     # Langlauf (nachts, von Hand): 10 min Zufallstest plus 4000 Tipps passen nicht in 20 min, der Knopftest wurde jede Nacht abgebrochen.
     timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 60 || 20 }}
     env:
