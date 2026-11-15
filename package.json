@@ -12,7 +12,7 @@
   "devDependencies": {
     "acorn": "8.19.0",
     "esbuild": "0.28.2",
-    "playwright": "1.56.1",
+    "playwright": "1.64.1",
     "typescript": "6.0.3"
   }
 }
