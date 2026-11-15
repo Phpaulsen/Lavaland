@@ -16,7 +16,7 @@ const ctx = await browser.newContext({ ...phone(), serviceWorkers: 'block', bypa
 const page = await ctx.newPage();
 const errs = [];
 page.on('pageerror', e => errs.push(e.message + '\n' + (e.stack || '').split('\n').slice(0, 3).join('\n')));
-page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|fonts\.g/.test(m.text())) errs.push(m.text()); });
+page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|fonts\.g/.test(m.text())) { const l = m.location(); errs.push(m.text() + (l && l.url ? ' @ ' + l.url.replace(/^.*\//, '') + ':' + l.lineNumber + ':' + l.columnNumber : '')); } });
 const ev = s => page.evaluate(s => window.__ev(s), s);
 await page.goto(url);
 await page.waitForFunction(() => window.__ev && window.__ev('ST.ready'), null, { timeout: 20000 });
