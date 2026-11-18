@@ -10,5 +10,8 @@ Leitidee: Rätsel in die Welt holen statt daneben stellen. Ein Rätsel veränder
 | 4 | Flug mit Navigation | Planetenflug erst nach Ergänzen einer Mengenfolge („Wie viele Sterne fehlen?“). | offen |
 | 5 | Spiegel-Höhlen | In einer gespiegelten Zone findet man den Ausgang, indem man das Spiegelbild erkennt. | offen |
 | 6 | Rohre als Lavalenkung | Das Rohr-Rätsel leitet echte Lava oder echtes Wasser in der Sandbox um. | offen |
+| 7 | Kettenreaktions-Baukasten | Rampe, Kugel, Lava auf Eis, Bombe, Schalter: Das Kind baut eine Maschine, die ein Ziel trifft. Räumlich-kausales Denken ohne Lesen. | offen |
+| 8 | Wichtel-Siedlung | Wichtel ziehen in gegrabene Höhlen und wünschen sich Dinge in Bildern („3 🍄 + 4 🍄“). Rechnen wird Handel; das Dorf wächst sichtbar. Rahmen für 9. | offen |
+| 9 | Naturereignisse mit Auftrag | Flut, Meteoritenschauer oder Vulkanausbruch bedrohen das Dorf: Damm bauen, umleiten, löschen. Dringlichkeit ohne Zeitstrafe; eigener Zufallsstrom. | offen |
 
 Status: offen, in Arbeit, erledigt, verworfen. Jede Idee wird ein eigener PR (oder eine Folge von PRs) nach den Regeln in `CLAUDE.md`.
