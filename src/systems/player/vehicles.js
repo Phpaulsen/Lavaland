@@ -2,7 +2,7 @@
 // PR 28a. Bewegt aus legacy.js. Laufen, mover, update, setMode und die Seilrutsche bleiben vorerst in app/wire.js (PR 28b).
 // Was die Fahrzeuge vom übrigen Spiel brauchen, kommt über den Port VH.
 import { grid } from '../../state/world.js';
-import { BED, CORE, SHELL, GOLD, GEM, GX, CELL, TOP, EARTH, ICE, WATER, clamp, G, SNOW, TAU, FIRE } from '../../core/world/const.js';
+import { BED, CORE, SHELL, GLUT, GOLD, GEM, GX, CELL, TOP, EARTH, ICE, WATER, clamp, G, SNOW, TAU, FIRE } from '../../core/world/const.js';
 import { ST } from '../../state/facade.js';
 import { sfx, tone } from '../../audio/sound.js';
 import { inGrid } from '../../core/world/shape.js';
@@ -15,7 +15,7 @@ import { cellAt } from '../../state/sim.js';
 /** @param {Port} VH @param {any} i */
 export function takeWith(VH,i){
   const m=grid[i];
-  if(m<4||m===BED||m===CORE) return 0;
+  if(m<4||m===BED||m===CORE||m===GLUT) return 0;
   if(m===SHELL&&!VH.shellOk(i)) return 0;
   grid[i]=0;
   if(VH.quest&&VH.quest.type==='dig'&&!VH.quest.done) VH.quest.p++;

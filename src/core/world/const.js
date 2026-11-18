@@ -5,7 +5,8 @@
 /* Die Heimat ist 7200 breit. Dahinter liegen die fremden Länder. Nach unten reicht die Welt dreimal so tief wie früher. */
 export const HOME_W=7200, HOME_GX=1200, WORLD_W0=57600, WORLD_W=115200, CELL=6, GX=WORLD_W/CELL, GY=2048, GY0=686, KEEPR=626, WINW=420, SW=2*WINW+9, ROWW=320, SH=14, TOP=-912, VOLC=2700, G=900, TAU=6.2832;
 /* Schichten nach unten: Erde, Fels, Tiefengestein, heißes Gestein, Erdkern. Gold und Edelsteine stecken im Gestein. */
-export const LAVA=1, FIRE=2, WATER=3, EARTH=4, ROCK=5, ICE=6, WOOD=7, BED=8, DEEP=9, HOT=10, CORE=11, GOLD=12, GEM=13, SNOW=14, SHELL=15;
+export const LAVA=1, FIRE=2, WATER=3, EARTH=4, ROCK=5, ICE=6, WOOD=7, BED=8, DEEP=9, HOT=10, CORE=11, GOLD=12, GEM=13, SNOW=14, SHELL=15, GLUT=16;
+/* Glutstein (Backlog-Idee 6): sieht aus wie Lava, fließt nicht, ist für jedes Werkzeug zu hart. Nur das Rohr-Rätsel löscht ihn (spätere PRs). */
 export const MAX_LAVA=7000, MAX_WATER=30000, MAX_FIRE=1400;
 export const SKY_TOP=-5600, SKYL=[-5600,-12000,-22000,-32000], SKY_END=-32000, MOON={x:3600,y:-4400,r:250}, STALL_X=905;
 export const SITE={build:3700, smash:4090, fire:4470, pond:4960, volb:5580, chest:6300};

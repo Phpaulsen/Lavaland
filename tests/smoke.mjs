@@ -141,6 +141,13 @@ test('Tunnelbohrer bohrt senkrecht nach oben und hält sich im Schacht', async (
   await ev("setMode('walk')");
 });
 
+test('Glutstein hält Bohrer, Bombe, Spitzhacke und Malen stand', async ({ ev }) => {
+  const r = await ev("setMode('walk'); " + ROCKBOX(22000, '') + "; const c=Math.floor(P.x/CELL), rr=Math.floor((P.y-17-TOP)/CELL), G=16; for(let r=rr-6;r<=rr+6;r++) for(let x=c-12;x<=c+12;x++) grid[r*GX+x]=G;"
+    + " const cnt=()=>{ let n=0; for(let r=rr-6;r<=rr+6;r++) for(let x=c-12;x<=c+12;x++) n+=grid[r*GX+x]===G; return n; }, n0=cnt(); bore(P.x+40,P.y-17,40); disc(c,rr,5,WATER); disc(c,rr,5,LAVA); ST.tool='pick'; handDig(P.x+15,P.y-17); ST.tool=null;"
+    + " const n1=cnt(); for(let r=rr-6;r<=rr+6;r++) for(let x=c-12;x<=c+12;x++) grid[r*GX+x]=0; [n0,n1]");
+  if (!(r[0] > 300 && r[1] === r[0])) throw new Error('Glutstein abgebaut: ' + r[0] + ' -> ' + r[1]);
+});
+
 test('Harte Schicht hält auch beim Graben nach oben ohne Bohrer', async ({ ev, page }) => {
   await ev("setMode('walk'); " + ROCKBOX(22000, '') + "; const c=Math.floor(P.x/CELL), rr=Math.floor((P.y-100-TOP)/CELL); for(let r=rr-3;r<=rr;r++) for(let x=c-10;x<=c+10;x++) grid[r*GX+x]=SHELL; 1");
   await page.waitForTimeout(300);
