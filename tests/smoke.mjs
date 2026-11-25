@@ -170,6 +170,29 @@ test('Rohrwand: Grotte wird eingebaut, im Spielstand gemerkt und wiederhergestel
   if (r.cleared !== 0 || r.back !== r.saved || !/"st":0/.test(r.saved)) throw new Error('Spielstand: ' + JSON.stringify(r));
 });
 
+test('Rohrwand: Nah-Modus zoomt, Tippen dreht ein Rohr, kein Fenster, Weggehen beendet ihn', async ({ ev, page }) => {
+  const m = await ev(`(function(){ OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); OPT.mon=false; ST.tool=null;
+    grow(WORLD_W-100); for(const q of MACH) if(q.sf) q.y=surfaceY(q.x); fogArr().fill(0); P.x=30000; P.y=-3500;
+    for(const q of MACH) if(q.t==='rohre'&&q.y===q.y&&q.y>-3000&&!rw[q.id]){ const o=rwBuild(q); if(o&&o!=='wait'){ window.__rwm=q; P.x=q.x; P.y=q.y-2; P.vx=P.vy=0; P.on=false; return q.id; } }
+    return ''; })()`);
+  if (!m) throw new Error('keine Rohr-Maschine mit Platz gefunden');
+  await page.waitForTimeout(2000);
+  const a = await ev(`JSON.stringify({nah:rwNah(), wall:!!(pzc&&pzc.wall), z:S/S0})`);
+  const A = JSON.parse(a);
+  if (!A.nah || !A.wall || !(A.z > 1.8)) throw new Error('Nah-Modus nicht aktiv: ' + a);
+  const q = JSON.parse(await ev(`(function(){ const m=window.__rwm, st=pzc.st, s=rw[m.id].s, lx0=-st.w*11, top=m.y-46-st.h*22; let p=0; while(st.t[p]===3||st.lk[p]) p++; const x=p%st.w, y=(p-x)/st.w, wx=m.x+s*(lx0+(x+.5)*22), wy=top+(y+.5)*22; return JSON.stringify({p, r:st.r[p], sx:(wx-cam.x)*S+W/2, sy:(wy-cam.y)*S+H/2}); })()`));
+  await page.mouse.click(q.sx, q.sy); await page.waitForTimeout(200);
+  const r = await ev(`JSON.stringify({r:pzc.st.r[${q.p}], ptr:pointers.size})`);
+  if (JSON.parse(r).r !== (q.r + 1) % 4 || JSON.parse(r).ptr !== 0) throw new Error('Tippen hat nicht gedreht oder gemalt: ' + r);
+  await ev('pzOpen(window.__rwm)');
+  if (!(await ev("$('pz').hidden"))) throw new Error('Rohr-Maschine mit Grotte öffnet das Fenster');
+  await ev('P.x+=200; P.vx=0');
+  await page.waitForTimeout(1500);
+  const b = await ev(`JSON.stringify({nah:rwNah(), pzc:!!pzc, z:S/S0})`);
+  await ev('OPT.mon=true');
+  if (JSON.parse(b).nah || JSON.parse(b).pzc || !(JSON.parse(b).z < 1.05)) throw new Error('Nah-Modus endet nicht: ' + b);
+});
+
 test('Harte Schicht hält auch beim Graben nach oben ohne Bohrer', async ({ ev, page }) => {
   await ev("setMode('walk'); " + ROCKBOX(22000, '') + "; const c=Math.floor(P.x/CELL), rr=Math.floor((P.y-100-TOP)/CELL); for(let r=rr-3;r<=rr;r++) for(let x=c-10;x<=c+10;x++) grid[r*GX+x]=SHELL; 1");
   await page.waitForTimeout(300);
@@ -295,7 +318,7 @@ test('Tastenkürzel: F öffnet Fahrzeuge, X steigt aus', async ({ ev, page }) =>
 
 test('Absturzschutz: kaputtes Nebensystem friert das Spiel nicht ein', async ({ ev, page, errs }) => {
   const names = await ev("SIDE.map(s=>s.name).join(' ')");
-  if (names !== 'arrowsTick monTick geyTick metTick wreckTick flyTick harpTick worldTick deepTick winterTick findsTick questTick autosave drain fogTick mkTick rohrTick') throw new Error('SIDE: ' + names);
+  if (names !== 'arrowsTick monTick geyTick metTick wreckTick flyTick harpTick worldTick deepTick winterTick findsTick questTick autosave drain fogTick mkTick rohrTick rohrWand') throw new Error('SIDE: ' + names);
   const n = errs.length;
   await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); for(const k in FX) FX[k]=0; teleport(1200); window.__keep=SIDE.slice(); SIDE.push({name:'testKaputt',tick:function(){ throw new Error('Test: absichtlich kaputt'); }})");
   const x0 = await ev('P.x');

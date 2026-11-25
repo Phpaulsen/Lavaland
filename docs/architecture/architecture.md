@@ -94,6 +94,7 @@ Wurzel: `index.html` (gebaut), `sw.js` (Offline-Cache, Version `CACHE`), `manife
 | `src/ui/paint.js` | Malen mit dem Finger: Bildschirm zu Welt, Pinsel, Radierer, Zauberkasten-Kosten, Werkzeuge je Finger, Loslassen. |
 | `src/ui/parent.js` | Elternansicht: Schranke, Auswertung des Spielprotokolls, Schulstand, Neuigkeiten, Speicher, Fehler, Stimme, Übungsblatt, Rechentafel-Balken. |
 | `src/ui/puzzles.js` | Rätselrahmen und Rätsel auf dem Bildschirm: Öffnen, Zeichnen, Antippen, Tipps, Ansagen, Gewinnen. |
+| `src/ui/rohrwand.js` | Rohrwand im Nah-Modus (Backlog-Idee 6, Schritt 3) |
 | `tools/arch/analyze.mjs` | Ist-Analyse von index.html: Sektionen, Top-Level-Namen, wer welchen Namen liest/schreibt/aufruft, Zyklen, große Funktionen, DOM/Canvas/Speicher-Mischung, Zugriffe der Tests auf … |
 | `tools/arch/codemod.mjs` | Umschreiben über den AST: Bezüge auf Top-Level-Namen x werden zu F.x (Übergangsfassade, ADR 0001 Punkt 9). |
 | `tools/arch/deps.mjs` | Prüft die Schichtregeln aus docs/architecture/target.md Abschnitt 3 auf dem esbuild-Metafile (dieselbe Sicht wie der Bundler). |
@@ -152,8 +153,8 @@ Zeile importiert Spalte: Zahl = Importe heute, · = erlaubt und ungenutzt, leer 
 | **audio** | · |  |  |  | · |  |  |  |  |  |
 | **systems** | 29 | 53 |  |  | 15 | 2 |  |  |  |  |
 | **render** | 12 | 17 |  |  |  |  | · |  |  |  |
-| **ui** | 13 | 20 |  |  | 7 |  | · | 1 |  |  |
-| **app** | 21 | 14 | 7 | 1 | 2 | 21 | 7 | 16 | 1 |  |
+| **ui** | 15 | 22 |  |  | 8 |  | · | 2 |  |  |
+| **app** | 21 | 14 | 7 | 1 | 2 | 21 | 7 | 17 | 1 |  |
 | **testing** | · | · | · | · | · | · | · | · | · | · |
 | **main** | · | · | · | · | · | · | · | · | 1 | · |
 <!-- /doc.mjs -->
@@ -338,6 +339,8 @@ Erzeugt aus den Exporten. `export let` ist Zustand, den das Modul besitzt und nu
   Funktionen: `pgOpenWith`, `pgDrawWith`, `parOpenWith`, `parGetWith`, `medWith`, `pctWith`, `minsWith`, `guessedWith`, `parLoadWith`, `parRenderWith`, `parSandWith`, `parSchoolWith`, `parNewsWith`, `parSafeWith`, `parStoreInfoWith`, `parErrWith`, `parVoiceWith`, `sheetOkWith`, `sheetPickWith`, `sheetLineWith`, `sheetPrintWith`, `escWith`, `fLabelWith`, `parStumbleWith`, `parFactsWith`, `parBarsWith`, `parBindWith`.
 - `src/ui/puzzles.js`: Rätselrahmen und Rätsel auf dem Bildschirm: Öffnen, Zeichnen, Antippen, Tipps, Ansagen, Gewinnen.
   Funktionen: `tokWith`, `pzLaterWith`, `pzClearWith`, `pzCellWith`, `pzOpenWith`, `pzDrawWith`, `pzCloseWith`, `pzHintMaxWith`, `pzHintUiWith`, `pzFailWith`, `pzRevealWith`, `pzWinWith`, `tkHtmlWith`, `drMusterWith`, `acMusterWith`, `hiMusterWith`, `syMusterWith`, `stSideWith`, `drSternWith`, `stLineWith`, `acSternWith`, `hiSternWith`, `sySternWith`, `spWantWith`, `spGridWith`, `drSpiegelWith`, `spDoneWith`, `acSpiegelWith`, `hiSpiegelWith`, `sySpiegelWith`, `drRoboWith`, `acRoboWith`, `rbRunWith`, `hiRoboWith`, `syRoboWith`, `wgDiffWith`, `wgWWith`, `drWaageWith`, `poWaageWith`, `acWaageWith`, `hiWaageWith`, `syWaageWith`, `drRohreWith`, `rhPaintWith`, `acRohreWith`, `hiRohreWith`, `syRohreWith`, `pzBindWith`.
+- `src/ui/rohrwand.js`: Rohrwand im Nah-Modus (Backlog-Idee 6, Schritt 3)
+  Funktionen: `rwHas`, `rwUiTickWith`, `rwTapWith`, `rwHintWith`, `rwDrawWith`, `rwNah`. Werte: `RWT`, `RWZ`. Zustand (`export let`): `rwc`.
 
 #### app
 

@@ -2710,6 +2710,1189 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     ];
   }
 
+  // src/audio/sound.js
+  var AC = null;
+  var tapT = 0;
+  function audio() {
+    if (!AC) {
+      try {
+        AC = new (window.AudioContext || /** @type {any} */
+        window.webkitAudioContext)();
+      } catch (_) {
+        AC = null;
+      }
+    }
+    if (AC && AC.state === "suspended") {
+      try {
+        AC.resume();
+      } catch (_) {
+      }
+    }
+  }
+  function jingle() {
+    if (!AC || muted || fxOff) return;
+    try {
+      const t = AC.currentTime;
+      [523, 659, 784, 1047].forEach(
+        /** @param {any} f @param {any} i */
+        function(f, i) {
+          const o = AC.createOscillator(), g = AC.createGain(), s = t + i * 0.11;
+          o.type = "triangle";
+          o.frequency.value = f;
+          g.gain.setValueAtTime(1e-4, s);
+          g.gain.linearRampToValueAtTime(0.18, s + 0.02);
+          g.gain.exponentialRampToValueAtTime(1e-3, s + 0.4);
+          o.connect(g);
+          g.connect(AC.destination);
+          o.start(s);
+          o.stop(s + 0.45);
+        }
+      );
+    } catch (_) {
+    }
+  }
+  var VRATES = [0.75, 0.95, 1.1];
+  var VOICE = { v: "", r: 0.95 };
+  function voicesDe() {
+    try {
+      return speechSynthesis.getVoices().filter(
+        /** @param {any} v */
+        function(v) {
+          return /^de([-_]|$)/i.test(v.lang);
+        }
+      );
+    } catch (_) {
+      return [];
+    }
+  }
+  function voiceGet() {
+    if (!VOICE.v) return null;
+    return voicesDe().find(
+      /** @param {any} v */
+      function(v) {
+        return v.name === VOICE.v;
+      }
+    ) || null;
+  }
+  var VCLIP = null;
+  var vcSeq = 0;
+  var vcAud = null;
+  var vcUrl = {};
+  function speakSplit(t) {
+    return (String(t).replace(/\s+/g, " ").trim().match(/[^.!?]+[.!?]+|[^.!?]+$/g) || []).map(
+      /** @param {any} s */
+      function(s) {
+        return s.trim();
+      }
+    ).filter(Boolean);
+  }
+  try {
+    const a = document.createElement("audio");
+    if (a.canPlayType && a.canPlayType("audio/ogg; codecs=opus")) fetch("audio/index.json").then(
+      /** @param {any} r */
+      function(r) {
+        return r.ok ? r.json() : null;
+      }
+    ).then(
+      /** @param {any} j */
+      function(j) {
+        if (j && j.v === 1 && j.c) VCLIP = j.c;
+      }
+    ).catch(function() {
+    });
+  } catch (_) {
+  }
+  function clipGet(id) {
+    if (!vcUrl[id]) {
+      vcUrl[id] = fetch("audio/" + id + ".ogg").then(
+        /** @param {any} r */
+        function(r) {
+          if (!r.ok) throw new Error("clip");
+          return r.blob();
+        }
+      ).then(
+        /** @param {any} b */
+        function(b) {
+          return URL.createObjectURL(b);
+        }
+      );
+      vcUrl[id].catch(function() {
+        delete vcUrl[id];
+      });
+    }
+    return vcUrl[id];
+  }
+  function speakStop() {
+    vcSeq++;
+    try {
+      if (vcAud) {
+        vcAud.onended = null;
+        vcAud.pause();
+        vcAud = null;
+      }
+    } catch (_) {
+    }
+    try {
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+    } catch (_) {
+    }
+  }
+  var NUMW = ["null", "eins", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun", "zehn", "elf", "zwölf", "dreizehn", "vierzehn", "fünfzehn", "sechzehn", "siebzehn", "achtzehn", "neunzehn"];
+  var NUMT = ["", "", "zwanzig", "dreißig", "vierzig", "fünfzig", "sechzig", "siebzig", "achtzig", "neunzig"];
+  function numWord(n) {
+    if (n < 20) return NUMW[n];
+    if (n < 100) return (n % 10 ? (n % 10 === 1 ? "ein" : NUMW[n % 10]) + "und" : "") + NUMT[Math.floor(n / 10)];
+    if (n < 1e3) return (Math.floor(n / 100) === 1 ? "ein" : NUMW[Math.floor(n / 100)]) + "hundert" + (n % 100 ? numWord(n % 100) : "");
+    return String(n);
+  }
+  function synthText(t) {
+    return String(t).replace(
+      /\d+/g,
+      /** @param {any} d */
+      function(d) {
+        return numWord(+d);
+      }
+    ).replace(/ – /g, ", ").replace(/[←-⯿️‍]|[\uD83C-\uD83E][\uDC00-\uDFFF]/g, "").replace(/\s+/g, " ").trim();
+  }
+  function synth(text) {
+    if (!("speechSynthesis" in window)) return;
+    const u = new SpeechSynthesisUtterance(synthText(text));
+    u.lang = "de-DE";
+    u.rate = VOICE.r;
+    u.pitch = 1;
+    const vo = voiceGet() || voicesDe().find(
+      /** @param {any} v */
+      function(v) {
+        return /^de[-_]DE$/i.test(v.lang);
+      }
+    );
+    if (vo) u.voice = vo;
+    window.speechSynthesis.speak(u);
+    return u;
+  }
+  function clipPlay(ids, text) {
+    const seq = vcSeq, h = (
+      /** @type {{ onend: any }} */
+      { onend: null }
+    );
+    const done = function() {
+      if (seq === vcSeq && h.onend) {
+        const f = h.onend;
+        h.onend = null;
+        f();
+      }
+    };
+    const fail = function() {
+      if (seq !== vcSeq) return;
+      const u = synth(text);
+      if (u) u.onend = done;
+      else done();
+    };
+    Promise.all(ids.map(clipGet)).then(
+      /** @param {any} urls */
+      function(urls) {
+        let i = 0;
+        const next = function() {
+          if (seq !== vcSeq) return;
+          if (i >= urls.length) {
+            vcAud = null;
+            done();
+            return;
+          }
+          const a = new Audio(urls[i++]);
+          vcAud = a;
+          a.playbackRate = VOICE.r / 0.95;
+          a.onended = next;
+          const p = a.play();
+          if (p && p.catch) p.catch(function() {
+            if (i === 1) fail();
+            else next();
+          });
+        };
+        next();
+      }
+    ).catch(fail);
+    return h;
+  }
+  function speakWith(AP, text) {
+    try {
+      if (performance.now() < AP.talkLock && performance.now() - tapT > 450) return;
+      if (muted) return;
+      speakStop();
+      const ss = speakSplit(text);
+      if (VCLIP) {
+        const ids = ss.map(
+          /** @param {any} s */
+          function(s) {
+            return (
+              /** @type {Record<string, string>} */
+              VCLIP[s]
+            );
+          }
+        );
+        if (ss.length && ids.every(Boolean)) return clipPlay(ids, text);
+        AP.vcMiss(text);
+      }
+      return synth(text);
+    } catch (_) {
+    }
+  }
+  var muted = false;
+  var fxOff = false;
+  var noiseBuf = null;
+  var coinT = 0;
+  var coinN = 0;
+  var digSfxT = 0;
+  var flameSfx = 0;
+  function blip(f0, f1, dur, type, vol) {
+    if (!AC || muted || fxOff) return;
+    try {
+      const t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain();
+      o.type = type || "sine";
+      o.frequency.setValueAtTime(f0, t);
+      if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(1e-3, t + dur);
+      o.connect(g);
+      g.connect(AC.destination);
+      o.start(t);
+      o.stop(t + dur + 0.02);
+    } catch (_) {
+    }
+  }
+  function noise(dur, freq, vol) {
+    if (!AC || muted || fxOff) return;
+    try {
+      if (!noiseBuf) {
+        noiseBuf = AC.createBuffer(1, Math.floor(AC.sampleRate * 0.6), AC.sampleRate);
+        const d = noiseBuf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      }
+      const t = AC.currentTime, src = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain();
+      src.buffer = noiseBuf;
+      f.type = "lowpass";
+      f.frequency.setValueAtTime(freq, t);
+      f.frequency.exponentialRampToValueAtTime(Math.max(60, freq * 0.3), t + dur);
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(1e-3, t + dur);
+      src.connect(f);
+      f.connect(g);
+      g.connect(AC.destination);
+      src.start(t);
+      src.stop(t + dur + 0.02);
+    } catch (_) {
+    }
+  }
+  function sfx(k) {
+    const now = performance.now();
+    if (k === "coin") {
+      if (now - coinT < 70) return;
+      coinN = now - coinT < 700 ? Math.min(12, coinN + 1) : 0;
+      coinT = now;
+      const f = 880 * Math.pow(1.06, coinN);
+      blip(f, f * 1.5, 0.09, "triangle", 0.12);
+    } else if (k === "dig") {
+      if (now - digSfxT < 95) return;
+      digSfxT = now;
+      noise(0.07, 500 + Math.random() * 300, 0.16);
+    } else if (k === "jump") blip(300, 620, 0.12, "sine", 0.1);
+    else if (k === "boom") {
+      noise(0.55, 900, 0.4);
+      blip(120, 40, 0.4, "sine", 0.3);
+    } else if (k === "tick") blip(900, 700, 0.03, "square", 0.03);
+    else if (k === "pop") blip(520, 880, 0.1, "triangle", 0.12);
+    else if (k === "throw") blip(520, 240, 0.09, "sine", 0.06);
+    else if (k === "splat") noise(0.09, 1500, 0.12);
+    else if (k === "swish") noise(0.18, 3200, 0.03);
+    else if (k === "hick") blip(430, 920, 0.08, "square", 0.05);
+    else if (k === "laugh") tone([392, 523, 392, 523]);
+    else if (k === "pups") {
+      blip(150, 52, 0.45, "sawtooth", 0.2);
+      noise(0.3, 320, 0.1);
+    } else if (k === "burp") blip(120, 62, 0.55, "sawtooth", 0.22);
+    else if (k === "quack") blip(760, 380, 0.1, "square", 0.05);
+    else if (k === "whoosh") blip(280, 900, 0.24, "sine", 0.06);
+    else if (k === "fw") blip(500, 1500, 0.3, "sine", 0.04);
+    else if (k === "bang") {
+      noise(0.35, 2600, 0.2);
+      blip(170, 60, 0.22, "sine", 0.14);
+    } else if (k === "roar") blip(80, 190, 0.5, "sawtooth", 0.15);
+    else if (k === "flame") {
+      if (now - flameSfx < 110) return;
+      flameSfx = now;
+      noise(0.14, 1e3, 0.07);
+    }
+  }
+  function tone(list, type) {
+    if (!AC || muted || fxOff) return;
+    try {
+      const t = AC.currentTime;
+      list.forEach(
+        /** @param {any} f @param {any} i */
+        function(f, i) {
+          const o = AC.createOscillator(), g = AC.createGain(), s = t + i * 0.1;
+          o.type = type || "triangle";
+          o.frequency.value = f;
+          g.gain.setValueAtTime(1e-4, s);
+          g.gain.linearRampToValueAtTime(0.16, s + 0.02);
+          g.gain.exponentialRampToValueAtTime(1e-3, s + 0.25);
+          o.connect(g);
+          g.connect(AC.destination);
+          o.start(s);
+          o.stop(s + 0.3);
+        }
+      );
+    } catch (_) {
+    }
+  }
+  var AU = {
+    get muted() {
+      return muted;
+    },
+    set muted(v) {
+      muted = v;
+    },
+    get fxOff() {
+      return fxOff;
+    },
+    set fxOff(v) {
+      fxOff = v;
+    },
+    get tapT() {
+      return tapT;
+    },
+    set tapT(v) {
+      tapT = v;
+    }
+  };
+
+  // src/ui/puzzles.js
+  function tokWith(PZ, s, c) {
+    return '<svg class="tok" viewBox="0 0 24 24" aria-hidden="true">' + PZ.PSHP[s] + ' fill="' + PZ.PCOL[c] + '" stroke="#1d2a3a" stroke-width="2" stroke-linejoin="round"/></svg>';
+  }
+  function pzLaterWith(PZ, ms, fn) {
+    const c = PZ.pzc;
+    PZ.pzTm.push(setTimeout(function() {
+      if (PZ.pzc === c && c) fn();
+    }, ms));
+  }
+  function pzClearWith(PZ) {
+    for (const t of PZ.pzTm) clearTimeout(t);
+    PZ.pzTm = [];
+  }
+  function pzCellWith(PZ, c, r, ctl) {
+    const land = PZ.H <= 480, aw = land ? ctl ? Math.min(PZ.W * 0.5, 380) : Math.min(PZ.W - 90, 560) : Math.min(PZ.W - 64, 480), ah = land ? PZ.H - 124 : PZ.H - (ctl ? 340 : 215);
+    return Math.max(20, Math.min(56, Math.floor(aw / c) - 4, Math.floor(ah / r) - 4));
+  }
+  function pzOpenWith(PZ, m) {
+    const T = PZ.PZI[m.t], lv = clamp((hero.pz[m.t] | 0) + (m.zb | 0), 0, 9);
+    keys.l = keys.r = keys.u = keys.d = keys.a = false;
+    ST.talkLock = 0;
+    PZ.pzc = { m, T, lv, fails: 0, hint: 0, won: false, busy: false, st: null };
+    PZ.LOG.pStart(PZ.pzc);
+    PZ.$("pz-ic").textContent = T.e;
+    let h = "";
+    for (let i = 0; i < 10; i++) h += "<i" + (i <= lv ? ' class="on"' : "") + "></i>";
+    PZ.$("pz-lv").innerHTML = h;
+    PZ.$("pz-sheet").setAttribute("aria-label", "Rätselmaschine: " + T.n + ", Stufe " + (lv + 1) + " von 10");
+    PZ.$("pz-body").classList.remove("win");
+    PZ.pzc.st = T.make(lv);
+    PZ.$("pz").hidden = false;
+    pzDrawWith(PZ);
+    pzHintUiWith(PZ);
+    PZ.speak(T.say(PZ.pzc.st));
+    if (T.start) T.start(PZ.pzc.st);
+  }
+  function pzDrawWith(PZ) {
+    const c = PZ.pzc, o = c.T.draw(c.st);
+    PZ.$("pz-body").innerHTML = o[0];
+    PZ.$("pz-ctl").innerHTML = o[1] || "";
+    PZ.$("pz-sheet").classList.toggle("noctl", !o[1]);
+    if (c.T.post) c.T.post(c.st);
+  }
+  function pzCloseWith(PZ) {
+    if (PZ.$("pz").hidden) return;
+    const c = PZ.pzc;
+    PZ.LOG.pQuit(c);
+    pzClearWith(PZ);
+    PZ.$("pz").hidden = true;
+    PZ.pzc = null;
+    speakStop();
+    if (c && !c.won && c.fails >= 3) {
+      hero.pz[c.T.id] = Math.max(0, (hero.pz[c.T.id] | 0) - 1);
+      PZ.saveHero();
+    }
+    if (c && c.m.quiz && !c.won) {
+      const f = PZ.pending;
+      PZ.pending = null;
+      if (ST.energy > 0) {
+        if (f) f();
+      } else {
+        PZ.setTool(null, true);
+        if (P.mode !== "walk") PZ.setMode("walk");
+        PZ.pulse("batt");
+      }
+    }
+  }
+  function pzHintMaxWith(PZ, c) {
+    return c.lv >= 6 ? 2 : 1;
+  }
+  function pzHintUiWith(PZ) {
+    const c = PZ.pzc;
+    if (c) PZ.$("pz-hint").classList.toggle("off", c.fails < 1 || c.hint >= pzHintMaxWith(PZ, c));
+  }
+  function pzFailWith(PZ, quiet) {
+    const c = PZ.pzc;
+    c.fails++;
+    if (!quiet) tone([170], "sawtooth");
+    if (c.fails === 3 && c.hint < pzHintMaxWith(PZ, c)) PZ.pulse("pz-hint");
+    pzHintUiWith(PZ);
+  }
+  function pzRevealWith(PZ, text) {
+    const c = PZ.pzc;
+    c.busy = true;
+    PZ.speak(text);
+    pzLaterWith(PZ, 2200, function() {
+      c.busy = false;
+      c.st = c.T.make(c.lv);
+      pzDrawWith(PZ);
+      PZ.speak(c.T.say(c.st));
+    });
+  }
+  function pzWinWith(PZ) {
+    const c = PZ.pzc;
+    if (!c || c.won) return;
+    c.won = true;
+    c.busy = true;
+    pzClearWith(PZ);
+    PZ.LOG.pWin(c);
+    const id = c.T.id, first = !c.m.quiz && !ST.pzGot[c.m.id], clean = c.fails <= 1 && !c.hint;
+    tone([523, 659, 784, 1047]);
+    if (clean) hero.pz[id] = Math.min(9, (hero.pz[id] | 0) + 1);
+    else if (c.fails >= 5 || c.hint >= 2) hero.pz[id] = Math.max(0, (hero.pz[id] | 0) - 1);
+    hero.pzn = (hero.pzn | 0) + 1;
+    PZ.dayAdd("pz");
+    const segs = clean ? 5 : Math.max(1, 5 - c.fails - c.hint), full = segs >= 5 || ST.energy >= PZ.MAXE;
+    ST.lootDirty = true;
+    ST.energy = Math.max(ST.energy, segs * PZ.SEG);
+    PZ.battShown = -1;
+    PZ.renderBatt();
+    PZ.qEvent("pz", 1);
+    if (first) {
+      ST.pzGot[c.m.id] = 1;
+      hero.mat.zr = (hero.mat.zr | 0) + 1;
+      hero.mk.zr = 1;
+    }
+    PZ.saveHero();
+    PZ.$("pz-body").classList.add("win");
+    PZ.banner(first ? "⚙️ +1" : "⭐", 2e3);
+    setTimeout(function() {
+      if (PZ.pzc !== c) return;
+      PZ.$("pz").hidden = true;
+      PZ.pzc = null;
+      PZ.confetti(P.x, P.y);
+      jingle();
+      if (c.m.door) {
+        PZ.labBadge(true);
+        PZ.doorOpen(c.m.door);
+        return;
+      }
+      if (first) PZ.say("", hero.pzn === 1 ? "Geschafft! Die Maschine läuft wieder und schenkt dir ein Zahnrad. Der Akku ist auch wieder geladen. Zahnräder braucht Professor Zahnrad in der Werkstatt." : clean ? "Geschafft, ganz ohne Fehler! Noch ein Zahnrad. Das nächste Rätsel dieser Art wird kniffliger." : "Geschafft! Noch ein Zahnrad.");
+      else if (clean) PZ.say("", c.m.quiz ? "Ohne Fehler! Der Akku ist voll. Das nächste Rätsel dieser Art wird kniffliger." : "Ohne Fehler! Das nächste Rätsel dieser Art wird kniffliger.");
+      else if (c.m.quiz) PZ.say("", full ? "Geschafft! Der Akku ist wieder voll." : "Geschafft! Der Akku ist ein Stück geladen. Ohne Fehler und Tipp wird er ganz voll.");
+      PZ.labBadge(true);
+      if (c.m.quiz) {
+        const f = PZ.pending;
+        PZ.pending = null;
+        if (f) f();
+      }
+    }, 1500);
+  }
+  function tkHtmlWith(PZ, t) {
+    return t.n !== void 0 ? '<span class="pzn">' + t.n + "</span>" : tokWith(PZ, t.s, t.c);
+  }
+  function drMusterWith(PZ, st) {
+    let h = '<div class="pzrow">';
+    st.seq.forEach(
+      /** @param {any} t @param {any} i */
+      function(t, i) {
+        h += i === st.hole ? '<span class="pzhole" id="pz-hole">?</span>' : '<span class="pzt">' + tkHtmlWith(PZ, t) + "</span>";
+      }
+    );
+    h += "</div>";
+    let c = '<div class="pzopts">';
+    st.opts.forEach(
+      /** @param {any} t @param {any} i */
+      function(t, i) {
+        c += '<button class="pzb" data-a="' + i + '" aria-label="Antwort ' + (i + 1) + '">' + tkHtmlWith(PZ, t) + "</button>";
+      }
+    );
+    return [h, c + "</div>"];
+  }
+  function acMusterWith(PZ, st, a, b) {
+    const t = st.opts[+a];
+    if (tkKey(t) === st.ans) {
+      b.classList.add("ok");
+      const h = PZ.$("pz-hole");
+      h.innerHTML = tkHtmlWith(PZ, t);
+      h.style.border = "0";
+      pzWinWith(PZ);
+    } else {
+      b.classList.add("no");
+      pzFailWith(PZ);
+      for (const o of PZ.$("pz-ctl").querySelectorAll("[data-a]")) {
+        o.disabled = true;
+        if (tkKey(st.opts[+o.dataset.a]) === st.ans) o.classList.add("ok");
+      }
+      const h = PZ.$("pz-hole"), t2 = st.seq[st.hole];
+      h.innerHTML = tkHtmlWith(PZ, t2);
+      h.style.borderColor = "#58b548";
+      pzRevealWith(PZ, "Schau, das hier gehört in die Lücke. Jetzt kommt eine neue Reihe.");
+    }
+  }
+  function hiMusterWith(PZ, st) {
+    if (st.u) {
+      const ts = PZ.$("pz-body").querySelectorAll(".pzrow>span");
+      for (let i = 0; i < st.u && i < ts.length; i++) if (i !== st.hole) ts[i].classList.add("flash");
+    }
+    PZ.speak(st.k === "cnt" ? "Zähle von einer Zahl zur nächsten. Wie viel kommt jedes Mal dazu oder geht weg?" : st.k === "two" ? "Schau erst nur auf die Form. Dann schau nur auf die Farbe." : "Sprich die Reihe laut mit. Was wiederholt sich immer wieder?");
+  }
+  function syMusterWith(PZ, st) {
+    return st.k === "cnt" ? "Welche Zahl fehlt? Schau, wie die Zahlen größer oder kleiner werden." : st.k === "two" ? "Welches Bild fehlt? Achte auf die Form und auf die Farbe." : "Welches Bild fehlt in der Reihe? Schau, was sich wiederholt.";
+  }
+  function stSideWith(PZ) {
+    const land = PZ.H <= 480;
+    return Math.max(220, Math.min(land ? PZ.H - 130 : PZ.W - 56, land ? 420 : PZ.H - 300, 440));
+  }
+  function drSternWith(PZ, st) {
+    const w = stSideWith(PZ), m = 26, sc = w - 2 * m;
+    let h = '<div class="pzsky" id="pz-sky" style="width:' + w + "px;height:" + w + 'px"><svg viewBox="0 0 ' + w + " " + w + '" aria-hidden="true"><polyline id="pz-line" fill="none" stroke="#9bd8ff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" points=""/></svg>';
+    st.pts.forEach(
+      /** @param {any} p @param {any} i */
+      function(p, i) {
+        h += '<button class="pzdot" data-a="' + i + '" style="left:' + (m + p[0] * sc).toFixed(1) + "px;top:" + (m + p[1] * sc).toFixed(1) + 'px" aria-label="Stern ' + p[2] + '">' + p[2] + "</button>";
+      }
+    );
+    return [h + "</div>"];
+  }
+  function stLineWith(PZ, st, close) {
+    const w = stSideWith(PZ), m = 26, sc = w - 2 * m, L = st.pts.slice(0, st.k);
+    if (close) L.push(st.pts[0]);
+    const el = PZ.$("pz-line");
+    if (el) el.setAttribute("points", L.map(
+      /** @param {any} p */
+      function(p) {
+        return (m + p[0] * sc).toFixed(1) + "," + (m + p[1] * sc).toFixed(1);
+      }
+    ).join(" "));
+  }
+  function acSternWith(PZ, st, a, b) {
+    const i = +a;
+    if (i < st.k) return;
+    if (i === st.k) {
+      st.k++;
+      b.classList.remove("no");
+      b.classList.add("done");
+      stLineWith(PZ, st, false);
+      const f = 330 + st.k * 30;
+      blip(f, f * 1.2, 0.12, "triangle", 0.06);
+      if (st.k === st.pts.length) {
+        stLineWith(PZ, st, true);
+        PZ.$("pz-sky").insertAdjacentHTML("beforeend", '<div class="pzshape" aria-hidden="true">' + st.sh.e + "</div>");
+        PZ.speak("Das ist " + st.sh.n + "!");
+        pzWinWith(PZ);
+      }
+      return;
+    }
+    b.classList.remove("no");
+    void b.offsetWidth;
+    b.classList.add("no");
+    pzFailWith(PZ);
+    const nx = PZ.$("pz-sky").querySelector('[data-a="' + st.k + '"]');
+    if (nx) {
+      nx.classList.remove("flash");
+      void nx.offsetWidth;
+      nx.classList.add("flash");
+    }
+    const want = st.pts[st.k][2];
+    PZ.speak(st.k ? "Nach " + st.pts[st.k - 1][2] + " kommt " + want + "." : "Fang bei " + want + " an.");
+  }
+  function hiSternWith(PZ, st) {
+    const nx = PZ.$("pz-sky").querySelector('[data-a="' + st.k + '"]');
+    if (nx) {
+      nx.classList.remove("flash");
+      void nx.offsetWidth;
+      nx.classList.add("flash");
+    }
+    PZ.speak(st.two ? "Immer zwei weiter: 2, 4, 6 und so fort." : "Zähl laut mit. Welche Zahl kommt als Nächstes?");
+  }
+  function sySternWith(PZ, st) {
+    return "Verbinde die Sterne der Reihe nach. Fang bei " + st.pts[0][2] + " an" + (st.two ? " und zähl immer zwei weiter." : ".");
+  }
+  function spWantWith(PZ, st, i) {
+    const c = i % st.w, r = (i - c) / st.w;
+    return st.ax ? st.a[(st.h - 1 - r) * st.w + c] : st.a[r * st.w + (st.w - 1 - c)];
+  }
+  function spGridWith(PZ, st, arr, act) {
+    let h = '<div class="pzg" style="grid-template-columns:repeat(' + st.w + ',var(--cs))">';
+    for (let i = 0; i < arr.length; i++) h += act ? '<button class="pzc sp' + arr[i] + '" data-a="' + i + '" aria-label="Feld ' + (i + 1) + '"></button>' : '<span class="pzc fix sp' + arr[i] + '"></span>';
+    return h + "</div>";
+  }
+  function drSpiegelWith(PZ, st) {
+    const cs = st.ax ? pzCellWith(PZ, st.w, st.h * 2 + 0.6, false) : pzCellWith(PZ, st.w * 2 + 0.6, st.h, false);
+    return ['<div class="pzmir' + (st.ax ? " hz" : "") + '" style="--cs:' + cs + 'px">' + spGridWith(PZ, st, st.a, false) + '<i class="mline"></i>' + spGridWith(PZ, st, st.b, true) + "</div>", ""];
+  }
+  function spDoneWith(PZ, st) {
+    for (let i = 0; i < st.b.length; i++) if (st.b[i] !== spWantWith(PZ, st, i)) return false;
+    return true;
+  }
+  function acSpiegelWith(PZ, st, a, b) {
+    const i = +a, want = spWantWith(PZ, st, i), old = st.b[i];
+    st.b[i] = (old + 1) % (st.nc + 1);
+    b.className = "pzc sp" + st.b[i];
+    sfx("tick");
+    if (st.b[i] !== want && (old === want || want === 0)) pzFailWith(PZ, true);
+    if (spDoneWith(PZ, st)) pzWinWith(PZ);
+  }
+  function hiSpiegelWith(PZ, st) {
+    const bad = idxs(st.b.length).filter(function(i) {
+      return st.b[i] !== spWantWith(PZ, st, i);
+    });
+    if (bad.length) {
+      const i = bad[PZ.ri(0, bad.length - 1)];
+      st.b[i] = spWantWith(PZ, st, i);
+      const b = PZ.$("pz-body").querySelector('[data-a="' + i + '"]');
+      b.className = "pzc flash sp" + st.b[i];
+    }
+    PZ.speak(st.ax ? "Stell dir vor, auf der roten Linie liegt ein Spiegel. Was oben nah an der Linie ist, ist unten auch nah an der Linie." : "Stell dir vor, auf der roten Linie steht ein Spiegel. Was links nah an der Linie ist, ist rechts auch nah an der Linie.");
+    if (spDoneWith(PZ, st)) pzWinWith(PZ);
+  }
+  function sySpiegelWith(PZ, st) {
+    return (st.ax ? "Male unten das Spiegelbild von oben." : "Male rechts das Spiegelbild von links.") + " Tippe auf die leeren Felder." + (st.nc > 1 ? " Tippe mehrmals, dann wechselt die Farbe." : "");
+  }
+  function drRoboWith(PZ, st) {
+    const cs = pzCellWith(PZ, st.w, st.h + 1.3, true);
+    let h = '<div class="pzg" style="--cs:' + cs + "px;grid-template-columns:repeat(" + st.w + ',var(--cs))">';
+    for (let i = 0; i < st.w * st.h; i++) {
+      const wl = st.wall.has(i), lv = st.lava.has(i), gi = st.gems.indexOf(i);
+      let c = "";
+      if (i === st.pos) c = "🤖";
+      else if (i === st.g) c = "🏁";
+      else if (gi >= 0 && !(st.got >> gi & 1)) c = "💎";
+      else if (lv) c = "🔥";
+      h += '<span class="pzc fix' + (wl ? " wall" : lv ? " lava" : "") + (i === st.pos ? " me" : "") + '">' + c + "</span>";
+    }
+    h += '</div><div class="prog" aria-label="Dein Programm">';
+    for (let i = 0; i < st.max; i++) {
+      const q = st.prog[i];
+      h += '<span class="slot' + (q ? " on" : "") + (i === st.bad ? " bad" : "") + (i === st.cur ? " cur" : "") + '">' + (q ? PZ.ARW[q.d] + (q.n > 1 ? "<b>" + q.n + "</b>" : "") : "") + "</span>";
+    }
+    h += "</div>";
+    const ctl = '<div class="rbctl"><span class="dpad"><button class="pzb sm u" data-a="3" aria-label="Nach oben">⬆️</button><button class="pzb sm l" data-a="2" aria-label="Nach links">⬅️</button><button class="pzb sm d" data-a="1" aria-label="Nach unten">⬇️</button><button class="pzb sm r" data-a="0" aria-label="Nach rechts">➡️</button></span><span class="rbside"><button class="pzb sm go" data-a="run" aria-label="Los">▶</button><button class="pzb sm" data-a="del" aria-label="Letzten Pfeil löschen">↩️</button></span></div>';
+    return [h, ctl];
+  }
+  function acRoboWith(PZ, st, a) {
+    if (a === "run") {
+      rbRunWith(PZ, st);
+      return;
+    }
+    st.bad = -1;
+    const l = st.prog[st.prog.length - 1];
+    if (a === "del") {
+      if (l) {
+        if (l.n > 1) l.n--;
+        else st.prog.pop();
+      }
+    } else {
+      const d = +a;
+      if (l && l.d === d && l.n < 9) l.n++;
+      else if (st.prog.length < st.max) st.prog.push({ d, n: 1 });
+      else {
+        tone([170], "sawtooth");
+        PZ.speak("Mehr Pfeile passen nicht hinein. Findest du einen Weg mit weniger Kurven?");
+        return;
+      }
+    }
+    sfx("tick");
+    pzDrawWith(PZ);
+  }
+  function rbRunWith(PZ, st) {
+    if (!st.prog.length) {
+      PZ.speak("Tippe erst auf die Pfeile. Dann auf Los.");
+      return;
+    }
+    const c = PZ.pzc, steps = (
+      /** @type {any[]} */
+      []
+    ), all = (1 << st.gems.length) - 1;
+    st.prog.forEach(
+      /** @param {any} q @param {any} i */
+      function(q, i2) {
+        for (let k = 0; k < q.n; k++) steps.push([q.d, i2]);
+      }
+    );
+    c.busy = true;
+    st.pos = st.s;
+    st.got = 0;
+    st.bad = -1;
+    st.cur = -1;
+    let i = 0;
+    const fail = (
+      /** @param {any} slot @param {any} why */
+      function(slot, why) {
+        st.bad = slot;
+        st.cur = -1;
+        pzDrawWith(PZ);
+        pzFailWith(PZ);
+        if (why) PZ.speak(why);
+        pzLaterWith(PZ, 1e3, function() {
+          st.pos = st.s;
+          st.got = 0;
+          c.busy = false;
+          pzDrawWith(PZ);
+        });
+      }
+    );
+    const next = function() {
+      if (i >= steps.length) {
+        fail(st.prog.length - 1, st.pos === st.g ? "Erst alle Edelsteine einsammeln, dann zur Fahne." : "Der Roboter ist noch nicht bei der Fahne. Was fehlt noch?");
+        return;
+      }
+      const d = steps[i][0], x = st.pos % st.w, y = (st.pos - x) / st.w, nx = x + RBD[d][0], ny = y + RBD[d][1], np = ny * st.w + nx;
+      st.cur = steps[i][1];
+      if (nx < 0 || ny < 0 || nx >= st.w || ny >= st.h || st.wall.has(np)) {
+        sfx("splat");
+        fail(steps[i][1], "Rums! Da geht es nicht weiter. Schau, welcher Pfeil rot ist.");
+        return;
+      }
+      st.pos = np;
+      const gi = st.gems.indexOf(np);
+      if (gi >= 0 && !(st.got >> gi & 1)) {
+        st.got |= 1 << gi;
+        sfx("coin");
+      } else sfx("tick");
+      if (st.lava.has(np)) {
+        fail(steps[i][1], "Heiß! Der Roboter darf nicht ins Feuer.");
+        return;
+      }
+      if (np === st.g && st.got === all) {
+        st.cur = -1;
+        pzDrawWith(PZ);
+        c.busy = false;
+        pzWinWith(PZ);
+        return;
+      }
+      i++;
+      pzDrawWith(PZ);
+      pzLaterWith(PZ, 300, next);
+    };
+    pzDrawWith(PZ);
+    pzLaterWith(PZ, 260, next);
+  }
+  function hiRoboWith(PZ, st) {
+    const n = Math.max(1, Math.min(Math.floor(st.sol.length / 2), PZ.pzc.hint));
+    st.prog = st.sol.slice(0, n).map(
+      /** @param {any} q */
+      function(q) {
+        return { d: q.d, n: q.n };
+      }
+    );
+    st.bad = -1;
+    st.pos = st.s;
+    st.got = 0;
+    pzDrawWith(PZ);
+    PZ.speak("Ich zeige dir den Anfang. Fahr den Weg mit dem Finger nach. Wie geht es weiter?");
+  }
+  function syRoboWith(PZ, st) {
+    return "Bring den Roboter zur Fahne. Tippe die Pfeile in der richtigen Reihenfolge, dann auf Los." + (st.gems.length ? " Sammle unterwegs " + (st.gems.length > 1 ? "alle Edelsteine" : "den Edelstein") + " ein." : "") + (st.lava.size ? " Pass auf das Feuer auf." : "") + (st.max < st.sol.length + 3 ? " Du hast nur wenige Felder. Gleiche Pfeile hintereinander brauchen nur ein Feld." : "");
+  }
+  function wgDiffWith(PZ, st) {
+    let d = 0;
+    for (const v of st.L) d += v < 0 ? st.box : v;
+    for (const q of st.R) d -= q.w < 0 ? st.box : q.w;
+    return d;
+  }
+  function wgWWith(PZ, w, cls, attr) {
+    return w < 0 ? '<span class="wt box" aria-label="Geschenk">🎁</span>' : "<" + (attr ? "button" : "span") + ' class="wt' + (w >= 10 ? " w10" : "") + (cls || "") + '"' + (attr || "") + ">" + w + "</" + (attr ? "button" : "span") + ">";
+  }
+  function drWaageWith(PZ, st) {
+    let h = '<div class="wg"><div class="beam" id="pz-beam" style="transform:rotate(' + st.ang + 'deg)"><div class="pan l">';
+    for (const v of st.L) h += wgWWith(PZ, v, " fixw");
+    h += '</div><div class="pan r">';
+    st.R.forEach(
+      /** @param {any} q @param {any} i */
+      function(q, i) {
+        h += q.fix ? wgWWith(PZ, q.w, " fixw") : wgWWith(PZ, q.w, "", ' data-a="r' + i + '" aria-label="Gewicht ' + q.w + ' wieder herunternehmen"');
+      }
+    );
+    h += '</div></div><i class="post"></i></div>';
+    let c = '<div class="pzopts">';
+    if (st.box) for (const v of st.opts) c += '<button class="pzb" data-a="o' + v + '">' + v + "</button>";
+    else if (st.items) st.items.forEach(
+      /** @param {any} q @param {any} i */
+      function(q, i) {
+        c += '<button class="pzb sm' + (q.used ? " no" : "") + '" data-a="p' + i + '"' + (q.used ? " disabled" : "") + ' aria-label="Gewicht ' + q.w + ' auflegen">' + q.w + "</button>";
+      }
+    );
+    else st.pal.forEach(
+      /** @param {any} w @param {any} i */
+      function(w, i) {
+        c += '<button class="pzb" data-a="p' + i + '" aria-label="Gewicht ' + w + ' auflegen">' + w + "</button>";
+      }
+    );
+    return [h, c + "</div>"];
+  }
+  function poWaageWith(PZ, st) {
+    const a = clamp(-wgDiffWith(PZ, st) * 2.2, -11, 11);
+    if (a === st.ang) return;
+    st.ang = a;
+    requestAnimationFrame(function() {
+      const b = PZ.$("pz-beam");
+      if (b) b.style.transform = "rotate(" + a + "deg)";
+    });
+  }
+  function acWaageWith(PZ, st, a, b) {
+    const k = a.charAt(0), i = +a.slice(1);
+    if (k === "o") {
+      if (i === st.box) {
+        b.classList.add("ok");
+        pzWinWith(PZ);
+        return;
+      }
+      b.classList.add("no");
+      pzFailWith(PZ);
+      for (const o of PZ.$("pz-ctl").querySelectorAll('[data-a^="o"]')) {
+        o.disabled = true;
+        if (o.dataset.a === "o" + st.box) o.classList.add("ok");
+      }
+      pzRevealWith(PZ, "Das Geschenk wiegt " + st.box + ". Jetzt kommt eine neue Waage.");
+      return;
+    }
+    if (k === "p") {
+      if (st.R.length >= 14) return;
+      if (st.items) {
+        if (st.items[i].used) return;
+        st.items[i].used = true;
+        st.R.push({ w: st.items[i].w, i });
+      } else st.R.push({ w: st.pal[i], i: -1 });
+    } else {
+      const q = st.R[i];
+      if (!q || q.fix) return;
+      st.R.splice(i, 1);
+      if (q.i >= 0) st.items[q.i].used = false;
+    }
+    sfx("tick");
+    const d = wgDiffWith(PZ, st);
+    if (d < 0 && !st.over) {
+      st.over = true;
+      pzFailWith(PZ, true);
+    } else if (d >= 0) st.over = false;
+    pzDrawWith(PZ);
+    if (d === 0) {
+      PZ.pzc.busy = true;
+      pzLaterWith(PZ, 650, function() {
+        PZ.pzc.busy = false;
+        pzWinWith(PZ);
+      });
+    }
+  }
+  function hiWaageWith(PZ, st) {
+    const d = wgDiffWith(PZ, st);
+    if (st.box) PZ.speak("Nimm in Gedanken auf beiden Seiten gleich viel weg. Was bleibt dann für das Geschenk übrig?");
+    else if (d >= 10 && st.pal && st.pal.indexOf(10) >= 0) PZ.speak("Links ist es mehr als 10. Lege erst die 10 auf, dann den Rest.");
+    else if (d > 0) PZ.speak("Zähle erst links alles zusammen, dann rechts. Wie viel fehlt rechts noch?");
+    else PZ.speak("Rechts ist es zu schwer. Zähle beide Seiten zusammen. Tippe rechts ein Gewicht an, dann kommt es wieder herunter.");
+  }
+  function syWaageWith(PZ, st) {
+    if (st.box) return "Die Waage steht gerade. Wie schwer ist das Geschenk?" + (st.L.filter(
+      /** @param {any} v */
+      function(v) {
+        return v < 0;
+      }
+    ).length > 1 ? " Alle Geschenke sind gleich schwer." : "");
+    return "Lege rechts Gewichte auf, bis die Waage gerade steht." + (st.items ? " Jedes Gewicht gibt es nur einmal." : "");
+  }
+  function drRohreWith(PZ, st) {
+    const cs = pzCellWith(PZ, st.w + 2, st.h, false), f = rhFlow(st), done = rhDone(st, f);
+    let h = '<div class="pzg" style="--cs:' + cs + "px;grid-template-columns:repeat(" + (st.w + 2) + ',var(--cs))">';
+    for (let y = 0; y < st.h; y++) {
+      h += '<span class="ends" aria-hidden="true">' + (y === st.ys ? "🚰" : "") + "</span>";
+      for (let x = 0; x < st.w; x++) {
+        const p = y * st.w + x, t = st.t[p];
+        if (t === 3) h += '<span class="pzc pp rock"></span>';
+        else h += '<button class="pzc pp' + (f.has(p) ? " wet" : "") + (st.lk[p] ? " lk" : "") + '" data-a="' + p + '" aria-label="Rohr drehen"><svg viewBox="0 0 24 24" style="transform:rotate(' + st.ang[p] + 'deg)" aria-hidden="true">' + PZ.RSVG[t] + ' stroke="currentColor" stroke-width="7" fill="none"/></svg></button>';
+      }
+      h += '<span class="ends"' + (y === st.ye ? ' id="pz-sink"' : "") + ' aria-hidden="true">' + (y === st.ye ? done ? "🌻" : "🌱" : "") + "</span>";
+    }
+    return [h + "</div>", ""];
+  }
+  function rhPaintWith(PZ, st) {
+    const f = rhFlow(st), done = rhDone(st, f);
+    for (const b of PZ.$("pz-body").querySelectorAll("[data-a]")) b.classList.toggle("wet", f.has(+b.dataset.a));
+    if (done) {
+      PZ.$("pz-sink").textContent = "🌻";
+      pzWinWith(PZ);
+    }
+  }
+  function acRohreWith(PZ, st, a, b) {
+    const p = +a;
+    if (st.lk[p]) return;
+    st.r[p] = (st.r[p] + 1) % 4;
+    st.ang[p] += 90;
+    st.taps++;
+    b.firstChild.style.transform = "rotate(" + st.ang[p] + "deg)";
+    sfx("tick");
+    if (st.taps === st.need * 2 + 6) PZ.pzc.fails = Math.max(PZ.pzc.fails, 2);
+    rhPaintWith(PZ, st);
+  }
+  function hiRohreWith(PZ, st) {
+    const bad = idxs(st.t.length).filter(function(p) {
+      return st.sr[p] >= 0 && !st.lk[p];
+    });
+    const wrong = bad.filter(function(p) {
+      return st.t[p] === 0 ? (st.r[p] & 1) !== (st.sr[p] & 1) : st.r[p] !== st.sr[p];
+    });
+    const pick = wrong.length ? wrong : bad;
+    if (pick.length) {
+      const p = pick[PZ.ri(0, pick.length - 1)], d = (st.sr[p] - st.r[p] + 4) % 4;
+      st.r[p] = st.sr[p];
+      st.ang[p] += d * 90;
+      st.lk[p] = true;
+      const b = PZ.$("pz-body").querySelector('[data-a="' + p + '"]');
+      b.classList.add("lk");
+      b.firstChild.style.transform = "rotate(" + st.ang[p] + "deg)";
+    }
+    PZ.speak("Ein Rohr habe ich für dich festgeschraubt. Fang links beim Wasserhahn an und geh Stück für Stück weiter.");
+    rhPaintWith(PZ, st);
+  }
+  function syRohreWith(PZ) {
+    return "Dreh die Rohre, bis das Wasser vom Wasserhahn bis zur Pflanze fließt. Tippe auf ein Rohr, dann dreht es sich.";
+  }
+  function pzBindWith(PQ) {
+    PQ.$("pz").addEventListener(
+      "click",
+      /** @param {any} e */
+      function(e) {
+        if (e.target === PQ.$("pz") || e.target.closest(".xb")) {
+          PQ.pzClose();
+          return;
+        }
+        if (!PQ.pzc) return;
+        if (e.target.closest("#pz-say")) {
+          PQ.speak(PQ.pzc.T.say(PQ.pzc.st));
+          return;
+        }
+        if (PQ.pzc.busy) return;
+        if (e.target.closest("#pz-hint")) {
+          if (PQ.pzc.hint >= PQ.pzHintMax(PQ.pzc)) {
+            PQ.speak("Den Tipp hast du schon bekommen. Du schaffst den Rest!");
+            return;
+          }
+          if (PQ.pzc.fails < 1) {
+            PQ.speak("Probier es erst einmal selbst. Wenn es nicht klappt, gibt es einen Tipp.");
+            return;
+          }
+          PQ.LOG.pHint(PQ.pzc);
+          PQ.pzc.hint++;
+          PQ.pzHintUi();
+          PQ.pzc.T.hint(PQ.pzc.st);
+          return;
+        }
+        const b = e.target.closest("[data-a]");
+        if (b && !b.disabled) PQ.pzc.T.act(PQ.pzc.st, b.dataset.a, b);
+      }
+    );
+    PQ.$("quiz-pz").addEventListener("click", function() {
+      PQ.LOG.qSwitch();
+      PQ.$("quiz").hidden = true;
+      ST.paused = false;
+      PQ.pzOpen({ id: "quiz", t: PQ.PZT[(hero.pzn | 0) % PQ.PZT.length].id, zb: 0, quiz: true });
+    });
+  }
+
+  // src/ui/rohrwand.js
+  var RWT = 22;
+  var RWZ = 2;
+  var rwc = null;
+  var zk = 0;
+  var cool = 0;
+  function rwHas(m) {
+    const o = rw[m.id];
+    return !!o && o.mc !== void 0;
+  }
+  function geo(m, w, h) {
+    const o = rw[m.id];
+    return { s: o.s || 1, lx0: -w * RWT / 2, top: m.y - 46 - h * RWT, w, h };
+  }
+  function rwStartWith(RQ, m) {
+    const lv = clamp((hero.pz.rohre | 0) + (m.zb | 0), 0, 9), st = RQ.mkRohre(lv);
+    rwc = { m, T: RQ.PZI.rohre, lv, fails: 0, hint: 0, won: false, busy: false, st, wall: true, da: st.ang.slice() };
+    RQ.pzc = rwc;
+    RQ.LOG.pStart(rwc);
+    RQ.speak("Dreh die Rohre, bis das Wasser von der Quelle bis zur Glut fließt. Tippe auf ein Rohr, dann dreht es sich.");
+  }
+  function rwUiTickWith(RQ, dt) {
+    cool -= dt;
+    if (rwc) {
+      const m = rwc.m;
+      if (RQ.pzc !== rwc) {
+        rwc = null;
+        cool = 2;
+      } else if (!rwc.won && (Math.abs(P.x - m.x) > 70 || Math.abs(P.y - m.y) > 70 || P.mode !== "walk")) {
+        RQ.LOG.pQuit(rwc);
+        RQ.pzc = null;
+        rwc = null;
+        cool = 1;
+      }
+    } else if (cool <= 0 && !RQ.pzc && P.on && P.mode === "walk" && !RQ.uiOpen()) {
+      for (const m of RQ.MACH) if (m.t === "rohre" && rwHas(m) && Math.abs(P.x - m.x) < 40 && Math.abs(P.y - m.y) < 52) {
+        rwStartWith(RQ, m);
+        break;
+      }
+    }
+    zk += ((rwc ? 1 : 0) - zk) * Math.min(1, dt * 5);
+    if (zk < 2e-3) zk = 0;
+    RQ.zoom(1 + (RWZ - 1) * zk);
+    const c = rwc || null;
+    if (c) {
+      const g = geo(c.m, c.st.w, c.st.h), tx = c.m.x, ty = g.top + g.h * RWT / 2 + 20;
+      cam.x += (tx - cam.x) * zk;
+      cam.y += (ty - cam.y) * zk;
+      for (let p = 0; p < c.da.length; p++) c.da[p] += (c.st.ang[p] - c.da[p]) * Math.min(1, dt * 14);
+    }
+  }
+  function rwTapWith(RQ, wx, wy) {
+    const c = rwc;
+    if (!c) return false;
+    if (c.busy || c.won) return true;
+    const st = c.st, g = geo(c.m, st.w, st.h), lx = (wx - c.m.x) * g.s, x = Math.floor((lx - g.lx0) / RWT), y = Math.floor((wy - g.top) / RWT);
+    if (x < 0 || y < 0 || x >= st.w || y >= st.h) return true;
+    const p = y * st.w + x;
+    if (st.t[p] === 3 || st.lk[p]) return true;
+    st.r[p] = (st.r[p] + 1) % 4;
+    st.ang[p] += 90;
+    st.taps++;
+    sfx("tick");
+    if (st.taps === st.need * 2 + 6) c.fails = Math.max(c.fails, 2);
+    if (rhDone(st, rhFlow(st))) pzWinWith(RQ.PZ);
+    return true;
+  }
+  function rwHintWith(RQ) {
+    const c = rwc;
+    if (!c) return false;
+    if (c.busy || c.won) return true;
+    if (c.hint >= pzHintMaxWith(RQ.PZ, c)) {
+      RQ.speak("Den Tipp hast du schon bekommen. Du schaffst den Rest!");
+      return true;
+    }
+    if (c.fails < 1) {
+      RQ.speak("Probier es erst einmal selbst. Wenn es nicht klappt, gibt es einen Tipp.");
+      return true;
+    }
+    RQ.LOG.pHint(c);
+    c.hint++;
+    const st = c.st, bad = [], wrong = [];
+    for (let p = 0; p < st.t.length; p++) if (st.sr[p] >= 0 && !st.lk[p]) {
+      bad.push(p);
+      if (st.t[p] === 0 ? (st.r[p] & 1) !== (st.sr[p] & 1) : st.r[p] !== st.sr[p]) wrong.push(p);
+    }
+    const pick = wrong.length ? wrong : bad;
+    if (pick.length) {
+      const p = pick[Math.floor(Math.random() * pick.length)];
+      st.ang[p] += (st.sr[p] - st.r[p] + 4) % 4 * 90;
+      st.r[p] = st.sr[p];
+      st.lk[p] = true;
+    }
+    RQ.speak("Ein Rohr habe ich für dich festgeschraubt. Fang bei der Quelle an und geh Stück für Stück weiter.");
+    if (rhDone(st, rhFlow(st))) pzWinWith(RQ.PZ);
+    return true;
+  }
+  function pipe(ctx, t, deg, col) {
+    ctx.save();
+    ctx.rotate(deg * TAU / 360);
+    const m = RMASK[t], q = RWT / 2;
+    ctx.lineCap = "round";
+    ctx.lineWidth = RWT * 0.42;
+    ctx.strokeStyle = "#1b1a24";
+    ctx.beginPath();
+    for (const [b, x, y] of [[1, 0, -q], [2, q, 0], [4, 0, q], [8, -q, 0]]) if (m & b) {
+      ctx.moveTo(0, 0);
+      ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.lineWidth = RWT * 0.26;
+    ctx.strokeStyle = col;
+    ctx.stroke();
+    ctx.restore();
+  }
+  function rwDrawWith(RQ, ctx, layer, x0, x1) {
+    if (layer !== "glow") return;
+    for (const m of RQ.MACH) {
+      if (m.t !== "rohre" || m.x < x0 - 200 || m.x > x1 + 200 || !rwHas(m)) continue;
+      const c = rwc && rwc.m === m ? rwc : null, st = c ? c.st : null, w = st ? st.w : 4, h = st ? st.h : 3, g = geo(m, w, h);
+      const f = st ? rhFlow(st) : null, done = st ? rhDone(
+        st,
+        /** @type {Set<number>} */
+        f
+      ) : false;
+      ctx.save();
+      ctx.translate(m.x, 0);
+      ctx.scale(g.s, 1);
+      ctx.fillStyle = "#1b1a24";
+      RQ.rr(g.lx0 - RWT - 6, g.top - 6, (w + 2) * RWT + 12, h * RWT + 12, 8);
+      ctx.fillStyle = c ? "#5a4f6e" : "#3b3448";
+      RQ.rr(g.lx0 - RWT - 3, g.top - 3, (w + 2) * RWT + 6, h * RWT + 6, 6);
+      const ys = st ? st.ys : 1, ye = st ? st.ye : 1, sx = g.lx0 + w * RWT + RWT / 2;
+      ctx.lineCap = "round";
+      ctx.lineWidth = RWT * 0.42;
+      ctx.strokeStyle = "#1b1a24";
+      ctx.beginPath();
+      ctx.moveTo(sx - RWT / 2, g.top + (ye + 0.5) * RWT);
+      ctx.lineTo(sx, g.top + (ye + 0.5) * RWT);
+      ctx.lineTo(sx, m.y + 2);
+      ctx.stroke();
+      ctx.lineWidth = RWT * 0.26;
+      ctx.strokeStyle = done ? "#4fb3ff" : "#8a8796";
+      ctx.stroke();
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const p = y * w + x, cx = g.lx0 + (x + 0.5) * RWT, cy = g.top + (y + 0.5) * RWT;
+        ctx.fillStyle = x + y & 1 ? "#4a4159" : "#443c52";
+        ctx.fillRect(cx - RWT / 2 + 1, cy - RWT / 2 + 1, RWT - 2, RWT - 2);
+        ctx.save();
+        ctx.translate(cx, cy);
+        if (!st) {
+          pipe(ctx, (x + y) % 2, (x * 3 + y) % 4 * 90, "#8a8796");
+          ctx.restore();
+          continue;
+        }
+        if (st.t[p] === 3) {
+          ctx.fillStyle = "#6d6a78";
+          RQ.rr(-RWT * 0.4, -RWT * 0.4, RWT * 0.8, RWT * 0.8, 4);
+          ctx.restore();
+          continue;
+        }
+        pipe(
+          ctx,
+          st.t[p],
+          c.da[p],
+          /** @type {Set<number>} */
+          f.has(p) ? "#4fb3ff" : "#b9b4c6"
+        );
+        if (st.lk[p]) {
+          ctx.fillStyle = "#ffd23f";
+          RQ.circle(0, 0, RWT * 0.12);
+        }
+        ctx.restore();
+      }
+      ctx.restore();
+      const qx = m.x + g.s * (g.lx0 - RWT / 2);
+      RQ.emo("🚰", qx, g.top + (ys + 0.5) * RWT, RWT * 0.8);
+    }
+  }
+  function rwNah() {
+    return !!rwc;
+  }
+
   // src/core/learn/facts.js
   var WORDS = [
     { w: "Auto", ic: "car", no: "" },
@@ -5046,362 +6229,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     }
   }
 
-  // src/audio/sound.js
-  var AC = null;
-  var tapT = 0;
-  function audio() {
-    if (!AC) {
-      try {
-        AC = new (window.AudioContext || /** @type {any} */
-        window.webkitAudioContext)();
-      } catch (_) {
-        AC = null;
-      }
-    }
-    if (AC && AC.state === "suspended") {
-      try {
-        AC.resume();
-      } catch (_) {
-      }
-    }
-  }
-  function jingle() {
-    if (!AC || muted || fxOff) return;
-    try {
-      const t = AC.currentTime;
-      [523, 659, 784, 1047].forEach(
-        /** @param {any} f @param {any} i */
-        function(f, i) {
-          const o = AC.createOscillator(), g = AC.createGain(), s = t + i * 0.11;
-          o.type = "triangle";
-          o.frequency.value = f;
-          g.gain.setValueAtTime(1e-4, s);
-          g.gain.linearRampToValueAtTime(0.18, s + 0.02);
-          g.gain.exponentialRampToValueAtTime(1e-3, s + 0.4);
-          o.connect(g);
-          g.connect(AC.destination);
-          o.start(s);
-          o.stop(s + 0.45);
-        }
-      );
-    } catch (_) {
-    }
-  }
-  var VRATES = [0.75, 0.95, 1.1];
-  var VOICE = { v: "", r: 0.95 };
-  function voicesDe() {
-    try {
-      return speechSynthesis.getVoices().filter(
-        /** @param {any} v */
-        function(v) {
-          return /^de([-_]|$)/i.test(v.lang);
-        }
-      );
-    } catch (_) {
-      return [];
-    }
-  }
-  function voiceGet() {
-    if (!VOICE.v) return null;
-    return voicesDe().find(
-      /** @param {any} v */
-      function(v) {
-        return v.name === VOICE.v;
-      }
-    ) || null;
-  }
-  var VCLIP = null;
-  var vcSeq = 0;
-  var vcAud = null;
-  var vcUrl = {};
-  function speakSplit(t) {
-    return (String(t).replace(/\s+/g, " ").trim().match(/[^.!?]+[.!?]+|[^.!?]+$/g) || []).map(
-      /** @param {any} s */
-      function(s) {
-        return s.trim();
-      }
-    ).filter(Boolean);
-  }
-  try {
-    const a = document.createElement("audio");
-    if (a.canPlayType && a.canPlayType("audio/ogg; codecs=opus")) fetch("audio/index.json").then(
-      /** @param {any} r */
-      function(r) {
-        return r.ok ? r.json() : null;
-      }
-    ).then(
-      /** @param {any} j */
-      function(j) {
-        if (j && j.v === 1 && j.c) VCLIP = j.c;
-      }
-    ).catch(function() {
-    });
-  } catch (_) {
-  }
-  function clipGet(id) {
-    if (!vcUrl[id]) {
-      vcUrl[id] = fetch("audio/" + id + ".ogg").then(
-        /** @param {any} r */
-        function(r) {
-          if (!r.ok) throw new Error("clip");
-          return r.blob();
-        }
-      ).then(
-        /** @param {any} b */
-        function(b) {
-          return URL.createObjectURL(b);
-        }
-      );
-      vcUrl[id].catch(function() {
-        delete vcUrl[id];
-      });
-    }
-    return vcUrl[id];
-  }
-  function speakStop() {
-    vcSeq++;
-    try {
-      if (vcAud) {
-        vcAud.onended = null;
-        vcAud.pause();
-        vcAud = null;
-      }
-    } catch (_) {
-    }
-    try {
-      if (window.speechSynthesis) window.speechSynthesis.cancel();
-    } catch (_) {
-    }
-  }
-  var NUMW = ["null", "eins", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun", "zehn", "elf", "zwölf", "dreizehn", "vierzehn", "fünfzehn", "sechzehn", "siebzehn", "achtzehn", "neunzehn"];
-  var NUMT = ["", "", "zwanzig", "dreißig", "vierzig", "fünfzig", "sechzig", "siebzig", "achtzig", "neunzig"];
-  function numWord(n) {
-    if (n < 20) return NUMW[n];
-    if (n < 100) return (n % 10 ? (n % 10 === 1 ? "ein" : NUMW[n % 10]) + "und" : "") + NUMT[Math.floor(n / 10)];
-    if (n < 1e3) return (Math.floor(n / 100) === 1 ? "ein" : NUMW[Math.floor(n / 100)]) + "hundert" + (n % 100 ? numWord(n % 100) : "");
-    return String(n);
-  }
-  function synthText(t) {
-    return String(t).replace(
-      /\d+/g,
-      /** @param {any} d */
-      function(d) {
-        return numWord(+d);
-      }
-    ).replace(/ – /g, ", ").replace(/[←-⯿️‍]|[\uD83C-\uD83E][\uDC00-\uDFFF]/g, "").replace(/\s+/g, " ").trim();
-  }
-  function synth(text) {
-    if (!("speechSynthesis" in window)) return;
-    const u = new SpeechSynthesisUtterance(synthText(text));
-    u.lang = "de-DE";
-    u.rate = VOICE.r;
-    u.pitch = 1;
-    const vo = voiceGet() || voicesDe().find(
-      /** @param {any} v */
-      function(v) {
-        return /^de[-_]DE$/i.test(v.lang);
-      }
-    );
-    if (vo) u.voice = vo;
-    window.speechSynthesis.speak(u);
-    return u;
-  }
-  function clipPlay(ids, text) {
-    const seq = vcSeq, h = (
-      /** @type {{ onend: any }} */
-      { onend: null }
-    );
-    const done = function() {
-      if (seq === vcSeq && h.onend) {
-        const f = h.onend;
-        h.onend = null;
-        f();
-      }
-    };
-    const fail = function() {
-      if (seq !== vcSeq) return;
-      const u = synth(text);
-      if (u) u.onend = done;
-      else done();
-    };
-    Promise.all(ids.map(clipGet)).then(
-      /** @param {any} urls */
-      function(urls) {
-        let i = 0;
-        const next = function() {
-          if (seq !== vcSeq) return;
-          if (i >= urls.length) {
-            vcAud = null;
-            done();
-            return;
-          }
-          const a = new Audio(urls[i++]);
-          vcAud = a;
-          a.playbackRate = VOICE.r / 0.95;
-          a.onended = next;
-          const p = a.play();
-          if (p && p.catch) p.catch(function() {
-            if (i === 1) fail();
-            else next();
-          });
-        };
-        next();
-      }
-    ).catch(fail);
-    return h;
-  }
-  function speakWith(AP, text) {
-    try {
-      if (performance.now() < AP.talkLock && performance.now() - tapT > 450) return;
-      if (muted) return;
-      speakStop();
-      const ss = speakSplit(text);
-      if (VCLIP) {
-        const ids = ss.map(
-          /** @param {any} s */
-          function(s) {
-            return (
-              /** @type {Record<string, string>} */
-              VCLIP[s]
-            );
-          }
-        );
-        if (ss.length && ids.every(Boolean)) return clipPlay(ids, text);
-        AP.vcMiss(text);
-      }
-      return synth(text);
-    } catch (_) {
-    }
-  }
-  var muted = false;
-  var fxOff = false;
-  var noiseBuf = null;
-  var coinT = 0;
-  var coinN = 0;
-  var digSfxT = 0;
-  var flameSfx = 0;
-  function blip(f0, f1, dur, type, vol) {
-    if (!AC || muted || fxOff) return;
-    try {
-      const t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain();
-      o.type = type || "sine";
-      o.frequency.setValueAtTime(f0, t);
-      if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
-      g.gain.setValueAtTime(vol, t);
-      g.gain.exponentialRampToValueAtTime(1e-3, t + dur);
-      o.connect(g);
-      g.connect(AC.destination);
-      o.start(t);
-      o.stop(t + dur + 0.02);
-    } catch (_) {
-    }
-  }
-  function noise(dur, freq, vol) {
-    if (!AC || muted || fxOff) return;
-    try {
-      if (!noiseBuf) {
-        noiseBuf = AC.createBuffer(1, Math.floor(AC.sampleRate * 0.6), AC.sampleRate);
-        const d = noiseBuf.getChannelData(0);
-        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-      }
-      const t = AC.currentTime, src = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain();
-      src.buffer = noiseBuf;
-      f.type = "lowpass";
-      f.frequency.setValueAtTime(freq, t);
-      f.frequency.exponentialRampToValueAtTime(Math.max(60, freq * 0.3), t + dur);
-      g.gain.setValueAtTime(vol, t);
-      g.gain.exponentialRampToValueAtTime(1e-3, t + dur);
-      src.connect(f);
-      f.connect(g);
-      g.connect(AC.destination);
-      src.start(t);
-      src.stop(t + dur + 0.02);
-    } catch (_) {
-    }
-  }
-  function sfx(k) {
-    const now = performance.now();
-    if (k === "coin") {
-      if (now - coinT < 70) return;
-      coinN = now - coinT < 700 ? Math.min(12, coinN + 1) : 0;
-      coinT = now;
-      const f = 880 * Math.pow(1.06, coinN);
-      blip(f, f * 1.5, 0.09, "triangle", 0.12);
-    } else if (k === "dig") {
-      if (now - digSfxT < 95) return;
-      digSfxT = now;
-      noise(0.07, 500 + Math.random() * 300, 0.16);
-    } else if (k === "jump") blip(300, 620, 0.12, "sine", 0.1);
-    else if (k === "boom") {
-      noise(0.55, 900, 0.4);
-      blip(120, 40, 0.4, "sine", 0.3);
-    } else if (k === "tick") blip(900, 700, 0.03, "square", 0.03);
-    else if (k === "pop") blip(520, 880, 0.1, "triangle", 0.12);
-    else if (k === "throw") blip(520, 240, 0.09, "sine", 0.06);
-    else if (k === "splat") noise(0.09, 1500, 0.12);
-    else if (k === "swish") noise(0.18, 3200, 0.03);
-    else if (k === "hick") blip(430, 920, 0.08, "square", 0.05);
-    else if (k === "laugh") tone([392, 523, 392, 523]);
-    else if (k === "pups") {
-      blip(150, 52, 0.45, "sawtooth", 0.2);
-      noise(0.3, 320, 0.1);
-    } else if (k === "burp") blip(120, 62, 0.55, "sawtooth", 0.22);
-    else if (k === "quack") blip(760, 380, 0.1, "square", 0.05);
-    else if (k === "whoosh") blip(280, 900, 0.24, "sine", 0.06);
-    else if (k === "fw") blip(500, 1500, 0.3, "sine", 0.04);
-    else if (k === "bang") {
-      noise(0.35, 2600, 0.2);
-      blip(170, 60, 0.22, "sine", 0.14);
-    } else if (k === "roar") blip(80, 190, 0.5, "sawtooth", 0.15);
-    else if (k === "flame") {
-      if (now - flameSfx < 110) return;
-      flameSfx = now;
-      noise(0.14, 1e3, 0.07);
-    }
-  }
-  function tone(list, type) {
-    if (!AC || muted || fxOff) return;
-    try {
-      const t = AC.currentTime;
-      list.forEach(
-        /** @param {any} f @param {any} i */
-        function(f, i) {
-          const o = AC.createOscillator(), g = AC.createGain(), s = t + i * 0.1;
-          o.type = type || "triangle";
-          o.frequency.value = f;
-          g.gain.setValueAtTime(1e-4, s);
-          g.gain.linearRampToValueAtTime(0.16, s + 0.02);
-          g.gain.exponentialRampToValueAtTime(1e-3, s + 0.25);
-          o.connect(g);
-          g.connect(AC.destination);
-          o.start(s);
-          o.stop(s + 0.3);
-        }
-      );
-    } catch (_) {
-    }
-  }
-  var AU = {
-    get muted() {
-      return muted;
-    },
-    set muted(v) {
-      muted = v;
-    },
-    get fxOff() {
-      return fxOff;
-    },
-    set fxOff(v) {
-      fxOff = v;
-    },
-    get tapT() {
-      return tapT;
-    },
-    set tapT(v) {
-      tapT = v;
-    }
-  };
-
   // src/systems/sights.js
   function geysersWith(SY) {
     const a = SY.realm ? [] : [4280];
@@ -5535,12 +6362,12 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       SY.circle(m.x, m.y, 4.5);
     }
     for (const r of MROCKS) {
-      const cool = clamp((r.t - 40) / 20, 0, 1), gl = (1 - cool) * (0.6 + 0.4 * Math.sin(SY.time * 6 + r.x));
+      const cool2 = clamp((r.t - 40) / 20, 0, 1), gl = (1 - cool2) * (0.6 + 0.4 * Math.sin(SY.time * 6 + r.x));
       ctx.fillStyle = "rgba(255,200,60," + 0.35 * gl + ")";
       SY.circle(r.x, r.y - 9, 22);
       ctx.fillStyle = SY.INK;
       SY.circle(r.x, r.y - 9, 11);
-      ctx.fillStyle = cool < 1 ? "#ff9a3c" : "#7a7068";
+      ctx.fillStyle = cool2 < 1 ? "#ff9a3c" : "#7a7068";
       SY.circle(r.x, r.y - 9, 8.5);
       ctx.fillStyle = "rgba(255,240,170," + gl + ")";
       SY.circle(r.x - 3, r.y - 12, 2.8);
@@ -9027,650 +9854,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     ctx.fill();
   }
 
-  // src/ui/puzzles.js
-  function tokWith(PZ, s, c) {
-    return '<svg class="tok" viewBox="0 0 24 24" aria-hidden="true">' + PZ.PSHP[s] + ' fill="' + PZ.PCOL[c] + '" stroke="#1d2a3a" stroke-width="2" stroke-linejoin="round"/></svg>';
-  }
-  function pzLaterWith(PZ, ms, fn) {
-    const c = PZ.pzc;
-    PZ.pzTm.push(setTimeout(function() {
-      if (PZ.pzc === c && c) fn();
-    }, ms));
-  }
-  function pzClearWith(PZ) {
-    for (const t of PZ.pzTm) clearTimeout(t);
-    PZ.pzTm = [];
-  }
-  function pzCellWith(PZ, c, r, ctl) {
-    const land = PZ.H <= 480, aw = land ? ctl ? Math.min(PZ.W * 0.5, 380) : Math.min(PZ.W - 90, 560) : Math.min(PZ.W - 64, 480), ah = land ? PZ.H - 124 : PZ.H - (ctl ? 340 : 215);
-    return Math.max(20, Math.min(56, Math.floor(aw / c) - 4, Math.floor(ah / r) - 4));
-  }
-  function pzOpenWith(PZ, m) {
-    const T = PZ.PZI[m.t], lv = clamp((hero.pz[m.t] | 0) + (m.zb | 0), 0, 9);
-    keys.l = keys.r = keys.u = keys.d = keys.a = false;
-    ST.talkLock = 0;
-    PZ.pzc = { m, T, lv, fails: 0, hint: 0, won: false, busy: false, st: null };
-    PZ.LOG.pStart(PZ.pzc);
-    PZ.$("pz-ic").textContent = T.e;
-    let h = "";
-    for (let i = 0; i < 10; i++) h += "<i" + (i <= lv ? ' class="on"' : "") + "></i>";
-    PZ.$("pz-lv").innerHTML = h;
-    PZ.$("pz-sheet").setAttribute("aria-label", "Rätselmaschine: " + T.n + ", Stufe " + (lv + 1) + " von 10");
-    PZ.$("pz-body").classList.remove("win");
-    PZ.pzc.st = T.make(lv);
-    PZ.$("pz").hidden = false;
-    pzDrawWith(PZ);
-    pzHintUiWith(PZ);
-    PZ.speak(T.say(PZ.pzc.st));
-    if (T.start) T.start(PZ.pzc.st);
-  }
-  function pzDrawWith(PZ) {
-    const c = PZ.pzc, o = c.T.draw(c.st);
-    PZ.$("pz-body").innerHTML = o[0];
-    PZ.$("pz-ctl").innerHTML = o[1] || "";
-    PZ.$("pz-sheet").classList.toggle("noctl", !o[1]);
-    if (c.T.post) c.T.post(c.st);
-  }
-  function pzCloseWith(PZ) {
-    if (PZ.$("pz").hidden) return;
-    const c = PZ.pzc;
-    PZ.LOG.pQuit(c);
-    pzClearWith(PZ);
-    PZ.$("pz").hidden = true;
-    PZ.pzc = null;
-    speakStop();
-    if (c && !c.won && c.fails >= 3) {
-      hero.pz[c.T.id] = Math.max(0, (hero.pz[c.T.id] | 0) - 1);
-      PZ.saveHero();
-    }
-    if (c && c.m.quiz && !c.won) {
-      const f = PZ.pending;
-      PZ.pending = null;
-      if (ST.energy > 0) {
-        if (f) f();
-      } else {
-        PZ.setTool(null, true);
-        if (P.mode !== "walk") PZ.setMode("walk");
-        PZ.pulse("batt");
-      }
-    }
-  }
-  function pzHintMaxWith(PZ, c) {
-    return c.lv >= 6 ? 2 : 1;
-  }
-  function pzHintUiWith(PZ) {
-    const c = PZ.pzc;
-    if (c) PZ.$("pz-hint").classList.toggle("off", c.fails < 1 || c.hint >= pzHintMaxWith(PZ, c));
-  }
-  function pzFailWith(PZ, quiet) {
-    const c = PZ.pzc;
-    c.fails++;
-    if (!quiet) tone([170], "sawtooth");
-    if (c.fails === 3 && c.hint < pzHintMaxWith(PZ, c)) PZ.pulse("pz-hint");
-    pzHintUiWith(PZ);
-  }
-  function pzRevealWith(PZ, text) {
-    const c = PZ.pzc;
-    c.busy = true;
-    PZ.speak(text);
-    pzLaterWith(PZ, 2200, function() {
-      c.busy = false;
-      c.st = c.T.make(c.lv);
-      pzDrawWith(PZ);
-      PZ.speak(c.T.say(c.st));
-    });
-  }
-  function pzWinWith(PZ) {
-    const c = PZ.pzc;
-    if (!c || c.won) return;
-    c.won = true;
-    c.busy = true;
-    pzClearWith(PZ);
-    PZ.LOG.pWin(c);
-    const id = c.T.id, first = !c.m.quiz && !ST.pzGot[c.m.id], clean = c.fails <= 1 && !c.hint;
-    tone([523, 659, 784, 1047]);
-    if (clean) hero.pz[id] = Math.min(9, (hero.pz[id] | 0) + 1);
-    else if (c.fails >= 5 || c.hint >= 2) hero.pz[id] = Math.max(0, (hero.pz[id] | 0) - 1);
-    hero.pzn = (hero.pzn | 0) + 1;
-    PZ.dayAdd("pz");
-    const segs = clean ? 5 : Math.max(1, 5 - c.fails - c.hint), full = segs >= 5 || ST.energy >= PZ.MAXE;
-    ST.lootDirty = true;
-    ST.energy = Math.max(ST.energy, segs * PZ.SEG);
-    PZ.battShown = -1;
-    PZ.renderBatt();
-    PZ.qEvent("pz", 1);
-    if (first) {
-      ST.pzGot[c.m.id] = 1;
-      hero.mat.zr = (hero.mat.zr | 0) + 1;
-      hero.mk.zr = 1;
-    }
-    PZ.saveHero();
-    PZ.$("pz-body").classList.add("win");
-    PZ.banner(first ? "⚙️ +1" : "⭐", 2e3);
-    setTimeout(function() {
-      if (PZ.pzc !== c) return;
-      PZ.$("pz").hidden = true;
-      PZ.pzc = null;
-      PZ.confetti(P.x, P.y);
-      jingle();
-      if (c.m.door) {
-        PZ.labBadge(true);
-        PZ.doorOpen(c.m.door);
-        return;
-      }
-      if (first) PZ.say("", hero.pzn === 1 ? "Geschafft! Die Maschine läuft wieder und schenkt dir ein Zahnrad. Der Akku ist auch wieder geladen. Zahnräder braucht Professor Zahnrad in der Werkstatt." : clean ? "Geschafft, ganz ohne Fehler! Noch ein Zahnrad. Das nächste Rätsel dieser Art wird kniffliger." : "Geschafft! Noch ein Zahnrad.");
-      else if (clean) PZ.say("", c.m.quiz ? "Ohne Fehler! Der Akku ist voll. Das nächste Rätsel dieser Art wird kniffliger." : "Ohne Fehler! Das nächste Rätsel dieser Art wird kniffliger.");
-      else if (c.m.quiz) PZ.say("", full ? "Geschafft! Der Akku ist wieder voll." : "Geschafft! Der Akku ist ein Stück geladen. Ohne Fehler und Tipp wird er ganz voll.");
-      PZ.labBadge(true);
-      if (c.m.quiz) {
-        const f = PZ.pending;
-        PZ.pending = null;
-        if (f) f();
-      }
-    }, 1500);
-  }
-  function tkHtmlWith(PZ, t) {
-    return t.n !== void 0 ? '<span class="pzn">' + t.n + "</span>" : tokWith(PZ, t.s, t.c);
-  }
-  function drMusterWith(PZ, st) {
-    let h = '<div class="pzrow">';
-    st.seq.forEach(
-      /** @param {any} t @param {any} i */
-      function(t, i) {
-        h += i === st.hole ? '<span class="pzhole" id="pz-hole">?</span>' : '<span class="pzt">' + tkHtmlWith(PZ, t) + "</span>";
-      }
-    );
-    h += "</div>";
-    let c = '<div class="pzopts">';
-    st.opts.forEach(
-      /** @param {any} t @param {any} i */
-      function(t, i) {
-        c += '<button class="pzb" data-a="' + i + '" aria-label="Antwort ' + (i + 1) + '">' + tkHtmlWith(PZ, t) + "</button>";
-      }
-    );
-    return [h, c + "</div>"];
-  }
-  function acMusterWith(PZ, st, a, b) {
-    const t = st.opts[+a];
-    if (tkKey(t) === st.ans) {
-      b.classList.add("ok");
-      const h = PZ.$("pz-hole");
-      h.innerHTML = tkHtmlWith(PZ, t);
-      h.style.border = "0";
-      pzWinWith(PZ);
-    } else {
-      b.classList.add("no");
-      pzFailWith(PZ);
-      for (const o of PZ.$("pz-ctl").querySelectorAll("[data-a]")) {
-        o.disabled = true;
-        if (tkKey(st.opts[+o.dataset.a]) === st.ans) o.classList.add("ok");
-      }
-      const h = PZ.$("pz-hole"), t2 = st.seq[st.hole];
-      h.innerHTML = tkHtmlWith(PZ, t2);
-      h.style.borderColor = "#58b548";
-      pzRevealWith(PZ, "Schau, das hier gehört in die Lücke. Jetzt kommt eine neue Reihe.");
-    }
-  }
-  function hiMusterWith(PZ, st) {
-    if (st.u) {
-      const ts = PZ.$("pz-body").querySelectorAll(".pzrow>span");
-      for (let i = 0; i < st.u && i < ts.length; i++) if (i !== st.hole) ts[i].classList.add("flash");
-    }
-    PZ.speak(st.k === "cnt" ? "Zähle von einer Zahl zur nächsten. Wie viel kommt jedes Mal dazu oder geht weg?" : st.k === "two" ? "Schau erst nur auf die Form. Dann schau nur auf die Farbe." : "Sprich die Reihe laut mit. Was wiederholt sich immer wieder?");
-  }
-  function syMusterWith(PZ, st) {
-    return st.k === "cnt" ? "Welche Zahl fehlt? Schau, wie die Zahlen größer oder kleiner werden." : st.k === "two" ? "Welches Bild fehlt? Achte auf die Form und auf die Farbe." : "Welches Bild fehlt in der Reihe? Schau, was sich wiederholt.";
-  }
-  function stSideWith(PZ) {
-    const land = PZ.H <= 480;
-    return Math.max(220, Math.min(land ? PZ.H - 130 : PZ.W - 56, land ? 420 : PZ.H - 300, 440));
-  }
-  function drSternWith(PZ, st) {
-    const w = stSideWith(PZ), m = 26, sc = w - 2 * m;
-    let h = '<div class="pzsky" id="pz-sky" style="width:' + w + "px;height:" + w + 'px"><svg viewBox="0 0 ' + w + " " + w + '" aria-hidden="true"><polyline id="pz-line" fill="none" stroke="#9bd8ff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" points=""/></svg>';
-    st.pts.forEach(
-      /** @param {any} p @param {any} i */
-      function(p, i) {
-        h += '<button class="pzdot" data-a="' + i + '" style="left:' + (m + p[0] * sc).toFixed(1) + "px;top:" + (m + p[1] * sc).toFixed(1) + 'px" aria-label="Stern ' + p[2] + '">' + p[2] + "</button>";
-      }
-    );
-    return [h + "</div>"];
-  }
-  function stLineWith(PZ, st, close) {
-    const w = stSideWith(PZ), m = 26, sc = w - 2 * m, L = st.pts.slice(0, st.k);
-    if (close) L.push(st.pts[0]);
-    const el = PZ.$("pz-line");
-    if (el) el.setAttribute("points", L.map(
-      /** @param {any} p */
-      function(p) {
-        return (m + p[0] * sc).toFixed(1) + "," + (m + p[1] * sc).toFixed(1);
-      }
-    ).join(" "));
-  }
-  function acSternWith(PZ, st, a, b) {
-    const i = +a;
-    if (i < st.k) return;
-    if (i === st.k) {
-      st.k++;
-      b.classList.remove("no");
-      b.classList.add("done");
-      stLineWith(PZ, st, false);
-      const f = 330 + st.k * 30;
-      blip(f, f * 1.2, 0.12, "triangle", 0.06);
-      if (st.k === st.pts.length) {
-        stLineWith(PZ, st, true);
-        PZ.$("pz-sky").insertAdjacentHTML("beforeend", '<div class="pzshape" aria-hidden="true">' + st.sh.e + "</div>");
-        PZ.speak("Das ist " + st.sh.n + "!");
-        pzWinWith(PZ);
-      }
-      return;
-    }
-    b.classList.remove("no");
-    void b.offsetWidth;
-    b.classList.add("no");
-    pzFailWith(PZ);
-    const nx = PZ.$("pz-sky").querySelector('[data-a="' + st.k + '"]');
-    if (nx) {
-      nx.classList.remove("flash");
-      void nx.offsetWidth;
-      nx.classList.add("flash");
-    }
-    const want = st.pts[st.k][2];
-    PZ.speak(st.k ? "Nach " + st.pts[st.k - 1][2] + " kommt " + want + "." : "Fang bei " + want + " an.");
-  }
-  function hiSternWith(PZ, st) {
-    const nx = PZ.$("pz-sky").querySelector('[data-a="' + st.k + '"]');
-    if (nx) {
-      nx.classList.remove("flash");
-      void nx.offsetWidth;
-      nx.classList.add("flash");
-    }
-    PZ.speak(st.two ? "Immer zwei weiter: 2, 4, 6 und so fort." : "Zähl laut mit. Welche Zahl kommt als Nächstes?");
-  }
-  function sySternWith(PZ, st) {
-    return "Verbinde die Sterne der Reihe nach. Fang bei " + st.pts[0][2] + " an" + (st.two ? " und zähl immer zwei weiter." : ".");
-  }
-  function spWantWith(PZ, st, i) {
-    const c = i % st.w, r = (i - c) / st.w;
-    return st.ax ? st.a[(st.h - 1 - r) * st.w + c] : st.a[r * st.w + (st.w - 1 - c)];
-  }
-  function spGridWith(PZ, st, arr, act) {
-    let h = '<div class="pzg" style="grid-template-columns:repeat(' + st.w + ',var(--cs))">';
-    for (let i = 0; i < arr.length; i++) h += act ? '<button class="pzc sp' + arr[i] + '" data-a="' + i + '" aria-label="Feld ' + (i + 1) + '"></button>' : '<span class="pzc fix sp' + arr[i] + '"></span>';
-    return h + "</div>";
-  }
-  function drSpiegelWith(PZ, st) {
-    const cs = st.ax ? pzCellWith(PZ, st.w, st.h * 2 + 0.6, false) : pzCellWith(PZ, st.w * 2 + 0.6, st.h, false);
-    return ['<div class="pzmir' + (st.ax ? " hz" : "") + '" style="--cs:' + cs + 'px">' + spGridWith(PZ, st, st.a, false) + '<i class="mline"></i>' + spGridWith(PZ, st, st.b, true) + "</div>", ""];
-  }
-  function spDoneWith(PZ, st) {
-    for (let i = 0; i < st.b.length; i++) if (st.b[i] !== spWantWith(PZ, st, i)) return false;
-    return true;
-  }
-  function acSpiegelWith(PZ, st, a, b) {
-    const i = +a, want = spWantWith(PZ, st, i), old = st.b[i];
-    st.b[i] = (old + 1) % (st.nc + 1);
-    b.className = "pzc sp" + st.b[i];
-    sfx("tick");
-    if (st.b[i] !== want && (old === want || want === 0)) pzFailWith(PZ, true);
-    if (spDoneWith(PZ, st)) pzWinWith(PZ);
-  }
-  function hiSpiegelWith(PZ, st) {
-    const bad = idxs(st.b.length).filter(function(i) {
-      return st.b[i] !== spWantWith(PZ, st, i);
-    });
-    if (bad.length) {
-      const i = bad[PZ.ri(0, bad.length - 1)];
-      st.b[i] = spWantWith(PZ, st, i);
-      const b = PZ.$("pz-body").querySelector('[data-a="' + i + '"]');
-      b.className = "pzc flash sp" + st.b[i];
-    }
-    PZ.speak(st.ax ? "Stell dir vor, auf der roten Linie liegt ein Spiegel. Was oben nah an der Linie ist, ist unten auch nah an der Linie." : "Stell dir vor, auf der roten Linie steht ein Spiegel. Was links nah an der Linie ist, ist rechts auch nah an der Linie.");
-    if (spDoneWith(PZ, st)) pzWinWith(PZ);
-  }
-  function sySpiegelWith(PZ, st) {
-    return (st.ax ? "Male unten das Spiegelbild von oben." : "Male rechts das Spiegelbild von links.") + " Tippe auf die leeren Felder." + (st.nc > 1 ? " Tippe mehrmals, dann wechselt die Farbe." : "");
-  }
-  function drRoboWith(PZ, st) {
-    const cs = pzCellWith(PZ, st.w, st.h + 1.3, true);
-    let h = '<div class="pzg" style="--cs:' + cs + "px;grid-template-columns:repeat(" + st.w + ',var(--cs))">';
-    for (let i = 0; i < st.w * st.h; i++) {
-      const wl = st.wall.has(i), lv = st.lava.has(i), gi = st.gems.indexOf(i);
-      let c = "";
-      if (i === st.pos) c = "🤖";
-      else if (i === st.g) c = "🏁";
-      else if (gi >= 0 && !(st.got >> gi & 1)) c = "💎";
-      else if (lv) c = "🔥";
-      h += '<span class="pzc fix' + (wl ? " wall" : lv ? " lava" : "") + (i === st.pos ? " me" : "") + '">' + c + "</span>";
-    }
-    h += '</div><div class="prog" aria-label="Dein Programm">';
-    for (let i = 0; i < st.max; i++) {
-      const q = st.prog[i];
-      h += '<span class="slot' + (q ? " on" : "") + (i === st.bad ? " bad" : "") + (i === st.cur ? " cur" : "") + '">' + (q ? PZ.ARW[q.d] + (q.n > 1 ? "<b>" + q.n + "</b>" : "") : "") + "</span>";
-    }
-    h += "</div>";
-    const ctl = '<div class="rbctl"><span class="dpad"><button class="pzb sm u" data-a="3" aria-label="Nach oben">⬆️</button><button class="pzb sm l" data-a="2" aria-label="Nach links">⬅️</button><button class="pzb sm d" data-a="1" aria-label="Nach unten">⬇️</button><button class="pzb sm r" data-a="0" aria-label="Nach rechts">➡️</button></span><span class="rbside"><button class="pzb sm go" data-a="run" aria-label="Los">▶</button><button class="pzb sm" data-a="del" aria-label="Letzten Pfeil löschen">↩️</button></span></div>';
-    return [h, ctl];
-  }
-  function acRoboWith(PZ, st, a) {
-    if (a === "run") {
-      rbRunWith(PZ, st);
-      return;
-    }
-    st.bad = -1;
-    const l = st.prog[st.prog.length - 1];
-    if (a === "del") {
-      if (l) {
-        if (l.n > 1) l.n--;
-        else st.prog.pop();
-      }
-    } else {
-      const d = +a;
-      if (l && l.d === d && l.n < 9) l.n++;
-      else if (st.prog.length < st.max) st.prog.push({ d, n: 1 });
-      else {
-        tone([170], "sawtooth");
-        PZ.speak("Mehr Pfeile passen nicht hinein. Findest du einen Weg mit weniger Kurven?");
-        return;
-      }
-    }
-    sfx("tick");
-    pzDrawWith(PZ);
-  }
-  function rbRunWith(PZ, st) {
-    if (!st.prog.length) {
-      PZ.speak("Tippe erst auf die Pfeile. Dann auf Los.");
-      return;
-    }
-    const c = PZ.pzc, steps = (
-      /** @type {any[]} */
-      []
-    ), all = (1 << st.gems.length) - 1;
-    st.prog.forEach(
-      /** @param {any} q @param {any} i */
-      function(q, i2) {
-        for (let k = 0; k < q.n; k++) steps.push([q.d, i2]);
-      }
-    );
-    c.busy = true;
-    st.pos = st.s;
-    st.got = 0;
-    st.bad = -1;
-    st.cur = -1;
-    let i = 0;
-    const fail = (
-      /** @param {any} slot @param {any} why */
-      function(slot, why) {
-        st.bad = slot;
-        st.cur = -1;
-        pzDrawWith(PZ);
-        pzFailWith(PZ);
-        if (why) PZ.speak(why);
-        pzLaterWith(PZ, 1e3, function() {
-          st.pos = st.s;
-          st.got = 0;
-          c.busy = false;
-          pzDrawWith(PZ);
-        });
-      }
-    );
-    const next = function() {
-      if (i >= steps.length) {
-        fail(st.prog.length - 1, st.pos === st.g ? "Erst alle Edelsteine einsammeln, dann zur Fahne." : "Der Roboter ist noch nicht bei der Fahne. Was fehlt noch?");
-        return;
-      }
-      const d = steps[i][0], x = st.pos % st.w, y = (st.pos - x) / st.w, nx = x + RBD[d][0], ny = y + RBD[d][1], np = ny * st.w + nx;
-      st.cur = steps[i][1];
-      if (nx < 0 || ny < 0 || nx >= st.w || ny >= st.h || st.wall.has(np)) {
-        sfx("splat");
-        fail(steps[i][1], "Rums! Da geht es nicht weiter. Schau, welcher Pfeil rot ist.");
-        return;
-      }
-      st.pos = np;
-      const gi = st.gems.indexOf(np);
-      if (gi >= 0 && !(st.got >> gi & 1)) {
-        st.got |= 1 << gi;
-        sfx("coin");
-      } else sfx("tick");
-      if (st.lava.has(np)) {
-        fail(steps[i][1], "Heiß! Der Roboter darf nicht ins Feuer.");
-        return;
-      }
-      if (np === st.g && st.got === all) {
-        st.cur = -1;
-        pzDrawWith(PZ);
-        c.busy = false;
-        pzWinWith(PZ);
-        return;
-      }
-      i++;
-      pzDrawWith(PZ);
-      pzLaterWith(PZ, 300, next);
-    };
-    pzDrawWith(PZ);
-    pzLaterWith(PZ, 260, next);
-  }
-  function hiRoboWith(PZ, st) {
-    const n = Math.max(1, Math.min(Math.floor(st.sol.length / 2), PZ.pzc.hint));
-    st.prog = st.sol.slice(0, n).map(
-      /** @param {any} q */
-      function(q) {
-        return { d: q.d, n: q.n };
-      }
-    );
-    st.bad = -1;
-    st.pos = st.s;
-    st.got = 0;
-    pzDrawWith(PZ);
-    PZ.speak("Ich zeige dir den Anfang. Fahr den Weg mit dem Finger nach. Wie geht es weiter?");
-  }
-  function syRoboWith(PZ, st) {
-    return "Bring den Roboter zur Fahne. Tippe die Pfeile in der richtigen Reihenfolge, dann auf Los." + (st.gems.length ? " Sammle unterwegs " + (st.gems.length > 1 ? "alle Edelsteine" : "den Edelstein") + " ein." : "") + (st.lava.size ? " Pass auf das Feuer auf." : "") + (st.max < st.sol.length + 3 ? " Du hast nur wenige Felder. Gleiche Pfeile hintereinander brauchen nur ein Feld." : "");
-  }
-  function wgDiffWith(PZ, st) {
-    let d = 0;
-    for (const v of st.L) d += v < 0 ? st.box : v;
-    for (const q of st.R) d -= q.w < 0 ? st.box : q.w;
-    return d;
-  }
-  function wgWWith(PZ, w, cls, attr) {
-    return w < 0 ? '<span class="wt box" aria-label="Geschenk">🎁</span>' : "<" + (attr ? "button" : "span") + ' class="wt' + (w >= 10 ? " w10" : "") + (cls || "") + '"' + (attr || "") + ">" + w + "</" + (attr ? "button" : "span") + ">";
-  }
-  function drWaageWith(PZ, st) {
-    let h = '<div class="wg"><div class="beam" id="pz-beam" style="transform:rotate(' + st.ang + 'deg)"><div class="pan l">';
-    for (const v of st.L) h += wgWWith(PZ, v, " fixw");
-    h += '</div><div class="pan r">';
-    st.R.forEach(
-      /** @param {any} q @param {any} i */
-      function(q, i) {
-        h += q.fix ? wgWWith(PZ, q.w, " fixw") : wgWWith(PZ, q.w, "", ' data-a="r' + i + '" aria-label="Gewicht ' + q.w + ' wieder herunternehmen"');
-      }
-    );
-    h += '</div></div><i class="post"></i></div>';
-    let c = '<div class="pzopts">';
-    if (st.box) for (const v of st.opts) c += '<button class="pzb" data-a="o' + v + '">' + v + "</button>";
-    else if (st.items) st.items.forEach(
-      /** @param {any} q @param {any} i */
-      function(q, i) {
-        c += '<button class="pzb sm' + (q.used ? " no" : "") + '" data-a="p' + i + '"' + (q.used ? " disabled" : "") + ' aria-label="Gewicht ' + q.w + ' auflegen">' + q.w + "</button>";
-      }
-    );
-    else st.pal.forEach(
-      /** @param {any} w @param {any} i */
-      function(w, i) {
-        c += '<button class="pzb" data-a="p' + i + '" aria-label="Gewicht ' + w + ' auflegen">' + w + "</button>";
-      }
-    );
-    return [h, c + "</div>"];
-  }
-  function poWaageWith(PZ, st) {
-    const a = clamp(-wgDiffWith(PZ, st) * 2.2, -11, 11);
-    if (a === st.ang) return;
-    st.ang = a;
-    requestAnimationFrame(function() {
-      const b = PZ.$("pz-beam");
-      if (b) b.style.transform = "rotate(" + a + "deg)";
-    });
-  }
-  function acWaageWith(PZ, st, a, b) {
-    const k = a.charAt(0), i = +a.slice(1);
-    if (k === "o") {
-      if (i === st.box) {
-        b.classList.add("ok");
-        pzWinWith(PZ);
-        return;
-      }
-      b.classList.add("no");
-      pzFailWith(PZ);
-      for (const o of PZ.$("pz-ctl").querySelectorAll('[data-a^="o"]')) {
-        o.disabled = true;
-        if (o.dataset.a === "o" + st.box) o.classList.add("ok");
-      }
-      pzRevealWith(PZ, "Das Geschenk wiegt " + st.box + ". Jetzt kommt eine neue Waage.");
-      return;
-    }
-    if (k === "p") {
-      if (st.R.length >= 14) return;
-      if (st.items) {
-        if (st.items[i].used) return;
-        st.items[i].used = true;
-        st.R.push({ w: st.items[i].w, i });
-      } else st.R.push({ w: st.pal[i], i: -1 });
-    } else {
-      const q = st.R[i];
-      if (!q || q.fix) return;
-      st.R.splice(i, 1);
-      if (q.i >= 0) st.items[q.i].used = false;
-    }
-    sfx("tick");
-    const d = wgDiffWith(PZ, st);
-    if (d < 0 && !st.over) {
-      st.over = true;
-      pzFailWith(PZ, true);
-    } else if (d >= 0) st.over = false;
-    pzDrawWith(PZ);
-    if (d === 0) {
-      PZ.pzc.busy = true;
-      pzLaterWith(PZ, 650, function() {
-        PZ.pzc.busy = false;
-        pzWinWith(PZ);
-      });
-    }
-  }
-  function hiWaageWith(PZ, st) {
-    const d = wgDiffWith(PZ, st);
-    if (st.box) PZ.speak("Nimm in Gedanken auf beiden Seiten gleich viel weg. Was bleibt dann für das Geschenk übrig?");
-    else if (d >= 10 && st.pal && st.pal.indexOf(10) >= 0) PZ.speak("Links ist es mehr als 10. Lege erst die 10 auf, dann den Rest.");
-    else if (d > 0) PZ.speak("Zähle erst links alles zusammen, dann rechts. Wie viel fehlt rechts noch?");
-    else PZ.speak("Rechts ist es zu schwer. Zähle beide Seiten zusammen. Tippe rechts ein Gewicht an, dann kommt es wieder herunter.");
-  }
-  function syWaageWith(PZ, st) {
-    if (st.box) return "Die Waage steht gerade. Wie schwer ist das Geschenk?" + (st.L.filter(
-      /** @param {any} v */
-      function(v) {
-        return v < 0;
-      }
-    ).length > 1 ? " Alle Geschenke sind gleich schwer." : "");
-    return "Lege rechts Gewichte auf, bis die Waage gerade steht." + (st.items ? " Jedes Gewicht gibt es nur einmal." : "");
-  }
-  function drRohreWith(PZ, st) {
-    const cs = pzCellWith(PZ, st.w + 2, st.h, false), f = rhFlow(st), done = rhDone(st, f);
-    let h = '<div class="pzg" style="--cs:' + cs + "px;grid-template-columns:repeat(" + (st.w + 2) + ',var(--cs))">';
-    for (let y = 0; y < st.h; y++) {
-      h += '<span class="ends" aria-hidden="true">' + (y === st.ys ? "🚰" : "") + "</span>";
-      for (let x = 0; x < st.w; x++) {
-        const p = y * st.w + x, t = st.t[p];
-        if (t === 3) h += '<span class="pzc pp rock"></span>';
-        else h += '<button class="pzc pp' + (f.has(p) ? " wet" : "") + (st.lk[p] ? " lk" : "") + '" data-a="' + p + '" aria-label="Rohr drehen"><svg viewBox="0 0 24 24" style="transform:rotate(' + st.ang[p] + 'deg)" aria-hidden="true">' + PZ.RSVG[t] + ' stroke="currentColor" stroke-width="7" fill="none"/></svg></button>';
-      }
-      h += '<span class="ends"' + (y === st.ye ? ' id="pz-sink"' : "") + ' aria-hidden="true">' + (y === st.ye ? done ? "🌻" : "🌱" : "") + "</span>";
-    }
-    return [h + "</div>", ""];
-  }
-  function rhPaintWith(PZ, st) {
-    const f = rhFlow(st), done = rhDone(st, f);
-    for (const b of PZ.$("pz-body").querySelectorAll("[data-a]")) b.classList.toggle("wet", f.has(+b.dataset.a));
-    if (done) {
-      PZ.$("pz-sink").textContent = "🌻";
-      pzWinWith(PZ);
-    }
-  }
-  function acRohreWith(PZ, st, a, b) {
-    const p = +a;
-    if (st.lk[p]) return;
-    st.r[p] = (st.r[p] + 1) % 4;
-    st.ang[p] += 90;
-    st.taps++;
-    b.firstChild.style.transform = "rotate(" + st.ang[p] + "deg)";
-    sfx("tick");
-    if (st.taps === st.need * 2 + 6) PZ.pzc.fails = Math.max(PZ.pzc.fails, 2);
-    rhPaintWith(PZ, st);
-  }
-  function hiRohreWith(PZ, st) {
-    const bad = idxs(st.t.length).filter(function(p) {
-      return st.sr[p] >= 0 && !st.lk[p];
-    });
-    const wrong = bad.filter(function(p) {
-      return st.t[p] === 0 ? (st.r[p] & 1) !== (st.sr[p] & 1) : st.r[p] !== st.sr[p];
-    });
-    const pick = wrong.length ? wrong : bad;
-    if (pick.length) {
-      const p = pick[PZ.ri(0, pick.length - 1)], d = (st.sr[p] - st.r[p] + 4) % 4;
-      st.r[p] = st.sr[p];
-      st.ang[p] += d * 90;
-      st.lk[p] = true;
-      const b = PZ.$("pz-body").querySelector('[data-a="' + p + '"]');
-      b.classList.add("lk");
-      b.firstChild.style.transform = "rotate(" + st.ang[p] + "deg)";
-    }
-    PZ.speak("Ein Rohr habe ich für dich festgeschraubt. Fang links beim Wasserhahn an und geh Stück für Stück weiter.");
-    rhPaintWith(PZ, st);
-  }
-  function syRohreWith(PZ) {
-    return "Dreh die Rohre, bis das Wasser vom Wasserhahn bis zur Pflanze fließt. Tippe auf ein Rohr, dann dreht es sich.";
-  }
-  function pzBindWith(PQ) {
-    PQ.$("pz").addEventListener(
-      "click",
-      /** @param {any} e */
-      function(e) {
-        if (e.target === PQ.$("pz") || e.target.closest(".xb")) {
-          PQ.pzClose();
-          return;
-        }
-        if (!PQ.pzc) return;
-        if (e.target.closest("#pz-say")) {
-          PQ.speak(PQ.pzc.T.say(PQ.pzc.st));
-          return;
-        }
-        if (PQ.pzc.busy) return;
-        if (e.target.closest("#pz-hint")) {
-          if (PQ.pzc.hint >= PQ.pzHintMax(PQ.pzc)) {
-            PQ.speak("Den Tipp hast du schon bekommen. Du schaffst den Rest!");
-            return;
-          }
-          if (PQ.pzc.fails < 1) {
-            PQ.speak("Probier es erst einmal selbst. Wenn es nicht klappt, gibt es einen Tipp.");
-            return;
-          }
-          PQ.LOG.pHint(PQ.pzc);
-          PQ.pzc.hint++;
-          PQ.pzHintUi();
-          PQ.pzc.T.hint(PQ.pzc.st);
-          return;
-        }
-        const b = e.target.closest("[data-a]");
-        if (b && !b.disabled) PQ.pzc.T.act(PQ.pzc.st, b.dataset.a, b);
-      }
-    );
-    PQ.$("quiz-pz").addEventListener("click", function() {
-      PQ.LOG.qSwitch();
-      PQ.$("quiz").hidden = true;
-      ST.paused = false;
-      PQ.pzOpen({ id: "quiz", t: PQ.PZT[(hero.pzn | 0) % PQ.PZT.length].id, zb: 0, quiz: true });
-    });
-  }
-
   // src/ui/learn.js
   function renderBattWith(QZ) {
     const k = Math.ceil(ST.energy / QZ.SEG * 8);
@@ -11426,6 +11609,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       /** @param {any} e */
       function(e) {
         e.preventDefault();
+        if (PN.wallTap(e.clientX, e.clientY)) return;
         try {
           PN.cv.setPointerCapture(e.pointerId);
         } catch (_) {
@@ -16765,15 +16949,15 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     UB.$("garage-cards").innerHTML = UB.VEH.map(
       /** @param {any} v */
       function(v) {
-        const cool = v[0] !== "walk";
-        return '<button class="card pick' + (cool ? " cool" : "") + '" id="mode-' + v[0] + '" data-mode="' + v[0] + '" aria-label="' + v[1] + '" aria-pressed="false">' + UB.svg24(IC[v[0]]) + (cool ? LOCK : "") + "</button>";
+        const cool2 = v[0] !== "walk";
+        return '<button class="card pick' + (cool2 ? " cool" : "") + '" id="mode-' + v[0] + '" data-mode="' + v[0] + '" aria-label="' + v[1] + '" aria-pressed="false">' + UB.svg24(IC[v[0]]) + (cool2 ? LOCK : "") + "</button>";
       }
     ).join("");
     const toolCard = (
       /** @param {any} t */
       function(t) {
-        const cool = !UB.HANDT[t[0]];
-        return '<button class="card pick' + (cool ? " cool" : "") + '" id="tool-' + t[0] + '" data-tool="' + t[0] + '" aria-label="' + t[1] + '" aria-pressed="false">' + UB.svg24(IC[t[0]]) + (cool ? LOCK : "") + (t[0] === "tnt" ? '<span class="badge" id="tnt-n" hidden>0</span>' : "") + "</button>";
+        const cool2 = !UB.HANDT[t[0]];
+        return '<button class="card pick' + (cool2 ? " cool" : "") + '" id="tool-' + t[0] + '" data-tool="' + t[0] + '" aria-label="' + t[1] + '" aria-pressed="false">' + UB.svg24(IC[t[0]]) + (cool2 ? LOCK : "") + (t[0] === "tnt" ? '<span class="badge" id="tnt-n" hidden>0</span>' : "") + "</button>";
       }
     );
     UB.$("tool-cards").innerHTML = UB.TOOLS.filter(
@@ -17885,7 +18069,8 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       armGhost,
       endPointer,
       tapWorld,
-      toWorld
+      toWorld,
+      wallTap
     };
     ptrBind();
     try {
@@ -20054,6 +20239,14 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     };
     let pzc = null, pzTm = [];
     function pzOpen(m) {
+      if (!m.quiz && rwNah()) {
+        rwHintWith(RQ);
+        return;
+      }
+      if (!m.quiz && rwHas(m)) {
+        speak("Stell dich vor die Rohrwand.");
+        return;
+      }
       return pzOpenWith(PZ, m);
     }
     function pzClose() {
@@ -20687,14 +20880,15 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       uiOpen
     };
     keysBind();
-    let W = 0, H = 0, DPR = 1, S = 1, maxDpr = 2, perfT = 0, perfN = 0;
+    let W = 0, H = 0, DPR = 1, S = 1, maxDpr = 2, perfT = 0, perfN = 0, S0 = 1, zoomV = 1;
     function resize() {
       DPR = Math.min(window.devicePixelRatio || 1, maxDpr);
       W = window.innerWidth;
       H = window.innerHeight;
       cv.width = Math.max(1, Math.round(W * DPR));
       cv.height = Math.max(1, Math.round(H * DPR));
-      S = Math.min(W / 460, H / 400);
+      S0 = Math.min(W / 460, H / 400);
+      S = S0 * zoomV;
     }
     window.addEventListener("resize", resize);
     function rr(x, y, w, h, r) {
@@ -21791,6 +21985,48 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       return rwBuildWith(RWP, m);
     }
     for (const s of rohrWith(RWP)) register(s.name, s.tick, s.draw);
+    const RQ = {
+      get MACH() {
+        return MACH;
+      },
+      get PZI() {
+        return PZI;
+      },
+      get LOG() {
+        return LOG;
+      },
+      get PZ() {
+        return PZ;
+      },
+      get pzc() {
+        return pzc;
+      },
+      set pzc(v) {
+        pzc = v;
+      },
+      mkRohre,
+      speak,
+      uiOpen,
+      rr,
+      circle,
+      emo,
+      zoom(v) {
+        if (v !== zoomV) {
+          zoomV = v;
+          S = S0 * v;
+        }
+      }
+    };
+    function wallTap(sx, sy) {
+      if (!rwNah()) return false;
+      const w = toWorld(sx, sy);
+      return rwTapWith(RQ, w[0], w[1]);
+    }
+    register("rohrWand", function(dt) {
+      rwUiTickWith(RQ, dt);
+    }, function(c, layer, x0, x1) {
+      rwDrawWith(RQ, c, layer, x0, x1);
+    });
     function safe(s, dt) {
       safeWith(errAdd, s, dt);
     }
