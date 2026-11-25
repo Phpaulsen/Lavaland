@@ -6,6 +6,7 @@ import { K_FACTS, K_FINDS, K_HERO, realmKey } from './keys.js';
 import { P, hero, parked } from '../state/game.js';
 import { GX, GY } from '../core/world/const.js';
 import { grid } from '../state/world.js';
+import { rw } from '../state/rohrwand.js';
 
 /** @typedef {Record<string, any>} Port */
 export let saveT=0, lootT=0;
@@ -17,8 +18,11 @@ export function snapshotWith(SV,pre,pf){
   const pk=/** @type {any} */ ({});
   for(const k in parked) pk[k]=parked[k]?Object.assign({},parked[k]):null;
   if(P.mode!=='walk'&&P.mode!=='coaster'&&P.mode!=='ski'&&P.mode!=='dragon') pk[P.mode]=SV.park();
-  return {v:5,w:2,vt:1,rl:SV.realm,gy:GY,f:F,snow:1,seed:SV.SEED,runs:g,tracks:ST.tracks.map(/** @param {any} T */ function(T){return {raw:T.raw,user:T.user,rb:!!T.rb};}),zips:ST.zips,px:P.x,py:P.y,parked:pk,
-    trees:SV.trees.map(/** @param {any} t */ function(t){return t.state===1?2:t.state;}),hidden:ST.hidden,energy:ST.energy,props:ST.props,seen:ST.seen,eggGot:ST.eggGot,lootGot:ST.lootGot,orbGot:ST.orbGot,matGot:ST.matGot,pzGot:ST.pzGot};
+  const o=/** @type {any} */ ({v:5,w:2,vt:1,rl:SV.realm,gy:GY,f:F,snow:1,seed:SV.SEED,runs:g,tracks:ST.tracks.map(/** @param {any} T */ function(T){return {raw:T.raw,user:T.user,rb:!!T.rb};}),zips:ST.zips,px:P.x,py:P.y,parked:pk,
+    trees:SV.trees.map(/** @param {any} t */ function(t){return t.state===1?2:t.state;}),hidden:ST.hidden,energy:ST.energy,props:ST.props,seen:ST.seen,eggGot:ST.eggGot,lootGot:ST.lootGot,orbGot:ST.orbGot,matGot:ST.matGot,pzGot:ST.pzGot});
+  /* Rohrwand-Orte (Backlog-Idee 6) nur, wenn es welche gibt: Ältere Stände und der Golden Master bleiben so, wie sie sind. */
+  if(Object.keys(rw).length) o.rw=rw;
+  return o;
 }
 /* Autospeichern in Häppchen: Das Packen der Welt dauert auf einem schwachen Handy bis zu einer halben Sekunde und ruckelt dann sichtbar. Darum packt das Autospeichern pro Bild nur so viele Spalten, wie in 4 ms passen. Jede Spalte ist für sich vollständig, der Stand bleibt also immer lesbar. Ändert sich während des Packens eine schon gepackte Spalte, kommt das beim nächsten Speichern mit. Beim Verlassen, Reisen und Antippen wird weiter sofort am Stück gespeichert. */
 /** @type {any} */

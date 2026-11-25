@@ -12,6 +12,7 @@ import { sfx, tone } from '../audio/sound.js';
 import { realmKey, K_REALM, K_FOG, K_MARKS, SAVEKEY } from '../persistence/keys.js';
 import { runsOk } from '../core/world/pack.js';
 import { SIDE } from '../systems/index.js';
+import { setRw } from '../state/rohrwand.js';
 
 /** @typedef {Record<string, any>} Port */
 
@@ -34,7 +35,7 @@ export function restoreWith(APP,sv){
 }
 /** @param {Port} APP */
 export function newRealmWith(APP){
-  ST.seen={}; ST.eggGot={}; ST.lootGot={}; ST.orbGot={}; ST.matGot={}; ST.pzGot={};
+  ST.seen={}; ST.eggGot={}; ST.lootGot={}; ST.orbGot={}; ST.matGot={}; ST.pzGot={}; setRw({});
   APP.shapeWorld(); APP.planetGen();
   APP.parts.length=0; APP.ghost=null; APP.stroke=null; APP.strokeId=null;
   for(const tr of APP.trees){ tr.state=0; tr.t=0; }
@@ -100,7 +101,7 @@ export function resetWorldWith(APP,seed){
   APP.setRealm('');
   try{ localStorage.removeItem(K_REALM); for(const k in APP.FOG) delete APP.FOG[k]; for(const k in APP.MKS) delete APP.MKS[k]; Object.keys(localStorage).forEach(function(k){ if(k.indexOf(K_FOG)===0||k.indexOf(K_MARKS)===0) localStorage.removeItem(k); }); }catch(_){}
   APP.idbDo('readwrite',/** @param {any} st */ function(st){ for(const id in APP.RLM) st.delete(realmKey(id)); return st.count(); }).catch(function(){});
-  ST.seen={}; ST.eggGot={}; ST.lootGot={}; ST.orbGot={}; ST.matGot={}; ST.pzGot={};
+  ST.seen={}; ST.eggGot={}; ST.lootGot={}; ST.orbGot={}; ST.matGot={}; ST.pzGot={}; setRw({});
   APP.shapeWorld();
   APP.gen();
   APP.parts.length=0; APP.ghost=null; APP.stroke=null; APP.strokeId=null;

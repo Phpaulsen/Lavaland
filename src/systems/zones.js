@@ -10,6 +10,7 @@ import { ground, surfaceY } from '../state/queries.js';
 import { hero, P, parked, cam } from '../state/game.js';
 import { sfx, jingle } from '../audio/sound.js';
 import { lifeS } from '../state/sim.js';
+import { setRw } from '../state/rohrwand.js';
 
 /** @typedef {Record<string, any>} Port */
 
@@ -107,7 +108,7 @@ export function deepHomeWith(ZO){ for(let i=0;i<ST.NT0&&i<ZO.trees.length;i++){ 
 /* Nach dem Laden: Was in der alten, breiteren Welt hinter der neuen Grenze lag, kommt nach Hause. */
 /** @param {Port} ZO @param {any} sv */
 export function deepRestoreWith(ZO,sv){
-  ST.matGot=sv.matGot||{}; ST.pzGot=sv.pzGot||{}; ZO.guide=null; ZO.dkA=0;
+  ST.matGot=sv.matGot||{}; ST.pzGot=sv.pzGot||{}; setRw(sv.rw||{}); ZO.guide=null; ZO.dkA=0;
   if(sv.v<4){
     /* Wer auf dem alten Erdkern stand, steht jetzt knapp über der neuen harten Schicht. */
     const deep=TOP+KEEPR*CELL-14;
