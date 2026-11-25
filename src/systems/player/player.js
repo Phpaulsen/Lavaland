@@ -2,7 +2,7 @@
 // PR 28b. Bewegt aus legacy.js. Die Fahrzeuge liegen in vehicles.js und kommen wie alles übrige Spiel über den Port PL
 // (vehicles.js erreicht die Spielfigur weiter über seinen Port VH und die Einzeiler in app/wire.js).
 import { P, parked, keys, cam, hero, pan } from '../../state/game.js';
-import { G, WORLD_W, clamp, WATER, LAVA, ICE, CORE, VOLC, CELL, TOP, GX, BED, SHELL } from '../../core/world/const.js';
+import { G, WORLD_W, clamp, WATER, LAVA, ICE, CORE, VOLC, CELL, TOP, GX, BED, SHELL, GLUT } from '../../core/world/const.js';
 import { ST } from '../../state/facade.js';
 import { sfx, blip, jingle, tone } from '../../audio/sound.js';
 import { cellAt, hotAt } from '../../state/sim.js';
@@ -327,7 +327,7 @@ export function handDigWith(PL,wx,wy){
     if(dx*dx+dy*dy>r*r) continue;
     const i=cy*GX+cx, m=grid[i];
     if(m<4) continue;
-    if(sh&&!PL.SOFT[m]){ if(m!==BED&&m!==CORE&&m!==SHELL) hard++; continue; }
+    if(sh&&!PL.SOFT[m]){ if(m!==BED&&m!==CORE&&m!==SHELL&&m!==GLUT) hard++; continue; }
     n+=PL.take(i);
   }
   if(n){

@@ -1351,7 +1351,7 @@ function fogSeed(a){ return fogSeedWith(ZO,a); }
 function fogSave(){ return fogSaveWith(ZO); }
 setInterval(fogSave,15000);
 document.addEventListener('visibilitychange',function(){ if(document.hidden) fogSave(); });
-const FCOL=['','#ff6a1f','#ffb02e','#3a8fe0','#8a5a35','#7a7a84','#bfe8ff','#8a5a2b','#2b2b36','#4d4660','#8c3a2a','#ff3d00','#f2c84b','#61d6e8','#ffffff','#e8d6b0'];
+const FCOL=['','#ff6a1f','#ffb02e','#3a8fe0','#8a5a35','#7a7a84','#bfe8ff','#8a5a2b','#2b2b36','#4d4660','#8c3a2a','#ff3d00','#f2c84b','#61d6e8','#ffffff','#e8d6b0','#c2401a'];
 function renderFog(){ return renderFogWith(LM); }
 function mapClick(e){ return mapClickWith(LM,e); }
 function renderEggs(){ return renderEggsWith(LM); }

@@ -1,7 +1,7 @@
 /* ---------- Zellen malen: Farbpaletten der Welt und der Länder, Farben der Tiefe, Paletten fremder Welten und das Zellbild ---------- */
 // PR 29b2. Bewegt aus legacy.js. Die Paletten liegen als Modulbindungen hier, damit drawCells im heißen Pfad ohne Port liest; nur setPal schreibt sie.
 // app/wire.js importiert pal und setPal (Port RM) und ruft drawCells über einen Einzeiler (Port DR). Über den Port CL kommt nur time.
-import { clamp, CELL, GX, TOP, GY, EARTH, ROCK, ICE, WOOD, DEEP, HOT, CORE, GOLD, GEM, SNOW, SHELL } from '../core/world/const.js';
+import { clamp, CELL, GX, TOP, GY, EARTH, ROCK, ICE, WOOD, DEEP, HOT, CORE, GOLD, GEM, SNOW, SHELL, GLUT } from '../core/world/const.js';
 import { BT } from '../core/world/shape.js';
 import { grid, grow0, bmx, bio2, bio, mtop, zS1, z4, zS2, zS3, rH, rD, rA, rB } from '../state/world.js';
 
@@ -39,6 +39,8 @@ export function setPal(R){
   P_DEEP=pal4(q.deep,1); P_HOT=pal4(q.hot,1); P_WALLD=pal4(q.deep,.4); P_WALLH=pal4(q.hot,.45);
   PZR=q.z.map(/** @param {any} z */ function(z){ return pal4(z[0],1); }); PZE=q.z.map(/** @param {any} z */ function(z){ return pal4(z[1],1); }); PZW=q.z.map(/** @param {any} z */ function(z){ return pal4(z[2],1); });
 }
+/* Glutstein: dunkle Kruste mit glühenden Adern, die langsam pulsieren. Anders als Lava, weil er stillsteht. */
+const P_GLUT=pal([[70,22,14],[58,18,12],[255,120,30],[255,190,70]]);
 const PSH=[pal([[168,84,40],[146,70,32],[214,128,66]]),pal([[150,70,190],[128,56,168],[204,134,238]]),pal([[30,26,40],[20,16,28],[84,72,110]])];
 const IMG=256, oc=document.createElement('canvas'); oc.width=IMG; oc.height=IMG;
 const octx=/** @type {CanvasRenderingContext2D} */ (oc.getContext('2d')), img=octx.createImageData(IMG,IMG), px=new Uint32Array(img.data.buffer);
@@ -69,6 +71,7 @@ export function drawCellsWith(CL,ctx,x0,x1,y0,y1){
       else if(m===GEM) c=P_GEM[(h+(ph>>1))&3];
       else if(m===SNOW) c=(y>1&&grid[row-GX+x]<4)?P_SNOWT[h]:P_SNOW[h];
       else if(m===SHELL) c=PSH[y<z4[x]?0:y<zS3[x]?1:2][(((x>>1)+(y>>1))&3)===0?2:h&1];
+      else if(m===GLUT){ const v=((x*3+y*5)^(x>>2)*7)&7; c=v<2?P_GLUT[2+((ph>>2)+x+y&1)]:P_GLUT[h&1]; }
       else c=C_BED;
       px[o]=c;
     }
