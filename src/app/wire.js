@@ -13,6 +13,9 @@ import { mkSpiegelWith } from '../core/puzzles/spiegel.js';
 import { RBD, mkRoboWith } from '../core/puzzles/robo.js';
 import { mkWaageWith } from '../core/puzzles/waage.js';
 import { rhFlow, rhDone, mkRohreWith } from '../core/puzzles/rohre.js';
+import { rwBuildWith, rohrWith, rwRand } from '../systems/rohrwand.js';
+import { rw } from '../state/rohrwand.js';
+import { rwPlan } from '../core/world/rohrwand.js';
 import { WORDS, SYL, RHYW, CASES, STAGES, fDom, fStage, fKind, fName } from '../core/learn/facts.js';
 import { BOXD, NEWDAY, FASTMS, schoolOkWith, fUnlockWith, mixPreferWith, fParkedWith } from '../core/learn/leitner.js';
 import { mkQWith, mkSeqWith } from '../core/learn/tasks.js';
@@ -2517,6 +2520,13 @@ for(const s of questsWith(QP)) register(s.name,s.tick,s.draw);
 register('autosave',autosave);
 register('drain',drain);
 for(const s of marksWith(DP)) register(s.name,s.tick,s.draw);
+/* Rohrwand (Backlog-Idee 6): Einbau der Grotten neben den Rohr-Maschinen, noch ausgeschaltet (RWON). */
+const RWP={
+  get SEED(){ return SEED; }, get genF(){ return genF; }, get realm(){ return realm; }, get MACH(){ return MACH; }, get MATS(){ return MATS; },
+  get VAULTS(){ return VAULTS; }, get ZDEC(){ return ZDEC; }, get FGT(){ return FGT; }, fogArr, fogHas,
+};
+function rwBuild(m){ return rwBuildWith(RWP,m); }
+for(const s of rohrWith(RWP)) register(s.name,s.tick,s.draw);
 function safe(s,dt){ safeWith(errAdd,s,dt); }
 
 /* Gold und Edelsteine gibt es nicht mehr (Vereinfachungsplan Schritt 2). Was noch da ist, wird einmal in Zahnräder getauscht:

@@ -148,6 +148,28 @@ test('Glutstein hält Bohrer, Bombe, Spitzhacke und Malen stand', async ({ ev })
   if (!(r[0] > 300 && r[1] === r[0])) throw new Error('Glutstein abgebaut: ' + r[0] + ' -> ' + r[1]);
 });
 
+test('Rohrwand: Grotte wird eingebaut, im Spielstand gemerkt und wiederhergestellt', async ({ ev }) => {
+  const r = await ev(`(function(){
+    const empty = snapshot().rw === undefined;
+    grow(WORLD_W-100); for(const m of MACH) if(m.sf) m.y=surfaceY(m.x);
+    const fa=fogArr(); fa.fill(0); const px=P.x, py=P.y; P.x=30000; P.y=-3500;
+    let got=null, m=null;
+    for(const q of MACH) if(q.t==='rohre'&&q.y===q.y&&q.y>-3000){ const o=rwBuild(q); if(o&&o!=='wait'){ got=o; m=q; break; } }
+    P.x=px; P.y=py;
+    if(!got) return {empty, got:null};
+    const sp={mc:got.mc,fr:got.fr,s:got.s,dp:got.dp}, pl=rwPlan(sp,rwRand(SEED,m.id,sp));
+    let glut=0, bed=0, n=0; for(let k=0;k<pl.cells.length;k+=2){ const c=grid[pl.cells[k]]; n++; if(c===16) glut++; if(c===8) bed++; }
+    const sv=snapshot(), again=rwBuild(m);
+    const saved=JSON.stringify(sv.rw[m.id]); deepRestore({}); const cleared=Object.keys(rw).length; deepRestore(sv);
+    return {empty, got:!!got, glut, want:pl.plug.length+pl.door.length, bed, n, saved, cleared, back:JSON.stringify(rw[m.id]), again:JSON.stringify(rw[m.id])===saved&&again===null};
+  })()`);
+  if (!r.empty) throw new Error('Spielstand hat rw, obwohl nichts gebaut ist');
+  if (!r.got) throw new Error('keine Rohr-Maschine mit Platz gefunden');
+  if (r.glut !== r.want) throw new Error('Glutstein ' + r.glut + ' statt ' + r.want);
+  if (!(r.bed > 1000)) throw new Error('Rahmen fehlt: ' + r.bed + ' von ' + r.n);
+  if (r.cleared !== 0 || r.back !== r.saved || !/"st":0/.test(r.saved)) throw new Error('Spielstand: ' + JSON.stringify(r));
+});
+
 test('Harte Schicht hält auch beim Graben nach oben ohne Bohrer', async ({ ev, page }) => {
   await ev("setMode('walk'); " + ROCKBOX(22000, '') + "; const c=Math.floor(P.x/CELL), rr=Math.floor((P.y-100-TOP)/CELL); for(let r=rr-3;r<=rr;r++) for(let x=c-10;x<=c+10;x++) grid[r*GX+x]=SHELL; 1");
   await page.waitForTimeout(300);
@@ -273,7 +295,7 @@ test('Tastenkürzel: F öffnet Fahrzeuge, X steigt aus', async ({ ev, page }) =>
 
 test('Absturzschutz: kaputtes Nebensystem friert das Spiel nicht ein', async ({ ev, page, errs }) => {
   const names = await ev("SIDE.map(s=>s.name).join(' ')");
-  if (names !== 'arrowsTick monTick geyTick metTick wreckTick flyTick harpTick worldTick deepTick winterTick findsTick questTick autosave drain fogTick mkTick') throw new Error('SIDE: ' + names);
+  if (names !== 'arrowsTick monTick geyTick metTick wreckTick flyTick harpTick worldTick deepTick winterTick findsTick questTick autosave drain fogTick mkTick rohrTick') throw new Error('SIDE: ' + names);
   const n = errs.length;
   await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); for(const k in FX) FX[k]=0; teleport(1200); window.__keep=SIDE.slice(); SIDE.push({name:'testKaputt',tick:function(){ throw new Error('Test: absichtlich kaputt'); }})");
   const x0 = await ev('P.x');

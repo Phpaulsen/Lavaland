@@ -1199,366 +1199,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     return mkRohreWith(rand, Math.max(0, lv - 1));
   }
 
-  // src/core/learn/facts.js
-  var WORDS = [
-    { w: "Auto", ic: "car", no: "" },
-    { w: "Flugzeug", ic: "plane", no: "" },
-    { w: "Bagger", ic: "bagger", no: "" },
-    { w: "Feuer", ic: "fire", no: "TNH" },
-    { w: "Stern", ic: "star", no: "" },
-    { w: "Haus", ic: "haus", no: "MLR" },
-    { w: "Mond", ic: "mond", no: "F" },
-    { w: "Sonne", ic: "sonne", no: "TWN" },
-    { w: "Baum", ic: "baum", no: "RS" },
-    { w: "Wolke", ic: "wolke", no: "" },
-    { w: "Apfel", ic: "apfel", no: "" },
-    { w: "Ball", ic: "ball", no: "FHW" },
-    { w: "Fisch", ic: "fisch", no: "TW" },
-    /* Dazu die Bilder aus Silben und Reimen. Reimpaare (Maus/Haus, Tanne/Kanne) schließen sich gegenseitig als Ablenker aus, sonst wäre beides richtig. */
-    { w: "Maus", ic: "maus", no: "HLR" },
-    { w: "Tisch", ic: "tisch", no: "FW" },
-    { w: "Tonne", ic: "tonne", no: "SW" },
-    { w: "Hose", ic: "hose", no: "RDL" },
-    { w: "Rose", ic: "rose", no: "HDL" },
-    { w: "Tanne", ic: "tanne", no: "KWP" },
-    { w: "Kanne", ic: "kanne", no: "TWP" },
-    { w: "Banane", ic: "banane", no: "" },
-    { w: "Tomate", ic: "tomate", no: "" }
-  ];
-  var SYL = [
-    ["Auto", "car", "Au-to"],
-    ["Flugzeug", "plane", "Flug-zeug"],
-    ["Bagger", "bagger", "Bag-ger"],
-    ["Feuer", "fire", "Feu-er"],
-    ["Stern", "star", "Stern"],
-    ["Haus", "haus", "Haus"],
-    ["Mond", "mond", "Mond"],
-    ["Sonne", "sonne", "Son-ne"],
-    ["Baum", "baum", "Baum"],
-    ["Wolke", "wolke", "Wol-ke"],
-    ["Apfel", "apfel", "Ap-fel"],
-    ["Ball", "ball", "Ball"],
-    ["Fisch", "fisch", "Fisch"],
-    ["Rakete", "rocket", "Ra-ke-te"],
-    ["Feuerwerk", "fw", "Feu-er-werk"],
-    ["Banane", "banane", "Ba-na-ne"],
-    ["Tomate", "tomate", "To-ma-te"]
-  ];
-  var CLAP = ["👏", "👏👏", "👏👏👏"];
-  var RHY = [["Haus", "haus", "Maus", "maus"], ["Fisch", "fisch", "Tisch", "tisch"], ["Sonne", "sonne", "Tonne", "tonne"], ["Hose", "hose", "Rose", "rose"], ["Tanne", "tanne", "Kanne", "kanne"]];
-  var RHYW = (
-    /** @type {Record<string, {ic: string, to: string}>} */
-    {}
-  );
-  RHY.forEach(function(r) {
-    RHYW[r[0]] = { ic: r[1], to: r[2] };
-    RHYW[r[2]] = { ic: r[3], to: r[0] };
-  });
-  var LETTERS = "AEIOUMLRSTNFBHWKDP";
-  var CASES = "ABDEFGHLMNRT";
-  var STAGES = (function() {
-    const m = (
-      /** @type {string[][]} */
-      [[], [], [], []]
-    ), l = (
-      /** @type {string[][]} */
-      [[], [], []]
-    );
-    for (let n = 1; n <= 10; n++) m[n <= 6 ? 0 : 1].push("count:" + n);
-    for (let a = 1; a <= 9; a++) for (let b = 1; b <= 9; b++) {
-      const s = a + b;
-      if (s <= 5) m[0].push(a + "+" + b);
-      else if (s <= 10) m[1].push(a + "+" + b);
-      else m[3].push(a + "+" + b);
-    }
-    for (let a = 2; a <= 10; a++) for (let b = 1; b < a; b++) m[a <= 5 ? 0 : 1].push(a + "-" + b);
-    for (let a = 10; a <= 19; a++) for (let b = 1; b <= 9; b++) {
-      if (a % 10 + b <= 9) m[2].push(a + "+" + b);
-    }
-    for (let a = 11; a <= 19; a++) for (let b = 1; b <= 9; b++) {
-      if (b <= a % 10) m[2].push(a + "-" + b);
-      else if (a - b >= 2 && a <= 18) m[3].push(a + "-" + b);
-    }
-    SYL.forEach(function(x) {
-      l[0].push("syl:" + x[0]);
-    });
-    Object.keys(RHYW).forEach(function(w) {
-      l[0].push("rhy:" + w);
-    });
-    WORDS.forEach(function(wd) {
-      l[0].push("anlaut:" + wd.w);
-      l[2].push("word:" + wd.w);
-    });
-    CASES.split("").forEach(function(c) {
-      l[1].push("case:" + c);
-    });
-    for (let n = 4; n <= 10; n++) for (let a = 1; a < n; a++) m[n <= 5 ? 0 : 1].push("zl:" + n + ":" + a);
-    for (let n = 2; n <= 10; n++) m[n <= 5 ? 0 : 1].push("fb:" + n);
-    for (let n = 1; n <= 19; n++) {
-      m[n < 10 ? 1 : 2].push("nb:+:" + n);
-      m[n < 10 ? 1 : 2].push("nb:-:" + (n + 1));
-    }
-    return { m, l };
-  })();
-  function fDom(k) {
-    return /^(anlaut|case|word|syl|rhy):/.test(k) ? "l" : "m";
-  }
-  function fStage(k) {
-    const d = fDom(k), S = STAGES[d];
-    for (let i = 0; i < S.length; i++) if (S[i].indexOf(k) >= 0) return i;
-    return 0;
-  }
-  function fKind(k) {
-    const i = k.indexOf(":");
-    return i > 0 ? k.slice(0, i) : k.indexOf("+") > 0 ? "add" : "sub";
-  }
-  function fName(k) {
-    let m;
-    if (m = /^(\d+)([+-])(\d+)$/.exec(k)) return m[1] + (m[2] === "+" ? " plus " : " minus ") + m[3];
-    if (m = /^count:(\d+)$/.exec(k)) return m[1] + " Sterne zählen";
-    if (m = /^fb:(\d+)$/.exec(k)) return m[1] + " Punkte auf einen Blick";
-    if (m = /^nb:([+-]):(\d+)$/.exec(k)) return (m[1] === "+" ? "die Zahl nach der " : "die Zahl vor der ") + m[2];
-    if (m = /^zl:(\d+):(\d+)$/.exec(k)) return m[1] + " ist " + m[2] + " und " + /** @type {any} */
-    (m[1] - /** @type {any} */
-    m[2]);
-    if (m = /^anlaut:(.+)$/.exec(k)) return "der Anfang von " + m[1];
-    if (m = /^syl:(.+)$/.exec(k)) return "die Silben von " + m[1];
-    if (m = /^rhy:(.+)$/.exec(k)) return "der Reim auf " + m[1];
-    if (m = /^case:(.)$/.exec(k)) return "das kleine " + m[1].toLowerCase();
-    return "das Wort " + k.slice(5);
-  }
-
-  // src/core/learn/leitner.js
-  var BOXD = [0, 0, 1, 2, 4, 8];
-  var NEWDAY = 12;
-  var FASTMS = 3e3;
-  var DAYMISS = 3;
-  function schoolOkWith(SCH, k, s) {
-    if (!SCH.on) return true;
-    if (fDom(k) === "m") return s <= SCH.zr;
-    if (k.indexOf("syl:") === 0 || k.indexOf("rhy:") === 0) return true;
-    const v = k.slice(k.indexOf(":") + 1).toUpperCase();
-    if (k.indexOf("word:") === 0) return v.split("").every(function(c) {
-      return SCH.l.indexOf(c) >= 0;
-    });
-    return SCH.l.indexOf(v.charAt(0)) >= 0;
-  }
-  function fUnlockWith(FS, d) {
-    const S = STAGES[d], top = FS.u[d];
-    if (top >= S.length - 1) return;
-    const st = S[top];
-    let n = 0;
-    st.forEach(function(k) {
-      const r = FS.f[k];
-      if (r && r[0] >= 2) n++;
-    });
-    if (n >= st.length * 0.6 || FS.ft[d] >= 4) {
-      FS.u[d] = top + 1;
-      FS.ft[d] = 0;
-    }
-  }
-  function mixPreferWith(rand, kindHist, a) {
-    if (kindHist.length < 2 || kindHist[0] !== kindHist[1]) {
-      const o2 = a.filter(function(k) {
-        return fKind(k) !== kindHist[0];
-      });
-      return o2.length && rand() < 0.5 ? o2 : a;
-    }
-    const o = a.filter(function(k) {
-      return fKind(k) !== kindHist[0];
-    });
-    return o.length ? o : a;
-  }
-  function fParkedWith(FS, k, today) {
-    return !!FS.dm && FS.dm.d === today && FS.dm.c[k] >= DAYMISS;
-  }
-
-  // src/core/learn/tasks.js
-  function dots(n) {
-    return new Array(n + 1).join("●");
-  }
-  function zw(a, b, sub) {
-    let f = "";
-    for (let i = 0; i < 20; i++) {
-      let c = "";
-      if (sub) {
-        if (i < a - b) c = "on";
-        else if (i < a) c = "off";
-      } else {
-        if (i < a) c = "on";
-        else if (i < a + b) c = "on2";
-      }
-      f += "<i" + (c ? ' class="' + c + '"' : "") + "></i>";
-    }
-    return '<div class="zf z20">' + f + "</div>";
-  }
-  function qpicWith(IC2, QI2, key) {
-    return '<svg class="qpic" viewBox="0 0 24 24" aria-hidden="true">' + (IC2[key] || QI2[key]) + "</svg>";
-  }
-  function lettersForWith(rand, wd, n) {
-    const c = wd.w.charAt(0);
-    return shuffleWith(rand, [c].concat(shuffleWith(rand, LETTERS.split("").filter(function(ch) {
-      return ch !== c && wd.no.indexOf(ch) < 0;
-    })).slice(0, n - 1)));
-  }
-  var HOLE = '<span class="hole">?</span>';
-  function solAdd(a, b) {
-    const s = a + b;
-    if (a < 10 && s > 10) {
-      const t = 10 - a;
-      return a + " plus " + t + " ist 10. Dann noch " + (b - t) + " dazu, das ist " + s + ".";
-    }
-    return a + " plus " + b + " ist " + s + ".";
-  }
-  function solSub(a, b) {
-    const s = a - b;
-    if (a > 10 && s < 10 && b > a % 10) {
-      const t = a % 10;
-      return a + " minus " + t + " ist 10. Dann noch " + (b - t) + " weg, das ist " + s + ".";
-    }
-    return a + " minus " + b + " ist " + s + ".";
-  }
-  function mkQWith(rand, IC2, QI2, k) {
-    const st = fStage(k), q = (
-      /** @type {Question} */
-      { L: st, f: k, ans: "", opts: [], html: "", say: "", word: false, pad: false, inp: "", tries: 0, miss: false, lock: false }
-    );
-    let m;
-    if (m = /^count:(\d+)$/.exec(k)) {
-      const n = +m[1];
-      q.type = "count";
-      q.pad = true;
-      q.ans = String(n);
-      q.html = '<div class="objs" style="grid-template-columns:repeat(' + Math.min(n, 5) + ',var(--ob))">' + new Array(n + 1).join('<svg viewBox="0 0 24 24" aria-hidden="true">' + IC2.star + "</svg>") + '</div><div class="eq">' + HOLE + "</div>";
-      q.say = "Wie viele Sterne sind das?";
-      q.sol = n === 1 ? "Das ist ein Stern." : "Das sind " + n + " Sterne.";
-    } else if (m = /^(\d+)([+-])(\d+)$/.exec(k)) {
-      const a = +m[1], b = +m[3], add = m[2] === "+", r = add ? a + b : a - b;
-      q.type = add ? "add" : "sub";
-      q.pad = true;
-      q.ans = String(r);
-      q.dots = add ? '<div class="dots"><span class="da">' + dots(a) + '</span> <span class="db">' + dots(b) + "</span></div>" : '<div class="dots"><span class="da">' + dots(r) + '</span><span class="dx">' + dots(b) + "</span></div>";
-      if ((add ? r : a) > 10) q.dots = zw(a, b, !add);
-      q.html = '<div class="eq">' + a + (add ? " + " : " − ") + b + " = " + HOLE + "</div>" + (st < 2 ? q.dots : "");
-      q.say = "Wie viel ist " + a + (add ? " plus " : " minus ") + b + "?";
-      q.sol = add ? solAdd(a, b) : solSub(a, b);
-    } else if (m = /^fb:(\d+)$/.exec(k)) {
-      const n = +m[1];
-      let f = "";
-      for (let i = 0; i < 10; i++) f += "<i" + (i < n ? ' class="on"' : "") + "></i>";
-      q.type = "fb";
-      q.pad = true;
-      q.ans = String(n);
-      q.html = '<div class="zf blink">' + f + '</div><div class="eq">' + HOLE + "</div>";
-      q.dots = '<div class="zf">' + f + "</div>";
-      q.say = "Schau genau! Wie viele Punkte?";
-      q.sol = n > 5 ? "Oben 5, unten " + (n - 5) + ". Das sind " + n + "." : "Das sind " + n + " Punkte.";
-    } else if (m = /^nb:([+-]):(\d+)$/.exec(k)) {
-      const n = +m[2], up = m[1] === "+", r = up ? n + 1 : n - 1;
-      q.type = "nb";
-      q.pad = true;
-      q.ans = String(r);
-      q.html = '<div class="eq">' + (up ? n + " &nbsp; " + HOLE : HOLE + " &nbsp; " + n) + '</div><div class="nbar">' + (up ? "➡️" : "⬅️") + "</div>";
-      q.say = up ? "Welche Zahl kommt nach der " + n + "?" : "Welche Zahl kommt vor der " + n + "?";
-      q.sol = up ? "Nach der " + n + " kommt die " + r + "." : "Vor der " + n + " kommt die " + r + ".";
-      q.dots = '<div class="dots">' + (up ? n + " → " + r : r + " ← " + n) + "</div>";
-    } else if (m = /^zl:(\d+):(\d+)$/.exec(k)) {
-      const n = +m[1], a = +m[2], b = n - a;
-      q.type = "zl";
-      q.pad = true;
-      q.ans = String(b);
-      q.dots = '<div class="dots"><span class="da">' + dots(a) + '</span><span class="db">' + dots(b) + "</span></div>";
-      q.html = '<div class="haus"><div class="roof">' + n + '</div><span class="rm">' + a + '</span><span class="rm">' + HOLE + "</span></div>" + (st < 1 ? '<div class="dots"><span class="da">' + dots(n) + "</span></div>" : "");
-      q.say = n + " ist " + a + " und wie viel?";
-      q.sol = n + " ist " + a + " und " + b + "." + (n === 10 ? " Das sind Zehnerfreunde." : "");
-    } else if (m = /^syl:(.+)$/.exec(k)) {
-      const x = SYL.find(function(y) {
-        return y[0] === m[1];
-      }) || SYL[0], sy = x[2].split("-"), n = sy.length;
-      q.type = "syl";
-      q.ans = CLAP[n - 1];
-      q.opts = CLAP.slice();
-      q.nofast = true;
-      q.html = qpicWith(IC2, QI2, x[1]) + '<div class="syl">' + sy.map(function(t, i) {
-        return '<b class="s' + i % 2 + '">' + t + "</b>";
-      }).join("") + '</div><div class="eq">' + HOLE + "</div>";
-      q.say = "Klatsch mit: " + x[0] + ". Wie oft hast du geklatscht?";
-      q.sol = sy.join(" – ") + ". " + x[0] + " hat " + (n === 1 ? "eine Silbe" : n + " Silben") + ".";
-    } else if (m = /^rhy:(.+)$/.exec(k)) {
-      const w = RHYW[m[1]] ? m[1] : "Haus", x = RHYW[w], others = shuffleWith(rand, Object.keys(RHYW).filter(function(v) {
-        return v !== w && v !== x.to;
-      })).slice(0, 2);
-      q.type = "rhy";
-      q.ans = x.to;
-      q.opts = shuffleWith(rand, [x.to].concat(others));
-      q.pics = true;
-      q.nofast = true;
-      q.html = qpicWith(IC2, QI2, x.ic) + '<div class="syl">' + w + "</div>";
-      q.say = "Was reimt sich auf " + w + "?";
-      q.sol = w + " und " + x.to + ", das reimt sich.";
-    } else if (m = /^anlaut:(.+)$/.exec(k)) {
-      const wd = WORDS.find(function(w) {
-        return w.w === m[1];
-      }) || WORDS[0], c = wd.w.charAt(0);
-      q.type = "anlaut";
-      q.ans = c;
-      q.opts = lettersForWith(rand, wd, 6);
-      q.html = qpicWith(IC2, QI2, wd.ic) + '<div class="eq">' + HOLE + wd.w.slice(1) + "</div>";
-      q.say = "Womit fängt " + wd.w + " an?";
-      q.sol = wd.w + " fängt mit " + c + " an.";
-    } else if (m = /^case:(.)$/.exec(k)) {
-      const c = m[1], lc = c.toLowerCase();
-      q.type = "case";
-      q.ans = lc;
-      q.opts = shuffleWith(rand, [lc].concat(shuffleWith(rand, "abdefghklmnrtu".split("").filter(function(ch) {
-        return ch !== lc;
-      })).slice(0, 5)));
-      q.html = '<div class="eq big">' + c + " → " + HOLE + "</div>";
-      q.say = "Welcher kleine Buchstabe gehört zum großen " + c + "?";
-      q.sol = "Zum großen " + c + " gehört das kleine " + lc + ".";
-    } else {
-      const w = k.slice(5), wd = WORDS.find(function(x) {
-        return x.w === w;
-      }) || WORDS[0];
-      q.type = "word";
-      q.word = true;
-      q.ans = wd.w;
-      q.opts = shuffleWith(rand, [wd.w].concat(shuffleWith(rand, WORDS.filter(function(x) {
-        return x !== wd;
-      })).slice(0, 3).map(function(x) {
-        return x.w;
-      })));
-      q.html = qpicWith(IC2, QI2, wd.ic);
-      q.say = "Welches Wort passt zum Bild?";
-      q.sol = "Hier steht " + q.ans + ".";
-    }
-    return q;
-  }
-  function mkSeqWith(rand, FS) {
-    const big = FS.u.m >= 2, st = big ? riWith(rand, 1, 2) : 1, max = big ? 20 : 10, a = riWith(rand, 1, max - 2 * st), gap = riWith(rand, 1, 2), seq = [a, a + st, a + 2 * st];
-    return {
-      L: FS.u.m,
-      type: "seq",
-      pad: true,
-      inp: "",
-      tries: 0,
-      ans: String(seq[gap]),
-      opts: [],
-      word: false,
-      miss: false,
-      lock: false,
-      free: true,
-      html: '<div class="eq">' + seq.map(function(v, i) {
-        return i === gap ? HOLE : String(v);
-      }).join(" &nbsp; ") + "</div>",
-      say: "Welche Zahl fehlt?",
-      sol: "Hier fehlt die " + seq[gap] + ".",
-      f: "seq:" + seq.map(function(v, i) {
-        return i === gap ? "_" : v;
-      }).join(",")
-    };
-  }
-
   // src/state/world.js
   var g0 = new Float32Array(GX + 2);
   var grid = new Uint8Array(GX * GY);
@@ -1645,452 +1285,6 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
   }
   function setOrbGot(v) {
     orbGot = v;
-  }
-
-  // src/state/game.js
-  var hero = { xp: 0, lvl: 1, up: { dig: 0, motor: 0, jet: 0, compass: 0, luck: 0, heat: 0 }, own: {}, pet: "", hat: "", tnt: 0, qn: 0, quest: null, day: "", st: { ch: 1, on: false }, eggs: 0, trail: false, ext: false, big: false, dr: 0, rk: 0, lp: 0, zn: 0, mat: {}, mk: {}, pz: {}, pzn: 0, deep: false, fin: 0 };
-  var gold = 0;
-  var gems = 0;
-  var lootDirty = false;
-  var heroDirty = false;
-  function setGold(v) {
-    gold = v;
-  }
-  function setGems(v) {
-    gems = v;
-  }
-  function setLootDirty(v) {
-    lootDirty = v;
-  }
-  function setHeroDirty(v) {
-    heroDirty = v;
-  }
-  var P = { mode: "walk", x: 820, y: 0, vx: 0, vy: 0, on: true, landed: false, gs: 0, face: 1, chute: false, air: 0, run: 0, ang: 0, turbo: 0, soot: 0, hurt: 0, track: null, s: 0, v: 0, arm: 0.75, load: 0, digT: 0, climb: 0, lift: 0, da: 0, bed: 0, ball: 0, spin: 0, rot: 0, frost: 0, jet: false, back: false, balT: 0, wall: false, zip: null, swing: 0, aim: 0 };
-  var parked = { car: null, plane: null, rocket: null, bagger: null, loader: null, dumper: null, tbm: null, sub: null, balloon: null, heli: null, boat: null, bug: null };
-  var cam = { x: 820, y: -60 };
-  var pan = { x: 0, y: 0 };
-  var keys = { l: false, r: false, u: false, d: false, a: false };
-  var ready = false;
-  var saving = false;
-  var frozen = false;
-  var diskLock = false;
-  var traveling = false;
-  var paused = false;
-  var tool = null;
-  var task = null;
-  var talkLock = 0;
-  function setReady(v) {
-    ready = v;
-  }
-  function setSaving(v) {
-    saving = v;
-  }
-  function setFrozen(v) {
-    frozen = v;
-  }
-  function setDiskLock(v) {
-    diskLock = v;
-  }
-  function setTraveling(v) {
-    traveling = v;
-  }
-  function setPaused(v) {
-    paused = v;
-  }
-  function setToolV(v) {
-    tool = v;
-  }
-  function setTask(v) {
-    task = v;
-  }
-  function setTalkLock(v) {
-    talkLock = v;
-  }
-  var energy = 0;
-  var found = {};
-  var hidden = (
-    /** @type {any[]} */
-    []
-  );
-  var props = (
-    /** @type {any[]} */
-    []
-  );
-  var tracks = (
-    /** @type {any[]} */
-    []
-  );
-  var zips = (
-    /** @type {any[]} */
-    []
-  );
-  var matGot = {};
-  var pzGot = {};
-  function setEnergy(v) {
-    energy = v;
-  }
-  function setFound(v) {
-    found = v;
-  }
-  function setHidden(v) {
-    hidden = v;
-  }
-  function setProps(v) {
-    props = v;
-  }
-  function setTracks(v) {
-    tracks = v;
-  }
-  function setZips(v) {
-    zips = v;
-  }
-  function setMatGot(v) {
-    matGot = v;
-  }
-  function setPzGot(v) {
-    pzGot = v;
-  }
-
-  // src/state/facade.js
-  var ST = {
-    get BIO() {
-      return BIO;
-    },
-    set BIO(v) {
-      setBIO(v);
-    },
-    get STR() {
-      return STR;
-    },
-    set STR(v) {
-      setSTR(v);
-    },
-    get CRE() {
-      return CRE;
-    },
-    set CRE(v) {
-      setCRE(v);
-    },
-    get PICKS() {
-      return PICKS;
-    },
-    set PICKS(v) {
-      setPICKS(v);
-    },
-    get PADS() {
-      return PADS;
-    },
-    set PADS(v) {
-      setPADS(v);
-    },
-    get DECO() {
-      return DECO;
-    },
-    set DECO(v) {
-      setDECO(v);
-    },
-    get EGGS() {
-      return EGGS;
-    },
-    set EGGS(v) {
-      setEGGS(v);
-    },
-    get LOOT() {
-      return LOOT;
-    },
-    set LOOT(v) {
-      setLOOT(v);
-    },
-    get DROPS() {
-      return DROPS;
-    },
-    set DROPS(v) {
-      setDROPS(v);
-    },
-    get stI() {
-      return stI;
-    },
-    set stI(v) {
-      setStI(v);
-    },
-    get NT0() {
-      return NT0;
-    },
-    set NT0(v) {
-      setNT0(v);
-    },
-    get NC0() {
-      return NC0;
-    },
-    set NC0(v) {
-      setNC0(v);
-    },
-    get seen() {
-      return seen;
-    },
-    set seen(v) {
-      setSeen(v);
-    },
-    get eggGot() {
-      return eggGot;
-    },
-    set eggGot(v) {
-      setEggGot(v);
-    },
-    get lootGot() {
-      return lootGot;
-    },
-    set lootGot(v) {
-      setLootGot(v);
-    },
-    get orbGot() {
-      return orbGot;
-    },
-    set orbGot(v) {
-      setOrbGot(v);
-    },
-    get gold() {
-      return gold;
-    },
-    set gold(v) {
-      setGold(v);
-    },
-    get gems() {
-      return gems;
-    },
-    set gems(v) {
-      setGems(v);
-    },
-    get lootDirty() {
-      return lootDirty;
-    },
-    set lootDirty(v) {
-      setLootDirty(v);
-    },
-    get heroDirty() {
-      return heroDirty;
-    },
-    set heroDirty(v) {
-      setHeroDirty(v);
-    },
-    get ready() {
-      return ready;
-    },
-    set ready(v) {
-      setReady(v);
-    },
-    get saving() {
-      return saving;
-    },
-    set saving(v) {
-      setSaving(v);
-    },
-    get frozen() {
-      return frozen;
-    },
-    set frozen(v) {
-      setFrozen(v);
-    },
-    get diskLock() {
-      return diskLock;
-    },
-    set diskLock(v) {
-      setDiskLock(v);
-    },
-    get traveling() {
-      return traveling;
-    },
-    set traveling(v) {
-      setTraveling(v);
-    },
-    get paused() {
-      return paused;
-    },
-    set paused(v) {
-      setPaused(v);
-    },
-    get tool() {
-      return tool;
-    },
-    set tool(v) {
-      setToolV(v);
-    },
-    get task() {
-      return task;
-    },
-    set task(v) {
-      setTask(v);
-    },
-    get talkLock() {
-      return talkLock;
-    },
-    set talkLock(v) {
-      setTalkLock(v);
-    },
-    get energy() {
-      return energy;
-    },
-    set energy(v) {
-      setEnergy(v);
-    },
-    get found() {
-      return found;
-    },
-    set found(v) {
-      setFound(v);
-    },
-    get hidden() {
-      return hidden;
-    },
-    set hidden(v) {
-      setHidden(v);
-    },
-    get props() {
-      return props;
-    },
-    set props(v) {
-      setProps(v);
-    },
-    get tracks() {
-      return tracks;
-    },
-    set tracks(v) {
-      setTracks(v);
-    },
-    get zips() {
-      return zips;
-    },
-    set zips(v) {
-      setZips(v);
-    },
-    get matGot() {
-      return matGot;
-    },
-    set matGot(v) {
-      setMatGot(v);
-    },
-    get pzGot() {
-      return pzGot;
-    },
-    set pzGot(v) {
-      setPzGot(v);
-    }
-  };
-
-  // src/persistence/keys.js
-  var K_HERO = "lavaland-hero";
-  var K_FINDS = "lavaland-finds";
-  var K_SKILL = "lavaland-skill";
-  var K_FACTS = "lavaland-facts";
-  var K_SCHOOL = "lavaland-school";
-  var K_LIMIT = "lavaland-limit";
-  var K_DAY = "lavaland-day";
-  var K_REALM = "lavaland-realm";
-  var K_FOG = "lavaland-fog";
-  var K_MARKS = "lavaland-marks";
-  var K_MUTE = "lavaland-mute";
-  var K_LEFTY = "lavaland-lefty";
-  var K_NEWS = "lavaland-news";
-  var K_BAK_AT = "lavaland-bak-at";
-  var K_VOICE = "lavaland-voice";
-  var K_VMISS = "lavaland-vmiss";
-  var K_OPT = "lavaland-opt";
-  var ERRK = "lavaland-err";
-  var SAVEKEY = "world2";
-  function realmKey(id) {
-    return id ? "planet-" + id : SAVEKEY;
-  }
-
-  // src/persistence/db.js
-  function idbOpen() {
-    return new Promise(function(res, rej) {
-      let rq;
-      try {
-        rq = indexedDB.open("lavaland", 1);
-      } catch (e) {
-        rej(e);
-        return;
-      }
-      rq.onupgradeneeded = function() {
-        rq.result.createObjectStore("save");
-      };
-      rq.onsuccess = function() {
-        res(rq.result);
-      };
-      rq.onerror = function() {
-        rej(rq.error);
-      };
-    });
-  }
-  function idbDoWith(diskLock2, mode, fn) {
-    if (diskLock2 && mode !== "readonly") return Promise.reject(new Error("diskLock"));
-    return idbOpen().then(function(db) {
-      return new Promise(function(res, rej) {
-        const tx = db.transaction("save", mode), rq = fn(tx.objectStore("save"));
-        tx.oncomplete = function() {
-          db.close();
-          res(rq.result);
-        };
-        tx.onerror = tx.onabort = function() {
-          db.close();
-          rej(tx.error);
-        };
-      });
-    });
-  }
-
-  // src/core/world/pack.js
-  function packRunsWith(grid2, f) {
-    let out = new Uint8Array(1 << 20), n = 0;
-    for (let cx = 0; cx < f; cx++) {
-      let i = cx, cy = 0;
-      while (cy < GY) {
-        const m = grid2[i];
-        let r = 1;
-        i += GX;
-        cy++;
-        while (cy < GY && grid2[i] === m) {
-          r++;
-          i += GX;
-          cy++;
-        }
-        if (n + 8 > out.length) {
-          const o = new Uint8Array(out.length * 2);
-          o.set(out);
-          out = o;
-        }
-        out[n++] = m;
-        while (r >= 128) {
-          out[n++] = r & 127 | 128;
-          r >>>= 7;
-        }
-        out[n++] = r;
-      }
-    }
-    return out.slice(0, n);
-  }
-  function unpackRunsWith(grid2, b, f) {
-    let k = 0;
-    for (let cx = 0; cx < f; cx++) {
-      let cy = 0, i = cx;
-      while (cy < GY) {
-        if (k >= b.length) return false;
-        const m = b[k++];
-        let r = 0, sh = 0, c;
-        do {
-          if (k >= b.length) return false;
-          c = b[k++];
-          r |= (c & 127) << sh;
-          sh += 7;
-        } while (c & 128);
-        if (r < 1 || cy + r > GY) return false;
-        for (let e = cy + r; cy < e; cy++, i += GX) grid2[i] = m;
-      }
-    }
-    return k === b.length;
-  }
-  function runsOk(sv) {
-    return sv.v === 5 && sv.gy === GY && sv.f > 0 && sv.f <= GX && sv.runs instanceof Uint8Array;
   }
 
   // src/core/world/shape.js
@@ -2968,6 +2162,1028 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         tr.t = 5 + Math.random() * 2;
       }
     }
+  }
+
+  // src/state/game.js
+  var hero = { xp: 0, lvl: 1, up: { dig: 0, motor: 0, jet: 0, compass: 0, luck: 0, heat: 0 }, own: {}, pet: "", hat: "", tnt: 0, qn: 0, quest: null, day: "", st: { ch: 1, on: false }, eggs: 0, trail: false, ext: false, big: false, dr: 0, rk: 0, lp: 0, zn: 0, mat: {}, mk: {}, pz: {}, pzn: 0, deep: false, fin: 0 };
+  var gold = 0;
+  var gems = 0;
+  var lootDirty = false;
+  var heroDirty = false;
+  function setGold(v) {
+    gold = v;
+  }
+  function setGems(v) {
+    gems = v;
+  }
+  function setLootDirty(v) {
+    lootDirty = v;
+  }
+  function setHeroDirty(v) {
+    heroDirty = v;
+  }
+  var P = { mode: "walk", x: 820, y: 0, vx: 0, vy: 0, on: true, landed: false, gs: 0, face: 1, chute: false, air: 0, run: 0, ang: 0, turbo: 0, soot: 0, hurt: 0, track: null, s: 0, v: 0, arm: 0.75, load: 0, digT: 0, climb: 0, lift: 0, da: 0, bed: 0, ball: 0, spin: 0, rot: 0, frost: 0, jet: false, back: false, balT: 0, wall: false, zip: null, swing: 0, aim: 0 };
+  var parked = { car: null, plane: null, rocket: null, bagger: null, loader: null, dumper: null, tbm: null, sub: null, balloon: null, heli: null, boat: null, bug: null };
+  var cam = { x: 820, y: -60 };
+  var pan = { x: 0, y: 0 };
+  var keys = { l: false, r: false, u: false, d: false, a: false };
+  var ready = false;
+  var saving = false;
+  var frozen = false;
+  var diskLock = false;
+  var traveling = false;
+  var paused = false;
+  var tool = null;
+  var task = null;
+  var talkLock = 0;
+  function setReady(v) {
+    ready = v;
+  }
+  function setSaving(v) {
+    saving = v;
+  }
+  function setFrozen(v) {
+    frozen = v;
+  }
+  function setDiskLock(v) {
+    diskLock = v;
+  }
+  function setTraveling(v) {
+    traveling = v;
+  }
+  function setPaused(v) {
+    paused = v;
+  }
+  function setToolV(v) {
+    tool = v;
+  }
+  function setTask(v) {
+    task = v;
+  }
+  function setTalkLock(v) {
+    talkLock = v;
+  }
+  var energy = 0;
+  var found = {};
+  var hidden = (
+    /** @type {any[]} */
+    []
+  );
+  var props = (
+    /** @type {any[]} */
+    []
+  );
+  var tracks = (
+    /** @type {any[]} */
+    []
+  );
+  var zips = (
+    /** @type {any[]} */
+    []
+  );
+  var matGot = {};
+  var pzGot = {};
+  function setEnergy(v) {
+    energy = v;
+  }
+  function setFound(v) {
+    found = v;
+  }
+  function setHidden(v) {
+    hidden = v;
+  }
+  function setProps(v) {
+    props = v;
+  }
+  function setTracks(v) {
+    tracks = v;
+  }
+  function setZips(v) {
+    zips = v;
+  }
+  function setMatGot(v) {
+    matGot = v;
+  }
+  function setPzGot(v) {
+    pzGot = v;
+  }
+
+  // src/state/facade.js
+  var ST = {
+    get BIO() {
+      return BIO;
+    },
+    set BIO(v) {
+      setBIO(v);
+    },
+    get STR() {
+      return STR;
+    },
+    set STR(v) {
+      setSTR(v);
+    },
+    get CRE() {
+      return CRE;
+    },
+    set CRE(v) {
+      setCRE(v);
+    },
+    get PICKS() {
+      return PICKS;
+    },
+    set PICKS(v) {
+      setPICKS(v);
+    },
+    get PADS() {
+      return PADS;
+    },
+    set PADS(v) {
+      setPADS(v);
+    },
+    get DECO() {
+      return DECO;
+    },
+    set DECO(v) {
+      setDECO(v);
+    },
+    get EGGS() {
+      return EGGS;
+    },
+    set EGGS(v) {
+      setEGGS(v);
+    },
+    get LOOT() {
+      return LOOT;
+    },
+    set LOOT(v) {
+      setLOOT(v);
+    },
+    get DROPS() {
+      return DROPS;
+    },
+    set DROPS(v) {
+      setDROPS(v);
+    },
+    get stI() {
+      return stI;
+    },
+    set stI(v) {
+      setStI(v);
+    },
+    get NT0() {
+      return NT0;
+    },
+    set NT0(v) {
+      setNT0(v);
+    },
+    get NC0() {
+      return NC0;
+    },
+    set NC0(v) {
+      setNC0(v);
+    },
+    get seen() {
+      return seen;
+    },
+    set seen(v) {
+      setSeen(v);
+    },
+    get eggGot() {
+      return eggGot;
+    },
+    set eggGot(v) {
+      setEggGot(v);
+    },
+    get lootGot() {
+      return lootGot;
+    },
+    set lootGot(v) {
+      setLootGot(v);
+    },
+    get orbGot() {
+      return orbGot;
+    },
+    set orbGot(v) {
+      setOrbGot(v);
+    },
+    get gold() {
+      return gold;
+    },
+    set gold(v) {
+      setGold(v);
+    },
+    get gems() {
+      return gems;
+    },
+    set gems(v) {
+      setGems(v);
+    },
+    get lootDirty() {
+      return lootDirty;
+    },
+    set lootDirty(v) {
+      setLootDirty(v);
+    },
+    get heroDirty() {
+      return heroDirty;
+    },
+    set heroDirty(v) {
+      setHeroDirty(v);
+    },
+    get ready() {
+      return ready;
+    },
+    set ready(v) {
+      setReady(v);
+    },
+    get saving() {
+      return saving;
+    },
+    set saving(v) {
+      setSaving(v);
+    },
+    get frozen() {
+      return frozen;
+    },
+    set frozen(v) {
+      setFrozen(v);
+    },
+    get diskLock() {
+      return diskLock;
+    },
+    set diskLock(v) {
+      setDiskLock(v);
+    },
+    get traveling() {
+      return traveling;
+    },
+    set traveling(v) {
+      setTraveling(v);
+    },
+    get paused() {
+      return paused;
+    },
+    set paused(v) {
+      setPaused(v);
+    },
+    get tool() {
+      return tool;
+    },
+    set tool(v) {
+      setToolV(v);
+    },
+    get task() {
+      return task;
+    },
+    set task(v) {
+      setTask(v);
+    },
+    get talkLock() {
+      return talkLock;
+    },
+    set talkLock(v) {
+      setTalkLock(v);
+    },
+    get energy() {
+      return energy;
+    },
+    set energy(v) {
+      setEnergy(v);
+    },
+    get found() {
+      return found;
+    },
+    set found(v) {
+      setFound(v);
+    },
+    get hidden() {
+      return hidden;
+    },
+    set hidden(v) {
+      setHidden(v);
+    },
+    get props() {
+      return props;
+    },
+    set props(v) {
+      setProps(v);
+    },
+    get tracks() {
+      return tracks;
+    },
+    set tracks(v) {
+      setTracks(v);
+    },
+    get zips() {
+      return zips;
+    },
+    set zips(v) {
+      setZips(v);
+    },
+    get matGot() {
+      return matGot;
+    },
+    set matGot(v) {
+      setMatGot(v);
+    },
+    get pzGot() {
+      return pzGot;
+    },
+    set pzGot(v) {
+      setPzGot(v);
+    }
+  };
+
+  // src/state/rohrwand.js
+  var rw = {};
+  function setRw(v) {
+    rw = v;
+  }
+
+  // src/core/world/rohrwand.js
+  var RWM = { P0: 7, P1: 13, PH: 4, G0: -4, GW: 150, GH: 36, WALL: 4, NW: 44, NH: 20, DH: 7, FR: 3 };
+  var RWDEPTH = [6, 24, 48];
+  function rwBox(sp) {
+    const M = RWM, a = sp.mc + sp.s * (M.G0 - M.FR), b = sp.mc + sp.s * (M.G0 + M.GW + M.WALL + M.NW + M.FR - 1);
+    return { x0: Math.min(a, b), x1: Math.max(a, b), y0: sp.fr, y1: sp.fr + M.PH + sp.dp + M.GH - 1 + M.FR };
+  }
+  function rwPlan(sp, rand) {
+    const M = RWM, s = sp.s, fr = sp.fr, top = fr + M.PH + sp.dp, bot = top + M.GH - 1;
+    const cx = (
+      /** @param {number} d */
+      function(d) {
+        return sp.mc + s * d;
+      }
+    );
+    const nk = Math.ceil(M.GW / 12) + 2, up = (
+      /** @type {number[]} */
+      []
+    ), dn = (
+      /** @type {number[]} */
+      []
+    );
+    for (let k = 0; k < nk; k++) {
+      up.push(Math.floor(rand() * 5));
+      dn.push(Math.floor(rand() * 4));
+    }
+    const wave = (
+      /** @param {number[]} a @param {number} d */
+      function(a, d) {
+        const f = d / 12, k = Math.floor(f), t = f - k;
+        return Math.round(a[k] * (1 - t) + a[k + 1] * t);
+      }
+    );
+    const open = /* @__PURE__ */ new Map(), plug = (
+      /** @type {number[]} */
+      []
+    ), door = (
+      /** @type {number[]} */
+      []
+    );
+    const put2 = (
+      /** @param {number} d @param {number} y @param {number} m */
+      function(d, y, m) {
+        open.set(y * GX + cx(d), m);
+      }
+    );
+    for (let d = M.P0; d <= M.P1; d++) {
+      for (let y = fr; y < fr + M.PH; y++) {
+        put2(d, y, GLUT);
+        plug.push(y * GX + cx(d));
+      }
+      for (let y = fr + M.PH; y < top + 6; y++) put2(d, y, 0);
+    }
+    for (let d = M.G0; d < M.G0 + M.GW; d++) {
+      const e = d - M.G0, rt = Math.max(0, 10 - Math.min(e, M.GW - 1 - e)), y0 = top + wave(up, e) + Math.round(rt * rt / 10), y1 = bot - wave(dn, e) - (e < 3 ? 3 - e : 0);
+      for (let y = y0; y <= y1; y++) put2(d, y, 0);
+    }
+    for (let d = M.G0 + M.GW; d < M.G0 + M.GW + M.WALL; d++) for (let y = bot - M.DH + 1; y <= bot; y++) {
+      put2(d, y, GLUT);
+      door.push(y * GX + cx(d));
+    }
+    for (let d = M.G0 + M.GW + M.WALL; d < M.G0 + M.GW + M.WALL + M.NW; d++) {
+      const e = d - M.G0 - M.GW - M.WALL, rt = Math.max(0, 6 - Math.min(e, M.NW - 1 - e));
+      for (let y = bot - M.NH + 1 + Math.round(rt * rt / 6); y <= bot; y++) put2(d, y, 0);
+    }
+    const dA = M.G0 - M.FR, dB = M.G0 + M.GW + M.WALL + M.NW + M.FR - 1, yB = bot + M.FR;
+    const cells = (
+      /** @type {number[]} */
+      []
+    );
+    for (let y = fr; y <= yB; y++) for (let d = dA; d <= dB; d++) {
+      const i = y * GX + cx(d);
+      if (open.has(i)) {
+        cells.push(i, open.get(i));
+        continue;
+      }
+      let near = false;
+      for (let v = -M.FR; v <= M.FR && !near; v++) for (let u = -M.FR; u <= M.FR; u++) if (open.has((y + v) * GX + cx(d + u))) {
+        near = true;
+        break;
+      }
+      if (near) cells.push(i, BED);
+    }
+    const xa = cx(dA), xb = cx(dB);
+    return { cells, x0: Math.min(xa, xb), x1: Math.max(xa, xb), y0: fr, y1: yB, plug, door };
+  }
+  function rwFits(pl, at, gy, f) {
+    if (pl.x0 < 1 || pl.x1 >= f - 8 || pl.y0 < 1 || pl.y1 >= gy - 4) return false;
+    for (let k = 0; k < pl.cells.length; k += 2) {
+      const m = at(pl.cells[k]);
+      if (m === BED || m === CORE || m === SHELL || m === GLUT) return false;
+    }
+    return true;
+  }
+
+  // src/systems/rohrwand.js
+  var RWON = { on: false };
+  var rwT = 0;
+  function rwRand(seed, id, sp) {
+    let h = seed | 0;
+    for (let k = 0; k < id.length; k++) h = Math.imul(h, 31) + id.charCodeAt(k) | 0;
+    return rng(Math.imul(h, 97) + sp.s * 7 + sp.dp * 131);
+  }
+  function floorRow(m) {
+    const mc = Math.floor(m.x / CELL);
+    let r = Math.floor((m.y - TOP) / CELL) - 1;
+    for (let k = 0; k < 8 && r < GY - 1 && grid[r * GX + mc] < 4; k++) r++;
+    return r;
+  }
+  function blocked(RP, m, pl) {
+    const X0 = pl.x0 * CELL - 12, X1 = (pl.x1 + 1) * CELL + 12, Y0 = TOP + pl.y0 * CELL - 12, Y1 = TOP + (pl.y1 + 1) * CELL + 12;
+    const inB = (
+      /** @param {any} x @param {any} y */
+      function(x, y) {
+        return x >= X0 && x <= X1 && y >= Y0 && y <= Y1;
+      }
+    );
+    const any = (
+      /** @param {any[]} a @param {(o: any) => boolean} f */
+      function(a, f) {
+        return !!a && a.some(f);
+      }
+    );
+    if (LIFTX + 80 > X0 && LIFTX - 80 < X1) return true;
+    const fa = RP.fogArr(), F = RP.FGT;
+    for (let ty = Math.floor(pl.y0 / F); ty <= Math.floor(pl.y1 / F); ty++) for (let tx = Math.floor(pl.x0 / F); tx <= Math.floor(pl.x1 / F); tx++) if (RP.fogHas(fa, tx, ty)) return true;
+    if (any(RP.MACH, function(q) {
+      return q !== m && inB(q.x, q.y);
+    })) return true;
+    if (any(ST.STR, function(q) {
+      return q.k === "room" && Math.abs(q.x - m.x) > 1 && inB(q.x, q.y);
+    })) return true;
+    if (any(RP.VAULTS, function(q) {
+      return inB(q.x, q.fy);
+    })) return true;
+    if (any(RP.MATS, function(q) {
+      return !ST.matGot[q.id] && inB(q.x, q.y);
+    })) return true;
+    for (const a of [ST.CRE, ST.PADS, ST.EGGS, ST.LOOT, ST.props, ST.hidden, RP.ZDEC]) if (any(a, function(q) {
+      return inB(q.x, q.y);
+    })) return true;
+    for (const k in parked) {
+      const o = parked[k];
+      if (o && inB(o.x, o.y)) return true;
+    }
+    if (any(ST.tracks, function(T) {
+      return T.pts.some(
+        /** @param {any} q */
+        function(q) {
+          return inB(q[0], q[1]);
+        }
+      );
+    })) return true;
+    if (any(ST.zips, function(z) {
+      return inB(z.a[0], z.a[1]) || inB(z.b[0], z.b[1]);
+    })) return true;
+    return false;
+  }
+  function rwBuildWith(RP, m) {
+    if (rw[m.id]) return null;
+    const mc = Math.floor(m.x / CELL), fr = floorRow(m), at = (
+      /** @param {number} i */
+      function(i) {
+        return grid[i];
+      }
+    );
+    const pc = Math.floor(P.x / CELL), pr = Math.floor((P.y - 2 - TOP) / CELL);
+    let wait = false;
+    for (const dp of RWDEPTH) for (const s of [1, -1]) {
+      const sp = { mc, fr, s, dp }, bx = rwBox(sp);
+      if (bx.x0 < 1 || bx.x1 >= RP.genF - 8 || bx.y1 >= GY - 4 || blocked(RP, m, bx)) continue;
+      const pl = rwPlan(sp, rwRand(RP.SEED, m.id, sp));
+      if (!rwFits(pl, at, GY, RP.genF)) continue;
+      if (pc >= pl.x0 - 4 && pc <= pl.x1 + 4 && pr >= pl.y0 && pr <= pl.y1 + 4) {
+        wait = true;
+        continue;
+      }
+      for (let k = 0; k < pl.cells.length; k += 2) {
+        const i = pl.cells[k];
+        grid[i] = pl.cells[k + 1];
+        lifeS(i, 0);
+      }
+      rw[m.id] = { mc, fr, s, dp, st: 0 };
+      return sp;
+    }
+    if (wait) return "wait";
+    rw[m.id] = { no: 1 };
+    return null;
+  }
+  function rwTickWith(RP, dt) {
+    if (!RWON.on || RP.realm) return;
+    rwT -= dt;
+    if (rwT > 0) return;
+    rwT = 0.5;
+    for (const m of RP.MACH) if (m.t === "rohre" && !rw[m.id] && m.y === m.y && m.y > -3e3 && Math.abs(P.x - m.x) < 1800 && Math.abs(P.y - m.y) < 1400) {
+      rwBuildWith(RP, m);
+      return;
+    }
+  }
+  function rohrWith(RP) {
+    return [
+      { name: "rohrTick", tick: (
+        /** @param {any} dt */
+        function(dt) {
+          rwTickWith(RP, dt);
+        }
+      ) }
+    ];
+  }
+
+  // src/core/learn/facts.js
+  var WORDS = [
+    { w: "Auto", ic: "car", no: "" },
+    { w: "Flugzeug", ic: "plane", no: "" },
+    { w: "Bagger", ic: "bagger", no: "" },
+    { w: "Feuer", ic: "fire", no: "TNH" },
+    { w: "Stern", ic: "star", no: "" },
+    { w: "Haus", ic: "haus", no: "MLR" },
+    { w: "Mond", ic: "mond", no: "F" },
+    { w: "Sonne", ic: "sonne", no: "TWN" },
+    { w: "Baum", ic: "baum", no: "RS" },
+    { w: "Wolke", ic: "wolke", no: "" },
+    { w: "Apfel", ic: "apfel", no: "" },
+    { w: "Ball", ic: "ball", no: "FHW" },
+    { w: "Fisch", ic: "fisch", no: "TW" },
+    /* Dazu die Bilder aus Silben und Reimen. Reimpaare (Maus/Haus, Tanne/Kanne) schließen sich gegenseitig als Ablenker aus, sonst wäre beides richtig. */
+    { w: "Maus", ic: "maus", no: "HLR" },
+    { w: "Tisch", ic: "tisch", no: "FW" },
+    { w: "Tonne", ic: "tonne", no: "SW" },
+    { w: "Hose", ic: "hose", no: "RDL" },
+    { w: "Rose", ic: "rose", no: "HDL" },
+    { w: "Tanne", ic: "tanne", no: "KWP" },
+    { w: "Kanne", ic: "kanne", no: "TWP" },
+    { w: "Banane", ic: "banane", no: "" },
+    { w: "Tomate", ic: "tomate", no: "" }
+  ];
+  var SYL = [
+    ["Auto", "car", "Au-to"],
+    ["Flugzeug", "plane", "Flug-zeug"],
+    ["Bagger", "bagger", "Bag-ger"],
+    ["Feuer", "fire", "Feu-er"],
+    ["Stern", "star", "Stern"],
+    ["Haus", "haus", "Haus"],
+    ["Mond", "mond", "Mond"],
+    ["Sonne", "sonne", "Son-ne"],
+    ["Baum", "baum", "Baum"],
+    ["Wolke", "wolke", "Wol-ke"],
+    ["Apfel", "apfel", "Ap-fel"],
+    ["Ball", "ball", "Ball"],
+    ["Fisch", "fisch", "Fisch"],
+    ["Rakete", "rocket", "Ra-ke-te"],
+    ["Feuerwerk", "fw", "Feu-er-werk"],
+    ["Banane", "banane", "Ba-na-ne"],
+    ["Tomate", "tomate", "To-ma-te"]
+  ];
+  var CLAP = ["👏", "👏👏", "👏👏👏"];
+  var RHY = [["Haus", "haus", "Maus", "maus"], ["Fisch", "fisch", "Tisch", "tisch"], ["Sonne", "sonne", "Tonne", "tonne"], ["Hose", "hose", "Rose", "rose"], ["Tanne", "tanne", "Kanne", "kanne"]];
+  var RHYW = (
+    /** @type {Record<string, {ic: string, to: string}>} */
+    {}
+  );
+  RHY.forEach(function(r) {
+    RHYW[r[0]] = { ic: r[1], to: r[2] };
+    RHYW[r[2]] = { ic: r[3], to: r[0] };
+  });
+  var LETTERS = "AEIOUMLRSTNFBHWKDP";
+  var CASES = "ABDEFGHLMNRT";
+  var STAGES = (function() {
+    const m = (
+      /** @type {string[][]} */
+      [[], [], [], []]
+    ), l = (
+      /** @type {string[][]} */
+      [[], [], []]
+    );
+    for (let n = 1; n <= 10; n++) m[n <= 6 ? 0 : 1].push("count:" + n);
+    for (let a = 1; a <= 9; a++) for (let b = 1; b <= 9; b++) {
+      const s = a + b;
+      if (s <= 5) m[0].push(a + "+" + b);
+      else if (s <= 10) m[1].push(a + "+" + b);
+      else m[3].push(a + "+" + b);
+    }
+    for (let a = 2; a <= 10; a++) for (let b = 1; b < a; b++) m[a <= 5 ? 0 : 1].push(a + "-" + b);
+    for (let a = 10; a <= 19; a++) for (let b = 1; b <= 9; b++) {
+      if (a % 10 + b <= 9) m[2].push(a + "+" + b);
+    }
+    for (let a = 11; a <= 19; a++) for (let b = 1; b <= 9; b++) {
+      if (b <= a % 10) m[2].push(a + "-" + b);
+      else if (a - b >= 2 && a <= 18) m[3].push(a + "-" + b);
+    }
+    SYL.forEach(function(x) {
+      l[0].push("syl:" + x[0]);
+    });
+    Object.keys(RHYW).forEach(function(w) {
+      l[0].push("rhy:" + w);
+    });
+    WORDS.forEach(function(wd) {
+      l[0].push("anlaut:" + wd.w);
+      l[2].push("word:" + wd.w);
+    });
+    CASES.split("").forEach(function(c) {
+      l[1].push("case:" + c);
+    });
+    for (let n = 4; n <= 10; n++) for (let a = 1; a < n; a++) m[n <= 5 ? 0 : 1].push("zl:" + n + ":" + a);
+    for (let n = 2; n <= 10; n++) m[n <= 5 ? 0 : 1].push("fb:" + n);
+    for (let n = 1; n <= 19; n++) {
+      m[n < 10 ? 1 : 2].push("nb:+:" + n);
+      m[n < 10 ? 1 : 2].push("nb:-:" + (n + 1));
+    }
+    return { m, l };
+  })();
+  function fDom(k) {
+    return /^(anlaut|case|word|syl|rhy):/.test(k) ? "l" : "m";
+  }
+  function fStage(k) {
+    const d = fDom(k), S = STAGES[d];
+    for (let i = 0; i < S.length; i++) if (S[i].indexOf(k) >= 0) return i;
+    return 0;
+  }
+  function fKind(k) {
+    const i = k.indexOf(":");
+    return i > 0 ? k.slice(0, i) : k.indexOf("+") > 0 ? "add" : "sub";
+  }
+  function fName(k) {
+    let m;
+    if (m = /^(\d+)([+-])(\d+)$/.exec(k)) return m[1] + (m[2] === "+" ? " plus " : " minus ") + m[3];
+    if (m = /^count:(\d+)$/.exec(k)) return m[1] + " Sterne zählen";
+    if (m = /^fb:(\d+)$/.exec(k)) return m[1] + " Punkte auf einen Blick";
+    if (m = /^nb:([+-]):(\d+)$/.exec(k)) return (m[1] === "+" ? "die Zahl nach der " : "die Zahl vor der ") + m[2];
+    if (m = /^zl:(\d+):(\d+)$/.exec(k)) return m[1] + " ist " + m[2] + " und " + /** @type {any} */
+    (m[1] - /** @type {any} */
+    m[2]);
+    if (m = /^anlaut:(.+)$/.exec(k)) return "der Anfang von " + m[1];
+    if (m = /^syl:(.+)$/.exec(k)) return "die Silben von " + m[1];
+    if (m = /^rhy:(.+)$/.exec(k)) return "der Reim auf " + m[1];
+    if (m = /^case:(.)$/.exec(k)) return "das kleine " + m[1].toLowerCase();
+    return "das Wort " + k.slice(5);
+  }
+
+  // src/core/learn/leitner.js
+  var BOXD = [0, 0, 1, 2, 4, 8];
+  var NEWDAY = 12;
+  var FASTMS = 3e3;
+  var DAYMISS = 3;
+  function schoolOkWith(SCH, k, s) {
+    if (!SCH.on) return true;
+    if (fDom(k) === "m") return s <= SCH.zr;
+    if (k.indexOf("syl:") === 0 || k.indexOf("rhy:") === 0) return true;
+    const v = k.slice(k.indexOf(":") + 1).toUpperCase();
+    if (k.indexOf("word:") === 0) return v.split("").every(function(c) {
+      return SCH.l.indexOf(c) >= 0;
+    });
+    return SCH.l.indexOf(v.charAt(0)) >= 0;
+  }
+  function fUnlockWith(FS, d) {
+    const S = STAGES[d], top = FS.u[d];
+    if (top >= S.length - 1) return;
+    const st = S[top];
+    let n = 0;
+    st.forEach(function(k) {
+      const r = FS.f[k];
+      if (r && r[0] >= 2) n++;
+    });
+    if (n >= st.length * 0.6 || FS.ft[d] >= 4) {
+      FS.u[d] = top + 1;
+      FS.ft[d] = 0;
+    }
+  }
+  function mixPreferWith(rand, kindHist, a) {
+    if (kindHist.length < 2 || kindHist[0] !== kindHist[1]) {
+      const o2 = a.filter(function(k) {
+        return fKind(k) !== kindHist[0];
+      });
+      return o2.length && rand() < 0.5 ? o2 : a;
+    }
+    const o = a.filter(function(k) {
+      return fKind(k) !== kindHist[0];
+    });
+    return o.length ? o : a;
+  }
+  function fParkedWith(FS, k, today) {
+    return !!FS.dm && FS.dm.d === today && FS.dm.c[k] >= DAYMISS;
+  }
+
+  // src/core/learn/tasks.js
+  function dots(n) {
+    return new Array(n + 1).join("●");
+  }
+  function zw(a, b, sub) {
+    let f = "";
+    for (let i = 0; i < 20; i++) {
+      let c = "";
+      if (sub) {
+        if (i < a - b) c = "on";
+        else if (i < a) c = "off";
+      } else {
+        if (i < a) c = "on";
+        else if (i < a + b) c = "on2";
+      }
+      f += "<i" + (c ? ' class="' + c + '"' : "") + "></i>";
+    }
+    return '<div class="zf z20">' + f + "</div>";
+  }
+  function qpicWith(IC2, QI2, key) {
+    return '<svg class="qpic" viewBox="0 0 24 24" aria-hidden="true">' + (IC2[key] || QI2[key]) + "</svg>";
+  }
+  function lettersForWith(rand, wd, n) {
+    const c = wd.w.charAt(0);
+    return shuffleWith(rand, [c].concat(shuffleWith(rand, LETTERS.split("").filter(function(ch) {
+      return ch !== c && wd.no.indexOf(ch) < 0;
+    })).slice(0, n - 1)));
+  }
+  var HOLE = '<span class="hole">?</span>';
+  function solAdd(a, b) {
+    const s = a + b;
+    if (a < 10 && s > 10) {
+      const t = 10 - a;
+      return a + " plus " + t + " ist 10. Dann noch " + (b - t) + " dazu, das ist " + s + ".";
+    }
+    return a + " plus " + b + " ist " + s + ".";
+  }
+  function solSub(a, b) {
+    const s = a - b;
+    if (a > 10 && s < 10 && b > a % 10) {
+      const t = a % 10;
+      return a + " minus " + t + " ist 10. Dann noch " + (b - t) + " weg, das ist " + s + ".";
+    }
+    return a + " minus " + b + " ist " + s + ".";
+  }
+  function mkQWith(rand, IC2, QI2, k) {
+    const st = fStage(k), q = (
+      /** @type {Question} */
+      { L: st, f: k, ans: "", opts: [], html: "", say: "", word: false, pad: false, inp: "", tries: 0, miss: false, lock: false }
+    );
+    let m;
+    if (m = /^count:(\d+)$/.exec(k)) {
+      const n = +m[1];
+      q.type = "count";
+      q.pad = true;
+      q.ans = String(n);
+      q.html = '<div class="objs" style="grid-template-columns:repeat(' + Math.min(n, 5) + ',var(--ob))">' + new Array(n + 1).join('<svg viewBox="0 0 24 24" aria-hidden="true">' + IC2.star + "</svg>") + '</div><div class="eq">' + HOLE + "</div>";
+      q.say = "Wie viele Sterne sind das?";
+      q.sol = n === 1 ? "Das ist ein Stern." : "Das sind " + n + " Sterne.";
+    } else if (m = /^(\d+)([+-])(\d+)$/.exec(k)) {
+      const a = +m[1], b = +m[3], add = m[2] === "+", r = add ? a + b : a - b;
+      q.type = add ? "add" : "sub";
+      q.pad = true;
+      q.ans = String(r);
+      q.dots = add ? '<div class="dots"><span class="da">' + dots(a) + '</span> <span class="db">' + dots(b) + "</span></div>" : '<div class="dots"><span class="da">' + dots(r) + '</span><span class="dx">' + dots(b) + "</span></div>";
+      if ((add ? r : a) > 10) q.dots = zw(a, b, !add);
+      q.html = '<div class="eq">' + a + (add ? " + " : " − ") + b + " = " + HOLE + "</div>" + (st < 2 ? q.dots : "");
+      q.say = "Wie viel ist " + a + (add ? " plus " : " minus ") + b + "?";
+      q.sol = add ? solAdd(a, b) : solSub(a, b);
+    } else if (m = /^fb:(\d+)$/.exec(k)) {
+      const n = +m[1];
+      let f = "";
+      for (let i = 0; i < 10; i++) f += "<i" + (i < n ? ' class="on"' : "") + "></i>";
+      q.type = "fb";
+      q.pad = true;
+      q.ans = String(n);
+      q.html = '<div class="zf blink">' + f + '</div><div class="eq">' + HOLE + "</div>";
+      q.dots = '<div class="zf">' + f + "</div>";
+      q.say = "Schau genau! Wie viele Punkte?";
+      q.sol = n > 5 ? "Oben 5, unten " + (n - 5) + ". Das sind " + n + "." : "Das sind " + n + " Punkte.";
+    } else if (m = /^nb:([+-]):(\d+)$/.exec(k)) {
+      const n = +m[2], up = m[1] === "+", r = up ? n + 1 : n - 1;
+      q.type = "nb";
+      q.pad = true;
+      q.ans = String(r);
+      q.html = '<div class="eq">' + (up ? n + " &nbsp; " + HOLE : HOLE + " &nbsp; " + n) + '</div><div class="nbar">' + (up ? "➡️" : "⬅️") + "</div>";
+      q.say = up ? "Welche Zahl kommt nach der " + n + "?" : "Welche Zahl kommt vor der " + n + "?";
+      q.sol = up ? "Nach der " + n + " kommt die " + r + "." : "Vor der " + n + " kommt die " + r + ".";
+      q.dots = '<div class="dots">' + (up ? n + " → " + r : r + " ← " + n) + "</div>";
+    } else if (m = /^zl:(\d+):(\d+)$/.exec(k)) {
+      const n = +m[1], a = +m[2], b = n - a;
+      q.type = "zl";
+      q.pad = true;
+      q.ans = String(b);
+      q.dots = '<div class="dots"><span class="da">' + dots(a) + '</span><span class="db">' + dots(b) + "</span></div>";
+      q.html = '<div class="haus"><div class="roof">' + n + '</div><span class="rm">' + a + '</span><span class="rm">' + HOLE + "</span></div>" + (st < 1 ? '<div class="dots"><span class="da">' + dots(n) + "</span></div>" : "");
+      q.say = n + " ist " + a + " und wie viel?";
+      q.sol = n + " ist " + a + " und " + b + "." + (n === 10 ? " Das sind Zehnerfreunde." : "");
+    } else if (m = /^syl:(.+)$/.exec(k)) {
+      const x = SYL.find(function(y) {
+        return y[0] === m[1];
+      }) || SYL[0], sy = x[2].split("-"), n = sy.length;
+      q.type = "syl";
+      q.ans = CLAP[n - 1];
+      q.opts = CLAP.slice();
+      q.nofast = true;
+      q.html = qpicWith(IC2, QI2, x[1]) + '<div class="syl">' + sy.map(function(t, i) {
+        return '<b class="s' + i % 2 + '">' + t + "</b>";
+      }).join("") + '</div><div class="eq">' + HOLE + "</div>";
+      q.say = "Klatsch mit: " + x[0] + ". Wie oft hast du geklatscht?";
+      q.sol = sy.join(" – ") + ". " + x[0] + " hat " + (n === 1 ? "eine Silbe" : n + " Silben") + ".";
+    } else if (m = /^rhy:(.+)$/.exec(k)) {
+      const w = RHYW[m[1]] ? m[1] : "Haus", x = RHYW[w], others = shuffleWith(rand, Object.keys(RHYW).filter(function(v) {
+        return v !== w && v !== x.to;
+      })).slice(0, 2);
+      q.type = "rhy";
+      q.ans = x.to;
+      q.opts = shuffleWith(rand, [x.to].concat(others));
+      q.pics = true;
+      q.nofast = true;
+      q.html = qpicWith(IC2, QI2, x.ic) + '<div class="syl">' + w + "</div>";
+      q.say = "Was reimt sich auf " + w + "?";
+      q.sol = w + " und " + x.to + ", das reimt sich.";
+    } else if (m = /^anlaut:(.+)$/.exec(k)) {
+      const wd = WORDS.find(function(w) {
+        return w.w === m[1];
+      }) || WORDS[0], c = wd.w.charAt(0);
+      q.type = "anlaut";
+      q.ans = c;
+      q.opts = lettersForWith(rand, wd, 6);
+      q.html = qpicWith(IC2, QI2, wd.ic) + '<div class="eq">' + HOLE + wd.w.slice(1) + "</div>";
+      q.say = "Womit fängt " + wd.w + " an?";
+      q.sol = wd.w + " fängt mit " + c + " an.";
+    } else if (m = /^case:(.)$/.exec(k)) {
+      const c = m[1], lc = c.toLowerCase();
+      q.type = "case";
+      q.ans = lc;
+      q.opts = shuffleWith(rand, [lc].concat(shuffleWith(rand, "abdefghklmnrtu".split("").filter(function(ch) {
+        return ch !== lc;
+      })).slice(0, 5)));
+      q.html = '<div class="eq big">' + c + " → " + HOLE + "</div>";
+      q.say = "Welcher kleine Buchstabe gehört zum großen " + c + "?";
+      q.sol = "Zum großen " + c + " gehört das kleine " + lc + ".";
+    } else {
+      const w = k.slice(5), wd = WORDS.find(function(x) {
+        return x.w === w;
+      }) || WORDS[0];
+      q.type = "word";
+      q.word = true;
+      q.ans = wd.w;
+      q.opts = shuffleWith(rand, [wd.w].concat(shuffleWith(rand, WORDS.filter(function(x) {
+        return x !== wd;
+      })).slice(0, 3).map(function(x) {
+        return x.w;
+      })));
+      q.html = qpicWith(IC2, QI2, wd.ic);
+      q.say = "Welches Wort passt zum Bild?";
+      q.sol = "Hier steht " + q.ans + ".";
+    }
+    return q;
+  }
+  function mkSeqWith(rand, FS) {
+    const big = FS.u.m >= 2, st = big ? riWith(rand, 1, 2) : 1, max = big ? 20 : 10, a = riWith(rand, 1, max - 2 * st), gap = riWith(rand, 1, 2), seq = [a, a + st, a + 2 * st];
+    return {
+      L: FS.u.m,
+      type: "seq",
+      pad: true,
+      inp: "",
+      tries: 0,
+      ans: String(seq[gap]),
+      opts: [],
+      word: false,
+      miss: false,
+      lock: false,
+      free: true,
+      html: '<div class="eq">' + seq.map(function(v, i) {
+        return i === gap ? HOLE : String(v);
+      }).join(" &nbsp; ") + "</div>",
+      say: "Welche Zahl fehlt?",
+      sol: "Hier fehlt die " + seq[gap] + ".",
+      f: "seq:" + seq.map(function(v, i) {
+        return i === gap ? "_" : v;
+      }).join(",")
+    };
+  }
+
+  // src/persistence/keys.js
+  var K_HERO = "lavaland-hero";
+  var K_FINDS = "lavaland-finds";
+  var K_SKILL = "lavaland-skill";
+  var K_FACTS = "lavaland-facts";
+  var K_SCHOOL = "lavaland-school";
+  var K_LIMIT = "lavaland-limit";
+  var K_DAY = "lavaland-day";
+  var K_REALM = "lavaland-realm";
+  var K_FOG = "lavaland-fog";
+  var K_MARKS = "lavaland-marks";
+  var K_MUTE = "lavaland-mute";
+  var K_LEFTY = "lavaland-lefty";
+  var K_NEWS = "lavaland-news";
+  var K_BAK_AT = "lavaland-bak-at";
+  var K_VOICE = "lavaland-voice";
+  var K_VMISS = "lavaland-vmiss";
+  var K_OPT = "lavaland-opt";
+  var ERRK = "lavaland-err";
+  var SAVEKEY = "world2";
+  function realmKey(id) {
+    return id ? "planet-" + id : SAVEKEY;
+  }
+
+  // src/persistence/db.js
+  function idbOpen() {
+    return new Promise(function(res, rej) {
+      let rq;
+      try {
+        rq = indexedDB.open("lavaland", 1);
+      } catch (e) {
+        rej(e);
+        return;
+      }
+      rq.onupgradeneeded = function() {
+        rq.result.createObjectStore("save");
+      };
+      rq.onsuccess = function() {
+        res(rq.result);
+      };
+      rq.onerror = function() {
+        rej(rq.error);
+      };
+    });
+  }
+  function idbDoWith(diskLock2, mode, fn) {
+    if (diskLock2 && mode !== "readonly") return Promise.reject(new Error("diskLock"));
+    return idbOpen().then(function(db) {
+      return new Promise(function(res, rej) {
+        const tx = db.transaction("save", mode), rq = fn(tx.objectStore("save"));
+        tx.oncomplete = function() {
+          db.close();
+          res(rq.result);
+        };
+        tx.onerror = tx.onabort = function() {
+          db.close();
+          rej(tx.error);
+        };
+      });
+    });
+  }
+
+  // src/core/world/pack.js
+  function packRunsWith(grid2, f) {
+    let out = new Uint8Array(1 << 20), n = 0;
+    for (let cx = 0; cx < f; cx++) {
+      let i = cx, cy = 0;
+      while (cy < GY) {
+        const m = grid2[i];
+        let r = 1;
+        i += GX;
+        cy++;
+        while (cy < GY && grid2[i] === m) {
+          r++;
+          i += GX;
+          cy++;
+        }
+        if (n + 8 > out.length) {
+          const o = new Uint8Array(out.length * 2);
+          o.set(out);
+          out = o;
+        }
+        out[n++] = m;
+        while (r >= 128) {
+          out[n++] = r & 127 | 128;
+          r >>>= 7;
+        }
+        out[n++] = r;
+      }
+    }
+    return out.slice(0, n);
+  }
+  function unpackRunsWith(grid2, b, f) {
+    let k = 0;
+    for (let cx = 0; cx < f; cx++) {
+      let cy = 0, i = cx;
+      while (cy < GY) {
+        if (k >= b.length) return false;
+        const m = b[k++];
+        let r = 0, sh = 0, c;
+        do {
+          if (k >= b.length) return false;
+          c = b[k++];
+          r |= (c & 127) << sh;
+          sh += 7;
+        } while (c & 128);
+        if (r < 1 || cy + r > GY) return false;
+        for (let e = cy + r; cy < e; cy++, i += GX) grid2[i] = m;
+      }
+    }
+    return k === b.length;
+  }
+  function runsOk(sv) {
+    return sv.v === 5 && sv.gy === GY && sv.f > 0 && sv.f <= GX && sv.runs instanceof Uint8Array;
   }
 
   // src/core/world/gen.js
@@ -4667,42 +4883,47 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     );
     for (const k in parked) pk[k] = parked[k] ? Object.assign({}, parked[k]) : null;
     if (P.mode !== "walk" && P.mode !== "coaster" && P.mode !== "ski" && P.mode !== "dragon") pk[P.mode] = SV.park();
-    return {
-      v: 5,
-      w: 2,
-      vt: 1,
-      rl: SV.realm,
-      gy: GY,
-      f: F,
-      snow: 1,
-      seed: SV.SEED,
-      runs: g,
-      tracks: ST.tracks.map(
-        /** @param {any} T */
-        function(T) {
-          return { raw: T.raw, user: T.user, rb: !!T.rb };
-        }
-      ),
-      zips: ST.zips,
-      px: P.x,
-      py: P.y,
-      parked: pk,
-      trees: SV.trees.map(
-        /** @param {any} t */
-        function(t) {
-          return t.state === 1 ? 2 : t.state;
-        }
-      ),
-      hidden: ST.hidden,
-      energy: ST.energy,
-      props: ST.props,
-      seen: ST.seen,
-      eggGot: ST.eggGot,
-      lootGot: ST.lootGot,
-      orbGot: ST.orbGot,
-      matGot: ST.matGot,
-      pzGot: ST.pzGot
-    };
+    const o = (
+      /** @type {any} */
+      {
+        v: 5,
+        w: 2,
+        vt: 1,
+        rl: SV.realm,
+        gy: GY,
+        f: F,
+        snow: 1,
+        seed: SV.SEED,
+        runs: g,
+        tracks: ST.tracks.map(
+          /** @param {any} T */
+          function(T) {
+            return { raw: T.raw, user: T.user, rb: !!T.rb };
+          }
+        ),
+        zips: ST.zips,
+        px: P.x,
+        py: P.y,
+        parked: pk,
+        trees: SV.trees.map(
+          /** @param {any} t */
+          function(t) {
+            return t.state === 1 ? 2 : t.state;
+          }
+        ),
+        hidden: ST.hidden,
+        energy: ST.energy,
+        props: ST.props,
+        seen: ST.seen,
+        eggGot: ST.eggGot,
+        lootGot: ST.lootGot,
+        orbGot: ST.orbGot,
+        matGot: ST.matGot,
+        pzGot: ST.pzGot
+      }
+    );
+    if (Object.keys(rw).length) o.rw = rw;
+    return o;
   }
   var packJob = null;
   function packStartWith(SV) {
@@ -12636,6 +12857,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     ST.orbGot = {};
     ST.matGot = {};
     ST.pzGot = {};
+    setRw({});
     APP.shapeWorld();
     APP.planetGen();
     APP.parts.length = 0;
@@ -12814,6 +13036,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     ST.orbGot = {};
     ST.matGot = {};
     ST.pzGot = {};
+    setRw({});
     APP.shapeWorld();
     APP.gen();
     APP.parts.length = 0;
@@ -15588,6 +15811,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
   function deepRestoreWith(ZO, sv) {
     ST.matGot = sv.matGot || {};
     ST.pzGot = sv.pzGot || {};
+    setRw(sv.rw || {});
     ZO.guide = null;
     ZO.dkA = 0;
     if (sv.v < 4) {
@@ -21535,6 +21759,38 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     register("autosave", autosave);
     register("drain", drain);
     for (const s of marksWith(DP)) register(s.name, s.tick, s.draw);
+    const RWP = {
+      get SEED() {
+        return SEED;
+      },
+      get genF() {
+        return genF;
+      },
+      get realm() {
+        return realm;
+      },
+      get MACH() {
+        return MACH;
+      },
+      get MATS() {
+        return MATS;
+      },
+      get VAULTS() {
+        return VAULTS;
+      },
+      get ZDEC() {
+        return ZDEC;
+      },
+      get FGT() {
+        return FGT;
+      },
+      fogArr,
+      fogHas
+    };
+    function rwBuild(m) {
+      return rwBuildWith(RWP, m);
+    }
+    for (const s of rohrWith(RWP)) register(s.name, s.tick, s.draw);
     function safe(s, dt) {
       safeWith(errAdd, s, dt);
     }

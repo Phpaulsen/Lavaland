@@ -34,6 +34,7 @@ Wurzel: `index.html` (gebaut), `sw.js` (Offline-Cache, Version `CACHE`), `manife
 | `src/core/world/gen.js` | Weltgenerierung: Form der Welt, Länder, Höhlen, Tiefe, Planeten und das spaltenweise Erzeugen. |
 | `src/core/world/grow.js` | Schneeberg nachrüsten, Länder wachsen lassen, Planeten erzeugen, Zellen aus dem Spielstand laden. |
 | `src/core/world/pack.js` | Packen und Entpacken der Zellen für den Spielstand: Spalte für Spalte als Läufe. |
+| `src/core/world/rohrwand.js` | Bauplan der Rohrwand-Grotte (Backlog-Idee 6, Schritt 2). |
 | `src/core/world/shape.js` | Reine Formen der Welt: Schneeberg, Rauschen, Ellipse, Land-Arten und ihre Höhen. |
 | `src/core/world/track.js` | Schienen: Punkt und Richtung auf einer Bahn. |
 | `src/index.html` | Vorlage der ausgelieferten Seite: HTML, CSP und Marken für CSS und Skript. |
@@ -59,6 +60,7 @@ Wurzel: `index.html` (gebaut), `sw.js` (Offline-Cache, Version `CACHE`), `manife
 | `src/state/progress.js` | Fortschritt: Höhengrenze der Rakete, nächstes unentdecktes Land, Land mit noch verstecktem Ei. |
 | `src/state/queries.js` | Weltabfragen: Boden, fest, Mond, brennt, Säulenoberkante, Boden unter einem Punkt, Oberfläche, Zelle setzen. |
 | `src/state/realm.js` | Aktuelle Welt: Erde oder Mond/Planet (realm), ihre Breite und Lage im Gitter, Randspalten. |
+| `src/state/rohrwand.js` | Rohrwand-Orte der aktuellen Welt (Backlog-Idee 6): je Maschinen-id {mc, fr, s, dp, st} (gebaut, st 0 = verschlossen) oder {no: 1} (kein Platz, Maschine bleibt Fenster-Rätsel). |
 | `src/state/sim.js` | Zellautomat: Lava, Wasser, Feuer und Dampf, das Rechenfenster um die Kamera und das Setzen einzelner Zellen. |
 | `src/state/terrain.js` | Welt beim Laden: Boden der Heimat (g0), harte Schichten und Zonen je Spalte, Oberkante des Schneebergs. |
 | `src/state/world.js` | Welt-Felder: die Zellen und die Spaltenwerte der Welt als Typed Arrays mit fester Größe. |
@@ -75,6 +77,7 @@ Wurzel: `index.html` (gebaut), `sw.js` (Offline-Cache, Version `CACHE`), `manife
 | `src/systems/player/player.js` | Spielfigur: Modus wechseln, Laufen, Aktionstaste, Lift, Seilrutsche, Graben zu Fuß und das Update je Bild. |
 | `src/systems/player/vehicles.js` | Fahrzeuge: Graben und Schaufeln, Fahren, Fliegen, Ski, Drache, U-Boot, Ballon, Hubschrauber, Boot, Kletterkäfer. |
 | `src/systems/quests.js` | Aufträge (PR 20): Einführungskette, Kette aus Tiefe und Höhe, Zufallsaufträge, Fortschritt, Anzeige und Zeiger. |
+| `src/systems/rohrwand.js` | Rohrwand (Backlog-Idee 6, Schritt 2): Baut neben jeder Rohr-Maschine einmal Glutstein-Sperre, Schacht, Grotte und Nebenkammer ins Gitter, sobald der Held in die Nähe kommt. |
 | `src/systems/sights.js` | Sehenswürdigkeiten (PR 17): Geysire, Sternschnuppen, Schiffswracks, Glühwürmchen und Kristallharfen, je mit tick und draw. |
 | `src/systems/tracks.js` | Schienen: die Vorführbahn neben dem Start. |
 | `src/systems/winter.js` | Winter-Leben: Schneebälle, Feuerwerk, Schneemänner, Pinguine und die Figuren am Schneeberg und am Vulkan. |
@@ -142,15 +145,15 @@ Zeile importiert Spalte: Zahl = Importe heute, · = erlaubt und ungenutzt, leer 
 
 | von \ nach | core | state | persistence | log | audio | systems | render | ui | app | testing |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| **core** | 20 |  |  |  |  |  |  |  |  |  |
+| **core** | 21 |  |  |  |  |  |  |  |  |  |
 | **state** | 13 | 13 |  |  |  |  |  |  |  |  |
-| **persistence** | 1 | 4 | 4 |  |  |  |  |  |  |  |
+| **persistence** | 1 | 5 | 4 |  |  |  |  |  |  |  |
 | **log** | 1 |  |  | · |  |  |  |  |  |  |
 | **audio** | · |  |  |  | · |  |  |  |  |  |
-| **systems** | 25 | 47 |  |  | 15 | 2 |  |  |  |  |
+| **systems** | 29 | 53 |  |  | 15 | 2 |  |  |  |  |
 | **render** | 12 | 17 |  |  |  |  | · |  |  |  |
 | **ui** | 13 | 20 |  |  | 7 |  | · | 1 |  |  |
-| **app** | 20 | 12 | 7 | 1 | 2 | 20 | 7 | 16 | 1 |  |
+| **app** | 21 | 14 | 7 | 1 | 2 | 21 | 7 | 16 | 1 |  |
 | **testing** | · | · | · | · | · | · | · | · | · | · |
 | **main** | · | · | · | · | · | · | · | · | 1 | · |
 <!-- /doc.mjs -->
@@ -199,6 +202,8 @@ Erzeugt aus den Exporten. `export let` ist Zustand, den das Modul besitzt und nu
   Funktionen: `migrateSnowWith`, `planetGenWith`, `growWith`, `loadCellsWith`.
 - `src/core/world/pack.js`: Packen und Entpacken der Zellen für den Spielstand: Spalte für Spalte als Läufe.
   Funktionen: `packRunsWith`, `unpackRunsWith`, `runsOk`.
+- `src/core/world/rohrwand.js`: Bauplan der Rohrwand-Grotte (Backlog-Idee 6, Schritt 2).
+  Funktionen: `rwBox`, `rwPlan`, `rwFits`. Werte: `RWM`, `RWDEPTH`.
 - `src/core/world/shape.js`: Reine Formen der Welt: Schneeberg, Rauschen, Ellipse, Land-Arten und ihre Höhen.
   Funktionen: `msurf`, `vnoise`, `inGrid`, `ellipse`, `sm`, `colOf`, `hBio`, `craters`, `roomY`, `vFloor`. Werte: `SNX`, `SL0`, `PEAK`, `BACK`, `BEND`, `MH`, `SNB`, `CHX`, `CAVE`, `SNC0`, `SNC1`, `PX0`, `PM`, `PMC`, `LANDX`, `PADH`, `BT`, `WSX`, `LIFTX`, `SEA_T`, `SEA_L`, `SEA_B`, `HOUSE`, `FH`.
 - `src/core/world/track.js`: Schienen: Punkt und Richtung auf einer Bahn.
@@ -220,6 +225,8 @@ Erzeugt aus den Exporten. `export let` ist Zustand, den das Modul besitzt und nu
   Funktionen: `ground`, `inMoon`, `solidW`, `burns`, `colTop`, `floorAt`, `surfaceY`, `putUp`, `setCell`. Werte: `ORBS`.
 - `src/state/realm.js`: Aktuelle Welt: Erde oder Mond/Planet (realm), ihre Breite und Lage im Gitter, Randspalten.
   Funktionen: `rlmWith`, `setRealmWith`, `wcWith`, `newSeed`. Zustand (`export let`): `realm`, `RW`, `RX0`, `RC0`, `RC1`.
+- `src/state/rohrwand.js`: Rohrwand-Orte der aktuellen Welt (Backlog-Idee 6): je Maschinen-id {mc, fr, s, dp, st} (gebaut, st 0 = verschlossen) oder {no: 1} (kein Platz, Maschine bleibt Fenster-Rätsel).
+  Funktionen: `setRw`. Zustand (`export let`): `rw`.
 - `src/state/sim.js`: Zellautomat: Lava, Wasser, Feuer und Dampf, das Rechenfenster um die Kamera und das Setzen einzelner Zellen.
   Funktionen: `lifeS`, `ext`, `extI`, `scanMobileWith`, `put`, `cellAt`, `hotAt`, `react`, `steamWith`, `stepWith`. Zustand (`export let`): `bx0`, `bx1`, `by0`, `by1`, `lavaCount`, `waterCount`, `fireCount`, `tick`, `sx0`, `winR`, `rx0`, `rx1`, `qx0`, `qx1`, `px0`, `px1`, `py0`, `py1`, `winC`.
 - `src/state/terrain.js`: Welt beim Laden: Boden der Heimat (g0), harte Schichten und Zonen je Spalte, Oberkante des Schneebergs.
@@ -277,6 +284,8 @@ Erzeugt aus den Exporten. `export let` ist Zustand, den das Modul besitzt und nu
   Funktionen: `takeWith`, `pileWith`, `dumpAtWith`, `digWith`, `baggerActWith`, `loaderActWith`, `dumperActWith`, `boreWith`, `bulldozeWith`, `updCarWith`, `driveWith`, `updBaggerWith`, `updLoaderWith`, `updDumperWith`, `updTbmWith`, `updRocketWith`, `updPlaneWith`, `updCoasterWith`, `onSnowWith`, `updSkiWith`, `updRollWith`, `skiActWith`, `updDragonWith`, `meltWith`, `breatheWith`, `updSubWith`, `updBalloonWith`, `updHeliWith`, `heliHookWith`, `heliDropWith`, `boatWetWith`, `updBoatWith`, `bugWallWith`, `updBugWith`.
 - `src/systems/quests.js`: Aufträge (PR 20): Einführungskette, Kette aus Tiefe und Höhe, Zufallsaufträge, Fortschritt, Anzeige und Zeiger.
   Funktionen: `skyMarkWith`, `skyDoneWith`, `gearStepWith`, `chainQuestWith`, `qEventWith`, `newQuestWith`, `prepFindWith`, `showQuestWith`, `renderQuestWith`, `questTickWith`, `questPointWith`, `questsWith`.
+- `src/systems/rohrwand.js`: Rohrwand (Backlog-Idee 6, Schritt 2): Baut neben jeder Rohr-Maschine einmal Glutstein-Sperre, Schacht, Grotte und Nebenkammer ins Gitter, sobald der Held in die Nähe kommt.
+  Funktionen: `rwRand`, `rwBuildWith`, `rwTickWith`, `rohrWith`. Werte: `RWON`.
 - `src/systems/sights.js`: Sehenswürdigkeiten (PR 17): Geysire, Sternschnuppen, Schiffswracks, Glühwürmchen und Kristallharfen, je mit tick und draw.
   Funktionen: `geysersWith`, `geyPhaseWith`, `geyTickWith`, `drawGeysWith`, `metSkyWith`, `metTickWith`, `drawMetsWith`, `wrecksWith`, `wreckTickWith`, `drawWrecksWith`, `flyTickWith`, `jarPosWith`, `drawFliesWith`, `harpTickWith`, `drawHarpsWith`, `sightsWith`. Zustand (`export let`): `GEYS`, `geyKey`, `METS`, `MROCKS`, `metNext`, `WRECKS`, `wrKey`, `FLIES`, `JAR`, `HARPS`, `harpKey`.
 - `src/systems/tracks.js`: Schienen: die Vorführbahn neben dem Start.
