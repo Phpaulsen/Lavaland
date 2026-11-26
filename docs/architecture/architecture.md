@@ -94,7 +94,7 @@ Wurzel: `index.html` (gebaut), `sw.js` (Offline-Cache, Version `CACHE`), `manife
 | `src/ui/paint.js` | Malen mit dem Finger: Bildschirm zu Welt, Pinsel, Radierer, Zauberkasten-Kosten, Werkzeuge je Finger, Loslassen. |
 | `src/ui/parent.js` | Elternansicht: Schranke, Auswertung des Spielprotokolls, Schulstand, Neuigkeiten, Speicher, Fehler, Stimme, Übungsblatt, Rechentafel-Balken. |
 | `src/ui/puzzles.js` | Rätselrahmen und Rätsel auf dem Bildschirm: Öffnen, Zeichnen, Antippen, Tipps, Ansagen, Gewinnen. |
-| `src/ui/rohrwand.js` | Rohrwand im Nah-Modus (Backlog-Idee 6, Schritt 3) |
+| `src/ui/rohrwand.js` | Rohrwand im Nah-Modus (Backlog-Idee 6, Schritte 3 und 4) |
 | `tools/arch/analyze.mjs` | Ist-Analyse von index.html: Sektionen, Top-Level-Namen, wer welchen Namen liest/schreibt/aufruft, Zyklen, große Funktionen, DOM/Canvas/Speicher-Mischung, Zugriffe der Tests auf … |
 | `tools/arch/codemod.mjs` | Umschreiben über den AST: Bezüge auf Top-Level-Namen x werden zu F.x (Übergangsfassade, ADR 0001 Punkt 9). |
 | `tools/arch/deps.mjs` | Prüft die Schichtregeln aus docs/architecture/target.md Abschnitt 3 auf dem esbuild-Metafile (dieselbe Sicht wie der Bundler). |
@@ -151,7 +151,7 @@ Zeile importiert Spalte: Zahl = Importe heute, · = erlaubt und ungenutzt, leer 
 | **persistence** | 1 | 5 | 4 |  |  |  |  |  |  |  |
 | **log** | 1 |  |  | · |  |  |  |  |  |  |
 | **audio** | · |  |  |  | · |  |  |  |  |  |
-| **systems** | 29 | 53 |  |  | 15 | 2 |  |  |  |  |
+| **systems** | 29 | 54 |  |  | 15 | 2 |  |  |  |  |
 | **render** | 12 | 17 |  |  |  |  | · |  |  |  |
 | **ui** | 15 | 22 |  |  | 8 |  | · | 2 |  |  |
 | **app** | 21 | 14 | 7 | 1 | 2 | 21 | 7 | 17 | 1 |  |
@@ -204,7 +204,7 @@ Erzeugt aus den Exporten. `export let` ist Zustand, den das Modul besitzt und nu
 - `src/core/world/pack.js`: Packen und Entpacken der Zellen für den Spielstand: Spalte für Spalte als Läufe.
   Funktionen: `packRunsWith`, `unpackRunsWith`, `runsOk`.
 - `src/core/world/rohrwand.js`: Bauplan der Rohrwand-Grotte (Backlog-Idee 6, Schritt 2).
-  Funktionen: `rwBox`, `rwPlan`, `rwFits`. Werte: `RWM`, `RWDEPTH`.
+  Funktionen: `rwBox`, `rwPlan`, `rwSpots`, `rwFits`. Werte: `RWM`, `RWDEPTH`.
 - `src/core/world/shape.js`: Reine Formen der Welt: Schneeberg, Rauschen, Ellipse, Land-Arten und ihre Höhen.
   Funktionen: `msurf`, `vnoise`, `inGrid`, `ellipse`, `sm`, `colOf`, `hBio`, `craters`, `roomY`, `vFloor`. Werte: `SNX`, `SL0`, `PEAK`, `BACK`, `BEND`, `MH`, `SNB`, `CHX`, `CAVE`, `SNC0`, `SNC1`, `PX0`, `PM`, `PMC`, `LANDX`, `PADH`, `BT`, `WSX`, `LIFTX`, `SEA_T`, `SEA_L`, `SEA_B`, `HOUSE`, `FH`.
 - `src/core/world/track.js`: Schienen: Punkt und Richtung auf einer Bahn.
@@ -286,7 +286,7 @@ Erzeugt aus den Exporten. `export let` ist Zustand, den das Modul besitzt und nu
 - `src/systems/quests.js`: Aufträge (PR 20): Einführungskette, Kette aus Tiefe und Höhe, Zufallsaufträge, Fortschritt, Anzeige und Zeiger.
   Funktionen: `skyMarkWith`, `skyDoneWith`, `gearStepWith`, `chainQuestWith`, `qEventWith`, `newQuestWith`, `prepFindWith`, `showQuestWith`, `renderQuestWith`, `questTickWith`, `questPointWith`, `questsWith`.
 - `src/systems/rohrwand.js`: Rohrwand (Backlog-Idee 6, Schritt 2): Baut neben jeder Rohr-Maschine einmal Glutstein-Sperre, Schacht, Grotte und Nebenkammer ins Gitter, sobald der Held in die Nähe kommt.
-  Funktionen: `rwRand`, `rwBuildWith`, `rwTickWith`, `rohrWith`. Werte: `RWON`.
+  Funktionen: `rwRand`, `rwBuildWith`, `rwDoorAt`, `rwSolvedWith`, `rwTickWith`, `rohrWith`. Werte: `RWON`.
 - `src/systems/sights.js`: Sehenswürdigkeiten (PR 17): Geysire, Sternschnuppen, Schiffswracks, Glühwürmchen und Kristallharfen, je mit tick und draw.
   Funktionen: `geysersWith`, `geyPhaseWith`, `geyTickWith`, `drawGeysWith`, `metSkyWith`, `metTickWith`, `drawMetsWith`, `wrecksWith`, `wreckTickWith`, `drawWrecksWith`, `flyTickWith`, `jarPosWith`, `drawFliesWith`, `harpTickWith`, `drawHarpsWith`, `sightsWith`. Zustand (`export let`): `GEYS`, `geyKey`, `METS`, `MROCKS`, `metNext`, `WRECKS`, `wrKey`, `FLIES`, `JAR`, `HARPS`, `harpKey`.
 - `src/systems/tracks.js`: Schienen: die Vorführbahn neben dem Start.
@@ -339,7 +339,7 @@ Erzeugt aus den Exporten. `export let` ist Zustand, den das Modul besitzt und nu
   Funktionen: `pgOpenWith`, `pgDrawWith`, `parOpenWith`, `parGetWith`, `medWith`, `pctWith`, `minsWith`, `guessedWith`, `parLoadWith`, `parRenderWith`, `parSandWith`, `parSchoolWith`, `parNewsWith`, `parSafeWith`, `parStoreInfoWith`, `parErrWith`, `parVoiceWith`, `sheetOkWith`, `sheetPickWith`, `sheetLineWith`, `sheetPrintWith`, `escWith`, `fLabelWith`, `parStumbleWith`, `parFactsWith`, `parBarsWith`, `parBindWith`.
 - `src/ui/puzzles.js`: Rätselrahmen und Rätsel auf dem Bildschirm: Öffnen, Zeichnen, Antippen, Tipps, Ansagen, Gewinnen.
   Funktionen: `tokWith`, `pzLaterWith`, `pzClearWith`, `pzCellWith`, `pzOpenWith`, `pzDrawWith`, `pzCloseWith`, `pzHintMaxWith`, `pzHintUiWith`, `pzFailWith`, `pzRevealWith`, `pzWinWith`, `tkHtmlWith`, `drMusterWith`, `acMusterWith`, `hiMusterWith`, `syMusterWith`, `stSideWith`, `drSternWith`, `stLineWith`, `acSternWith`, `hiSternWith`, `sySternWith`, `spWantWith`, `spGridWith`, `drSpiegelWith`, `spDoneWith`, `acSpiegelWith`, `hiSpiegelWith`, `sySpiegelWith`, `drRoboWith`, `acRoboWith`, `rbRunWith`, `hiRoboWith`, `syRoboWith`, `wgDiffWith`, `wgWWith`, `drWaageWith`, `poWaageWith`, `acWaageWith`, `hiWaageWith`, `syWaageWith`, `drRohreWith`, `rhPaintWith`, `acRohreWith`, `hiRohreWith`, `syRohreWith`, `pzBindWith`.
-- `src/ui/rohrwand.js`: Rohrwand im Nah-Modus (Backlog-Idee 6, Schritt 3)
+- `src/ui/rohrwand.js`: Rohrwand im Nah-Modus (Backlog-Idee 6, Schritte 3 und 4)
   Funktionen: `rwHas`, `rwUiTickWith`, `rwTapWith`, `rwHintWith`, `rwDrawWith`, `rwNah`. Werte: `RWT`, `RWZ`. Zustand (`export let`): `rwc`.
 
 #### app

@@ -150,7 +150,7 @@ test('Glutstein hält Bohrer, Bombe, Spitzhacke und Malen stand', async ({ ev })
 
 test('Rohrwand: Grotte wird eingebaut, im Spielstand gemerkt und wiederhergestellt', async ({ ev }) => {
   const r = await ev(`(function(){
-    const empty = snapshot().rw === undefined;
+    const empty = Object.keys(rw).length ? JSON.stringify(snapshot().rw)===JSON.stringify(rw) : snapshot().rw===undefined;
     grow(WORLD_W-100); for(const m of MACH) if(m.sf) m.y=surfaceY(m.x);
     const fa=fogArr(); fa.fill(0); const px=P.x, py=P.y; P.x=30000; P.y=-3500;
     let got=null, m=null;
@@ -163,7 +163,7 @@ test('Rohrwand: Grotte wird eingebaut, im Spielstand gemerkt und wiederhergestel
     const saved=JSON.stringify(sv.rw[m.id]); deepRestore({}); const cleared=Object.keys(rw).length; deepRestore(sv);
     return {empty, got:!!got, glut, want:pl.plug.length+pl.door.length, bed, n, saved, cleared, back:JSON.stringify(rw[m.id]), again:JSON.stringify(rw[m.id])===saved&&again===null};
   })()`);
-  if (!r.empty) throw new Error('Spielstand hat rw, obwohl nichts gebaut ist');
+  if (!r.empty) throw new Error('Spielstand passt nicht zu rw');
   if (!r.got) throw new Error('keine Rohr-Maschine mit Platz gefunden');
   if (r.glut !== r.want) throw new Error('Glutstein ' + r.glut + ' statt ' + r.want);
   if (!(r.bed > 1000)) throw new Error('Rahmen fehlt: ' + r.bed + ' von ' + r.n);
@@ -176,8 +176,8 @@ test('Rohrwand: Nah-Modus zoomt, Tippen dreht ein Rohr, kein Fenster, Weggehen b
     for(const q of MACH) if(q.t==='rohre'&&q.y===q.y&&q.y>-3000&&!rw[q.id]){ const o=rwBuild(q); if(o&&o!=='wait'){ window.__rwm=q; P.x=q.x; P.y=q.y-2; P.vx=P.vy=0; P.on=false; return q.id; } }
     return ''; })()`);
   if (!m) throw new Error('keine Rohr-Maschine mit Platz gefunden');
-  await page.waitForTimeout(2000);
-  const a = await ev(`JSON.stringify({nah:rwNah(), wall:!!(pzc&&pzc.wall), z:S/S0})`);
+  await page.waitForFunction(() => window.__ev('rwNah()&&S/S0>1.8'), null, { timeout: 6000 }).catch(() => {});
+  const a = await ev(`JSON.stringify({nah:rwNah(), wall:!!(pzc&&pzc.wall), z:S/S0, pzc:!!pzc, ui:uiOpen(), mode:P.mode, on:P.on, dx:P.x-window.__rwm.x|0, dy:P.y-window.__rwm.y|0, m:window.__rwm.id, rw:JSON.stringify(rw[window.__rwm.id])})`);
   const A = JSON.parse(a);
   if (!A.nah || !A.wall || !(A.z > 1.8)) throw new Error('Nah-Modus nicht aktiv: ' + a);
   const q = JSON.parse(await ev(`(function(){ const m=window.__rwm, st=pzc.st, s=rw[m.id].s, lx0=-st.w*11, top=m.y-46-st.h*22; let p=0; while(st.t[p]===3||st.lk[p]) p++; const x=p%st.w, y=(p-x)/st.w, wx=m.x+s*(lx0+(x+.5)*22), wy=top+(y+.5)*22; return JSON.stringify({p, r:st.r[p], sx:(wx-cam.x)*S+W/2, sy:(wy-cam.y)*S+H/2}); })()`));
@@ -186,11 +186,52 @@ test('Rohrwand: Nah-Modus zoomt, Tippen dreht ein Rohr, kein Fenster, Weggehen b
   if (JSON.parse(r).r !== (q.r + 1) % 4 || JSON.parse(r).ptr !== 0) throw new Error('Tippen hat nicht gedreht oder gemalt: ' + r);
   await ev('pzOpen(window.__rwm)');
   if (!(await ev("$('pz').hidden"))) throw new Error('Rohr-Maschine mit Grotte öffnet das Fenster');
-  await ev('P.x+=200; P.vx=0');
+  // Sicher weg von der Wand: Läge P.x+200 im Fels, könnte die Bewegung den Helden zurückschieben (Firefox im CI, #183, Ursache nicht belegt).
+  await ev('P.x+=200; P.y=ground(P.x)-10; P.vx=P.vy=0');
   await page.waitForTimeout(1500);
-  const b = await ev(`JSON.stringify({nah:rwNah(), pzc:!!pzc, z:S/S0})`);
+  const b = await ev(`JSON.stringify({nah:rwNah(), pzc:!!pzc, z:S/S0, px:P.x|0, py:P.y|0, mx:window.__rwm.x|0, my:window.__rwm.y|0})`);
   await ev('OPT.mon=true');
   if (JSON.parse(b).nah || JSON.parse(b).pzc || !(JSON.parse(b).z < 1.05)) throw new Error('Nah-Modus endet nicht: ' + b);
+});
+
+// Löst die laufende Rohrwand mit einem echten Tipp: alle Rohre richtig bis auf eins, das dann gedreht wird.
+const RWSOLVE = `(function(){ const c=pzc, st=c.st, a=c.a, lx0=-st.w*11, top=a.y-46-st.h*22; let p=-1;
+  for(let i=0;i<st.t.length;i++) if(st.sr[i]>=0&&!st.lk[i]&&st.t[i]!==3){ st.r[i]=st.sr[i]; if(p<0) p=i; }
+  st.r[p]=(st.sr[p]+3)%4; const x=p%st.w, y=(p-x)/st.w, wx=a.x+a.s*(lx0+(x+.5)*22), wy=top+(y+.5)*22;
+  return JSON.stringify({sx:(wx-cam.x)*S+W/2, sy:(wy-cam.y)*S+H/2}); })()`;
+
+test('Rohrwand: Lösen öffnet Sperre und Grotte, die zweite Wand die Nebenkammer', async ({ ev, page }) => {
+  const id = await ev(`(function(){ OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); OPT.mon=false; ST.tool=null;
+    grow(WORLD_W-100); for(const q of MACH) if(q.sf) q.y=surfaceY(q.x); fogArr().fill(0); P.x=30000; P.y=-3500;
+    for(const q of MACH) if(q.t==='rohre'&&q.y===q.y&&q.y>-3000&&!rw[q.id]){ const o=rwBuild(q); if(o&&o!=='wait'){ window.__rwm=q; P.x=q.x; P.y=q.y-2; P.vx=P.vy=0; return q.id; } }
+    return ''; })()`);
+  if (!id) throw new Error('keine Rohr-Maschine mit Platz gefunden');
+  const state = () => ev(`(function(){ const m=window.__rwm, o=rw[m.id], sp={mc:o.mc,fr:o.fr,s:o.s,dp:o.dp}, pl=rwPlan(sp,rwRand(SEED,m.id,sp)), keep=new Set(pl.keep);
+    let bed=0, bedFree=0; for(let k=0;k<pl.cells.length;k+=2){ const i=pl.cells[k]; if(grid[i]===8){ bed++; if(!keep.has(i)) bedFree++; } }
+    return JSON.stringify({st:o.st, plug:pl.plug.filter(i=>grid[i]===16).length, door:pl.door.filter(i=>grid[i]===16).length, bed, bedFree,
+      finds:ST.hidden.filter(h=>h.rw===m.id).length, got:!!ST.pzGot[m.id], nah:rwNah(), k:pzc&&pzc.a?pzc.a.k:-1, lv:pzc?pzc.lv:-1}); })()`).then(JSON.parse);
+  await page.waitForFunction(() => window.__ev('rwNah()'), null, { timeout: 6000 }).catch(() => {});
+  if (!(await ev('rwNah()'))) throw new Error('Nah-Modus startet nicht: ' + await ev(`JSON.stringify({pzc:!!pzc, ui:uiOpen(), mode:P.mode, on:P.on, dx:P.x-window.__rwm.x|0, dy:P.y-window.__rwm.y|0})`));
+  await page.waitForTimeout(1500); // Kamera fährt heran
+  let q = JSON.parse(await ev(RWSOLVE));
+  await page.mouse.click(q.sx, q.sy); await page.waitForTimeout(300);
+  const A = await state();
+  if (A.st !== 1 || A.plug !== 0 || A.bedFree !== 0 || !(A.bed > 0) || A.finds !== 2 || !A.got) throw new Error('Sperre nicht offen: ' + JSON.stringify(A));
+  const lv = await ev('Math.min(9,(hero.pz.rohre|0)+(window.__rwm.zb|0)+2)');
+  await ev('(function(){ const d=rwDoorAt(window.__rwm); P.x=d.x; P.y=d.y-2; P.vx=P.vy=0; ST.talkLock=0; })()');
+  // Erst kommt das Lob, dann der Satz zur Grotte; danach startet die zweite Wand.
+  await page.waitForFunction(() => window.__ev('rwNah()&&pzc.a.k===1'), null, { timeout: 20000 }).catch(() => {});
+  await page.waitForTimeout(1500);
+  const B = await state();
+  if (!B.nah || B.k !== 1 || B.lv !== lv) throw new Error('Zweite Wand startet nicht mit Stufe +2: ' + JSON.stringify(B) + ' lv ' + lv);
+  q = JSON.parse(await ev(RWSOLVE));
+  await page.mouse.click(q.sx, q.sy); await page.waitForTimeout(300);
+  const C = await state();
+  if (C.st !== 2 || C.door !== 0 || C.bed !== 0 || C.finds !== 3) throw new Error('Nebenkammer nicht offen: ' + JSON.stringify(C));
+  const sv = await ev(`(function(){ const s=snapshot(); return JSON.stringify({st:s.rw[window.__rwm.id].st, h:s.hidden.filter(h=>h.rw===window.__rwm.id).length}); })()`);
+  if (sv !== '{"st":2,"h":3}') throw new Error('Spielstand: ' + sv);
+  await page.waitForTimeout(1800);
+  await ev('teleport(1500); OPT.mon=true');
 });
 
 test('Harte Schicht hält auch beim Graben nach oben ohne Bohrer', async ({ ev, page }) => {
