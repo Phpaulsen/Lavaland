@@ -8872,10 +8872,11 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
   }
   function drawBombsWith(DR, ctx) {
     for (const bm of DR.bombs) {
-      ctx.fillStyle = "#3a3438";
-      DR.circle(bm.x, bm.y, 7);
+      const r = bm.big ? 13 : 7;
+      ctx.fillStyle = bm.big ? "#8a1f2a" : "#3a3438";
+      DR.circle(bm.x, bm.y, r);
       ctx.fillStyle = (bm.t * 8 | 0) % 2 ? "#ffd23f" : "#ff5a1f";
-      DR.circle(bm.x + 6, bm.y - 8, 3);
+      DR.circle(bm.x + r * 0.85, bm.y - r * 1.15, bm.big ? 4 : 3);
     }
   }
   function drawLiquidsWith(DR, ctx, x0, x1, y0, y1) {
@@ -11350,10 +11351,10 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       /** @param {any} p */
       function(p) {
         const w = toWorldWith(PT, p.x, p.y);
-        if (ST.tool === "tnt") {
+        if (ST.tool === "tnt" || ST.tool === "mega") {
           if (!p.has) {
             p.has = true;
-            PT.dropBomb(w[0], w[1]);
+            PT.dropBomb(w[0], w[1], ST.tool === "mega");
           }
           return;
         }
@@ -12518,13 +12519,13 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     for (let i = PL.bombs.length - 1; i >= 0; i--) {
       const bm = PL.bombs[i];
       bm.t -= dt;
-      if (!PL.solidW(bm.x, bm.y + 7)) {
+      if (!PL.solidW(bm.x, bm.y + (bm.big ? 13 : 7))) {
         bm.vy = Math.min(bm.vy + G * dt, 560);
         bm.y += bm.vy * dt;
       } else bm.vy = 0;
       if (bm.t <= 0) {
         PL.bombs.splice(i, 1);
-        PL.blast(bm.x, bm.y);
+        PL.blast(bm.x, bm.y, bm.big);
       }
     }
     if (hero.pet) {
@@ -14881,7 +14882,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
 
   // src/systems/learn.js
   function drainWith(LK, dt) {
-    if (P.mode !== "walk" || ST.tool && !LK.HANDT[ST.tool] && (!LK.PAINT[ST.tool] && ST.tool !== "tnt" || ST.energy <= 0)) {
+    if (P.mode !== "walk" || ST.tool && !LK.HANDT[ST.tool] && (!LK.PAINT[ST.tool] && ST.tool !== "tnt" && ST.tool !== "mega" || ST.energy <= 0)) {
       ST.energy -= dt;
       if (ST.energy <= 0) {
         ST.energy = 0;
@@ -15389,8 +15390,15 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (TW.portalT > 0.9) TW.travel(hit);
     } else TW.portalT = 0;
   }
-  function dropBombWith(TW, x, y) {
-    if (hero.tnt > 0) {
+  function dropBombWith(TW, x, y, big) {
+    if (big) {
+      if (ST.energy < TW.RIESE) {
+        TW.pulse("batt");
+        sfx("pop");
+        return;
+      }
+      TW.paintPay(TW.RIESE);
+    } else if (hero.tnt > 0) {
       hero.tnt--;
       ST.heroDirty = true;
       TW.hudLoot();
@@ -15398,18 +15406,22 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (ST.energy <= 0) return;
       TW.paintPay(TW.BOMBE);
     }
-    TW.bombs.push({ x, y, vy: 0, t: 1.8 });
+    TW.bombs.push({ x, y, vy: 0, t: big ? 2.4 : 1.8, big: !!big });
   }
-  function blastWith(TW, x, y) {
-    TW.bore(x, y, 58);
-    for (const tr of TW.trees) if (tr.state < 3 && Math.hypot(tr.x - x, tr.gy - 20 - y) < 70) tr.state = 3;
-    for (let i = 0; i < 30; i++) TW.spawn(1, x, y, (Math.random() - 0.5) * 420, (Math.random() - 0.6) * 420, 0.5 + Math.random() * 0.5, 8 + Math.random() * 9);
-    for (let i = 0; i < 14; i++) TW.spawn(5, x, y, (Math.random() - 0.5) * 520, -120 - Math.random() * 380, 0.9, 2);
-    TW.smoke(x, y - 10, 12);
-    TW.shake = 0.5;
+  function blastWith(TW, x, y, big) {
+    const k = big ? 2.5 : 1, nf = big ? 55 : 30, ns = big ? 24 : 14;
+    TW.bore(x, y, 58 * k);
+    for (const tr of TW.trees) if (tr.state < 3 && Math.hypot(tr.x - x, tr.gy - 20 - y) < 70 * k) tr.state = 3;
+    for (let i = 0; i < nf; i++) TW.spawn(1, x, y, (Math.random() - 0.5) * 420 * k, (Math.random() - 0.6) * 420 * k, 0.5 + Math.random() * 0.5, 8 + Math.random() * 9);
+    for (let i = 0; i < ns; i++) TW.spawn(5, x, y, (Math.random() - 0.5) * 520 * k, -120 - Math.random() * 380 * k, 0.9, 2);
+    TW.smoke(x, y - 10, big ? 30 : 12);
+    TW.shake = big ? 1.1 : 0.5;
     sfx("boom");
+    if (big) setTimeout(function() {
+      sfx("boom");
+    }, 160);
     TW.qEvent("bomb", 1);
-    if (P.mode !== "coaster" && Math.hypot(P.x - x, P.y - 16 - y) < 84) TW.burn();
+    if (P.mode !== "coaster" && Math.hypot(P.x - x, P.y - 16 - y) < 84 * k) TW.burn();
   }
   function sonarTargetWith(TW) {
     let b = null, bd = 1e12;
@@ -16663,6 +16675,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
   IC.shovel = '<path d="M17 3l4 4M19 5l-8.500 8.500" ' + S1 + ' stroke-width="2.600"/><path d="M10.500 9.500l4 4-4.500 4.500c-2 2-5.500 2.500-7.500 2.500 0-2 .5-5.500 2.500-7.500z" fill="#9aa7b4" ' + S1 + ' stroke-width="1.500"/>';
   IC.pick = '<path d="M4 21L15 10" stroke="#a0632f" stroke-width="3.2" stroke-linecap="round"/><path d="M4 21L15 10" ' + S1 + ' stroke-width="1" fill="none"/><path d="M8 4.500c4-2 9-1.500 12.500 1.500l-1 1c-3-1.500-6-1.500-8.500 0zM20.500 6c2 4 1.500 8.500-1 12l-1-1c1.500-2.500 1.500-6 0-9z" fill="#9aa7b4" ' + S1 + ' stroke-width="1.400"/><path d="M13 8l3 3" ' + S1 + ' stroke-width="3.200"/>';
   IC.bow = '<path d="M6 3c8 2 13 7 15 15" stroke="#a0632f" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M6 3c8 2 13 7 15 15" ' + S1 + ' stroke-width="1" fill="none"/><path d="M6 3l15 15" stroke="' + K + '" stroke-width="1.200"/><path d="M3 21L17 7" ' + S1 + ' stroke-width="2"/><path d="M17 7l1-4 3 3z" fill="#9aa7b4" ' + S1 + ' stroke-width="1.200"/><path d="M3 21l1-3.500M3 21l3.500-1" stroke="#e63946" stroke-width="2.200" stroke-linecap="round"/>';
+  IC.mega = '<circle cx="10" cy="14" r="9" fill="#8a1f2a" ' + S1 + ' stroke-width="1.6"/><path d="M16 7.5l2.5-2.5" ' + S1 + ' stroke-width="2.4"/><path d="M18.5 5l.8-3M18.5 5l3-.6M18.5 5l2.4 1.8" stroke="#ff8a1f" stroke-width="1.8" stroke-linecap="round"/><path d="M5.5 11a5 5 0 0 1 4-3" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M10 11.5v5M7.5 14h5" stroke="#ffd23f" stroke-width="2.2" stroke-linecap="round"/>';
   IC.tnt = '<circle cx="10.5" cy="14.5" r="7.5" fill="#3a3438" ' + S1 + ' stroke-width="1.6"/><path d="M15.5 9l3-3" ' + S1 + ' stroke-width="2.4"/><path d="M18.5 6l.8-3M18.5 6l3-.6M18.5 6l2.4 1.800" stroke="#ff8a1f" stroke-width="1.8" stroke-linecap="round"/><path d="M7 12a4 4 0 0 1 3-2" stroke="#fff" stroke-width="1.6" stroke-linecap="round" fill="none"/>';
   QI.bolt = '<path d="M13.5 2L4 14h6l-1.5 8L19 10h-6z" fill="#ffd23f" ' + S1 + ' stroke-width="1.6"/>';
   QI.gear = '<path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1" ' + S1 + ' stroke-width="3"/><circle cx="12" cy="12" r="6.5" fill="#9aa7b4" ' + S1 + ' stroke-width="1.6"/><circle cx="12" cy="12" r="2.6" fill="#fff8e6" ' + S1 + ' stroke-width="1.4"/>';
@@ -16784,7 +16797,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     ).map(
       /** @param {any} t @param {any} i */
       function(t, i) {
-        return (i === 1 ? '<button class="card pick cool" id="tool-magic" aria-label="Zauberkasten: Lava, Feuer, Wasser, Eis, Erde oder Schnee malen" aria-pressed="false"><span class="mg" aria-hidden="true">🪄</span>' + LOCK + "</button>" : "") + toolCard(t);
+        return (i === 2 ? '<button class="card pick cool" id="tool-magic" aria-label="Zauberkasten: Lava, Feuer, Wasser, Eis, Erde oder Schnee malen" aria-pressed="false"><span class="mg" aria-hidden="true">🪄</span>' + LOCK + "</button>" : "") + toolCard(t);
       }
     ).join("");
     UB.$("magic-cards").innerHTML = UB.TOOLS.filter(
@@ -18734,12 +18747,12 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
     function hudLoot() {
       return hudLootWith(CT);
     }
-    const BOMBE = 15;
-    function dropBomb(x, y) {
-      return dropBombWith(TW, x, y);
+    const BOMBE = 15, RIESE = 75;
+    function dropBomb(x, y, big) {
+      return dropBombWith(TW, x, y, big);
     }
-    function blast(x, y) {
-      return blastWith(TW, x, y);
+    function blast(x, y, big) {
+      return blastWith(TW, x, y, big);
     }
     function drawProp(o) {
       return drawPropWith(SC, ctx, o);
@@ -19262,6 +19275,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
         portalT = v;
       },
       BOMBE,
+      RIESE,
       bombs,
       get shake() {
         return shake;
@@ -19363,6 +19377,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       grow,
       hudLoot,
       paintPay,
+      pulse,
       pinFly,
       postMax,
       puff,
@@ -20208,7 +20223,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       keyTap
     };
     const VEH = [["walk", "Laufen"], ["ski", "Ski fahren"], ["car", "Auto"], ["plane", "Flugzeug"], ["rocket", "Rakete"], ["bagger", "Bagger"], ["loader", "Radlader"], ["dumper", "Kipper"], ["tbm", "Tunnelbohrmaschine"], ["sub", "U-Boot"], ["balloon", "Heißluftballon"], ["heli", "Hubschrauber"], ["boat", "Segelboot"], ["bug", "Kletterkäfer"], ["coaster", "Achterbahn fahren"], ["dragon", "Auf Mama Glut fliegen"]];
-    const TOOLS = [["tnt", "Bombe legen"], ["lava", "Lava malen"], ["fire", "Feuer malen"], ["water", "Wasser malen"], ["ice", "Eis malen"], ["earth", "Erde malen"], ["blocks", "Bauklötze setzen"], ["track", "Schiene malen"], ["erase", "Radierer"], ["snow", "Schnee malen"], ["ball", "Schneeball werfen"], ["man", "Schneemann bauen"], ["fw", "Feuerwerk zünden"], ["rope", "Seilrutsche spannen"], ["shovel", "Schaufel"], ["pick", "Spitzhacke"], ["bow", "Pfeil und Bogen"]];
+    const TOOLS = [["tnt", "Bombe legen"], ["mega", "Riesenbombe legen"], ["lava", "Lava malen"], ["fire", "Feuer malen"], ["water", "Wasser malen"], ["ice", "Eis malen"], ["earth", "Erde malen"], ["blocks", "Bauklötze setzen"], ["track", "Schiene malen"], ["erase", "Radierer"], ["snow", "Schnee malen"], ["ball", "Schneeball werfen"], ["man", "Schneemann bauen"], ["fw", "Feuerwerk zünden"], ["rope", "Seilrutsche spannen"], ["shovel", "Schaufel"], ["pick", "Spitzhacke"], ["bow", "Pfeil und Bogen"]];
     const MODES = VEH.map(function(v) {
       return v[0];
     }), TOOLN = TOOLS.map(function(t) {

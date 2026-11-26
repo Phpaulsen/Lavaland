@@ -370,6 +370,24 @@ test('Bombe kostet 15 Akku, alter Vorrat zuerst', async ({ ev, page }) => {
   await ev('setTool(null); ST.energy=MAXE'); await page.waitForTimeout(2200);
 });
 
+test('Riesenbombe kostet 75 Akku, sprengt größer, nur mit genug Akku', async ({ ev, page }) => {
+  await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); hero.tnt=1; ST.energy=MAXE; setTool('mega')");
+  await page.waitForTimeout(300);
+  if (await ev('ST.energy') !== await ev('MAXE')) throw new Error('Riesenbombe zieht Akku ohne Bombe');
+  await ev('dropBomb(P.x+200,P.y-300,true)');
+  if (await ev('hero.tnt') !== 1) throw new Error('Riesenbombe verbraucht alten Vorrat');
+  if (await ev('MAXE-ST.energy') !== 75) throw new Error('Riesenbombe kostet ' + await ev('MAXE-ST.energy'));
+  if (!(await ev('bombs[bombs.length-1].big'))) throw new Error('Bombe nicht als Riesenbombe markiert');
+  await ev('ST.energy=74; bombs.length=0; dropBomb(P.x+200,P.y-300,true)');
+  if (await ev('bombs.length') !== 0 || await ev('ST.energy') !== 74) throw new Error('Riesenbombe ohne genug Akku gelegt');
+  const n = await ev(`(()=>{ const x=3000, y=ground(3000)+400; let a=0, b=0;
+    const fill=()=>{ for(let r=Math.floor((y-170-TOP)/CELL);r<=Math.floor((y+170-TOP)/CELL);r++) for(let c=Math.floor((x-170)/CELL);c<=Math.floor((x+170)/CELL);c++) grid[r*GX+c]=EARTH; };
+    const cnt=()=>{ let c=0; for(let dy=-160;dy<=160;dy+=CELL) for(let dx=-160;dx<=160;dx+=CELL){ const t=cellAt(x+dx,y+dy); if(t) c++; } return c; };
+    fill(); a=cnt(); blast(x,y,false); b=cnt(); const s=a-b; fill(); a=cnt(); blast(x,y,true); b=cnt(); return [s,a-b]; })()`);
+  if (!(n[1] > n[0] * 2)) throw new Error('Riesenbombe nicht größer: ' + n.join(' / '));
+  await ev('setTool(null); hero.tnt=0; ST.energy=MAXE'); await page.waitForTimeout(500);
+});
+
 test('Schutz wird in der Werkstatt gebaut', async ({ ev }) => {
   await ev("OVS.forEach(o=>o.hidden=true); ST.paused=false; setMode('walk'); hero.up.heat=0; hero.mat.zr=9; P.x=WSX; P.y=ground(WSX); P.on=true");
   await ev("openLab(); $('lab-rcp').querySelector('[data-mk=\"hs\"]').click()");

@@ -931,9 +931,9 @@ const bombs=[], pet={x:820,y:0};
 function saveHero(){ return saveHeroWith(SV); }
 function hudLoot(){ return hudLootWith(CT); }
 /* Eine Bombe kostet BOMBE Akku. Bomben aus dem alten Vorrat werden zuerst verbraucht. */
-const BOMBE=15;
-function dropBomb(x,y){ return dropBombWith(TW,x,y); }
-function blast(x,y){ return blastWith(TW,x,y); }
+const BOMBE=15, RIESE=75;
+function dropBomb(x,y,big){ return dropBombWith(TW,x,y,big); }
+function blast(x,y,big){ return blastWith(TW,x,y,big); }
 function drawProp(o){ return drawPropWith(SC,ctx,o); }
 function pointTo(mx,my,col){ return pointToWith(HI,ctx,mx,my,col); }
 
@@ -1178,6 +1178,7 @@ const TW={
   get portalT(){ return portalT; },
   set portalT(v){ portalT=v; },
   BOMBE,
+  RIESE,
   bombs,
   get shake(){ return shake; },
   set shake(v){ shake=v; },
@@ -1221,6 +1222,7 @@ const TW={
   grow,
   hudLoot,
   paintPay,
+  pulse,
   pinFly,
   postMax,
   puff,
@@ -1678,7 +1680,7 @@ const CT={
   keyTap
 };
 const VEH=[['walk','Laufen'],['ski','Ski fahren'],['car','Auto'],['plane','Flugzeug'],['rocket','Rakete'],['bagger','Bagger'],['loader','Radlader'],['dumper','Kipper'],['tbm','Tunnelbohrmaschine'],['sub','U-Boot'],['balloon','Heißluftballon'],['heli','Hubschrauber'],['boat','Segelboot'],['bug','Kletterkäfer'],['coaster','Achterbahn fahren'],['dragon','Auf Mama Glut fliegen']];
-const TOOLS=[['tnt','Bombe legen'],['lava','Lava malen'],['fire','Feuer malen'],['water','Wasser malen'],['ice','Eis malen'],['earth','Erde malen'],['blocks','Bauklötze setzen'],['track','Schiene malen'],['erase','Radierer'],['snow','Schnee malen'],['ball','Schneeball werfen'],['man','Schneemann bauen'],['fw','Feuerwerk zünden'],['rope','Seilrutsche spannen'],['shovel','Schaufel'],['pick','Spitzhacke'],['bow','Pfeil und Bogen']];
+const TOOLS=[['tnt','Bombe legen'],['mega','Riesenbombe legen'],['lava','Lava malen'],['fire','Feuer malen'],['water','Wasser malen'],['ice','Eis malen'],['earth','Erde malen'],['blocks','Bauklötze setzen'],['track','Schiene malen'],['erase','Radierer'],['snow','Schnee malen'],['ball','Schneeball werfen'],['man','Schneemann bauen'],['fw','Feuerwerk zünden'],['rope','Seilrutsche spannen'],['shovel','Schaufel'],['pick','Spitzhacke'],['bow','Pfeil und Bogen']];
 const MODES=VEH.map(function(v){return v[0];}), TOOLN=TOOLS.map(function(t){return t[0];});
 /* Zauberkasten (Vereinfachungsplan 1b): Die sechs Malstoffe stecken in einer Karte der Werkzeugkiste und öffnen sich als eigenes Fenster. */
 const PAINT={lava:1,fire:1,water:1,ice:1,earth:1,snow:1};
