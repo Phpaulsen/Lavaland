@@ -186,9 +186,10 @@ test('Rohrwand: Nah-Modus zoomt, Tippen dreht ein Rohr, kein Fenster, Weggehen b
   if (JSON.parse(r).r !== (q.r + 1) % 4 || JSON.parse(r).ptr !== 0) throw new Error('Tippen hat nicht gedreht oder gemalt: ' + r);
   await ev('pzOpen(window.__rwm)');
   if (!(await ev("$('pz').hidden"))) throw new Error('Rohr-Maschine mit Grotte öffnet das Fenster');
-  await ev('P.x+=200; P.vx=0');
+  // Sicher weg von der Wand: Läge P.x+200 im Fels, könnte die Bewegung den Helden zurückschieben (Firefox im CI, #183, Ursache nicht belegt).
+  await ev('P.x+=200; P.y=ground(P.x)-10; P.vx=P.vy=0');
   await page.waitForTimeout(1500);
-  const b = await ev(`JSON.stringify({nah:rwNah(), pzc:!!pzc, z:S/S0})`);
+  const b = await ev(`JSON.stringify({nah:rwNah(), pzc:!!pzc, z:S/S0, px:P.x|0, py:P.y|0, mx:window.__rwm.x|0, my:window.__rwm.y|0})`);
   await ev('OPT.mon=true');
   if (JSON.parse(b).nah || JSON.parse(b).pzc || !(JSON.parse(b).z < 1.05)) throw new Error('Nah-Modus endet nicht: ' + b);
 });
