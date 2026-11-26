@@ -177,8 +177,9 @@ function drawHeroWith(DR,ctx){
 /** Bomben mit blinkender Zündschnur. @param {Port} DR @param {CanvasRenderingContext2D} ctx */
 function drawBombsWith(DR,ctx){
   for(const bm of DR.bombs){
-    ctx.fillStyle='#3a3438'; DR.circle(bm.x,bm.y,7);
-    ctx.fillStyle=(bm.t*8|0)%2?'#ffd23f':'#ff5a1f'; DR.circle(bm.x+6,bm.y-8,3);
+    const r=bm.big?13:7;
+    ctx.fillStyle=bm.big?'#8a1f2a':'#3a3438'; DR.circle(bm.x,bm.y,r);
+    ctx.fillStyle=(bm.t*8|0)%2?'#ffd23f':'#ff5a1f'; DR.circle(bm.x+r*.85,bm.y-r*1.15,bm.big?4:3);
   }
 }
 /** Flüssigkeiten und Feuer im sichtbaren Teil der Simulation. @param {Port} DR @param {CanvasRenderingContext2D} ctx @param {number} x0 @param {number} x1 @param {number} y0 @param {number} y1 */

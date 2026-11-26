@@ -13,7 +13,7 @@ import { NEWDAY, BOXD } from '../core/learn/leitner.js';
 
 /** @param {Port} LK @param {any} dt */
 export function drainWith(LK,dt){
-  if(P.mode!=='walk'||(ST.tool&&!LK.HANDT[ST.tool]&&(!LK.PAINT[ST.tool]&&ST.tool!=='tnt'||ST.energy<=0))){
+  if(P.mode!=='walk'||(ST.tool&&!LK.HANDT[ST.tool]&&(!LK.PAINT[ST.tool]&&ST.tool!=='tnt'&&ST.tool!=='mega'||ST.energy<=0))){
     ST.energy-=dt;
     if(ST.energy<=0){ ST.energy=0; LK.battLow=false; LK.$('batt').classList.remove('low'); LK.renderBatt(); LK.openQuiz(null); return; }
     /* Kurz vor leer blinkt der Akku und tickt, damit die Lernaufgabe nicht aus dem Nichts kommt. */

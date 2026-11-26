@@ -200,8 +200,8 @@ export function updateWith(PL,dt){
 
   for(let i=PL.bombs.length-1;i>=0;i--){
     const bm=PL.bombs[i]; bm.t-=dt;
-    if(!PL.solidW(bm.x,bm.y+7)){ bm.vy=Math.min(bm.vy+G*dt,560); bm.y+=bm.vy*dt; } else bm.vy=0;
-    if(bm.t<=0){ PL.bombs.splice(i,1); PL.blast(bm.x,bm.y); }
+    if(!PL.solidW(bm.x,bm.y+(bm.big?13:7))){ bm.vy=Math.min(bm.vy+G*dt,560); bm.y+=bm.vy*dt; } else bm.vy=0;
+    if(bm.t<=0){ PL.bombs.splice(i,1); PL.blast(bm.x,bm.y,bm.big); }
   }
   if(hero.pet){ PL.pet.x+=(P.x-P.face*30-PL.pet.x)*Math.min(1,dt*4); PL.pet.y+=(P.y-16-PL.pet.y)*Math.min(1,dt*5); }
   for(const k in parked) if(parked[k]&&!(k===PL.heliLoad&&P.mode==='heli')) settleWith(PL,parked[k],dt);
