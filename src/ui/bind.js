@@ -30,7 +30,7 @@ const toolCard=/** @param {any} t */ function(t){
   return '<button class="card pick'+(cool?' cool':'')+'" id="tool-'+t[0]+'" data-tool="'+t[0]+'" aria-label="'+t[1]+'" aria-pressed="false">'+UB.svg24(IC[t[0]])+(cool?LOCK:'')+(t[0]==='tnt'?'<span class="badge" id="tnt-n" hidden>0</span>':'')+'</button>';
 };
 UB.$('tool-cards').innerHTML=UB.TOOLS.filter(/** @param {any} t */ function(t){ return !UB.PAINT[t[0]]; }).map(/** @param {any} t @param {any} i */ function(t,i){
-  return (i===1?'<button class="card pick cool" id="tool-magic" aria-label="Zauberkasten: Lava, Feuer, Wasser, Eis, Erde oder Schnee malen" aria-pressed="false"><span class="mg" aria-hidden="true">🪄</span>'+LOCK+'</button>':'')+toolCard(t);
+  return (i===2?'<button class="card pick cool" id="tool-magic" aria-label="Zauberkasten: Lava, Feuer, Wasser, Eis, Erde oder Schnee malen" aria-pressed="false"><span class="mg" aria-hidden="true">🪄</span>'+LOCK+'</button>':'')+toolCard(t);
 }).join('');
 UB.$('magic-cards').innerHTML=UB.TOOLS.filter(/** @param {any} t */ function(t){ return UB.PAINT[t[0]]; }).map(toolCard).join('');
 window.addEventListener('pointerdown',function(){ UB.ghostEl=null; },true);

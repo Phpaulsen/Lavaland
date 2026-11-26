@@ -117,20 +117,24 @@ export function portalTickWith(TW,dt){
   }
   if(hit){ TW.portalT+=dt; if(TW.portalT>.9) TW.travel(hit); } else TW.portalT=0;
 }
-/** @param {Port} TW @param {any} x @param {any} y */
-export function dropBombWith(TW,x,y){
-  if(hero.tnt>0){ hero.tnt--; ST.heroDirty=true; TW.hudLoot(); }
+/** @param {Port} TW @param {any} x @param {any} y @param {boolean} [big] */
+export function dropBombWith(TW,x,y,big){
+  /* Riesenbombe: kostet RIESE Akku (ein ganzer Balken). Reicht der Akku nicht, blinkt er; der alte Vorrat gilt nur für kleine Bomben. */
+  if(big){ if(ST.energy<TW.RIESE){ TW.pulse('batt'); sfx('pop'); return; } TW.paintPay(TW.RIESE); }
+  else if(hero.tnt>0){ hero.tnt--; ST.heroDirty=true; TW.hudLoot(); }
   else{ if(ST.energy<=0) return; TW.paintPay(TW.BOMBE); }
-  TW.bombs.push({x:x,y:y,vy:0,t:1.8});
+  TW.bombs.push({x:x,y:y,vy:0,t:big?2.4:1.8,big:!!big});
 }
-/** @param {Port} TW @param {any} x @param {any} y */
-export function blastWith(TW,x,y){
-  TW.bore(x,y,58);
-  for(const tr of TW.trees) if(tr.state<3&&Math.hypot(tr.x-x,tr.gy-20-y)<70) tr.state=3;
-  for(let i=0;i<30;i++) TW.spawn(1,x,y,(Math.random()-.5)*420,(Math.random()-.6)*420,.5+Math.random()*.5,8+Math.random()*9);
-  for(let i=0;i<14;i++) TW.spawn(5,x,y,(Math.random()-.5)*520,-120-Math.random()*380,.9,2);
-  TW.smoke(x,y-10,12); TW.shake=.5; sfx('boom'); TW.qEvent('bomb',1);
-  if(P.mode!=='coaster'&&Math.hypot(P.x-x,P.y-16-y)<84) TW.burn();
+/** @param {Port} TW @param {any} x @param {any} y @param {boolean} [big] */
+export function blastWith(TW,x,y,big){
+  /* Riesenbombe: 2,5-facher Radius (rund sechsmal so viel Fläche), mehr Funken, stärkeres Wackeln. */
+  const k=big?2.5:1, nf=big?55:30, ns=big?24:14;
+  TW.bore(x,y,58*k);
+  for(const tr of TW.trees) if(tr.state<3&&Math.hypot(tr.x-x,tr.gy-20-y)<70*k) tr.state=3;
+  for(let i=0;i<nf;i++) TW.spawn(1,x,y,(Math.random()-.5)*420*k,(Math.random()-.6)*420*k,.5+Math.random()*.5,8+Math.random()*9);
+  for(let i=0;i<ns;i++) TW.spawn(5,x,y,(Math.random()-.5)*520*k,-120-Math.random()*380*k,.9,2);
+  TW.smoke(x,y-10,big?30:12); TW.shake=big?1.1:.5; sfx('boom'); if(big) setTimeout(function(){ sfx('boom'); },160); TW.qEvent('bomb',1);
+  if(P.mode!=='coaster'&&Math.hypot(P.x-x,P.y-16-y)<84*k) TW.burn();
 }
 /** @param {Port} TW */
 export function sonarTargetWith(TW){

@@ -85,7 +85,7 @@ export function paintStepWith(PT){
   if(PT.HANDT[ST.tool]){ PT.pointers.forEach(/** @param {any} p */ function(p){ const w=toWorldWith(PT,p.x,p.y); if(Math.hypot(w[0]-P.x,w[1]-P.y+20)<95) PT.handDig(w[0],w[1]); }); return; }
   PT.pointers.forEach(/** @param {any} p */ function(p){
     const w=toWorldWith(PT,p.x,p.y);
-    if(ST.tool==='tnt'){ if(!p.has){ p.has=true; PT.dropBomb(w[0],w[1]); } return; }
+    if(ST.tool==='tnt'||ST.tool==='mega'){ if(!p.has){ p.has=true; PT.dropBomb(w[0],w[1],ST.tool==='mega'); } return; }
     if(ST.tool==='ball'||ST.tool==='fw'){ if(!p.has||PT.time-p.bt>(ST.tool==='ball'?.28:.4)){ p.has=true; p.bt=PT.time; if(ST.tool==='ball') PT.throwBall(w[0],w[1]); else PT.firework(w[0],w[1]); } return; }
     if(ST.tool==='man'){ if(!p.has){ p.has=true; PT.addMan(w[0]); } return; }
     if(p.has){
