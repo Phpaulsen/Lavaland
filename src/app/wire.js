@@ -13,7 +13,7 @@ import { mkSpiegelWith } from '../core/puzzles/spiegel.js';
 import { RBD, mkRoboWith } from '../core/puzzles/robo.js';
 import { mkWaageWith } from '../core/puzzles/waage.js';
 import { rhFlow, rhDone, mkRohreWith } from '../core/puzzles/rohre.js';
-import { rwBuildWith, rohrWith, rwRand } from '../systems/rohrwand.js';
+import { rwBuildWith, rohrWith, rwRand, rwSolvedWith, rwDoorAt } from '../systems/rohrwand.js';
 import { rw } from '../state/rohrwand.js';
 import { rwUiTickWith, rwTapWith, rwHintWith, rwDrawWith, rwNah, rwHas } from '../ui/rohrwand.js';
 import { rwPlan } from '../core/world/rohrwand.js';
@@ -2525,10 +2525,10 @@ for(const s of questsWith(QP)) register(s.name,s.tick,s.draw);
 register('autosave',autosave);
 register('drain',drain);
 for(const s of marksWith(DP)) register(s.name,s.tick,s.draw);
-/* Rohrwand (Backlog-Idee 6): Einbau der Grotten neben den Rohr-Maschinen, noch ausgeschaltet (RWON). */
+/* Rohrwand (Backlog-Idee 6): Einbau der Grotten neben den Rohr-Maschinen, Lösen öffnet Sperre und Tür (rwSolvedWith). */
 const RWP={
   get SEED(){ return SEED; }, get genF(){ return genF; }, get realm(){ return realm; }, get MACH(){ return MACH; }, get MATS(){ return MATS; },
-  get VAULTS(){ return VAULTS; }, get ZDEC(){ return ZDEC; }, get FGT(){ return FGT; }, fogArr, fogHas,
+  get VAULTS(){ return VAULTS; }, get ZDEC(){ return ZDEC; }, get FGT(){ return FGT; }, get FINDS(){ return FINDS; }, fogArr, fogHas, scanMobile,
 };
 function rwBuild(m){ return rwBuildWith(RWP,m); }
 for(const s of rohrWith(RWP)) register(s.name,s.tick,s.draw);
@@ -2536,7 +2536,8 @@ for(const s of rohrWith(RWP)) register(s.name,s.tick,s.draw);
 const RQ={
   get MACH(){ return MACH; }, get PZI(){ return PZI; }, get LOG(){ return LOG; }, get PZ(){ return PZ; },
   get pzc(){ return pzc; }, set pzc(v){ pzc=v; },
-  mkRohre, speak, uiOpen, rr, circle, emo,
+  mkRohre, speak, say, uiOpen, rr, circle, emo, doorAt: rwDoorAt,
+  solved(/** @type {any} */ m,/** @type {number} */ k){ return rwSolvedWith(RWP,m,k); },
   zoom(v){ if(v!==zoomV){ zoomV=v; S=S0*v; } },
 };
 function wallTap(sx,sy){ if(!rwNah()) return false; const w=toWorld(sx,sy); return rwTapWith(RQ,w[0],w[1]); }

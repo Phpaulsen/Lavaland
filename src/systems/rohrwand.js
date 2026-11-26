@@ -1,21 +1,23 @@
 // Rohrwand (Backlog-Idee 6, Schritt 2): Baut neben jeder Rohr-Maschine einmal Glutstein-Sperre, Schacht, Grotte und Nebenkammer ins Gitter,
 // sobald der Held in die Nähe kommt. Nur auf der Erde, nur in schon erzeugten Spalten, nur wo der Held laut Nebelkarte noch nie war und nichts liegt
 // (Maschinen, Räume, Tiere, Funde, Fahrzeuge, Schienen, Aufzug). Findet sich kein Platz, bleibt die Maschine, wie sie ist.
-// Noch ausgeschaltet (RWON.on), bis Wand und Lösen gebaut sind (Schritte 3 und 4). Zufall: eigener Strom je Ort aus Welt-Nummer und Maschinen-id, kein Math.random.
+// Zufall: eigener Strom je Ort aus Welt-Nummer und Maschinen-id, kein Math.random.
+// Schritt 4: Lösen wirkt (rwSolvedWith). Erste Wand: Wasser auf die Sperre, Grotte offen, Rahmen wird Fels, zwei Funde. Zweite Wand: Tür offen, ein Fund in der Nebenkammer. Später: Wasser läuft nach.
 import { grid } from '../state/world.js';
-import { lifeS } from '../state/sim.js';
+import { lifeS, waterCount } from '../state/sim.js';
+import { setCell } from '../state/queries.js';
 import { ST } from '../state/facade.js';
 import { rw } from '../state/rohrwand.js';
-import { CELL, TOP, GX, GY } from '../core/world/const.js';
+import { CELL, TOP, GX, GY, ROCK, WATER, GLUT, BED, MAX_WATER } from '../core/world/const.js';
 import { LIFTX } from '../core/world/shape.js';
 import { P, parked } from '../state/game.js';
 import { rng } from '../core/rng.js';
-import { rwPlan, rwFits, rwBox, RWDEPTH } from '../core/world/rohrwand.js';
+import { rwPlan, rwFits, rwBox, rwSpots, RWDEPTH } from '../core/world/rohrwand.js';
 
 /** @typedef {Record<string, any>} Port */
 
-/** Schalter für den Einbau. Schritt 4 schaltet ihn ein; Tests rufen rwBuildWith direkt. */
-export const RWON={on:false};
+/** Schalter für den Einbau (seit Schritt 4 an). */
+export const RWON={on:true};
 let rwT=0;
 
 /** Eigener Zufallsstrom je Ort. @param {number} seed @param {string} id @param {{s: number, dp: number}} sp @returns {() => number} */
@@ -69,6 +71,63 @@ export function rwBuildWith(RP,m){
   if(wait) return 'wait';
   rw[m.id]={no:1};
   return null;
+}
+/** Plan eines gebauten Orts neu rechnen (gleicher Zufallsstrom wie beim Einbau). @param {Port} RP @param {any} m @param {any} o */
+function planOf(RP,m,o){ const sp={mc:o.mc,fr:o.fr,s:o.s,dp:o.dp}; return {sp:sp,pl:rwPlan(sp,rwRand(RP.SEED,m.id,sp))}; }
+/** Erste feste Zeile ab Zeile r nach unten in Spalte c. @param {number} c @param {number} r */
+function floorBelow(c,r){ for(let k=0;k<80&&r<GY-1&&grid[r*GX+c]<4;k++) r++; return r; }
+/** Wasser in leere Zellen eines Felds setzen, höchstens n. @param {number[]} idx @param {number} n */
+function pour(idx,n){
+  let k=0;
+  for(const i of idx){ if(k>=n||waterCount>=MAX_WATER-50) break; if(grid[i]===0){ const y=(i/GX)|0; setCell(i-y*GX,y,WATER,0); k++; } }
+  return k;
+}
+/** Funde an Spalten legen: Fundarten, die im Album noch fehlen, zuerst; Zufall aus eigenem Strom. @param {Port} RP @param {any} m @param {number[]} cols @param {number} row @param {string} tag */
+function hide(RP,m,cols,row,tag){
+  const r=rwRand(RP.SEED,m.id+tag,{s:0,dp:0}), pool=RP.FINDS.filter(/** @param {any} f */ function(f){ return f[3]!=='space'&&f[3]!=='moon'&&f[3]!=='core'; });
+  for(let i=pool.length-1;i>0;i--){ const j=Math.floor(r()*(i+1)), t=pool[i]; pool[i]=pool[j]; pool[j]=t; }
+  pool.sort(/** @param {any} a @param {any} b */ function(a,b){ return (ST.found[a[0]]?1:0)-(ST.found[b[0]]?1:0); });
+  cols.forEach(function(c,k){
+    const f=pool[k%pool.length], fy=floorBelow(c,row);
+    ST.hidden.push({id:f[0],e:f[1],name:f[2],zone:'cave',x:(c+.5)*CELL,y:TOP+fy*CELL-14,hint:true,tree:-1,got:false,rw:m.id});
+  });
+}
+/** Ort der zweiten Rohrwand (vor der Tür zur Nebenkammer), in Weltpixeln. @param {any} m @returns {{x: number, y: number, s: number}|null} */
+export function rwDoorAt(m){
+  const o=rw[m.id]; if(!o||o.mc===undefined) return null;
+  const q=rwSpots({mc:o.mc,fr:o.fr,s:o.s,dp:o.dp});
+  return {x:(q.wall+.5)*CELL,y:TOP+floorBelow(q.wall,q.mid)*CELL,s:o.s};
+}
+/**
+ * Eine Rohrwand ist gelöst. k 0: Wand an der Maschine, k 1: Wand vor der Tür.
+ * @param {Port} RP Port: SEED, FINDS, scanMobile
+ * @param {any} m Maschine
+ * @param {number} k
+ * @returns {string} Satz für den Helden (leer, wenn nichts Neues aufging); die Oberfläche sagt ihn nach dem Lob der Maschine
+ */
+export function rwSolvedWith(RP,m,k){
+  const o=rw[m.id]; if(!o||o.mc===undefined) return '';
+  const {sp,pl}=planOf(RP,m,o);
+  if(k===0&&!o.st){
+    const keep=new Set(pl.keep);
+    for(let j=0;j<pl.cells.length;j+=2){ const i=pl.cells[j]; if(grid[i]===BED&&pl.cells[j+1]===BED&&!keep.has(i)) grid[i]=ROCK; }
+    for(const i of pl.plug) if(grid[i]===GLUT){ grid[i]=0; lifeS(i,0); }
+    pour(pl.plug,pl.plug.length);
+    o.st=1; RP.scanMobile();
+    const q=rwSpots(sp); hide(RP,m,q.finds.slice(0,2),q.mid,'a');
+    return 'Das Wasser hat die Glut gelöscht! Unten wartet eine große Höhle.';
+  }else if(k===1&&o.st===1){
+    for(let j=0;j<pl.cells.length;j+=2){ const i=pl.cells[j]; if(grid[i]===BED&&pl.cells[j+1]===BED) grid[i]=ROCK; }
+    for(const i of pl.door) if(grid[i]===GLUT){ grid[i]=0; lifeS(i,0); }
+    pour(pl.door,8);
+    o.st=2; RP.scanMobile();
+    const q=rwSpots(sp); hide(RP,m,q.finds.slice(2),q.mid,'b');
+    return 'Die zweite Tür ist offen! Dahinter liegt noch eine Kammer.';
+  }else if(k===0){
+    /* Wieder gelöst: Es läuft noch einmal Wasser durch die Sperre hinunter. */
+    pour(pl.plug,14); RP.scanMobile();
+  }
+  return '';
 }
 /** Alle halbe Sekunde: Rohr-Maschinen in der Nähe, die noch keinen Ort haben. @param {Port} RP @param {number} dt */
 export function rwTickWith(RP,dt){
