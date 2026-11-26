@@ -2,6 +2,7 @@
 // Über einer Rohr-Maschine mit eingebauter Grotte hängt eine Wand aus Rohrstücken. Steht der Held davor, zoomt die Kamera heran,
 // Malen und Werkzeuge ruhen, und jedes Tippen dreht ein Rohr. Rätsel, Stufen, Zahnräder und Protokoll sind dieselben wie in der Rohr-Maschine
 // (core/puzzles/rohre.js, pzWinWith); nur Zeichnen und Tippen sind neu. Gilt nur für Maschinen mit gebautem Ort in rw.
+// Den Maschinenkasten zeichnet render/world.js an solchen Orten nicht mehr; die Wand steht an seiner Stelle.
 // Zwei Wände je Ort: k 0 an der Maschine (immer wieder spielbar), k 1 in der Grotte vor der Tür zur Nebenkammer (einmal, Stufe +2).
 // Ist eine Wand gelöst, meldet RQ.solved das sofort an systems/rohrwand.js, das Sperre oder Tür öffnet; dessen Satz folgt nach dem Lob.
 // Was das Modul vom übrigen Spiel braucht, kommt über den Port RQ.
@@ -127,6 +128,8 @@ export function rwDrawWith(RQ,ctx,layer,x0,x1){
     ctx.restore();
     const qx=a.x+g.s*(g.lx0-RWT/2);
     RQ.emo('🚰',qx,g.top+(ys+.5)*RWT,RWT*.8);
+    /* Statt des Maschinenkastens: über der ersten Wand ein Zahnrad, solange sie noch nie gelöst ist, danach ein Haken. */
+    if(!a.k) RQ.emo(RQ.got(m)?'✅':'⚙️',a.x,g.top-16,RWT*.8);
   }
 }
 /** Nah-Modus aktiv? (für Tests und den Port) @returns {boolean} */

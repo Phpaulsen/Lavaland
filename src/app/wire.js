@@ -2537,6 +2537,7 @@ const RQ={
   get MACH(){ return MACH; }, get PZI(){ return PZI; }, get LOG(){ return LOG; }, get PZ(){ return PZ; },
   get pzc(){ return pzc; }, set pzc(v){ pzc=v; },
   mkRohre, speak, say, uiOpen, rr, circle, emo, doorAt: rwDoorAt,
+  got(/** @type {any} */ m){ return !!ST.pzGot[m.id]; },
   solved(/** @type {any} */ m,/** @type {number} */ k){ return rwSolvedWith(RWP,m,k); },
   zoom(v){ if(v!==zoomV){ zoomV=v; S=S0*v; } },
 };

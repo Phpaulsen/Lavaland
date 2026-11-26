@@ -8,6 +8,7 @@ import { cam, P } from '../state/game.js';
 import { BT, WSX, LIFTX } from '../core/world/shape.js';
 import { ST } from '../state/facade.js';
 import { cellAt } from '../state/sim.js';
+import { rw } from '../state/rohrwand.js';
 
 /** @typedef {Record<string, any>} Port */
 
@@ -320,7 +321,8 @@ export function drawDeepWith(RP,ctx,x0,x1,y0,y1){
   if(WSX>x0-80&&WSX<x1+80&&gy>y0-10&&gy<y1+100) drawLabWith(RP,ctx);
   if(LIFTX>x0-50&&LIFTX<x1+50) for(let k=0;k<RP.ZN.length;k++){ const y=RP.stationY(k); if(y>y0-10&&y<y1+120) drawCabWith(RP,ctx,LIFTX,y,k===0); }
   for(const d of RP.ZDEC) if(d.x>x0-60&&d.x<x1+60&&d.y>y0-60&&d.y<y1+60){ if(d.k==='bone') drawBoneWith(RP,ctx,d); else drawCryWith(RP,ctx,d); }
-  for(const m of RP.MACH) if(m.y===m.y&&m.x>x0-30&&m.x<x1+30&&m.y>y0-10&&m.y<y1+90) drawMachWith(RP,ctx,m);
+  /* Maschinen mit gebauter Grotte zeichnet ui/rohrwand.js als Rohrwand; der Kasten entfällt dort (Idee 6, Schritt 5). */
+  for(const m of RP.MACH) if(m.y===m.y&&m.x>x0-30&&m.x<x1+30&&m.y>y0-10&&m.y<y1+90&&!(rw[m.id]&&rw[m.id].mc!==undefined)) drawMachWith(RP,ctx,m);
   for(const v of RP.VAULTS) if(v.x-v.rx>x0-40&&v.x-v.rx<x1+40&&v.fy>y0-10&&v.fy<y1+70&&RP.doorShut(v)) RP.drawDoor(v);
   for(const m of RP.MATS) if(!ST.matGot[m.id]&&RP.MATON[m.k]&&m.x>x0-20&&m.x<x1+20&&m.y>y0-20&&m.y<y1+20) drawMatWith(RP,ctx,m);
   for(const m of RP.marks()) if(m[0]>x0-30&&m[0]<x1+30&&m[1]>y0-10&&m[1]<y1+40) drawMarkWith(RP,ctx,m[0],m[1]);
