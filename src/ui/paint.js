@@ -126,6 +126,8 @@ export function endPointerWith(PT,e){
 export function ptrBindWith(PN){
 PN.cv.addEventListener('pointerdown',/** @param {any} e */ function(e){
   e.preventDefault();
+  /* Nah-Modus an der Rohrwand: Tippen dreht Rohre, Malen und Werkzeuge ruhen. */
+  if(PN.wallTap(e.clientX,e.clientY)) return;
   try{PN.cv.setPointerCapture(e.pointerId);}catch(_){}
   PN.pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,has:false,lx:0,ly:0});
   PN.armGhost(PN.cv);

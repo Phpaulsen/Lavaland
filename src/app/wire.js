@@ -15,6 +15,7 @@ import { mkWaageWith } from '../core/puzzles/waage.js';
 import { rhFlow, rhDone, mkRohreWith } from '../core/puzzles/rohre.js';
 import { rwBuildWith, rohrWith, rwRand } from '../systems/rohrwand.js';
 import { rw } from '../state/rohrwand.js';
+import { rwUiTickWith, rwTapWith, rwHintWith, rwDrawWith, rwNah, rwHas } from '../ui/rohrwand.js';
 import { rwPlan } from '../core/world/rohrwand.js';
 import { WORDS, SYL, RHYW, CASES, STAGES, fDom, fStage, fKind, fName } from '../core/learn/facts.js';
 import { BOXD, NEWDAY, FASTMS, schoolOkWith, fUnlockWith, mixPreferWith, fParkedWith } from '../core/learn/leitner.js';
@@ -516,7 +517,8 @@ const PN={
   armGhost,
   endPointer,
   tapWorld,
-  toWorld
+  toWorld,
+  wallTap
 };
 ptrBind();
 
@@ -1601,7 +1603,8 @@ const PZ={
   speak
 };
 let pzc=null, pzTm=[];
-function pzOpen(m){ return pzOpenWith(PZ,m); }
+/* Rohr-Maschinen mit Grotte (Backlog-Idee 6) öffnen kein Fenster: Davor beginnt der Nah-Modus von selbst, im Nah-Modus gibt der Knopf einen Tipp. */
+function pzOpen(m){ if(!m.quiz&&rwNah()){ rwHintWith(RQ); return; } if(!m.quiz&&rwHas(m)){ speak('Stell dich vor die Rohrwand.'); return; } return pzOpenWith(PZ,m); }
 function pzClose(){ return pzCloseWith(PZ); }
 function pzHintMax(c){ return pzHintMaxWith(PZ,c); }
 function pzHintUi(){ return pzHintUiWith(PZ); }
@@ -1924,12 +1927,12 @@ const KB={
 keysBind();
 
 /* ---------- Zeichnen ---------- */
-let W=0,H=0,DPR=1,S=1, maxDpr=2, perfT=0, perfN=0;
+let W=0,H=0,DPR=1,S=1, maxDpr=2, perfT=0, perfN=0, S0=1, zoomV=1;
 function resize(){
   DPR=Math.min(window.devicePixelRatio||1,maxDpr);
   W=window.innerWidth; H=window.innerHeight;
   cv.width=Math.max(1,Math.round(W*DPR)); cv.height=Math.max(1,Math.round(H*DPR));
-  S=Math.min(W/460,H/400);
+  S0=Math.min(W/460,H/400); S=S0*zoomV;
 }
 window.addEventListener('resize',resize);
 
@@ -2529,6 +2532,15 @@ const RWP={
 };
 function rwBuild(m){ return rwBuildWith(RWP,m); }
 for(const s of rohrWith(RWP)) register(s.name,s.tick,s.draw);
+/* Rohrwand im Nah-Modus (ui/rohrwand.js): Zoom, Tippen auf Rohre, Tipp über den Aktionsknopf. */
+const RQ={
+  get MACH(){ return MACH; }, get PZI(){ return PZI; }, get LOG(){ return LOG; }, get PZ(){ return PZ; },
+  get pzc(){ return pzc; }, set pzc(v){ pzc=v; },
+  mkRohre, speak, uiOpen, rr, circle, emo,
+  zoom(v){ if(v!==zoomV){ zoomV=v; S=S0*v; } },
+};
+function wallTap(sx,sy){ if(!rwNah()) return false; const w=toWorld(sx,sy); return rwTapWith(RQ,w[0],w[1]); }
+register('rohrWand',function(dt){ rwUiTickWith(RQ,dt); },function(c,layer,x0,x1){ rwDrawWith(RQ,c,layer,x0,x1); });
 function safe(s,dt){ safeWith(errAdd,s,dt); }
 
 /* Gold und Edelsteine gibt es nicht mehr (Vereinfachungsplan Schritt 2). Was noch da ist, wird einmal in Zahnräder getauscht:
