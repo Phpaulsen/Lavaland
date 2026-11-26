@@ -9,7 +9,7 @@ Leitidee: Rätsel in die Welt holen statt daneben stellen. Ein Rätsel veränder
 | 3 | Roboter als Bergbauhelfer | Das Pfad-Programm des Roboters gräbt einen echten Tunnel in der Welt. | offen |
 | 4 | Flug mit Navigation | Planetenflug erst nach Ergänzen einer Mengenfolge („Wie viele Sterne fehlen?“). | offen |
 | 5 | Spiegel-Höhlen | In einer gespiegelten Zone findet man den Ausgang, indem man das Spiegelbild erkennt. | offen |
-| 6 | Rohre als Lavalenkung | Rohr-Maschinen werden zu Felswänden: Wasser löscht eine Glutstein-Sperre, dahinter Grotte mit Funden und zweiter Wand. Entschieden 18.11.2026, 5 PRs. | in Arbeit |
+| 6 | Rohre als Lavalenkung | Rohr-Maschinen werden zu Felswänden: Wasser löscht eine Glutstein-Sperre, dahinter Grotte mit Funden und zweiter Wand. Entschieden 18.11.2026, umgesetzt in #179, #180, #181, #183 und Schritt 5. Wo kein Platz für die Grotte ist, bleibt die Fenster-Maschine. | erledigt |
 | 7 | Kettenreaktions-Baukasten | Rampe, Kugel, Lava auf Eis, Bombe, Schalter: Das Kind baut eine Maschine, die ein Ziel trifft. Räumlich-kausales Denken ohne Lesen. | offen |
 | 8 | Wichtel-Siedlung | Wichtel ziehen in gegrabene Höhlen und wünschen sich Dinge in Bildern („3 🍄 + 4 🍄“). Rechnen wird Handel; das Dorf wächst sichtbar. Rahmen für 9. | offen |
 | 9 | Naturereignisse mit Auftrag | Flut, Meteoritenschauer oder Vulkanausbruch bedrohen das Dorf: Damm bauen, umleiten, löschen. Dringlichkeit ohne Zeitstrafe; eigener Zufallsstrom. | offen |

@@ -4094,6 +4094,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       ctx.restore();
       const qx = a.x + g.s * (g.lx0 - RWT / 2);
       RQ.emo("🚰", qx, g.top + (ys + 0.5) * RWT, RWT * 0.8);
+      if (!a.k) RQ.emo(RQ.got(m) ? "✅" : "⚙️", a.x, g.top - 16, RWT * 0.8);
     }
   }
   function rwNah() {
@@ -9195,7 +9196,7 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       if (d.k === "bone") drawBoneWith(RP, ctx, d);
       else drawCryWith(RP, ctx, d);
     }
-    for (const m of RP.MACH) if (m.y === m.y && m.x > x0 - 30 && m.x < x1 + 30 && m.y > y0 - 10 && m.y < y1 + 90) drawMachWith(RP, ctx, m);
+    for (const m of RP.MACH) if (m.y === m.y && m.x > x0 - 30 && m.x < x1 + 30 && m.y > y0 - 10 && m.y < y1 + 90 && !(rw[m.id] && rw[m.id].mc !== void 0)) drawMachWith(RP, ctx, m);
     for (const v of RP.VAULTS) if (v.x - v.rx > x0 - 40 && v.x - v.rx < x1 + 40 && v.fy > y0 - 10 && v.fy < y1 + 70 && RP.doorShut(v)) RP.drawDoor(v);
     for (const m of RP.MATS) if (!ST.matGot[m.id] && RP.MATON[m.k] && m.x > x0 - 20 && m.x < x1 + 20 && m.y > y0 - 20 && m.y < y1 + 20) drawMatWith(RP, ctx, m);
     for (const m of RP.marks()) if (m[0] > x0 - 30 && m[0] < x1 + 30 && m[1] > y0 - 10 && m[1] < y1 + 40) drawMarkWith(RP, ctx, m[0], m[1]);
@@ -22168,6 +22169,9 @@ body.calm .near,body.calm .hot{outline:4px solid #3aa0e8;outline-offset:1px}
       circle,
       emo,
       doorAt: rwDoorAt,
+      got(m) {
+        return !!ST.pzGot[m.id];
+      },
       solved(m, k) {
         return rwSolvedWith(RWP, m, k);
       },

@@ -93,4 +93,6 @@
 {"pr": 30.10, "note": "Feature (kein Umzug, Backlog-Idee 6 Schritt 3): Rohrwand in der Welt mit Nah-Modus (Zoom, Tippen dreht Rohre, Tipp über den Aktionsknopf), nur an Maschinen mit gebauter Grotte", "renames": {}, "changed": ["PN", "pzOpen", "resize", "ptrBindWith"], "removed": [], "added": ["S0", "zoomV", "RQ", "wallTap", "RWT", "RWZ", "rwc", "zk", "cool", "rwHas", "geo", "rwStartWith", "rwUiTickWith", "rwTapWith", "rwHintWith", "pipe", "rwDrawWith", "rwNah"], "stmtsAdded": 1}
 ,
 {"pr": 30.11, "note": "Feature (kein Umzug, Backlog-Idee 6 Schritt 4): Lösen der Rohrwand öffnet Glutstein-Sperre und Grotte (Funde, Wasser, Rahmen zu Fels), zweite Wand vor der Tür (Stufe +2) öffnet die Nebenkammer; Einbau eingeschaltet (RWON)", "renames": {}, "changed": ["RWP", "RQ", "rwPlan", "RWON", "geo", "rwStartWith", "rwUiTickWith", "rwTapWith", "rwDrawWith"], "removed": [], "added": ["rwSpots", "planOf", "floorBelow", "pour", "hide", "rwDoorAt", "rwSolvedWith", "sayNext", "rest", "wallsOf"]}
+,
+{"pr": 30.12, "note": "Feature (kein Umzug, Backlog-Idee 6 Schritt 5): An Orten mit gebauter Grotte entfällt der Maschinenkasten, die Rohrwand trägt Zahnrad bzw. Haken; Fenster-Rohre bleiben nur als Rückfall ohne Platz", "renames": {}, "changed": ["RQ", "drawDeepWith", "rwDrawWith"], "removed": [], "added": []}
 ]}
